@@ -65,7 +65,7 @@ class ImportService
     public function templateRows(string $type): array
     {
         $headers = array_map(fn ($aliases) => $aliases[0], self::COLUMNS[$type]);
-        $headers['mouza_jl'] = 'মৌজা JL';
+        $headers['mouza_jl'] = __('মৌজা JL');
 
         return [array_values($headers), self::SAMPLE[$type]];
     }
@@ -94,7 +94,7 @@ class ImportService
     {
         $path = "imports/{$token}.json";
         if (! Storage::disk('local')->exists($path)) {
-            throw ValidationException::withMessages(['token' => 'প্রিভিউ পাওয়া যায়নি বা মেয়াদ শেষ। আবার আপলোড করুন।']);
+            throw ValidationException::withMessages(['token' => __('প্রিভিউ পাওয়া যায়নি বা মেয়াদ শেষ। আবার আপলোড করুন।')]);
         }
         $stored = json_decode(Storage::disk('local')->get($path), true);
         if ($stored['user_id'] !== $user->id) {
@@ -107,7 +107,7 @@ class ImportService
             foreach ($valid as $line => $row) {
                 if (in_array($line, $warnedLines, true)) {
                     unset($valid[$line]);
-                    $errors[] = ['line' => $line, 'messages' => ['সতর্কতার কারণে বাদ (সম্ভাব্য ডুপ্লিকেট)']];
+                    $errors[] = ['line' => $line, 'messages' => [__('সতর্কতার কারণে বাদ (সম্ভাব্য ডুপ্লিকেট)')]];
                 }
             }
         }
@@ -126,7 +126,7 @@ class ImportService
                     $errors[] = ['line' => $line, 'messages' => collect($e->errors())->flatten()->all()];
                 } catch (Throwable $e) {
                     report($e);
-                    $errors[] = ['line' => $line, 'messages' => ['সংরক্ষণে ত্রুটি: '.Str::limit($e->getMessage(), 150)]];
+                    $errors[] = ['line' => $line, 'messages' => [__('সংরক্ষণে ত্রুটি: ').Str::limit($e->getMessage(), 150)]];
                 }
             }
             usort($errors, fn ($a, $b) => $a['line'] <=> $b['line']);
@@ -149,7 +149,7 @@ class ImportService
         $content = (string) file_get_contents($file->getRealPath());
         $content = preg_replace('/^\xEF\xBB\xBF/', '', $content);
         if (! mb_check_encoding($content, 'UTF-8')) {
-            throw ValidationException::withMessages(['file' => 'ফাইলটি UTF-8 নয়। Excel-এ "CSV UTF-8 (Comma delimited)" হিসেবে সেভ করুন।']);
+            throw ValidationException::withMessages(['file' => __('ফাইলটি UTF-8 নয়। Excel-এ "CSV UTF-8 (Comma delimited)" হিসেবে সেভ করুন।')]);
         }
 
         $handle = fopen('php://temp', 'r+');
@@ -158,13 +158,13 @@ class ImportService
 
         $header = fgetcsv($handle, escape: '\\');
         if (! $header) {
-            throw ValidationException::withMessages(['file' => 'ফাইল খালি।']);
+            throw ValidationException::withMessages(['file' => __('ফাইল খালি।')]);
         }
         $map = $this->mapHeader($type, $header);
         $missing = array_diff(self::REQUIRED[$type], array_values($map));
         if ($missing) {
             $labels = array_map(fn ($k) => self::COLUMNS[$type][$k][0], $missing);
-            throw ValidationException::withMessages(['file' => 'প্রয়োজনীয় কলাম পাওয়া যায়নি: '.implode(', ', $labels).'। Template ডাউনলোড করে ব্যবহার করুন।']);
+            throw ValidationException::withMessages(['file' => __('প্রয়োজনীয় কলাম পাওয়া যায়নি: ').implode(', ', $labels).__('। Template ডাউনলোড করে ব্যবহার করুন।')]);
         }
 
         $rows = [];
@@ -180,7 +180,7 @@ class ImportService
             }
             $rows[$line] = $row;
             if (count($rows) > 5000) {
-                throw ValidationException::withMessages(['file' => 'একবারে সর্বোচ্চ ৫০০০ সারি Import করা যাবে।']);
+                throw ValidationException::withMessages(['file' => __('একবারে সর্বোচ্চ ৫০০০ সারি Import করা যাবে।')]);
             }
         }
         fclose($handle);
@@ -233,23 +233,23 @@ class ImportService
         $e = $w = [];
         foreach (self::REQUIRED['farmers'] as $k) {
             if (($r[$k] ?? '') === '') {
-                $e[] = self::COLUMNS['farmers'][$k][0].' খালি';
+                $e[] = self::COLUMNS['farmers'][$k][0].__(' খালি');
             }
         }
         $gender = $this->gender($r['gender'] ?? '');
         if (($r['gender'] ?? '') !== '' && ! $gender) {
-            $e[] = 'লিঙ্গ বোঝা যায়নি (পুরুষ/মহিলা/অন্যান্য)';
+            $e[] = __('লিঙ্গ বোঝা যায়নি (পুরুষ/মহিলা/অন্যান্য)');
         }
         $nid = Bn::toEnDigits($r['nid'] ?? '') ?: null;
         if ($nid && ! preg_match('/^(\d{10}|\d{13}|\d{17})$/', $nid)) {
-            $e[] = 'NID ১০/১৩/১৭ অঙ্কের নয়';
+            $e[] = __('NID ১০/১৩/১৭ অঙ্কের নয়');
         }
         $mobile = Bn::toEnDigits($r['mobile'] ?? '') ?: null;
         if ($mobile && strlen($mobile) === 10 && str_starts_with($mobile, '1')) {
             $mobile = '0'.$mobile; // Excel drops the leading zero
         }
         if ($mobile && ! preg_match('/^01[3-9]\d{8}$/', $mobile)) {
-            $e[] = 'মোবাইল নম্বর সঠিক নয়';
+            $e[] = __('মোবাইল নম্বর সঠিক নয়');
         }
 
         [$village, $mouza, $locErr, $locWarn] = $this->resolveLocation($r);
@@ -258,9 +258,9 @@ class ImportService
 
         if ($nid) {
             if (isset($seen['nid'][$nid])) {
-                $e[] = "একই NID ফাইলের {$seen['nid'][$nid]} নং সারিতেও আছে";
+                $e[] = __('একই NID ফাইলের :p0 নং সারিতেও আছে', ['p0' => $seen['nid'][$nid]]);
             } elseif (Farmer::where('nid', $nid)->exists()) {
-                $e[] = 'এই NID-এর কৃষক আগে থেকেই আছেন';
+                $e[] = __('এই NID-এর কৃষক আগে থেকেই আছেন');
             }
             $seen['nid'][$nid] ??= $line;
         }
@@ -270,25 +270,25 @@ class ImportService
         if (($r['member_no'] ?? '') !== '') {
             $memberNo = (int) Bn::toEnDigits($r['member_no']);
             if (! $user->can('member.admin')) {
-                $e[] = 'সদস্য নং Import করতে member.admin অনুমতি লাগবে';
+                $e[] = __('সদস্য নং Import করতে member.admin অনুমতি লাগবে');
             } elseif ($memberNo < 1) {
-                $e[] = 'সদস্য নং সঠিক নয়';
+                $e[] = __('সদস্য নং সঠিক নয়');
             } elseif (isset($seen['member'][$memberNo])) {
-                $e[] = "সদস্য নং {$memberNo} ফাইলের {$seen['member'][$memberNo]} নং সারিতেও আছে";
+                $e[] = __('সদস্য নং :p0 ফাইলের :p1 নং সারিতেও আছে', ['p0' => $memberNo, 'p1' => $seen['member'][$memberNo]]);
             } elseif (Member::where('member_no', $memberNo)->exists()) {
-                $e[] = "সদস্য নং {$memberNo} ইতিমধ্যে ব্যবহৃত";
+                $e[] = __('সদস্য নং :p0 ইতিমধ্যে ব্যবহৃত', ['p0' => $memberNo]);
             }
             $seen['member'][$memberNo] ??= $line;
             $admittedOn = $this->date($r['admitted_on'] ?? '');
             if (! $admittedOn) {
-                $e[] = 'সদস্য নং দিলে ভর্তির তারিখ (দিন/মাস/বছর) দিতে হবে';
+                $e[] = __('সদস্য নং দিলে ভর্তির তারিখ (দিন/মাস/বছর) দিতে হবে');
             }
         }
 
         if (! $e && $village) {
             $similar = $this->duplicates->check(['name_bn' => $r['name_bn'], 'father_name' => $r['father_name'], 'village_id' => $village->id, 'mobile' => $mobile]);
             if ($similar['warn']) {
-                $w[] = 'সম্ভাব্য ডুপ্লিকেট: '.collect($similar['warn'])->map(fn ($m) => "{$m['farmer_code']} {$m['name_bn']}")->implode(', ');
+                $w[] = __('সম্ভাব্য ডুপ্লিকেট: ').collect($similar['warn'])->map(fn ($m) => "{$m['farmer_code']} {$m['name_bn']}")->implode(', ');
             }
         }
 
@@ -307,20 +307,20 @@ class ImportService
         $e = $w = [];
         foreach (self::REQUIRED['lands'] as $k) {
             if (($r[$k] ?? '') === '') {
-                $e[] = self::COLUMNS['lands'][$k][0].' খালি';
+                $e[] = self::COLUMNS['lands'][$k][0].__(' খালি');
             }
         }
         $upazila = $this->upazila($r['upazila'] ?? '', $e);
         $jl = Bn::toEnDigits($r['mouza_jl'] ?? '');
         $mouza = $upazila && $jl !== '' ? Mouza::where('upazila_id', $upazila->id)->where('jl_no', $jl)->first() : null;
         if ($upazila && $jl !== '' && ! $mouza) {
-            $e[] = "এই উপজেলায় JL {$jl}-এর মৌজা নেই";
+            $e[] = __('এই উপজেলায় JL :p0-এর মৌজা নেই', ['p0' => $jl]);
         }
 
         $survey = strtoupper(trim($r['survey'] ?? '')) ?: 'RS';
         $survey = ['আর.এস' => 'RS', 'বি.এস' => 'BS', 'এস.এ' => 'SA', 'সি.এস' => 'CS'][$survey] ?? $survey;
         if (! array_key_exists($survey, Land::SURVEYS)) {
-            $e[] = 'জরিপ RS/BS/SA/CS হতে হবে';
+            $e[] = __('জরিপ RS/BS/SA/CS হতে হবে');
         }
         $khatian = Bn::toEnDigits($r['khatian_no'] ?? '');
         $dag = Bn::toEnDigits($r['dag_no'] ?? '');
@@ -328,12 +328,12 @@ class ImportService
         $unitKey = array_search(trim($r['area_unit'] ?? ''), AreaUnit::LABELS, true) ?: (array_key_exists(trim($r['area_unit'] ?? ''), AreaUnit::LABELS) ? trim($r['area_unit']) : 'decimal');
         $area = ($r['area'] ?? '') !== '' ? AreaUnit::parse($r['area'], $unitKey) : null;
         if (($r['area'] ?? '') !== '' && (! $area || $area <= 0)) {
-            $e[] = 'পরিমাণ সঠিক নয়';
+            $e[] = __('পরিমাণ সঠিক নয়');
         }
 
         $type = ($r['land_type'] ?? '') !== '' ? LandType::where('name_bn', $r['land_type'])->first() : null;
         if (($r['land_type'] ?? '') !== '' && ! $type) {
-            $e[] = "জমির ধরন \"{$r['land_type']}\" তালিকায় নেই";
+            $e[] = __('জমির ধরন ":p0" তালিকায় নেই', ['p0' => $r['land_type']]);
         }
         $status = array_search($r['status'] ?? '', Land::STATUSES, true) ?: (array_key_exists($r['status'] ?? '', Land::STATUSES) ? $r['status'] : 'cultivated');
 
@@ -342,7 +342,7 @@ class ImportService
             [$ref, $share] = array_pad(explode(':', $part, 2), 2, null);
             $farmer = $this->farmerRef($ref);
             if (! $farmer) {
-                $e[] = "মালিক \"{$ref}\" পাওয়া যায়নি (Farmer ID, NID বা সদস্য নং দিন)";
+                $e[] = __('মালিক ":p0" পাওয়া যায়নি (Farmer ID, NID বা সদস্য নং দিন)', ['p0' => $ref]);
 
                 continue;
             }
@@ -364,7 +364,7 @@ class ImportService
         }
         $ownedSince = ($r['owned_since'] ?? '') !== '' ? $this->date($r['owned_since']) : now()->toDateString();
         if (! $ownedSince) {
-            $e[] = 'মালিকানার তারিখ বোঝা যায়নি';
+            $e[] = __('মালিকানার তারিখ বোঝা যায়নি');
         }
 
         $cultivation = null;
@@ -375,11 +375,11 @@ class ImportService
             $isOwner = $cf && in_array($cf->id, array_column($owners, 'farmer_id'), true);
             $ctype ??= $isOwner ? 'own' : 'borga';
             if (! $cf) {
-                $e[] = "চাষি \"{$r['cultivator']}\" পাওয়া যায়নি";
+                $e[] = __('চাষি ":p0" পাওয়া যায়নি', ['p0' => $r['cultivator']]);
             } elseif ($ctype === 'own' && ! $isOwner) {
-                $e[] = 'নিজ চাষ হলে চাষিকে মালিকদের একজন হতে হবে';
+                $e[] = __('নিজ চাষ হলে চাষিকে মালিকদের একজন হতে হবে');
             } elseif ($ctype === 'borga' && $isOwner) {
-                $e[] = 'মালিক নিজের জমিতে বর্গাচাষি হতে পারেন না';
+                $e[] = __('মালিক নিজের জমিতে বর্গাচাষি হতে পারেন না');
             }
             $since = ($r['cultivation_since'] ?? '') !== '' ? $this->date($r['cultivation_since']) : $ownedSince;
             $cultivation = $cf ? ['farmer_id' => $cf->id, 'type' => $ctype, 'terms' => ($r['terms'] ?? '') ?: null, 'start_date' => $since, 'name' => $cf->name_bn] : null;
@@ -388,9 +388,9 @@ class ImportService
         if ($mouza && $khatian !== '' && $dag !== '') {
             $key = "{$mouza->id}|{$survey}|{$khatian}|{$dag}";
             if (isset($seen['land'][$key])) {
-                $w[] = "একই মৌজা/জরিপ/খতিয়ান/দাগ ফাইলের {$seen['land'][$key]} নং সারিতেও আছে";
+                $w[] = __('একই মৌজা/জরিপ/খতিয়ান/দাগ ফাইলের :p0 নং সারিতেও আছে', ['p0' => $seen['land'][$key]]);
             } elseif ($this->lands->similar($mouza->id, $survey, $khatian, $dag)->isNotEmpty()) {
-                $w[] = 'একই মৌজা/জরিপ/খতিয়ান/দাগে আগে থেকেই জমি আছে';
+                $w[] = __('একই মৌজা/জরিপ/খতিয়ান/দাগে আগে থেকেই জমি আছে');
             }
             $seen['land'][$key] ??= $line;
         }
@@ -417,7 +417,7 @@ class ImportService
         DB::table('mouza_village')->insertOrIgnore(['mouza_id' => $r['mouza_id'], 'village_id' => $r['village_id']]);
 
         if ($r['member_no']) {
-            $this->membership->createLegacy($farmer, $r['member_no'], $r['admitted_on'], 'Import ব্যাচ #'.$batch->id, $user->id);
+            $this->membership->createLegacy($farmer, $r['member_no'], $r['admitted_on'], __('Import ব্যাচ #').$batch->id, $user->id);
         }
     }
 
@@ -444,19 +444,19 @@ class ImportService
         $upazila = $this->upazila($r['upazila'] ?? '', $e);
         $union = $upazila && ($r['union'] ?? '') !== '' ? Union::where('upazila_id', $upazila->id)->where('name_bn', $r['union'])->first() : null;
         if ($upazila && ($r['union'] ?? '') !== '' && ! $union) {
-            $e[] = "ইউনিয়ন \"{$r['union']}\" এই উপজেলায় নেই";
+            $e[] = __('ইউনিয়ন ":p0" এই উপজেলায় নেই', ['p0' => $r['union']]);
         }
         $village = $union && ($r['village'] ?? '') !== '' ? Village::where('union_id', $union->id)->where('name_bn', $r['village'])->first() : null;
         if ($union && ($r['village'] ?? '') !== '' && ! $village) {
-            $e[] = "গ্রাম \"{$r['village']}\" এই ইউনিয়নে নেই — আগে এলাকা পাতায় যোগ করুন";
+            $e[] = __('গ্রাম ":p0" এই ইউনিয়নে নেই — আগে এলাকা পাতায় যোগ করুন', ['p0' => $r['village']]);
         }
         $jl = Bn::toEnDigits($r['mouza_jl'] ?? '');
         $mouza = $upazila && $jl !== '' ? Mouza::where('upazila_id', $upazila->id)->where('jl_no', $jl)->first() : null;
         if ($upazila && $jl !== '' && ! $mouza) {
-            $e[] = "JL {$jl}-এর মৌজা এই উপজেলায় নেই";
+            $e[] = __('JL :p0-এর মৌজা এই উপজেলায় নেই', ['p0' => $jl]);
         }
         if ($mouza && $village && ! $mouza->villages()->where('villages.id', $village->id)->exists()) {
-            $w[] = "মৌজা {$mouza->name_bn} গ্রাম {$village->name_bn}-এর সাথে যুক্ত ছিল না — Import-এ যুক্ত করা হবে";
+            $w[] = __('মৌজা :p0 গ্রাম :p1-এর সাথে যুক্ত ছিল না — Import-এ যুক্ত করা হবে', ['p0' => $mouza->name_bn, 'p1' => $village->name_bn]);
         }
 
         return [$village, $mouza, $e, $w];
@@ -471,7 +471,7 @@ class ImportService
         if ($matches->count() === 1) {
             return $matches->first();
         }
-        $e[] = $matches->isEmpty() ? "উপজেলা \"{$name}\" পাওয়া যায়নি" : "উপজেলা \"{$name}\" একাধিক জেলায় আছে";
+        $e[] = $matches->isEmpty() ? __('উপজেলা ":p0" পাওয়া যায়নি', ['p0' => $name]) : __('উপজেলা ":p0" একাধিক জেলায় আছে', ['p0' => $name]);
 
         return null;
     }

@@ -1,5 +1,6 @@
 import axios, { AxiosError } from 'axios'
 import type { FormInstance } from 'antd'
+import { lang, t as tx } from './i18n'
 
 const TOKEN_KEY = 'polsha.token'
 
@@ -29,7 +30,8 @@ export const tokenStore = {
 
 export const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL,
-  headers: { Accept: 'application/json' },
+  // X-Locale drives the backend's message language (Accept-Language is left to the browser).
+  headers: { Accept: 'application/json', 'X-Locale': lang },
 })
 
 api.interceptors.request.use((config) => {
@@ -57,10 +59,10 @@ api.interceptors.response.use(
 
 type ErrorBody = { message?: string; errors?: Record<string, string[]> }
 
-export function errorMessage(error: unknown, fallback = 'কিছু একটা সমস্যা হয়েছে।'): string {
+export function errorMessage(error: unknown, fallback = tx('কিছু একটা সমস্যা হয়েছে।')): string {
   const e = error as AxiosError<ErrorBody>
-  if (!e?.response) return 'সার্ভারের সাথে সংযোগ করা যাচ্ছে না।'
-  if (e.response.status === 403 && !e.response.data?.message) return 'এই কাজের অনুমতি আপনার নেই।'
+  if (!e?.response) return tx('সার্ভারের সাথে সংযোগ করা যাচ্ছে না।')
+  if (e.response.status === 403 && !e.response.data?.message) return tx('এই কাজের অনুমতি আপনার নেই।')
   return e.response.data?.message || fallback
 }
 

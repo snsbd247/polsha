@@ -32,9 +32,9 @@ class PatwariController extends Controller
     {
         $rows = $this->filtered($request)->with('currentAssignments.mouza:id,name_bn')->orderBy('name')->get()
             ->map(fn (Patwari $p) => [$p->name, $p->father_name, $p->mobile, $p->nid,
-                $p->currentAssignments->pluck('mouza.name_bn')->implode(', '), $p->is_active ? 'সক্রিয়' : 'নিষ্ক্রিয়']);
+                $p->currentAssignments->pluck('mouza.name_bn')->implode(', '), $p->is_active ? __('সক্রিয়') : __('নিষ্ক্রিয়')]);
 
-        return CsvExport::download('patwaris.csv', ['নাম', 'পিতা', 'মোবাইল', 'NID', 'দায়িত্বাধীন মৌজা', 'অবস্থা'], $rows);
+        return CsvExport::download('patwaris.csv', [__('নাম'), __('পিতা'), __('মোবাইল'), 'NID', __('দায়িত্বাধীন মৌজা'), __('অবস্থা')], $rows);
     }
 
     public function show(Patwari $patwari): JsonResponse
@@ -117,6 +117,6 @@ class PatwariController extends Controller
             'mouza_ids.*' => ['integer', 'exists:mouzas,id'],
             'start_date' => ['required', 'date'],
             'is_active' => ['boolean'],
-        ], ['mouza_ids.required' => 'কমপক্ষে একটি মৌজা দিন।', 'mobile.regex' => 'সঠিক মোবাইল নম্বর দিন।']);
+        ], ['mouza_ids.required' => __('কমপক্ষে একটি মৌজা দিন।'), 'mobile.regex' => __('সঠিক মোবাইল নম্বর দিন।')]);
     }
 }

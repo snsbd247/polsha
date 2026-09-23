@@ -53,6 +53,6 @@ class FarmerDocumentController extends Controller
         Storage::disk('local')->delete($document->path);
         $document->delete();
 
-        return response()->json(['message' => 'ডকুমেন্ট মুছে ফেলা হয়েছে।']);
+        return response()->json(['message' => __('ডকুমেন্ট মুছে ফেলা হয়েছে।')]);
     }
 }

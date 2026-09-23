@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Support\Tr;
 use App\Http\Controllers\Controller;
 use App\Models\LoginLog;
 use App\Models\User;
@@ -34,12 +35,12 @@ class AuthController extends Controller
         };
 
         if (! $user) {
-            return $fail('unknown_user', 'ইউজারনেম বা পাসওয়ার্ড ভুল।');
+            return $fail('unknown_user', __('ইউজারনেম বা পাসওয়ার্ড ভুল।'));
         }
         if ($user->isLocked()) {
             $minutes = (int) ceil(now()->diffInSeconds($user->locked_until) / 60);
 
-            return $fail('locked', "অনেকবার ভুল পাসওয়ার্ড। {$minutes} মিনিট পর চেষ্টা করুন।", 423);
+            return $fail('locked', __('অনেকবার ভুল পাসওয়ার্ড। :p0 মিনিট পর চেষ্টা করুন।', ['p0' => $minutes]), 423);
         }
         if (! Hash::check($data['password'], $user->password)) {
             $user->failed_attempts++;
@@ -49,10 +50,10 @@ class AuthController extends Controller
             }
             $user->saveQuietly();
 
-            return $fail('wrong_password', 'ইউজারনেম বা পাসওয়ার্ড ভুল।');
+            return $fail('wrong_password', __('ইউজারনেম বা পাসওয়ার্ড ভুল।'));
         }
         if (! $user->is_active) {
-            return $fail('inactive', 'আপনার অ্যাকাউন্ট নিষ্ক্রিয় করা হয়েছে।', 403);
+            return $fail('inactive', __('আপনার অ্যাকাউন্ট নিষ্ক্রিয় করা হয়েছে।'), 403);
         }
 
         $user->forceFill(['failed_attempts' => 0, 'locked_until' => null, 'last_login_at' => now()])->saveQuietly();
@@ -72,7 +73,7 @@ class AuthController extends Controller
     {
         $request->user()->currentAccessToken()->delete();
 
-        return response()->json(['message' => 'লগআউট হয়েছে।']);
+        return response()->json(['message' => __('লগআউট হয়েছে।')]);
     }
 
     public function me(Request $request): JsonResponse
@@ -99,7 +100,7 @@ class AuthController extends Controller
             'photo_url' => $user->photo ? url('api/users/'.$user->id.'/photo') : null,
             'locale' => $user->locale,
             'must_change_password' => $user->must_change_password,
-            'roles' => $user->roles->map(fn ($r) => ['name' => $r->name, 'label' => $r->label])->values(),
+            'roles' => $user->roles->map(fn ($r) => ['name' => $r->name, 'label' => Tr::label($r->label)])->values(),
             'permissions' => $user->permissionNames(),
             'is_super_admin' => $user->isSuperAdmin(),
         ];

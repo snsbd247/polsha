@@ -9,6 +9,7 @@ import { api, errorMessage, type Paginated } from '../../lib/api'
 import { digits, fmtDate } from '../../lib/format'
 import { downloadExport } from '../../lib/phase2'
 import { usePublicSettings } from '../../lib/settings'
+import { t as tx } from '../../lib/i18n'
 
 type Row = {
   id: number
@@ -45,7 +46,7 @@ export default function AdmissionRegisterPage() {
   return (
     <>
       <div className="page-header no-print">
-        <h2>ভর্তি রেজিস্টার</h2>
+        <h2>{tx('ভর্তি রেজিস্টার')}</h2>
         <Space wrap>
           <DatePicker.RangePicker
             format="DD/MM/YYYY"
@@ -60,13 +61,13 @@ export default function AdmissionRegisterPage() {
             </Button>
           </Can>
           <Button icon={<PrinterOutlined />} onClick={() => window.print()}>
-            প্রিন্ট / PDF
+            {tx('প্রিন্ট / PDF')}
           </Button>
         </Space>
       </div>
       <div className="print-only" style={{ textAlign: 'center', marginBottom: 12 }}>
         <h2 style={{ margin: 0 }}>{settings?.society_name_bn}</h2>
-        <div>সদস্য ভর্তি রেজিস্টার {range.from && `(${fmtDate(range.from)} — ${fmtDate(range.to)})`}</div>
+        <div>{tx('সদস্য ভর্তি রেজিস্টার')}{' '}{range.from && `(${fmtDate(range.from)} — ${fmtDate(range.to)})`}</div>
       </div>
       <Table<Row>
         rowKey="id"
@@ -87,17 +88,17 @@ export default function AdmissionRegisterPage() {
           },
         }}
         columns={[
-          { title: 'ক্রমিক', width: 60, render: (_, __, i) => digits(offset + i + 1) },
-          { title: 'সদস্য নং', dataIndex: 'member_no', render: digits },
-          { title: 'নাম', dataIndex: 'name', render: (v, r) => <Link to={`/farmers/${r.farmer_id}`}>{v}</Link> },
-          { title: 'পিতা', dataIndex: 'father_name' },
-          { title: 'ঠিকানা', dataIndex: 'address' },
-          { title: 'ভর্তির তারিখ', dataIndex: 'admitted_on', render: (v, r) => <>{fmtDate(v)}{r.is_legacy && <Tag style={{ marginInlineStart: 4 }}>পুরোনো</Tag>}</> },
-          { title: 'ভর্তি ফি', dataIndex: 'admission_fee', render: (v) => (v ? `৳ ${digits(Number(v))}` : '—') },
-          { title: 'প্রাথমিক শেয়ার', dataIndex: 'initial_shares', render: (v) => (v ? digits(v) : '—') },
-          { title: 'নমিনি', dataIndex: 'nominees' },
-          { title: 'সভার সিদ্ধান্ত', dataIndex: 'resolution_no', render: (v) => v ?? '—' },
-          { title: 'বাতিল', render: (_, r) => (r.cancelled_on ? `${fmtDate(r.cancelled_on)} — ${r.cancel_reason ?? ''}` : '—') },
+          { title: tx('ক্রমিক'), width: 60, render: (_, __, i) => digits(offset + i + 1) },
+          { title: tx('সদস্য নং'), dataIndex: 'member_no', render: digits },
+          { title: tx('নাম'), dataIndex: 'name', render: (v, r) => <Link to={`/farmers/${r.farmer_id}`}>{v}</Link> },
+          { title: tx('পিতা'), dataIndex: 'father_name' },
+          { title: tx('ঠিকানা'), dataIndex: 'address' },
+          { title: tx('ভর্তির তারিখ'), dataIndex: 'admitted_on', render: (v, r) => <>{fmtDate(v)}{r.is_legacy && <Tag style={{ marginInlineStart: 4 }}>{tx('পুরোনো')}</Tag>}</> },
+          { title: tx('ভর্তি ফি'), dataIndex: 'admission_fee', render: (v) => (v ? tx('৳ {{p0}}', { p0: digits(Number(v)) }) : '—') },
+          { title: tx('প্রাথমিক শেয়ার'), dataIndex: 'initial_shares', render: (v) => (v ? digits(v) : '—') },
+          { title: tx('নমিনি'), dataIndex: 'nominees' },
+          { title: tx('সভার সিদ্ধান্ত'), dataIndex: 'resolution_no', render: (v) => v ?? '—' },
+          { title: tx('বাতিল'), render: (_, r) => (r.cancelled_on ? `${fmtDate(r.cancelled_on)} — ${r.cancel_reason ?? ''}` : '—') },
         ]}
       />
     </>

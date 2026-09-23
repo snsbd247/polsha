@@ -66,10 +66,10 @@ class VoterListService
     {
         $status = $this->statusAt($m, $cutoff);
         if ($status !== Member::ACTIVE) {
-            return $status === Member::CANCELLED ? 'সদস্যপদ বাতিল' : 'নিষ্ক্রিয় সদস্য';
+            return $status === Member::CANCELLED ? __('সদস্যপদ বাতিল') : __('নিষ্ক্রিয় সদস্য');
         }
         if ($minMonths > 0 && $m->admitted_on->copy()->addMonths($minMonths)->greaterThan($cutoff)) {
-            return "সদস্যপদ {$minMonths} মাস পূর্ণ হয়নি";
+            return __('সদস্যপদ :p0 মাস পূর্ণ হয়নি', ['p0' => $minMonths]);
         }
 
         return null;

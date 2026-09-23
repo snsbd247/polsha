@@ -9,6 +9,7 @@ import { digits } from '../../lib/format'
 import { useRoles } from '../../lib/queries'
 import { required } from '../../lib/rules'
 import type { Role } from '../../lib/types'
+import { t as tx } from '../../lib/i18n'
 
 export default function RoleListPage() {
   const navigate = useNavigate()
@@ -31,7 +32,7 @@ export default function RoleListPage() {
     try {
       if (editing === 'new') await api.post('/roles', values)
       else await api.put(`/roles/${(editing as Role).id}`, values)
-      message.success('সংরক্ষণ হয়েছে।')
+      message.success(tx('সংরক্ষণ হয়েছে।'))
       setEditing(null)
       refresh()
     } catch (e) {
@@ -42,7 +43,7 @@ export default function RoleListPage() {
   const duplicate = async (r: Role) => {
     try {
       await api.post(`/roles/${r.id}/duplicate`)
-      message.success('কপি তৈরি হয়েছে।')
+      message.success(tx('কপি তৈরি হয়েছে।'))
       refresh()
     } catch (e) {
       message.error(errorMessage(e))
@@ -51,14 +52,14 @@ export default function RoleListPage() {
 
   const remove = (r: Role) =>
     modal.confirm({
-      title: `"${r.label}" রোল মুছবেন?`,
-      okText: 'মুছুন',
+      title: tx('"{{p0}}" রোল মুছবেন?', { p0: r.label }),
+      okText: tx('মুছুন'),
       okButtonProps: { danger: true },
-      cancelText: 'না',
+      cancelText: tx('না'),
       onOk: async () => {
         try {
           await api.delete(`/roles/${r.id}`)
-          message.success('মুছে ফেলা হয়েছে।')
+          message.success(tx('মুছে ফেলা হয়েছে।'))
           refresh()
         } catch (e) {
           message.error(errorMessage(e))
@@ -69,10 +70,10 @@ export default function RoleListPage() {
   return (
     <>
       <div className="page-header">
-        <h2>রোল ও অনুমতি</h2>
+        <h2>{tx('রোল ও অনুমতি')}</h2>
         <Can perm="role.create">
           <Button type="primary" icon={<PlusOutlined />} onClick={() => openForm('new')}>
-            নতুন রোল
+            {tx('নতুন রোল')}
           </Button>
         </Can>
       </div>
@@ -83,29 +84,29 @@ export default function RoleListPage() {
         pagination={false}
         scroll={{ x: 700 }}
         columns={[
-          { title: 'রোল', dataIndex: 'label', render: (v, r) => <Space>{v ?? r.name}{r.is_system && <Tag>সিস্টেম</Tag>}</Space> },
-          { title: 'বিবরণ', dataIndex: 'description' },
-          { title: 'ইউজার', dataIndex: 'users_count', render: digits, width: 90 },
+          { title: tx('রোল'), dataIndex: 'label', render: (v, r) => <Space>{v ?? r.name}{r.is_system && <Tag>{tx('সিস্টেম')}</Tag>}</Space> },
+          { title: tx('বিবরণ'), dataIndex: 'description' },
+          { title: tx('ইউজার'), dataIndex: 'users_count', render: digits, width: 90 },
           {
             title: '',
             width: 200,
             render: (_, r) => (
               <Space>
-                <Tooltip title="অনুমতি">
+                <Tooltip title={tx('অনুমতি')}>
                   <Button icon={<KeyOutlined />} onClick={() => navigate(`/admin/roles/${r.id}/permissions`)} />
                 </Tooltip>
                 {can('role.edit') && (
-                  <Tooltip title="সম্পাদনা">
+                  <Tooltip title={tx('সম্পাদনা')}>
                     <Button icon={<EditOutlined />} onClick={() => openForm(r)} />
                   </Tooltip>
                 )}
                 {can('role.create') && (
-                  <Tooltip title="কপি">
+                  <Tooltip title={tx('কপি')}>
                     <Button icon={<CopyOutlined />} onClick={() => duplicate(r)} />
                   </Tooltip>
                 )}
                 {can('role.delete') && (
-                  <Tooltip title={r.is_system ? 'সিস্টেম রোল মুছা যায় না' : r.users_count ? 'এই রোলে ইউজার আছে' : 'মুছুন'}>
+                  <Tooltip title={r.is_system ? tx('সিস্টেম রোল মুছা যায় না') : r.users_count ? tx('এই রোলে ইউজার আছে') : tx('মুছুন')}>
                     <Button danger icon={<DeleteOutlined />} disabled={r.is_system || r.users_count > 0} onClick={() => remove(r)} />
                   </Tooltip>
                 )}
@@ -116,18 +117,18 @@ export default function RoleListPage() {
       />
       <Modal
         open={!!editing}
-        title={editing === 'new' ? 'নতুন রোল' : 'রোল সম্পাদনা'}
+        title={editing === 'new' ? tx('নতুন রোল') : tx('রোল সম্পাদনা')}
         onCancel={() => setEditing(null)}
         onOk={save}
-        okText="সংরক্ষণ"
-        cancelText="বাতিল"
+        okText={tx('সংরক্ষণ')}
+        cancelText={tx('বাতিল')}
         forceRender
       >
         <Form form={form} layout="vertical">
-          <Form.Item name="label" label="রোলের নাম" rules={[required('নাম দিন')]}>
+          <Form.Item name="label" label={tx('রোলের নাম')} rules={[required(tx('নাম দিন'))]}>
             <Input />
           </Form.Item>
-          <Form.Item name="description" label="বিবরণ">
+          <Form.Item name="description" label={tx('বিবরণ')}>
             <Input.TextArea rows={2} />
           </Form.Item>
         </Form>

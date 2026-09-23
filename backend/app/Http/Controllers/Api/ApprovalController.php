@@ -87,7 +87,8 @@ class ApprovalController extends Controller
 
     public function rules(): JsonResponse
     {
-        return response()->json(ApprovalRule::orderBy('module')->orderBy('id')->get());
+        return response()->json(ApprovalRule::orderBy('module')->orderBy('id')->get()
+            ->map(fn ($r) => array_merge($r->toArray(), ['label' => __($r->label)])));
     }
 
     public function updateRule(Request $request, ApprovalRule $rule): JsonResponse

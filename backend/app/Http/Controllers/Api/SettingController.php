@@ -68,7 +68,10 @@ class SettingController extends Controller
 
     public function sequences(): JsonResponse
     {
-        return response()->json(Sequence::orderBy('id')->get()->map(fn ($s) => $s->toArray() + ['preview' => SequenceService::preview($s)]));
+        return response()->json(Sequence::orderBy('id')->get()->map(fn ($s) => array_merge($s->toArray(), [
+            'label' => __($s->label), // seeded labels are translation keys
+            'preview' => SequenceService::preview($s),
+        ])));
     }
 
     public function updateSequence(Request $request, Sequence $sequence): JsonResponse
@@ -82,7 +85,7 @@ class SettingController extends Controller
 
         // Lowering the counter would re-issue numbers already printed on paper.
         if ($data['next_value'] < $sequence->next_value) {
-            throw ValidationException::withMessages(['next_value' => 'পরবর্তী নম্বর কমানো যাবে না।']);
+            throw ValidationException::withMessages(['next_value' => __('পরবর্তী নম্বর কমানো যাবে না।')]);
         }
         $data['prefix'] ??= '';
         $sequence->update($data);

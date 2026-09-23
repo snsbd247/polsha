@@ -60,7 +60,7 @@ class HouseholdController extends Controller
         ]);
         $head = Farmer::findOrFail($data['head_farmer_id']);
         if ($head->household_id) {
-            throw ValidationException::withMessages(['head_farmer_id' => 'এই কৃষক ইতিমধ্যে একটি খানার সদস্য।']);
+            throw ValidationException::withMessages(['head_farmer_id' => __('এই কৃষক ইতিমধ্যে একটি খানার সদস্য।')]);
         }
 
         $household = DB::transaction(function () use ($head, $data) {
@@ -81,7 +81,7 @@ class HouseholdController extends Controller
     public function changeHead(Request $request, Household $household): JsonResponse
     {
         $data = $request->validate(['head_farmer_id' => ['required', Rule::exists('farmers', 'id')->where('household_id', $household->id)]],
-            ['head_farmer_id.exists' => 'খানাপ্রধানকে অবশ্যই এই খানার সদস্য হতে হবে।']);
+            ['head_farmer_id.exists' => __('খানাপ্রধানকে অবশ্যই এই খানার সদস্য হতে হবে।')]);
 
         DB::transaction(function () use ($household, $data) {
             if ($household->head_farmer_id) {
@@ -102,7 +102,7 @@ class HouseholdController extends Controller
         ]);
         $farmer = Farmer::findOrFail($data['farmer_id']);
         if ($farmer->household_id && $farmer->household_id !== $household->id) {
-            throw ValidationException::withMessages(['farmer_id' => 'এই কৃষক অন্য একটি খানার সদস্য।']);
+            throw ValidationException::withMessages(['farmer_id' => __('এই কৃষক অন্য একটি খানার সদস্য।')]);
         }
         $farmer->update(['household_id' => $household->id, 'household_relation' => $data['relation']]);
 
@@ -113,7 +113,7 @@ class HouseholdController extends Controller
     {
         abort_unless($farmer->household_id === $household->id, 404);
         if ($household->head_farmer_id === $farmer->id) {
-            throw ValidationException::withMessages(['farmer_id' => 'খানাপ্রধানকে বাদ দেওয়া যাবে না; আগে খানাপ্রধান বদলান।']);
+            throw ValidationException::withMessages(['farmer_id' => __('খানাপ্রধানকে বাদ দেওয়া যাবে না; আগে খানাপ্রধান বদলান।')]);
         }
         $farmer->update(['household_id' => null, 'household_relation' => null]);
 

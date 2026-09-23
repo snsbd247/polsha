@@ -2,13 +2,14 @@ import { useQuery } from '@tanstack/react-query'
 import { Select, Space } from 'antd'
 import { api } from '../lib/api'
 import type { LocationItem } from '../lib/types'
+import { t as tx } from '../lib/i18n'
 
 const LEVELS = [
-  { key: 'divisions', label: 'বিভাগ' },
-  { key: 'districts', label: 'জেলা' },
-  { key: 'upazilas', label: 'উপজেলা' },
-  { key: 'unions', label: 'ইউনিয়ন' },
-  { key: 'villages', label: 'গ্রাম' },
+  { key: 'divisions', label: tx('বিভাগ') },
+  { key: 'districts', label: tx('জেলা') },
+  { key: 'upazilas', label: tx('উপজেলা') },
+  { key: 'unions', label: tx('ইউনিয়ন') },
+  { key: 'villages', label: tx('গ্রাম') },
 ] as const
 
 export type LocationPath = (number | undefined)[]

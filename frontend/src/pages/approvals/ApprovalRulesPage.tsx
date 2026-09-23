@@ -6,6 +6,7 @@ import { api, errorMessage } from '../../lib/api'
 import { digits } from '../../lib/format'
 import { roleOptions, useRoles } from '../../lib/queries'
 import type { ApprovalRule } from '../../lib/types'
+import { t as tx } from '../../lib/i18n'
 
 export default function ApprovalRulesPage() {
   const { message } = App.useApp()
@@ -34,7 +35,7 @@ export default function ApprovalRulesPage() {
         min_amount: v.min_amount ?? null,
         steps: (v.steps as { roles: string[] }[]).map((s) => s.roles),
       })
-      message.success('সংরক্ষণ হয়েছে।')
+      message.success(tx('সংরক্ষণ হয়েছে।'))
       setEditing(null)
       queryClient.invalidateQueries({ queryKey: ['approval-rules'] })
     } catch (e) {
@@ -45,7 +46,7 @@ export default function ApprovalRulesPage() {
   return (
     <>
       <div className="page-header">
-        <h2>অনুমোদনের নিয়ম</h2>
+        <h2>{tx('অনুমোদনের নিয়ম')}</h2>
       </div>
       <Table<ApprovalRule>
         rowKey="id"
@@ -54,10 +55,10 @@ export default function ApprovalRulesPage() {
         pagination={false}
         scroll={{ x: 700 }}
         columns={[
-          { title: 'কাজ', dataIndex: 'label', render: (v, r) => <Space orientation="vertical" size={0}>{v}<code style={{ fontSize: 12 }}>{r.action_key}</code></Space> },
-          { title: 'চালু', dataIndex: 'enabled', render: (v) => (v ? <Tag color="green">হ্যাঁ</Tag> : <Tag>না</Tag>) },
+          { title: tx('কাজ'), dataIndex: 'label', render: (v, r) => <Space orientation="vertical" size={0}>{v}<code style={{ fontSize: 12 }}>{r.action_key}</code></Space> },
+          { title: tx('চালু'), dataIndex: 'enabled', render: (v) => (v ? <Tag color="green">{tx('হ্যাঁ')}</Tag> : <Tag>{tx('না')}</Tag>) },
           {
-            title: 'ধাপ',
+            title: tx('ধাপ'),
             dataIndex: 'steps',
             render: (steps: string[][]) =>
               steps.map((s, i) => (
@@ -66,47 +67,47 @@ export default function ApprovalRulesPage() {
                 </div>
               )),
           },
-          { title: 'ন্যূনতম পরিমাণ', dataIndex: 'min_amount', render: (v) => (v ? `৳ ${digits(v)}` : '—') },
-          { title: '', width: 100, render: (_, r) => <Button onClick={() => open(r)}>সম্পাদনা</Button> },
+          { title: tx('ন্যূনতম পরিমাণ'), dataIndex: 'min_amount', render: (v) => (v ? tx('৳ {{p0}}', { p0: digits(v) }) : '—') },
+          { title: '', width: 100, render: (_, r) => <Button onClick={() => open(r)}>{tx('সম্পাদনা')}</Button> },
         ]}
       />
-      <Modal open={!!editing} title={editing?.label} onCancel={() => setEditing(null)} onOk={save} okText="সংরক্ষণ" cancelText="বাতিল" forceRender width={560}>
+      <Modal open={!!editing} title={editing?.label} onCancel={() => setEditing(null)} onOk={save} okText={tx('সংরক্ষণ')} cancelText={tx('বাতিল')} forceRender width={560}>
         <Form form={form} layout="vertical">
-          <Form.Item name="enabled" label="অনুমোদন লাগবে" valuePropName="checked">
-            <Switch checkedChildren="হ্যাঁ" unCheckedChildren="না" />
+          <Form.Item name="enabled" label={tx('অনুমোদন লাগবে')} valuePropName="checked">
+            <Switch checkedChildren={tx('হ্যাঁ')} unCheckedChildren={tx('না')} />
           </Form.Item>
-          <Form.List name="steps" rules={[{ validator: async (_, s) => (s?.length ? undefined : Promise.reject(new Error('কমপক্ষে একটি ধাপ দিন'))) }]}>
+          <Form.List name="steps" rules={[{ validator: async (_, s) => (s?.length ? undefined : Promise.reject(new Error(tx('কমপক্ষে একটি ধাপ দিন')))) }]}>
             {(fields, { add, remove }, { errors }) => (
               <>
                 {fields.map((f, i) => (
                   <Space key={f.key} align="baseline" style={{ display: 'flex' }}>
                     <Form.Item
                       name={[f.name, 'roles']}
-                      label={`ধাপ ${digits(i + 1)}`}
-                      rules={[{ required: true, type: 'array', min: 1, message: 'রোল দিন' }]}
+                      label={tx('ধাপ {{p0}}', { p0: digits(i + 1) })}
+                      rules={[{ required: true, type: 'array', min: 1, message: tx('রোল দিন') }]}
                       style={{ minWidth: 380 }}
                     >
                       <Select
                         mode="multiple"
                         options={roleOptions(roles)}
-                        placeholder="যেকোনো একজন অনুমোদন দিতে পারবেন"
+                        placeholder={tx('যেকোনো একজন অনুমোদন দিতে পারবেন')}
                         showSearch={{ optionFilterProp: 'label' }}
                       />
                     </Form.Item>
-                    <MinusCircleOutlined onClick={() => remove(f.name)} aria-label="ধাপ সরান" />
+                    <MinusCircleOutlined onClick={() => remove(f.name)} aria-label={tx('ধাপ সরান')} />
                   </Space>
                 ))}
                 {fields.length < 3 && (
                   <Button type="dashed" icon={<PlusOutlined />} onClick={() => add({ roles: [] })}>
-                    ধাপ যোগ করুন
+                    {tx('ধাপ যোগ করুন')}
                   </Button>
                 )}
                 <Form.ErrorList errors={errors} />
               </>
             )}
           </Form.List>
-          <Form.Item name="min_amount" label="এর কম পরিমাণ হলে অনুমোদন লাগবে না (ঐচ্ছিক)" style={{ marginTop: 16 }}>
-            <InputNumber min={0} style={{ width: '100%' }} prefix="৳" />
+          <Form.Item name="min_amount" label={tx('এর কম পরিমাণ হলে অনুমোদন লাগবে না (ঐচ্ছিক)')} style={{ marginTop: 16 }}>
+            <InputNumber min={0} style={{ width: '100%' }} prefix={tx('৳')} />
           </Form.Item>
         </Form>
       </Modal>

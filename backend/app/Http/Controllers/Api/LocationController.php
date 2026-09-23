@@ -78,7 +78,7 @@ class LocationController extends Controller
             $rules['name_bn'][] = Rule::unique($level, 'name_bn')->ignore($item);
         }
 
-        return $request->validate($rules, ['name_bn.unique' => 'এই নামে একই স্তরে আগে থেকেই আছে।']);
+        return $request->validate($rules, ['name_bn.unique' => __('এই নামে একই স্তরে আগে থেকেই আছে।')]);
     }
 
     /** @return class-string<Location> */

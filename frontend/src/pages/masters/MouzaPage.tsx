@@ -8,6 +8,7 @@ import { api, applyFormErrors, errorMessage, type Paginated } from '../../lib/ap
 import { digits, toEnDigits } from '../../lib/format'
 import { required } from '../../lib/rules'
 import type { LocationItem, Mouza } from '../../lib/types'
+import { t as tx } from '../../lib/i18n'
 
 type Params = { page: number; per_page: number; search?: string; union_id?: number; upazila_id?: number }
 
@@ -50,14 +51,14 @@ export default function MouzaPage() {
   const save = async () => {
     const values = await form.validateFields()
     if (!unionId) {
-      message.error('ইউনিয়ন বাছাই করুন।')
+      message.error(tx('ইউনিয়ন বাছাই করুন।'))
       return
     }
     const payload = { ...values, union_id: unionId, jl_no: toEnDigits(String(values.jl_no)) }
     try {
       if (editing === 'new') await api.post('/mouzas', payload)
       else await api.put(`/mouzas/${(editing as Mouza).id}`, payload)
-      message.success('সংরক্ষণ হয়েছে।')
+      message.success(tx('সংরক্ষণ হয়েছে।'))
       setEditing(null)
       queryClient.invalidateQueries({ queryKey: ['mouzas'] })
     } catch (e) {
@@ -68,15 +69,15 @@ export default function MouzaPage() {
   return (
     <>
       <div className="page-header">
-        <h2>মৌজা</h2>
+        <h2>{tx('মৌজা')}</h2>
         <Can perm="mouza.create">
           <Button type="primary" icon={<PlusOutlined />} onClick={() => openForm('new')}>
-            নতুন মৌজা
+            {tx('নতুন মৌজা')}
           </Button>
         </Can>
       </div>
       <div className="toolbar">
-        <Input.Search placeholder="নাম বা JL নম্বর" allowClear style={{ width: 220 }} onSearch={(search) => setParams((p) => ({ ...p, search: toEnDigits(search), page: 1 }))} />
+        <Input.Search placeholder={tx('নাম বা JL নম্বর')} allowClear style={{ width: 220 }} onSearch={(search) => setParams((p) => ({ ...p, search: toEnDigits(search), page: 1 }))} />
         <LocationCascader
           depth={4}
           value={filterPath}
@@ -97,56 +98,56 @@ export default function MouzaPage() {
           total: data?.total,
           showSizeChanger: true,
           pageSizeOptions: [25, 50, 100],
-          showTotal: (t) => `মোট ${digits(t)}টি`,
+          showTotal: (t) => tx('মোট {{p0}}টি', { p0: digits(t) }),
           onChange: (page, per_page) => setParams((p) => ({ ...p, page, per_page })),
         }}
         columns={[
-          { title: 'মৌজা', dataIndex: 'name_bn' },
-          { title: 'JL নম্বর', dataIndex: 'jl_no', render: digits },
-          { title: 'ইউনিয়ন', render: (_, m) => m.union?.name_bn },
-          { title: 'উপজেলা', render: (_, m) => m.upazila?.name_bn },
-          { title: 'গ্রাম', render: (_, m) => m.villages?.map((v) => <Tag key={v.id}>{v.name_bn}</Tag>) },
-          { title: 'অবস্থা', dataIndex: 'is_active', render: (v) => (v ? <Tag color="green">সক্রিয়</Tag> : <Tag>নিষ্ক্রিয়</Tag>) },
-          ...(can('mouza.edit') ? [{ title: '', width: 100, render: (_: unknown, m: Mouza) => <Button onClick={() => openForm(m)}>সম্পাদনা</Button> }] : []),
+          { title: tx('মৌজা'), dataIndex: 'name_bn' },
+          { title: tx('JL নম্বর'), dataIndex: 'jl_no', render: digits },
+          { title: tx('ইউনিয়ন'), render: (_, m) => m.union?.name_bn },
+          { title: tx('উপজেলা'), render: (_, m) => m.upazila?.name_bn },
+          { title: tx('গ্রাম'), render: (_, m) => m.villages?.map((v) => <Tag key={v.id}>{v.name_bn}</Tag>) },
+          { title: tx('অবস্থা'), dataIndex: 'is_active', render: (v) => (v ? <Tag color="green">{tx('সক্রিয়')}</Tag> : <Tag>{tx('নিষ্ক্রিয়')}</Tag>) },
+          ...(can('mouza.edit') ? [{ title: '', width: 100, render: (_: unknown, m: Mouza) => <Button onClick={() => openForm(m)}>{tx('সম্পাদনা')}</Button> }] : []),
         ]}
       />
       <Modal
         open={!!editing}
-        title={editing === 'new' ? 'নতুন মৌজা' : 'মৌজা সম্পাদনা'}
+        title={editing === 'new' ? tx('নতুন মৌজা') : tx('মৌজা সম্পাদনা')}
         onCancel={() => setEditing(null)}
         onOk={save}
-        okText="সংরক্ষণ"
-        cancelText="বাতিল"
+        okText={tx('সংরক্ষণ')}
+        cancelText={tx('বাতিল')}
         forceRender
         width={640}
       >
         <Form form={form} layout="vertical">
-          <Form.Item label="এলাকা (ইউনিয়ন পর্যন্ত)" required>
+          <Form.Item label={tx('এলাকা (ইউনিয়ন পর্যন্ত)')} required>
             <LocationCascader depth={4} value={formPath} onChange={(v) => {
               setFormPath(v)
               form.setFieldValue('village_ids', [])
             }} />
           </Form.Item>
-          <Form.Item name="name_bn" label="মৌজার নাম (বাংলা)" rules={[required('নাম দিন')]}>
+          <Form.Item name="name_bn" label={tx('মৌজার নাম (বাংলা)')} rules={[required(tx('নাম দিন'))]}>
             <Input />
           </Form.Item>
-          <Form.Item name="name_en" label="মৌজার নাম (ইংরেজি)">
+          <Form.Item name="name_en" label={tx('মৌজার নাম (ইংরেজি)')}>
             <Input />
           </Form.Item>
-          <Form.Item name="jl_no" label="JL নম্বর / মৌজা কোড" rules={[required('JL নম্বর দিন')]}>
+          <Form.Item name="jl_no" label={tx('JL নম্বর / মৌজা কোড')} rules={[required(tx('JL নম্বর দিন'))]}>
             <Input style={{ maxWidth: 200 }} />
           </Form.Item>
-          <Form.Item name="village_ids" label="অন্তর্ভুক্ত গ্রাম">
+          <Form.Item name="village_ids" label={tx('অন্তর্ভুক্ত গ্রাম')}>
             <Select
               mode="multiple"
               disabled={!unionId}
-              placeholder={unionId ? 'গ্রাম বাছাই করুন' : 'আগে ইউনিয়ন বাছাই করুন'}
+              placeholder={unionId ? tx('গ্রাম বাছাই করুন') : tx('আগে ইউনিয়ন বাছাই করুন')}
               options={villages.data?.map((v) => ({ value: v.id, label: v.name_bn }))}
               showSearch={{ optionFilterProp: 'label' }}
             />
           </Form.Item>
-          <Form.Item name="is_active" label="অবস্থা" valuePropName="checked">
-            <Switch checkedChildren="সক্রিয়" unCheckedChildren="নিষ্ক্রিয়" />
+          <Form.Item name="is_active" label={tx('অবস্থা')} valuePropName="checked">
+            <Switch checkedChildren={tx('সক্রিয়')} unCheckedChildren={tx('নিষ্ক্রিয়')} />
           </Form.Item>
         </Form>
       </Modal>

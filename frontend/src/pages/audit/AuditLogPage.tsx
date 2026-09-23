@@ -6,6 +6,7 @@ import AuditLogTable from '../../components/AuditLogTable'
 import { api, type Paginated } from '../../lib/api'
 import { ACTION_LABELS, toEnDigits } from '../../lib/format'
 import type { AuditLog, UserRow } from '../../lib/types'
+import { t as tx } from '../../lib/i18n'
 
 type Params = { page: number; per_page: number; module?: string; action?: string; user_id?: number; auditable_id?: string; from?: string; to?: string }
 
@@ -31,7 +32,7 @@ export default function AuditLogPage() {
   return (
     <>
       <div className="page-header">
-        <h2>অডিট লগ</h2>
+        <h2>{tx('অডিট লগ')}</h2>
       </div>
       <div className="toolbar">
         <DatePicker.RangePicker
@@ -41,7 +42,7 @@ export default function AuditLogPage() {
           }
         />
         <Select
-          placeholder="ইউজার"
+          placeholder={tx('ইউজার')}
           allowClear
           showSearch={{ optionFilterProp: 'label' }}
           style={{ width: 180 }}
@@ -49,20 +50,20 @@ export default function AuditLogPage() {
           onChange={(user_id) => set({ user_id })}
         />
         <Select
-          placeholder="মডিউল"
+          placeholder={tx('মডিউল')}
           allowClear
           style={{ width: 160 }}
           options={Object.entries(meta.data?.modules ?? {}).map(([value, label]) => ({ value, label }))}
           onChange={(module) => set({ module })}
         />
         <Select
-          placeholder="কাজ"
+          placeholder={tx('কাজ')}
           allowClear
           style={{ width: 160 }}
           options={meta.data?.actions.map((a) => ({ value: a, label: ACTION_LABELS[a] ?? a }))}
           onChange={(action) => set({ action })}
         />
-        <Input.Search placeholder="রেকর্ড ID" allowClear style={{ width: 140 }} onSearch={(v) => set({ auditable_id: v ? toEnDigits(v) : undefined })} />
+        <Input.Search placeholder={tx('রেকর্ড ID')} allowClear style={{ width: 140 }} onSearch={(v) => set({ auditable_id: v ? toEnDigits(v) : undefined })} />
       </div>
       <Card styles={{ body: { padding: 0 } }}>
         <AuditLogTable

@@ -46,10 +46,10 @@ class ProfileController extends Controller
         ]);
 
         if (! Hash::check($data['current_password'], $user->password)) {
-            throw ValidationException::withMessages(['current_password' => 'বর্তমান পাসওয়ার্ড ভুল।']);
+            throw ValidationException::withMessages(['current_password' => __('বর্তমান পাসওয়ার্ড ভুল।')]);
         }
         if (Hash::check($data['password'], $user->password)) {
-            throw ValidationException::withMessages(['password' => 'নতুন পাসওয়ার্ড পুরোনোটির মতো হতে পারবে না।']);
+            throw ValidationException::withMessages(['password' => __('নতুন পাসওয়ার্ড পুরোনোটির মতো হতে পারবে না।')]);
         }
 
         $user->forceFill(['password' => $data['password'], 'must_change_password' => false])->saveQuietly();
@@ -57,7 +57,15 @@ class ProfileController extends Controller
         $user->tokens()->where('id', '!=', $user->currentAccessToken()->id)->delete();
         AuditLogger::log('user', 'password_change', $user);
 
-        return response()->json(['message' => 'পাসওয়ার্ড পরিবর্তন হয়েছে।', 'user' => $auth->userPayload($user)]);
+        return response()->json(['message' => __('পাসওয়ার্ড পরিবর্তন হয়েছে।'), 'user' => $auth->userPayload($user)]);
+    }
+
+    public function locale(Request $request): JsonResponse
+    {
+        $data = $request->validate(['locale' => ['required', 'in:bn,en']]);
+        $request->user()->forceFill(['locale' => $data['locale']])->saveQuietly();
+
+        return response()->json(['locale' => $data['locale']]);
     }
 
     public function logoutAll(Request $request): JsonResponse
@@ -65,6 +73,6 @@ class ProfileController extends Controller
         $request->user()->tokens()->delete();
         AuditLogger::log('user', 'logout_all', $request->user());
 
-        return response()->json(['message' => 'সব ডিভাইস থেকে লগআউট হয়েছে।']);
+        return response()->json(['message' => __('সব ডিভাইস থেকে লগআউট হয়েছে।')]);
     }
 }

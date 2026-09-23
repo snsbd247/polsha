@@ -80,13 +80,13 @@ class ApprovalService
             $request = ApprovalRequest::whereKey($request->id)->lockForUpdate()->firstOrFail();
 
             if ($request->requested_by === $user->id) {
-                throw ValidationException::withMessages(['decision' => 'নিজের পাঠানো অনুরোধ নিজে অনুমোদন করা যাবে না।']);
+                throw ValidationException::withMessages(['decision' => __('নিজের পাঠানো অনুরোধ নিজে অনুমোদন করা যাবে না।')]);
             }
             if (! $this->canAct($user, $request)) {
-                throw ValidationException::withMessages(['decision' => 'এই ধাপে আপনার অনুমোদনের ক্ষমতা নেই।']);
+                throw ValidationException::withMessages(['decision' => __('এই ধাপে আপনার অনুমোদনের ক্ষমতা নেই।')]);
             }
             if ($decision !== 'approve' && blank($remarks)) {
-                throw ValidationException::withMessages(['remarks' => 'কারণ লেখা আবশ্যক।']);
+                throw ValidationException::withMessages(['remarks' => __('কারণ লেখা আবশ্যক।')]);
             }
 
             $step = $request->steps()->where('step_no', $request->current_step)->first();

@@ -42,7 +42,7 @@ class BackupService
 
         if (! $process->isSuccessful() || ! is_file($sqlPath)) {
             @unlink($sqlPath);
-            throw new RuntimeException('ব্যাকআপ ব্যর্থ: '.trim($process->getErrorOutput()));
+            throw new RuntimeException(__('ব্যাকআপ ব্যর্থ: ').trim($process->getErrorOutput()));
         }
 
         $this->gzip($sqlPath, $disk->path(self::DIR.'/'.$filename));

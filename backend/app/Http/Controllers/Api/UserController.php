@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Support\Tr;
 use App\Http\Controllers\Controller;
 use App\Models\AuditLog;
 use App\Models\User;
@@ -65,7 +66,7 @@ class UserController extends Controller
         $data = $this->validated($request, $user);
 
         if ($user->id === $request->user()->id && array_key_exists('is_active', $data) && ! $data['is_active']) {
-            throw ValidationException::withMessages(['is_active' => 'নিজের অ্যাকাউন্ট নিষ্ক্রিয় করা যাবে না।']);
+            throw ValidationException::withMessages(['is_active' => __('নিজের অ্যাকাউন্ট নিষ্ক্রিয় করা যাবে না।')]);
         }
 
         DB::transaction(function () use ($user, $data) {
@@ -85,7 +86,7 @@ class UserController extends Controller
     public function toggleActive(Request $request, User $user): JsonResponse
     {
         if ($user->id === $request->user()->id) {
-            throw ValidationException::withMessages(['is_active' => 'নিজের অ্যাকাউন্ট নিষ্ক্রিয় করা যাবে না।']);
+            throw ValidationException::withMessages(['is_active' => __('নিজের অ্যাকাউন্ট নিষ্ক্রিয় করা যাবে না।')]);
         }
         $user->update(['is_active' => ! $user->is_active]);
         if (! $user->is_active) {
@@ -108,7 +109,7 @@ class UserController extends Controller
         $user->tokens()->delete();
         AuditLogger::log('user', 'password_reset', $user);
 
-        return response()->json(['message' => 'পাসওয়ার্ড রিসেট হয়েছে। পরবর্তী লগইনে ইউজারকে নতুন পাসওয়ার্ড দিতে হবে।']);
+        return response()->json(['message' => __('পাসওয়ার্ড রিসেট হয়েছে। পরবর্তী লগইনে ইউজারকে নতুন পাসওয়ার্ড দিতে হবে।')]);
     }
 
     public function forceLogout(User $user): JsonResponse
@@ -116,7 +117,7 @@ class UserController extends Controller
         $user->tokens()->delete();
         AuditLogger::log('user', 'force_logout', $user);
 
-        return response()->json(['message' => 'ইউজারকে সব ডিভাইস থেকে লগআউট করা হয়েছে।']);
+        return response()->json(['message' => __('ইউজারকে সব ডিভাইস থেকে লগআউট করা হয়েছে।')]);
     }
 
     public function loginLogs(Request $request, User $user): JsonResponse
@@ -161,7 +162,7 @@ class UserController extends Controller
         // Only a Super Admin may create or remove Super Admins.
         $touchesSuper = in_array('super_admin', $data['roles'], true) || $user?->isSuperAdmin();
         if ($touchesSuper && ! $request->user()->isSuperAdmin()) {
-            throw ValidationException::withMessages(['roles' => 'সুপার অ্যাডমিন রোল শুধু সুপার অ্যাডমিন দিতে বা সরাতে পারেন।']);
+            throw ValidationException::withMessages(['roles' => __('সুপার অ্যাডমিন রোল শুধু সুপার অ্যাডমিন দিতে বা সরাতে পারেন।')]);
         }
 
         return $data;
@@ -182,7 +183,7 @@ class UserController extends Controller
             'last_login_at' => $u->last_login_at,
             'created_at' => $u->created_at,
             'photo_url' => $u->photo ? url('api/users/'.$u->id.'/photo') : null,
-            'roles' => $u->roles->map(fn ($r) => ['name' => $r->name, 'label' => $r->label])->values(),
+            'roles' => $u->roles->map(fn ($r) => ['name' => $r->name, 'label' => Tr::label($r->label)])->values(),
         ];
     }
 }

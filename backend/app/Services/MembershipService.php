@@ -27,7 +27,7 @@ class MembershipService
     public function submitApplication(MembershipApplication $app): MembershipApplication
     {
         if (! in_array($app->status, MembershipApplication::EDITABLE, true)) {
-            throw ValidationException::withMessages(['status' => 'এই আবেদন এখন পাঠানো যাবে না।']);
+            throw ValidationException::withMessages(['status' => __('এই আবেদন এখন পাঠানো যাবে না।')]);
         }
         $this->assertFarmerCanApply($app->farmer, $app->id);
 
@@ -37,7 +37,7 @@ class MembershipService
 
             $request = $this->approvals->submit(
                 'membership.admit',
-                'সদস্যপদ আবেদন: '.$app->farmer->name_bn.' ('.$app->application_no.')',
+                __('সদস্যপদ আবেদন: ').$app->farmer->name_bn.' ('.$app->application_no.')',
                 $app,
                 [
                     'কৃষক' => $app->farmer->name_bn.' ('.$app->farmer->farmer_code.')',
@@ -46,7 +46,7 @@ class MembershipService
                     'ভর্তি ফি' => $app->admission_fee,
                     'নির্ধারিত ফি' => $app->default_fee,
                     'ফি পরিবর্তনের কারণ' => $app->fee_override_reason,
-                    'ফি পরিশোধ' => $app->fee_status === 'paid' ? 'পরিশোধিত' : 'বাকি',
+                    'ফি পরিশোধ' => $app->fee_status === 'paid' ? __('পরিশোধিত') : __('বাকি'),
                     'নমিনি' => $app->nominees->map(fn ($n) => "{$n->name} ({$n->relation}, {$n->share_percent}%)")->implode(', '),
                 ],
                 null,
@@ -63,17 +63,17 @@ class MembershipService
     public function assertFarmerCanApply(Farmer $farmer, ?int $ignoreApplicationId = null): void
     {
         if (! $farmer->is_active || $farmer->merged_into_id) {
-            throw ValidationException::withMessages(['farmer_id' => 'নিষ্ক্রিয় কৃষক আবেদন করতে পারবেন না।']);
+            throw ValidationException::withMessages(['farmer_id' => __('নিষ্ক্রিয় কৃষক আবেদন করতে পারবেন না।')]);
         }
         if ($farmer->member()->exists()) {
-            throw ValidationException::withMessages(['farmer_id' => 'এই কৃষক ইতিমধ্যে সদস্য।']);
+            throw ValidationException::withMessages(['farmer_id' => __('এই কৃষক ইতিমধ্যে সদস্য।')]);
         }
         $pending = MembershipApplication::where('farmer_id', $farmer->id)
             ->where('status', 'pending')
             ->when($ignoreApplicationId, fn ($q) => $q->where('id', '!=', $ignoreApplicationId))
             ->exists();
         if ($pending) {
-            throw ValidationException::withMessages(['farmer_id' => 'এই কৃষকের একটি আবেদন ইতিমধ্যে অনুমোদনের অপেক্ষায় আছে।']);
+            throw ValidationException::withMessages(['farmer_id' => __('এই কৃষকের একটি আবেদন ইতিমধ্যে অনুমোদনের অপেক্ষায় আছে।')]);
         }
     }
 
@@ -110,10 +110,10 @@ class MembershipService
     public function createLegacy(Farmer $farmer, int $memberNo, string $admittedOn, ?string $remarks, int $userId): Member
     {
         if ($farmer->member()->exists()) {
-            throw ValidationException::withMessages(['farmer_id' => 'এই কৃষক ইতিমধ্যে সদস্য।']);
+            throw ValidationException::withMessages(['farmer_id' => __('এই কৃষক ইতিমধ্যে সদস্য।')]);
         }
         if (Member::where('member_no', $memberNo)->exists()) {
-            throw ValidationException::withMessages(['member_no' => 'এই সদস্য নম্বর ইতিমধ্যে ব্যবহৃত।']);
+            throw ValidationException::withMessages(['member_no' => __('এই সদস্য নম্বর ইতিমধ্যে ব্যবহৃত।')]);
         }
 
         return DB::transaction(function () use ($farmer, $memberNo, $admittedOn, $remarks, $userId) {
@@ -148,20 +148,20 @@ class MembershipService
     {
         [$from, $to] = self::STATUS_ACTIONS[$action];
         if (! in_array($member->status, $from, true)) {
-            throw ValidationException::withMessages(['action' => 'বর্তমান অবস্থায় এই পরিবর্তন করা যাবে না।']);
+            throw ValidationException::withMessages(['action' => __('বর্তমান অবস্থায় এই পরিবর্তন করা যাবে না।')]);
         }
         $pending = ApprovalRequest::where('approvable_type', Member::class)->where('approvable_id', $member->id)
             ->where('status', ApprovalRequest::PENDING)->exists();
         if ($pending) {
-            throw ValidationException::withMessages(['action' => 'এই সদস্যের একটি পরিবর্তন ইতিমধ্যে অনুমোদনের অপেক্ষায় আছে।']);
+            throw ValidationException::withMessages(['action' => __('এই সদস্যের একটি পরিবর্তন ইতিমধ্যে অনুমোদনের অপেক্ষায় আছে।')]);
         }
 
         $member->loadMissing('farmer');
-        $labels = ['deactivate' => 'নিষ্ক্রিয়করণ', 'activate' => 'সক্রিয়করণ', 'cancel' => 'সদস্যপদ বাতিল', 'reactivate' => 'পুনর্বহাল'];
+        $labels = ['deactivate' => __('নিষ্ক্রিয়করণ'), 'activate' => __('সক্রিয়করণ'), 'cancel' => __('সদস্যপদ বাতিল'), 'reactivate' => __('পুনর্বহাল')];
 
         return $this->approvals->submit(
             "member.$action",
-            $labels[$action].': '.$member->farmer->name_bn.' (সদস্য নং '.$member->member_no.')',
+            $labels[$action].': '.$member->farmer->name_bn.__(' (সদস্য নং ').$member->member_no.')',
             $member,
             [
                 'status' => $to,

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Support\Tr;
 use App\Http\Controllers\Controller;
 use App\Models\AuditLog;
 use App\Models\Farmer;
@@ -25,12 +26,12 @@ class LandController extends Controller
     public function meta(): JsonResponse
     {
         return response()->json([
-            'surveys' => Land::SURVEYS,
-            'statuses' => Land::STATUSES,
-            'cultivation_types' => Land::CULTIVATION_TYPES,
-            'units' => AreaUnit::LABELS,
+            'surveys' => Tr::map(Land::SURVEYS),
+            'statuses' => Tr::map(Land::STATUSES),
+            'cultivation_types' => Tr::map(Land::CULTIVATION_TYPES),
+            'units' => Tr::map(AreaUnit::LABELS),
             'unit_factors' => AreaUnit::factors(),
-            'land_types' => LandType::where('is_active', true)->orderBy('sort_order')->get(['id', 'name_bn', 'category']),
+            'land_types' => LandType::where('is_active', true)->orderBy('sort_order')->get(['id', 'name_bn', 'category'])->map(fn ($t) => ['id' => $t->id, 'name_bn' => __($t->name_bn), 'category' => Tr::label($t->category)]),
         ]);
     }
 
@@ -52,14 +53,14 @@ class LandController extends Controller
             $r = $this->row($l);
 
             return [$r['land_code'], $r['mouza'], $l->survey, $l->khatian_no, $l->dag_no, $r['area_decimal'], $r['land_type'],
-                Land::STATUSES[$l->status] ?? $l->status,
+                __(Land::STATUSES[$l->status] ?? $l->status),
                 collect($r['owners'])->map(fn ($o) => "{$o['name_bn']} ({$o['share_percent']}%)")->implode(', '),
                 collect($r['owners'])->pluck('father_name')->implode(', '),
-                $r['cultivation']['name_bn'] ?? '', $r['cultivation'] ? Land::CULTIVATION_TYPES[$r['cultivation']['type']] : ''];
+                $r['cultivation']['name_bn'] ?? '', $r['cultivation'] ? __(Land::CULTIVATION_TYPES[$r['cultivation']['type']]) : ''];
         });
 
         return CsvExport::download('lands-'.now()->format('Ymd').'.csv',
-            ['Land ID', 'মৌজা', 'জরিপ', 'খতিয়ান', 'দাগ', 'পরিমাণ (শতক)', 'জমির ধরন', 'অবস্থা', 'মালিক', 'মালিকের পিতা', 'চাষি', 'চাষের ধরন'], $rows);
+            ['Land ID', __('মৌজা'), __('জরিপ'), __('খতিয়ান'), __('দাগ'), __('পরিমাণ (শতক)'), __('জমির ধরন'), __('অবস্থা'), __('মালিক'), __('মালিকের পিতা'), __('চাষি'), __('চাষের ধরন')], $rows);
     }
 
     public function show(Land $land): JsonResponse
@@ -106,7 +107,7 @@ class LandController extends Controller
             'cultivation.type' => ['required_with:cultivation', Rule::in(array_keys(Land::CULTIVATION_TYPES))],
             'cultivation.terms' => ['nullable', 'string', 'max:500'],
             'cultivation.start_date' => ['required_with:cultivation', 'date', 'before_or_equal:today'],
-        ], ['owners.required' => 'কমপক্ষে একজন মালিক দিন।']);
+        ], ['owners.required' => __('কমপক্ষে একজন মালিক দিন।')]);
 
         $this->guardDuplicate($request, $data);
         $land = $this->lands->create($data, $extra['owners'], $extra['owned_since'], $extra['cultivation'] ?? null, $request->user()->id);
@@ -127,7 +128,7 @@ class LandController extends Controller
     {
         $land->delete();
 
-        return response()->json(['message' => 'জমির রেকর্ড মুছে ফেলা হয়েছে।']);
+        return response()->json(['message' => __('জমির রেকর্ড মুছে ফেলা হয়েছে।')]);
     }
 
     public function transfer(Request $request, Land $land): JsonResponse
@@ -247,7 +248,7 @@ class LandController extends Controller
             'land_type_id' => ['required', Rule::exists('land_types', 'id')],
             'status' => ['required', Rule::in(array_keys(Land::STATUSES))],
             'remarks' => ['nullable', 'string', 'max:2000'],
-        ], ['area.gt' => 'জমির পরিমাণ শূন্যের বেশি হতে হবে।']);
+        ], ['area.gt' => __('জমির পরিমাণ শূন্যের বেশি হতে হবে।')]);
 
         $data['area_decimal'] = AreaUnit::toDecimal((float) $data['area'], $data['area_unit']);
         unset($data['area'], $data['area_unit']);
@@ -260,7 +261,7 @@ class LandController extends Controller
         $matches = $this->lands->similar($data['mouza_id'], $data['survey'], $data['khatian_no'], $data['dag_no'], $ignoreId);
         if ($matches->isNotEmpty() && ! $request->boolean('confirm_duplicate')) {
             abort(response()->json([
-                'message' => 'একই মৌজা, খতিয়ান ও দাগে আগে থেকেই জমি আছে।',
+                'message' => __('একই মৌজা, খতিয়ান ও দাগে আগে থেকেই জমি আছে।'),
                 'code' => 'possible_duplicate',
                 'matches' => $matches,
             ], 409));
@@ -278,7 +279,7 @@ class LandController extends Controller
             'khatian_no' => $l->khatian_no,
             'dag_no' => $l->dag_no,
             'area_decimal' => (float) $l->area_decimal,
-            'land_type' => $l->landType?->name_bn,
+            'land_type' => Tr::label($l->landType?->name_bn),
             'status' => $l->status,
             'owners' => $l->owners->map(fn ($o) => [
                 'id' => $o->id, 'farmer_id' => $o->farmer_id, 'farmer_code' => $o->farmer?->farmer_code,

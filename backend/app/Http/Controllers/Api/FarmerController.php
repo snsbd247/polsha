@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Support\Tr;
 use App\Http\Controllers\Controller;
 use App\Models\AuditLog;
 use App\Models\Farmer;
@@ -26,7 +27,7 @@ class FarmerController extends Controller
 
     public function meta(): JsonResponse
     {
-        return response()->json(config('erp.farmer') + ['cancel_reasons' => config('erp.member.cancel_reasons')]);
+        return response()->json(Tr::map(config('erp.farmer')) + ['cancel_reasons' => Tr::map(config('erp.member.cancel_reasons'))]);
     }
 
     public function index(Request $request): JsonResponse
@@ -46,11 +47,11 @@ class FarmerController extends Controller
             ->map(fn (Farmer $f) => [
                 $f->farmer_code, $f->member?->member_no, $f->name_bn, $f->father_name, $f->mother_name,
                 $f->nid, $f->mobile, $f->village?->name_bn, $f->mouza?->name_bn,
-                $f->member ? 'সদস্য' : 'নন-মেম্বার', $f->is_active ? 'সক্রিয়' : 'নিষ্ক্রিয়',
+                $f->member ? __('সদস্য') : __('নন-মেম্বার'), $f->is_active ? __('সক্রিয়') : __('নিষ্ক্রিয়'),
             ]);
 
         return CsvExport::download('farmers-'.now()->format('Ymd').'.csv',
-            ['Farmer ID', 'সদস্য নং', 'নাম', 'পিতা', 'মাতা', 'NID', 'মোবাইল', 'গ্রাম', 'মৌজা', 'ধরন', 'অবস্থা'], $rows);
+            ['Farmer ID', __('সদস্য নং'), __('নাম'), __('পিতা'), __('মাতা'), 'NID', __('মোবাইল'), __('গ্রাম'), __('মৌজা'), __('ধরন'), __('অবস্থা')], $rows);
     }
 
     public function show(Farmer $farmer): JsonResponse
@@ -115,7 +116,7 @@ class FarmerController extends Controller
 
     public function update(Request $request, Farmer $farmer): JsonResponse
     {
-        abort_if($farmer->merged_into_id, 422, 'মার্জ হয়ে যাওয়া রেকর্ড সম্পাদনা করা যায় না।');
+        abort_if($farmer->merged_into_id, 422, __('মার্জ হয়ে যাওয়া রেকর্ড সম্পাদনা করা যায় না।'));
         $data = $this->validated($request, $farmer);
         $this->guardDuplicates($request, $data, $farmer->id);
 
@@ -136,7 +137,7 @@ class FarmerController extends Controller
 
     public function toggleActive(Farmer $farmer): JsonResponse
     {
-        abort_if($farmer->merged_into_id, 422, 'মার্জ হয়ে যাওয়া রেকর্ড পরিবর্তন করা যায় না।');
+        abort_if($farmer->merged_into_id, 422, __('মার্জ হয়ে যাওয়া রেকর্ড পরিবর্তন করা যায় না।'));
         $farmer->update(['is_active' => ! $farmer->is_active]);
 
         return response()->json(['is_active' => $farmer->is_active]);
@@ -145,11 +146,11 @@ class FarmerController extends Controller
     public function destroy(Farmer $farmer): JsonResponse
     {
         if ($farmer->member()->exists() || $farmer->applications()->exists()) {
-            throw ValidationException::withMessages(['farmer' => 'সদস্যপদ বা আবেদন আছে এমন কৃষক মুছা যাবে না; নিষ্ক্রিয় করুন।']);
+            throw ValidationException::withMessages(['farmer' => __('সদস্যপদ বা আবেদন আছে এমন কৃষক মুছা যাবে না; নিষ্ক্রিয় করুন।')]);
         }
         $farmer->delete();
 
-        return response()->json(['message' => 'মুছে ফেলা হয়েছে।']);
+        return response()->json(['message' => __('মুছে ফেলা হয়েছে।')]);
     }
 
     public function photo(Farmer $farmer)
@@ -273,16 +274,16 @@ class FarmerController extends Controller
             'photo' => ['nullable', 'image', 'max:2048'],
             'is_active' => ['boolean'],
         ], [
-            'nid.regex' => 'NID ১০, ১৩ বা ১৭ অঙ্কের হতে হবে।',
-            'nid.unique' => 'এই NID দিয়ে আগে থেকেই একজন কৃষক আছেন।',
-            'birth_reg_no.regex' => 'জন্ম নিবন্ধন নম্বর ১৭ অঙ্কের হতে হবে।',
-            'mobile.regex' => 'সঠিক মোবাইল নম্বর দিন (01XXXXXXXXX)।',
-            'alt_mobile.regex' => 'সঠিক মোবাইল নম্বর দিন (01XXXXXXXXX)।',
+            'nid.regex' => __('NID ১০, ১৩ বা ১৭ অঙ্কের হতে হবে।'),
+            'nid.unique' => __('এই NID দিয়ে আগে থেকেই একজন কৃষক আছেন।'),
+            'birth_reg_no.regex' => __('জন্ম নিবন্ধন নম্বর ১৭ অঙ্কের হতে হবে।'),
+            'mobile.regex' => __('সঠিক মোবাইল নম্বর দিন (01XXXXXXXXX)।'),
+            'alt_mobile.regex' => __('সঠিক মোবাইল নম্বর দিন (01XXXXXXXXX)।'),
         ]);
 
         $linked = Mouza::whereKey($data['mouza_id'])->whereHas('villages', fn ($v) => $v->where('villages.id', $data['village_id']))->exists();
         if (! $linked) {
-            throw ValidationException::withMessages(['mouza_id' => 'এই মৌজা বাছাই করা গ্রামের সাথে যুক্ত নয়। মৌজা পাতায় গ্রাম যুক্ত করুন।']);
+            throw ValidationException::withMessages(['mouza_id' => __('এই মৌজা বাছাই করা গ্রামের সাথে যুক্ত নয়। মৌজা পাতায় গ্রাম যুক্ত করুন।')]);
         }
         unset($data['photo']);
 
@@ -294,11 +295,11 @@ class FarmerController extends Controller
     {
         $result = $this->duplicates->check($data, $ignoreId);
         if ($result['block']) {
-            throw ValidationException::withMessages(['nid' => 'এই NID দিয়ে আগে থেকেই একজন কৃষক আছেন।']);
+            throw ValidationException::withMessages(['nid' => __('এই NID দিয়ে আগে থেকেই একজন কৃষক আছেন।')]);
         }
         if ($result['warn'] && ! $request->boolean('confirm_duplicate')) {
             abort(response()->json([
-                'message' => 'সম্ভাব্য ডুপ্লিকেট কৃষক পাওয়া গেছে।',
+                'message' => __('সম্ভাব্য ডুপ্লিকেট কৃষক পাওয়া গেছে।'),
                 'code' => 'possible_duplicate',
                 'matches' => $result['warn'],
             ], 409));

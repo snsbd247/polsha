@@ -9,6 +9,7 @@ import { digits, fmtDate, fmtDateTime } from '../../lib/format'
 import { downloadExport } from '../../lib/phase2'
 import { required } from '../../lib/rules'
 import { usePublicSettings } from '../../lib/settings'
+import { t as tx } from '../../lib/i18n'
 
 type VoterList = { id: number; title: string; cutoff_date: string; min_months: number; eligible_count: number; ineligible_count: number; created_at: string; creator: { name_bn: string } | null }
 type Item = { id: number; serial: number | null; member_no: number; name: string; father_name: string; village: string | null; eligible: boolean; reason: string | null }
@@ -33,7 +34,7 @@ function ListDrawer({ list, onClose }: { list: VoterList | null; onClose: () => 
           <div className="print-only" style={{ textAlign: 'center' }}>
             <h2 style={{ margin: 0 }}>{settings?.society_name_bn}</h2>
             <div>
-              {list.title} — কাট-অফ তারিখ {fmtDate(list.cutoff_date)}
+              {list.title}{' '}{tx('— কাট-অফ তারিখ')}{' '}{fmtDate(list.cutoff_date)}
             </div>
           </div>
           <Space className="no-print" style={{ marginBottom: 12 }} wrap>
@@ -46,7 +47,7 @@ function ListDrawer({ list, onClose }: { list: VoterList | null; onClose: () => 
               </Button>
             </Can>
             <Button icon={<PrinterOutlined />} onClick={() => window.print()}>
-              প্রিন্ট
+              {tx('প্রিন্ট')}
             </Button>
           </Space>
           <Tabs
@@ -57,8 +58,8 @@ function ListDrawer({ list, onClose }: { list: VoterList | null; onClose: () => 
               setPage(1)
             }}
             items={[
-              { key: '1', label: `ভোটার (${digits(list.eligible_count)})` },
-              { key: '0', label: `বাদ পড়েছেন / Voter Audit (${digits(list.ineligible_count)})` },
+              { key: '1', label: tx('ভোটার ({{p0}})', { p0: digits(list.eligible_count) }) },
+              { key: '0', label: tx('বাদ পড়েছেন / Voter Audit ({{p0}})', { p0: digits(list.ineligible_count) }) },
             ]}
           />
           <Table<Item>
@@ -71,19 +72,19 @@ function ListDrawer({ list, onClose }: { list: VoterList | null; onClose: () => 
             columns={
               tab === '1'
                 ? [
-                    { title: 'ক্রমিক', dataIndex: 'serial', width: 70, render: digits },
-                    { title: 'সদস্য নং', dataIndex: 'member_no', render: digits },
-                    { title: 'নাম', dataIndex: 'name' },
-                    { title: 'পিতা', dataIndex: 'father_name' },
-                    { title: 'গ্রাম', dataIndex: 'village' },
-                    { title: 'স্বাক্ষর', width: 140, render: () => '' },
+                    { title: tx('ক্রমিক'), dataIndex: 'serial', width: 70, render: digits },
+                    { title: tx('সদস্য নং'), dataIndex: 'member_no', render: digits },
+                    { title: tx('নাম'), dataIndex: 'name' },
+                    { title: tx('পিতা'), dataIndex: 'father_name' },
+                    { title: tx('গ্রাম'), dataIndex: 'village' },
+                    { title: tx('স্বাক্ষর'), width: 140, render: () => '' },
                   ]
                 : [
-                    { title: 'সদস্য নং', dataIndex: 'member_no', render: digits },
-                    { title: 'নাম', dataIndex: 'name' },
-                    { title: 'পিতা', dataIndex: 'father_name' },
-                    { title: 'গ্রাম', dataIndex: 'village' },
-                    { title: 'বাদ পড়ার কারণ', dataIndex: 'reason' },
+                    { title: tx('সদস্য নং'), dataIndex: 'member_no', render: digits },
+                    { title: tx('নাম'), dataIndex: 'name' },
+                    { title: tx('পিতা'), dataIndex: 'father_name' },
+                    { title: tx('গ্রাম'), dataIndex: 'village' },
+                    { title: tx('বাদ পড়ার কারণ'), dataIndex: 'reason' },
                   ]
             }
           />
@@ -113,7 +114,7 @@ export default function VoterListPage() {
     setSaving(true)
     try {
       const r = await api.post<VoterList>('/voter-lists', { title: v.title, cutoff_date: (v.cutoff_date as Dayjs).format('YYYY-MM-DD') })
-      message.success('ভোটার তালিকা তৈরি হয়েছে।')
+      message.success(tx('ভোটার তালিকা তৈরি হয়েছে।'))
       setCreating(false)
       queryClient.invalidateQueries({ queryKey: ['voter-lists'] })
       setOpen(r.data)
@@ -127,17 +128,17 @@ export default function VoterListPage() {
   return (
     <>
       <div className="page-header">
-        <h2>ভোটার তালিকা</h2>
+        <h2>{tx('ভোটার তালিকা')}</h2>
         <Can perm="member.admin">
           <Button
             type="primary"
             icon={<PlusOutlined />}
             onClick={() => {
-              form.setFieldsValue({ title: `বার্ষিক সাধারণ সভা ${dayjs().format('YYYY')}`, cutoff_date: dayjs() })
+              form.setFieldsValue({ title: tx('বার্ষিক সাধারণ সভা {{p0}}', { p0: dayjs().format('YYYY') }), cutoff_date: dayjs() })
               setCreating(true)
             }}
           >
-            নতুন তালিকা তৈরি
+            {tx('নতুন তালিকা তৈরি')}
           </Button>
         </Can>
       </div>
@@ -145,7 +146,7 @@ export default function VoterListPage() {
         type="info"
         showIcon
         style={{ marginBottom: 16 }}
-        title="কাট-অফ তারিখে যারা সক্রিয় সদস্য, তারা সবাই ভোটার। তালিকা তৈরির সময়ের তথ্য স্থায়ীভাবে সংরক্ষিত থাকে — পরে কারো তথ্য বদলালেও ছাপা তালিকা বদলাবে না।"
+        title={tx('কাট-অফ তারিখে যারা সক্রিয় সদস্য, তারা সবাই ভোটার। তালিকা তৈরির সময়ের তথ্য স্থায়ীভাবে সংরক্ষিত থাকে — পরে কারো তথ্য বদলালেও ছাপা তালিকা বদলাবে না।')}
       />
       <Table<VoterList>
         rowKey="id"
@@ -155,20 +156,20 @@ export default function VoterListPage() {
         onRow={(r) => ({ onClick: () => setOpen(r), style: { cursor: 'pointer' } })}
         pagination={{ current: page, pageSize: data?.per_page, total: data?.total, onChange: setPage, showSizeChanger: false }}
         columns={[
-          { title: 'শিরোনাম', dataIndex: 'title' },
-          { title: 'কাট-অফ তারিখ', dataIndex: 'cutoff_date', render: fmtDate },
-          { title: 'ভোটার', dataIndex: 'eligible_count', render: digits },
-          { title: 'বাদ পড়েছেন', dataIndex: 'ineligible_count', render: digits },
-          { title: 'তৈরি', render: (_, r) => `${r.creator?.name_bn ?? ''} · ${fmtDateTime(r.created_at)}` },
+          { title: tx('শিরোনাম'), dataIndex: 'title' },
+          { title: tx('কাট-অফ তারিখ'), dataIndex: 'cutoff_date', render: fmtDate },
+          { title: tx('ভোটার'), dataIndex: 'eligible_count', render: digits },
+          { title: tx('বাদ পড়েছেন'), dataIndex: 'ineligible_count', render: digits },
+          { title: tx('তৈরি'), render: (_, r) => `${r.creator?.name_bn ?? ''} · ${fmtDateTime(r.created_at)}` },
         ]}
       />
       <ListDrawer list={open} onClose={() => setOpen(null)} />
-      <Modal open={creating} title="নতুন ভোটার তালিকা" forceRender onCancel={() => setCreating(false)} onOk={create} confirmLoading={saving} okText="তৈরি করুন" cancelText="বাতিল">
+      <Modal open={creating} title={tx('নতুন ভোটার তালিকা')} forceRender onCancel={() => setCreating(false)} onOk={create} confirmLoading={saving} okText={tx('তৈরি করুন')} cancelText={tx('বাতিল')}>
         <Form form={form} layout="vertical">
-          <Form.Item name="title" label="শিরোনাম" rules={[required('শিরোনাম দিন')]}>
+          <Form.Item name="title" label={tx('শিরোনাম')} rules={[required(tx('শিরোনাম দিন'))]}>
             <Input />
           </Form.Item>
-          <Form.Item name="cutoff_date" label="কাট-অফ তারিখ" rules={[required('তারিখ দিন')]}>
+          <Form.Item name="cutoff_date" label={tx('কাট-অফ তারিখ')} rules={[required(tx('তারিখ দিন'))]}>
             <DatePicker format="DD/MM/YYYY" style={{ width: '100%' }} />
           </Form.Item>
         </Form>

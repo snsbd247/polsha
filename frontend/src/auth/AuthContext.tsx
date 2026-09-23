@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { api, authEvents, tokenStore } from '../lib/api'
+import { hasStoredLang, lang, setLang } from '../lib/i18n'
 import type { AuthUser } from '../lib/types'
 
 type AuthState = {
@@ -35,7 +36,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!tokenStore.get()) return
     api
       .get<{ user: AuthUser }>('/me')
-      .then((r) => setUser(r.data.user))
+      .then((r) => {
+        // New device with no choice yet: adopt the language saved on the profile.
+        const saved = r.data.user.locale === 'en' ? 'en' : 'bn'
+        if (!hasStoredLang() && saved !== lang) return setLang(saved)
+        setUser(r.data.user)
+      })
       .catch(() => clear())
       .finally(() => setLoading(false))
   }, [clear])
@@ -43,6 +49,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = useCallback(async (username: string, password: string, remember: boolean) => {
     const r = await api.post<{ token: string; user: AuthUser }>('/auth/login', { username, password, remember })
     tokenStore.set(r.data.token)
+    // The language on screen at sign-in is the one the user is using — keep the profile in step.
+    if (r.data.user.locale !== lang) {
+      api.post('/me/locale', { locale: lang }).catch(() => {})
+      setLang(lang, false)
+    }
     setUser(r.data.user)
     return r.data.user
   }, [])

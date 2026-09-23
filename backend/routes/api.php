@@ -36,6 +36,7 @@ Route::middleware(['auth:sanctum', 'usable'])->group(function () {
     Route::post('me', [ProfileController::class, 'update']);
     Route::post('me/password', [ProfileController::class, 'changePassword']);
     Route::post('me/logout-all', [ProfileController::class, 'logoutAll']);
+    Route::post('me/locale', [ProfileController::class, 'locale']);
 
     // Users
     Route::get('users', [UserController::class, 'index'])->middleware('permission:user.view');

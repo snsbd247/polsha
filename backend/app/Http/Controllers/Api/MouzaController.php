@@ -87,7 +87,7 @@ class MouzaController extends Controller
             'village_ids' => ['array'],
             'village_ids.*' => [Rule::exists('villages', 'id')->where('union_id', $union?->id)],
             'is_active' => ['boolean'],
-        ], ['jl_no.unique' => 'এই উপজেলায় একই JL নম্বরের মৌজা আগে থেকেই আছে।']);
+        ], ['jl_no.unique' => __('এই উপজেলায় একই JL নম্বরের মৌজা আগে থেকেই আছে।')]);
 
         $villages = $data['village_ids'] ?? [];
         unset($data['village_ids']);

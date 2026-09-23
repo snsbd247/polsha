@@ -20,77 +20,79 @@ import { useAuth } from '../auth/AuthContext'
 import { api } from '../lib/api'
 import { digits } from '../lib/format'
 import { usePublicSettings } from '../lib/settings'
+import { nameOf, t as tx } from '../lib/i18n'
+import LanguageToggle from './LanguageToggle'
 
 const { Header, Sider, Content, Footer } = Layout
 
 type NavItem = { key: string; label: string; icon?: React.ReactNode; perm?: string | string[]; superOnly?: boolean; children?: NavItem[] }
 
 const NAV: NavItem[] = [
-  { key: '/', label: 'ড্যাশবোর্ড', icon: <DashboardOutlined /> },
-  { key: '/approvals', label: 'অনুমোদন', icon: <CheckSquareOutlined /> },
+  { key: '/', label: tx('ড্যাশবোর্ড'), icon: <DashboardOutlined /> },
+  { key: '/approvals', label: tx('অনুমোদন'), icon: <CheckSquareOutlined /> },
   {
     key: 'farmers-menu',
-    label: 'কৃষক',
+    label: tx('কৃষক'),
     icon: <IdcardOutlined />,
     children: [
-      { key: '/farmers', label: 'কৃষক তালিকা', perm: 'farmer.view' },
-      { key: '/farmers/new', label: 'নতুন কৃষক', perm: 'farmer.create' },
-      { key: '/farmers/duplicates', label: 'ডুপ্লিকেট পর্যালোচনা', perm: 'farmer.view' },
-      { key: '/households', label: 'খানা', perm: 'farmer.view' },
+      { key: '/farmers', label: tx('কৃষক তালিকা'), perm: 'farmer.view' },
+      { key: '/farmers/new', label: tx('নতুন কৃষক'), perm: 'farmer.create' },
+      { key: '/farmers/duplicates', label: tx('ডুপ্লিকেট পর্যালোচনা'), perm: 'farmer.view' },
+      { key: '/households', label: tx('খানা'), perm: 'farmer.view' },
     ],
   },
   {
     key: 'members-menu',
-    label: 'সদস্য',
+    label: tx('সদস্য'),
     icon: <SolutionOutlined />,
     children: [
-      { key: '/membership/applications', label: 'সদস্যপদ আবেদন', perm: 'membership.view' },
-      { key: '/members', label: 'সদস্য তালিকা', perm: 'member.view' },
-      { key: '/members/admission-register', label: 'ভর্তি রেজিস্টার', perm: 'member.view' },
-      { key: '/members/voters', label: 'ভোটার তালিকা', perm: 'member.view' },
+      { key: '/membership/applications', label: tx('সদস্যপদ আবেদন'), perm: 'membership.view' },
+      { key: '/members', label: tx('সদস্য তালিকা'), perm: 'member.view' },
+      { key: '/members/admission-register', label: tx('ভর্তি রেজিস্টার'), perm: 'member.view' },
+      { key: '/members/voters', label: tx('ভোটার তালিকা'), perm: 'member.view' },
     ],
   },
   {
     key: 'lands-menu',
-    label: 'জমি',
+    label: tx('জমি'),
     icon: <BorderOuterOutlined />,
     children: [
-      { key: '/lands', label: 'জমির তালিকা', perm: 'land.view' },
-      { key: '/lands/new', label: 'নতুন জমি', perm: 'land.create' },
+      { key: '/lands', label: tx('জমির তালিকা'), perm: 'land.view' },
+      { key: '/lands/new', label: tx('নতুন জমি'), perm: 'land.create' },
       { key: '/data-health', label: 'Data Health', perm: 'land.view' },
       { key: '/imports', label: 'Import (Excel/CSV)', perm: 'import.create' },
     ],
   },
   {
     key: 'masters',
-    label: 'এলাকা ও মৌজা',
+    label: tx('এলাকা ও মৌজা'),
     icon: <EnvironmentOutlined />,
     children: [
-      { key: '/masters/locations', label: 'এলাকা' },
-      { key: '/masters/mouzas', label: 'মৌজা' },
-      { key: '/masters/patwaris', label: 'পাতওয়ারী', perm: 'patwari.view' },
+      { key: '/masters/locations', label: tx('এলাকা') },
+      { key: '/masters/mouzas', label: tx('মৌজা') },
+      { key: '/masters/patwaris', label: tx('পাতওয়ারী'), perm: 'patwari.view' },
     ],
   },
-  { key: '/audit/logs', label: 'অডিট লগ', icon: <AuditOutlined />, perm: 'audit.view' },
+  { key: '/audit/logs', label: tx('অডিট লগ'), icon: <AuditOutlined />, perm: 'audit.view' },
   {
     key: 'admin',
-    label: 'প্রশাসন',
+    label: tx('প্রশাসন'),
     icon: <TeamOutlined />,
     children: [
-      { key: '/admin/users', label: 'ইউজার', perm: 'user.view' },
-      { key: '/admin/roles', label: 'রোল ও অনুমতি', perm: 'role.view' },
-      { key: '/admin/approval-rules', label: 'অনুমোদনের নিয়ম', perm: 'approval.admin' },
-      { key: '/admin/backups', label: 'ব্যাকআপ', superOnly: true },
+      { key: '/admin/users', label: tx('ইউজার'), perm: 'user.view' },
+      { key: '/admin/roles', label: tx('রোল ও অনুমতি'), perm: 'role.view' },
+      { key: '/admin/approval-rules', label: tx('অনুমোদনের নিয়ম'), perm: 'approval.admin' },
+      { key: '/admin/backups', label: tx('ব্যাকআপ'), superOnly: true },
     ],
   },
   {
     key: 'settings',
-    label: 'সেটিংস',
+    label: tx('সেটিংস'),
     icon: <SettingOutlined />,
     children: [
-      { key: '/settings/general', label: 'সাধারণ', perm: 'settings.admin' },
-      { key: '/settings/sequences', label: 'সিরিয়াল নম্বর', perm: 'settings.admin' },
-      { key: '/settings/land-types', label: 'জমির ধরন', perm: 'settings.admin' },
+      { key: '/settings/general', label: tx('সাধারণ'), perm: 'settings.admin' },
+      { key: '/settings/sequences', label: tx('সিরিয়াল নম্বর'), perm: 'settings.admin' },
+      { key: '/settings/land-types', label: tx('জমির ধরন'), perm: 'settings.admin' },
     ],
   },
 ]
@@ -153,7 +155,7 @@ export default function AppLayout() {
 
   const brand = (
     <div style={{ padding: '16px', color: '#fff', fontWeight: 600, fontSize: 16, lineHeight: 1.3 }}>
-      {settings?.society_name_bn ?? 'সমবায় ERP'}
+      {nameOf({ name_bn: settings?.society_name_bn, name_en: settings?.society_name_en }) || tx('সমবায় ERP')}
     </div>
   )
 
@@ -176,8 +178,9 @@ export default function AppLayout() {
           style={{ background: '#fff', padding: '0 16px', display: 'flex', alignItems: 'center', gap: 12, borderBottom: '1px solid #eee' }}
           className="no-print"
         >
-          {isMobile && <Button type="text" icon={<MenuOutlined />} onClick={() => setDrawerOpen(true)} aria-label="মেনু" />}
+          {isMobile && <Button type="text" icon={<MenuOutlined />} onClick={() => setDrawerOpen(true)} aria-label={tx('মেনু')} />}
           <div style={{ flex: 1 }} />
+          <LanguageToggle signedIn />
           <Link to="/approvals">
             <Badge count={pending ? digits(pending) : 0}>
               <CheckSquareOutlined style={{ fontSize: 20 }} />
@@ -186,15 +189,15 @@ export default function AppLayout() {
           <Dropdown
             menu={{
               items: [
-                { key: 'profile', icon: <UserOutlined />, label: 'আমার প্রোফাইল', onClick: () => navigate('/profile') },
+                { key: 'profile', icon: <UserOutlined />, label: tx('আমার প্রোফাইল'), onClick: () => navigate('/profile') },
                 { type: 'divider' },
-                { key: 'logout', icon: <LogoutOutlined />, label: 'লগআউট', danger: true, onClick: () => logout().then(() => navigate('/login')) },
+                { key: 'logout', icon: <LogoutOutlined />, label: tx('লগআউট'), danger: true, onClick: () => logout().then(() => navigate('/login')) },
               ],
             }}
           >
             <Button type="text" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <Avatar size="small" icon={<UserOutlined />} />
-              {!isMobile && <span>{user?.name_bn}</span>}
+              {!isMobile && <span>{nameOf(user)}</span>}
             </Button>
           </Dropdown>
         </Header>
@@ -204,7 +207,7 @@ export default function AppLayout() {
           </Suspense>
         </Content>
         <Footer style={{ textAlign: 'center', padding: '12px 16px' }} className="no-print">
-          <Typography.Text type="secondary">সমবায় সমিতি ও কৃষি সেচ ERP · সংস্করণ {digits('0.1.0')}</Typography.Text>
+          <Typography.Text type="secondary">{tx('সমবায় সমিতি ও কৃষি সেচ ERP · সংস্করণ')}{' '}{digits('0.1.0')}</Typography.Text>
         </Footer>
       </Layout>
     </Layout>

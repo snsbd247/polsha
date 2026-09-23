@@ -45,7 +45,7 @@ class VoterListController extends Controller
                 ? [$i->serial, $i->member_no, $i->name, $i->father_name, $i->village, '']
                 : [$i->member_no, $i->name, $i->father_name, $i->village, $i->reason]);
 
-        $headers = $eligible ? ['ক্রমিক', 'সদস্য নং', 'নাম', 'পিতা', 'গ্রাম', 'স্বাক্ষর'] : ['সদস্য নং', 'নাম', 'পিতা', 'গ্রাম', 'বাদ পড়ার কারণ'];
+        $headers = $eligible ? [__('ক্রমিক'), __('সদস্য নং'), __('নাম'), __('পিতা'), __('গ্রাম'), __('স্বাক্ষর')] : [__('সদস্য নং'), __('নাম'), __('পিতা'), __('গ্রাম'), __('বাদ পড়ার কারণ')];
 
         return CsvExport::download(($eligible ? 'voters-' : 'voter-audit-').$voterList->cutoff_date->format('Ymd').'.csv', $headers, $rows);
     }

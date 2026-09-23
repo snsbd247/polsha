@@ -131,7 +131,7 @@ class MembershipApplicationController extends Controller
     private function assertEditable(MembershipApplication $app): void
     {
         if (! in_array($app->status, MembershipApplication::EDITABLE, true)) {
-            throw ValidationException::withMessages(['status' => 'শুধু খসড়া বা ফেরত আসা আবেদন সম্পাদনা করা যায়।']);
+            throw ValidationException::withMessages(['status' => __('শুধু খসড়া বা ফেরত আসা আবেদন সম্পাদনা করা যায়।')]);
         }
     }
 
@@ -166,20 +166,20 @@ class MembershipApplicationController extends Controller
             'nominees.*.mobile' => ['nullable', 'regex:/^01[3-9]\d{8}$/'],
             'nominees.*.share_percent' => ['required', 'numeric', 'min:0.01', 'max:100'],
         ], [
-            'applied_on.before_or_equal' => 'আবেদনের তারিখ ভবিষ্যতের হতে পারবে না।',
-            'nominees.required' => 'কমপক্ষে একজন নমিনি দিন।',
-            'seconder_member_id.different' => 'প্রস্তাবক ও সমর্থক একই ব্যক্তি হতে পারবেন না।',
+            'applied_on.before_or_equal' => __('আবেদনের তারিখ ভবিষ্যতের হতে পারবে না।'),
+            'nominees.required' => __('কমপক্ষে একজন নমিনি দিন।'),
+            'seconder_member_id.different' => __('প্রস্তাবক ও সমর্থক একই ব্যক্তি হতে পারবেন না।'),
         ]);
 
         $total = round(collect($data['nominees'])->sum('share_percent'), 2);
         if (abs($total - 100) > 0.001) {
-            throw ValidationException::withMessages(['nominees' => "নমিনিদের অংশের যোগফল ১০০% হতে হবে (এখন {$total}%)।"]);
+            throw ValidationException::withMessages(['nominees' => __('নমিনিদের অংশের যোগফল ১০০% হতে হবে (এখন :p0%)।', ['p0' => $total])]);
         }
 
         // Fee differs from the configured default → a reason is mandatory.
         $default = $app ? (float) $app->default_fee : (float) SettingService::get('admission_fee', 0);
         if (abs((float) $data['admission_fee'] - $default) > 0.001 && blank($data['fee_override_reason'] ?? null)) {
-            throw ValidationException::withMessages(['fee_override_reason' => 'নির্ধারিত ফি থেকে ভিন্ন হলে কারণ লেখা আবশ্যক।']);
+            throw ValidationException::withMessages(['fee_override_reason' => __('নির্ধারিত ফি থেকে ভিন্ন হলে কারণ লেখা আবশ্যক।')]);
         }
         $data['default_fee'] = $default;
 

@@ -10,6 +10,7 @@ import { api, applyFormErrors, errorMessage } from '../../lib/api'
 import { digits, fmtDate, toEnDigits } from '../../lib/format'
 import { APPLICATION_STATUS, openProtectedFile } from '../../lib/phase2'
 import { required } from '../../lib/rules'
+import { t as tx } from '../../lib/i18n'
 
 type Nominee = { name: string; relation: string; nid?: string | null; mobile?: string | null; share_percent: number }
 type Application = {
@@ -99,7 +100,7 @@ export default function ApplicationFormPage() {
   const save = async (submit: boolean) => {
     const v = await form.validateFields()
     if (Math.abs(shareTotal - 100) > 0.001) {
-      message.error(`নমিনিদের অংশের যোগফল ১০০% হতে হবে (এখন ${digits(shareTotal)}%)।`)
+      message.error(tx('নমিনিদের অংশের যোগফল ১০০% হতে হবে (এখন {{p0}}%)।', { p0: digits(shareTotal) }))
       return
     }
     const fd = new FormData()
@@ -121,7 +122,7 @@ export default function ApplicationFormPage() {
     setSaving(true)
     try {
       const r = isNew ? await api.post('/membership-applications', fd) : await api.post(`/membership-applications/${id}`, fd)
-      message.success(submit ? 'অনুমোদনের জন্য পাঠানো হয়েছে।' : 'খসড়া সংরক্ষণ হয়েছে।')
+      message.success(submit ? tx('অনুমোদনের জন্য পাঠানো হয়েছে।') : tx('খসড়া সংরক্ষণ হয়েছে।'))
       queryClient.invalidateQueries({ queryKey: ['membership-applications'] })
       queryClient.invalidateQueries({ queryKey: ['approvals'] })
       navigate(`/membership/applications/${r.data.id}`, { replace: true })
@@ -135,7 +136,7 @@ export default function ApplicationFormPage() {
   const cancelApplication = async () => {
     try {
       await api.post(`/membership-applications/${id}/cancel`)
-      message.success('আবেদন বাতিল হয়েছে।')
+      message.success(tx('আবেদন বাতিল হয়েছে।'))
       queryClient.invalidateQueries({ queryKey: ['membership-applications'] })
     } catch (e) {
       message.error(errorMessage(e))
@@ -147,18 +148,18 @@ export default function ApplicationFormPage() {
   return (
     <>
       <div className="page-header">
-        <h2>{isNew ? 'নতুন সদস্যপদ আবেদন' : `আবেদন ${app!.application_no}`}</h2>
+        <h2>{isNew ? tx('নতুন সদস্যপদ আবেদন') : tx('আবেদন {{p0}}', { p0: app!.application_no })}</h2>
         {app && (
           <Space wrap>
             <Tag color={APPLICATION_STATUS[app.status]?.color}>{APPLICATION_STATUS[app.status]?.label}</Tag>
             {app.approval_request_id && (
               <Link to={`/approvals/${app.approval_request_id}`}>
-                অনুমোদনের অবস্থা
-                {app.approval_request?.status === 'pending' && ` (ধাপ ${digits(app.approval_request.current_step)}/${digits(app.approval_request.total_steps)})`}
+                {tx('অনুমোদনের অবস্থা')}
+                {app.approval_request?.status === 'pending' && tx(' (ধাপ {{p0}}/{{p1}})', { p0: digits(app.approval_request.current_step), p1: digits(app.approval_request.total_steps) })}
               </Link>
             )}
             <Button onClick={() => window.print()} className="no-print">
-              আবেদনপত্র প্রিন্ট
+              {tx('আবেদনপত্র প্রিন্ট')}
             </Button>
           </Space>
         )}
@@ -171,31 +172,31 @@ export default function ApplicationFormPage() {
           style={{ marginBottom: 16 }}
           title={
             <>
-              সদস্যপদ অনুমোদিত — সদস্য নং <strong>{digits(app.member.member_no)}</strong>।{' '}
-              <Link to={`/farmers/${app.farmer_id}`}>প্রোফাইল দেখুন</Link>
+              {tx('সদস্যপদ অনুমোদিত — সদস্য নং')}{' '}<strong>{digits(app.member.member_no)}</strong>।{' '}
+              <Link to={`/farmers/${app.farmer_id}`}>{tx('প্রোফাইল দেখুন')}</Link>
             </>
           }
         />
       )}
-      {app?.status === 'returned' && <Alert type="warning" showIcon style={{ marginBottom: 16 }} title="আবেদনটি সংশোধনের জন্য ফেরত এসেছে। কারণ দেখতে 'অনুমোদনের অবস্থা' খুলুন, সংশোধন করে আবার পাঠান।" />}
+      {app?.status === 'returned' && <Alert type="warning" showIcon style={{ marginBottom: 16 }} title={tx('আবেদনটি সংশোধনের জন্য ফেরত এসেছে। কারণ দেখতে \'অনুমোদনের অবস্থা\' খুলুন, সংশোধন করে আবার পাঠান।')} />}
 
       {!editable && app ? (
         <Card>
           <Descriptions bordered size="small" column={{ xs: 1, md: 2 }}>
-            <Descriptions.Item label="কৃষক">
+            <Descriptions.Item label={tx('কৃষক')}>
               <Link to={`/farmers/${app.farmer.id}`}>{app.farmer.name_bn}</Link> ({app.farmer.farmer_code})
             </Descriptions.Item>
-            <Descriptions.Item label="পিতা">{app.farmer.father_name}</Descriptions.Item>
-            <Descriptions.Item label="আবেদনের তারিখ">{fmtDate(app.applied_on)}</Descriptions.Item>
-            <Descriptions.Item label="ভর্তি ফি">
-              ৳ {digits(Number(app.admission_fee))} ({app.fee_status === 'paid' ? 'পরিশোধিত' : 'বাকি'})
-              {Number(app.admission_fee) !== Number(app.default_fee) && <div>নির্ধারিত ৳ {digits(Number(app.default_fee))} — কারণ: {app.fee_override_reason}</div>}
+            <Descriptions.Item label={tx('পিতা')}>{app.farmer.father_name}</Descriptions.Item>
+            <Descriptions.Item label={tx('আবেদনের তারিখ')}>{fmtDate(app.applied_on)}</Descriptions.Item>
+            <Descriptions.Item label={tx('ভর্তি ফি')}>
+              {tx('৳')}{' '}{digits(Number(app.admission_fee))} ({app.fee_status === 'paid' ? tx('পরিশোধিত') : tx('বাকি')})
+              {Number(app.admission_fee) !== Number(app.default_fee) && <div>{tx('নির্ধারিত ৳')}{' '}{digits(Number(app.default_fee))}{' '}{tx('— কারণ:')}{' '}{app.fee_override_reason}</div>}
             </Descriptions.Item>
-            <Descriptions.Item label="প্রস্তাবক">{app.proposer?.farmer.name_bn ?? '—'}</Descriptions.Item>
-            <Descriptions.Item label="সমর্থক">{app.seconder?.farmer.name_bn ?? '—'}</Descriptions.Item>
-            <Descriptions.Item label="প্রাথমিক শেয়ার">{app.initial_shares ? digits(app.initial_shares) : '—'}</Descriptions.Item>
-            <Descriptions.Item label="সভার সিদ্ধান্ত">{app.resolution_no ? `${app.resolution_no} (${fmtDate(app.resolution_date)})` : '—'}</Descriptions.Item>
-            <Descriptions.Item label="নমিনি" span="filled">
+            <Descriptions.Item label={tx('প্রস্তাবক')}>{app.proposer?.farmer.name_bn ?? '—'}</Descriptions.Item>
+            <Descriptions.Item label={tx('সমর্থক')}>{app.seconder?.farmer.name_bn ?? '—'}</Descriptions.Item>
+            <Descriptions.Item label={tx('প্রাথমিক শেয়ার')}>{app.initial_shares ? digits(app.initial_shares) : '—'}</Descriptions.Item>
+            <Descriptions.Item label={tx('সভার সিদ্ধান্ত')}>{app.resolution_no ? `${app.resolution_no} (${fmtDate(app.resolution_date)})` : '—'}</Descriptions.Item>
+            <Descriptions.Item label={tx('নমিনি')} span="filled">
               {app.nominees.map((n, i) => (
                 <div key={i}>
                   {n.name} — {n.relation}, {digits(Number(n.share_percent))}%{n.nid && `, NID ${digits(n.nid)}`}
@@ -203,66 +204,66 @@ export default function ApplicationFormPage() {
                 </div>
               ))}
             </Descriptions.Item>
-            <Descriptions.Item label="সংযুক্তি" span="filled">
+            <Descriptions.Item label={tx('সংযুক্তি')} span="filled">
               <Space>
-                {app.has_form_scan && <Button size="small" onClick={() => openProtectedFile(`/membership-applications/${app.id}/file/form_scan`)}>আবেদনপত্রের স্ক্যান</Button>}
-                {app.has_signature && <Button size="small" onClick={() => openProtectedFile(`/membership-applications/${app.id}/file/signature`)}>স্বাক্ষর/টিপসই</Button>}
+                {app.has_form_scan && <Button size="small" onClick={() => openProtectedFile(`/membership-applications/${app.id}/file/form_scan`)}>{tx('আবেদনপত্রের স্ক্যান')}</Button>}
+                {app.has_signature && <Button size="small" onClick={() => openProtectedFile(`/membership-applications/${app.id}/file/signature`)}>{tx('স্বাক্ষর/টিপসই')}</Button>}
                 {!app.has_form_scan && !app.has_signature && '—'}
               </Space>
             </Descriptions.Item>
-            <Descriptions.Item label="এন্ট্রি করেছেন" span="filled">{app.creator?.name_bn ?? '—'}</Descriptions.Item>
+            <Descriptions.Item label={tx('এন্ট্রি করেছেন')} span="filled">{app.creator?.name_bn ?? '—'}</Descriptions.Item>
           </Descriptions>
         </Card>
       ) : (
         <Form form={form} layout="vertical">
           <Row gutter={[16, 16]}>
             <Col xs={24} lg={14}>
-              <Card title="আবেদনকারী">
-                <Form.Item name="farmer_id" label="কৃষক (নন-মেম্বার)" rules={[required('কৃষক বাছাই করুন')]}>
+              <Card title={tx('আবেদনকারী')}>
+                <Form.Item name="farmer_id" label={tx('কৃষক (নন-মেম্বার)')} rules={[required(tx('কৃষক বাছাই করুন'))]}>
                   <FarmerPicker type="non_member" initialLabel={app ? `${app.farmer.name_bn} (${app.farmer.farmer_code})` : undefined} />
                 </Form.Item>
                 <Row gutter={16}>
                   <Col xs={24} md={12}>
-                    <Form.Item name="applied_on" label="আবেদনের তারিখ" rules={[required('তারিখ দিন')]}>
+                    <Form.Item name="applied_on" label={tx('আবেদনের তারিখ')} rules={[required(tx('তারিখ দিন'))]}>
                       <DatePicker format="DD/MM/YYYY" style={{ width: '100%' }} disabledDate={(d) => d.isAfter(dayjs(), 'day')} />
                     </Form.Item>
                   </Col>
                   <Col xs={24} md={12}>
-                    <Form.Item name="initial_shares" label="প্রাথমিক শেয়ার (কয়টি)" extra="শুধু তথ্য; শেয়ার হিসাব ফেজ ৬-এ">
+                    <Form.Item name="initial_shares" label={tx('প্রাথমিক শেয়ার (কয়টি)')} extra={tx('শুধু তথ্য; শেয়ার হিসাব ফেজ ৬-এ')}>
                       <InputNumber min={0} style={{ width: '100%' }} />
                     </Form.Item>
                   </Col>
                   <Col xs={24} md={12}>
-                    <Form.Item name="proposer_member_id" label="প্রস্তাবক (সদস্য)">
-                      <FarmerPicker type="active_member" valueField="member_id" placeholder="ঐচ্ছিক" initialLabel={app?.proposer?.farmer.name_bn} />
+                    <Form.Item name="proposer_member_id" label={tx('প্রস্তাবক (সদস্য)')}>
+                      <FarmerPicker type="active_member" valueField="member_id" placeholder={tx('ঐচ্ছিক')} initialLabel={app?.proposer?.farmer.name_bn} />
                     </Form.Item>
                   </Col>
                   <Col xs={24} md={12}>
-                    <Form.Item name="seconder_member_id" label="সমর্থক (সদস্য)">
-                      <FarmerPicker type="active_member" valueField="member_id" placeholder="ঐচ্ছিক" initialLabel={app?.seconder?.farmer.name_bn} />
+                    <Form.Item name="seconder_member_id" label={tx('সমর্থক (সদস্য)')}>
+                      <FarmerPicker type="active_member" valueField="member_id" placeholder={tx('ঐচ্ছিক')} initialLabel={app?.seconder?.farmer.name_bn} />
                     </Form.Item>
                   </Col>
                 </Row>
               </Card>
 
-              <Card title="নমিনি" style={{ marginTop: 16 }} extra={<Tag color={Math.abs(shareTotal - 100) < 0.001 ? 'green' : 'red'}>মোট {digits(shareTotal)}%</Tag>}>
+              <Card title={tx('নমিনি')} style={{ marginTop: 16 }} extra={<Tag color={Math.abs(shareTotal - 100) < 0.001 ? 'green' : 'red'}>{tx('মোট')}{' '}{digits(shareTotal)}%</Tag>}>
                 <Form.List name="nominees">
                   {(fields, { add, remove }) => (
                     <>
                       {fields.map((f) => (
                         <Row key={f.key} gutter={8} align="top" style={{ borderBottom: '1px dashed #eee', marginBottom: 8 }}>
                           <Col xs={24} md={7}>
-                            <Form.Item name={[f.name, 'name']} label="নাম" rules={[required('নাম দিন')]}>
+                            <Form.Item name={[f.name, 'name']} label={tx('নাম')} rules={[required(tx('নাম দিন'))]}>
                               <Input />
                             </Form.Item>
                           </Col>
                           <Col xs={12} md={5}>
-                            <Form.Item name={[f.name, 'relation']} label="সম্পর্ক" rules={[required('সম্পর্ক দিন')]}>
-                              <Input placeholder="স্ত্রী, পুত্র…" />
+                            <Form.Item name={[f.name, 'relation']} label={tx('সম্পর্ক')} rules={[required(tx('সম্পর্ক দিন'))]}>
+                              <Input placeholder={tx('স্ত্রী, পুত্র…')} />
                             </Form.Item>
                           </Col>
                           <Col xs={12} md={4}>
-                            <Form.Item name={[f.name, 'share_percent']} label="অংশ %" rules={[required('অংশ দিন')]}>
+                            <Form.Item name={[f.name, 'share_percent']} label={tx('অংশ %')} rules={[required(tx('অংশ দিন'))]}>
                               <InputNumber min={0.01} max={100} style={{ width: '100%' }} />
                             </Form.Item>
                           </Col>
@@ -272,17 +273,17 @@ export default function ApplicationFormPage() {
                             </Form.Item>
                           </Col>
                           <Col xs={10} md={3}>
-                            <Form.Item name={[f.name, 'mobile']} label="মোবাইল">
+                            <Form.Item name={[f.name, 'mobile']} label={tx('মোবাইল')}>
                               <Input />
                             </Form.Item>
                           </Col>
                           <Col xs={2} md={1} style={{ paddingTop: 36 }}>
-                            {fields.length > 1 && <MinusCircleOutlined onClick={() => remove(f.name)} aria-label="নমিনি সরান" />}
+                            {fields.length > 1 && <MinusCircleOutlined onClick={() => remove(f.name)} aria-label={tx('নমিনি সরান')} />}
                           </Col>
                         </Row>
                       ))}
                       <Button type="dashed" icon={<PlusOutlined />} onClick={() => add({ share_percent: Math.max(0, 100 - shareTotal) || undefined })}>
-                        নমিনি যোগ করুন
+                        {tx('নমিনি যোগ করুন')}
                       </Button>
                     </>
                   )}
@@ -291,38 +292,38 @@ export default function ApplicationFormPage() {
             </Col>
 
             <Col xs={24} lg={10}>
-              <Card title="ভর্তি ফি">
-                <Form.Item name="admission_fee" label={`ভর্তি ফি (নির্ধারিত ৳ ${digits(defaultFee)})`} rules={[required('ফি দিন')]}>
-                  <InputNumber min={0} prefix="৳" style={{ width: '100%' }} />
+              <Card title={tx('ভর্তি ফি')}>
+                <Form.Item name="admission_fee" label={tx('ভর্তি ফি (নির্ধারিত ৳ {{p0}})', { p0: digits(defaultFee) })} rules={[required(tx('ফি দিন'))]}>
+                  <InputNumber min={0} prefix={tx('৳')} style={{ width: '100%' }} />
                 </Form.Item>
                 {feeChanged && (
-                  <Form.Item name="fee_override_reason" label="নির্ধারিত ফি থেকে ভিন্ন হওয়ার কারণ" rules={[required('কারণ লেখা আবশ্যক')]}>
+                  <Form.Item name="fee_override_reason" label={tx('নির্ধারিত ফি থেকে ভিন্ন হওয়ার কারণ')} rules={[required(tx('কারণ লেখা আবশ্যক'))]}>
                     <Input.TextArea rows={2} />
                   </Form.Item>
                 )}
-                <Form.Item name="fee_status" label="ফি পরিশোধ">
-                  <Radio.Group options={[{ value: 'paid', label: 'পরিশোধিত' }, { value: 'due', label: 'বাকি' }]} />
+                <Form.Item name="fee_status" label={tx('ফি পরিশোধ')}>
+                  <Radio.Group options={[{ value: 'paid', label: tx('পরিশোধিত') }, { value: 'due', label: tx('বাকি') }]} />
                 </Form.Item>
               </Card>
-              <Card title="সভার সিদ্ধান্ত ও সংযুক্তি (ঐচ্ছিক)" style={{ marginTop: 16 }}>
+              <Card title={tx('সভার সিদ্ধান্ত ও সংযুক্তি (ঐচ্ছিক)')} style={{ marginTop: 16 }}>
                 <Row gutter={16}>
                   <Col span={12}>
-                    <Form.Item name="resolution_no" label="সিদ্ধান্ত নম্বর">
+                    <Form.Item name="resolution_no" label={tx('সিদ্ধান্ত নম্বর')}>
                       <Input />
                     </Form.Item>
                   </Col>
                   <Col span={12}>
-                    <Form.Item name="resolution_date" label="সভার তারিখ">
+                    <Form.Item name="resolution_date" label={tx('সভার তারিখ')}>
                       <DatePicker format="DD/MM/YYYY" style={{ width: '100%' }} />
                     </Form.Item>
                   </Col>
                 </Row>
                 <Space orientation="vertical">
                   <Upload accept=".jpg,.jpeg,.png,.pdf" maxCount={1} beforeUpload={(f) => (setScan(f), false)} onRemove={() => setScan(null)}>
-                    <Button icon={<UploadOutlined />}>আবেদনপত্রের স্ক্যান {app?.has_form_scan && '(আছে — বদলাতে বাছাই করুন)'}</Button>
+                    <Button icon={<UploadOutlined />}>{tx('আবেদনপত্রের স্ক্যান')}{' '}{app?.has_form_scan && tx('(আছে — বদলাতে বাছাই করুন)')}</Button>
                   </Upload>
                   <Upload accept="image/*" maxCount={1} beforeUpload={(f) => (setSignature(f), false)} onRemove={() => setSignature(null)}>
-                    <Button icon={<UploadOutlined />}>স্বাক্ষর / টিপসই {app?.has_signature && '(আছে)'}</Button>
+                    <Button icon={<UploadOutlined />}>{tx('স্বাক্ষর / টিপসই')}{' '}{app?.has_signature && tx('(আছে)')}</Button>
                   </Upload>
                 </Space>
               </Card>
@@ -331,17 +332,17 @@ export default function ApplicationFormPage() {
 
           <Space style={{ marginTop: 16 }} wrap>
             <Button type="primary" loading={saving} onClick={() => save(true)}>
-              অনুমোদনের জন্য পাঠান
+              {tx('অনুমোদনের জন্য পাঠান')}
             </Button>
             <Button loading={saving} onClick={() => save(false)}>
-              খসড়া হিসেবে রাখুন
+              {tx('খসড়া হিসেবে রাখুন')}
             </Button>
             {app && (
-              <Popconfirm title="আবেদনটি বাতিল করবেন?" okText="হ্যাঁ" cancelText="না" onConfirm={cancelApplication}>
-                <Button danger>আবেদন বাতিল</Button>
+              <Popconfirm title={tx('আবেদনটি বাতিল করবেন?')} okText={tx('হ্যাঁ')} cancelText={tx('না')} onConfirm={cancelApplication}>
+                <Button danger>{tx('আবেদন বাতিল')}</Button>
               </Popconfirm>
             )}
-            <Button onClick={() => navigate(-1)}>ফিরে যান</Button>
+            <Button onClick={() => navigate(-1)}>{tx('ফিরে যান')}</Button>
           </Space>
         </Form>
       )}

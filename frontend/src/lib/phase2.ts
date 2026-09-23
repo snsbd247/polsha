@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { api } from './api'
+import { t as tx } from './i18n'
 
 export type FarmerMeta = {
   genders: Record<string, string>
@@ -23,18 +24,18 @@ export type MemberRef = { id: number; member_no: number; status: MemberStatus }
 export type MemberStatus = 'active' | 'inactive' | 'cancelled'
 
 export const MEMBER_STATUS: Record<MemberStatus, { label: string; color: string }> = {
-  active: { label: 'সক্রিয়', color: 'green' },
-  inactive: { label: 'নিষ্ক্রিয়', color: 'orange' },
-  cancelled: { label: 'বাতিল', color: 'red' },
+  active: { label: tx('সক্রিয়'), color: 'green' },
+  inactive: { label: tx('নিষ্ক্রিয়'), color: 'orange' },
+  cancelled: { label: tx('বাতিল'), color: 'red' },
 }
 
 export const APPLICATION_STATUS: Record<string, { label: string; color: string }> = {
-  draft: { label: 'খসড়া', color: 'default' },
-  pending: { label: 'অনুমোদনের অপেক্ষায়', color: 'gold' },
-  approved: { label: 'অনুমোদিত', color: 'green' },
-  rejected: { label: 'প্রত্যাখ্যাত', color: 'red' },
-  returned: { label: 'সংশোধনের জন্য ফেরত', color: 'orange' },
-  cancelled: { label: 'বাতিল', color: 'default' },
+  draft: { label: tx('খসড়া'), color: 'default' },
+  pending: { label: tx('অনুমোদনের অপেক্ষায়'), color: 'gold' },
+  approved: { label: tx('অনুমোদিত'), color: 'green' },
+  rejected: { label: tx('প্রত্যাখ্যাত'), color: 'red' },
+  returned: { label: tx('সংশোধনের জন্য ফেরত'), color: 'orange' },
+  cancelled: { label: tx('বাতিল'), color: 'default' },
 }
 
 export type FarmerRow = {
@@ -77,10 +78,10 @@ export type DuplicateMatch = {
 
 export const MATCH_LABEL: Record<string, string> = {
   nid: 'NID',
-  mobile: 'মোবাইল',
-  name: 'নাম',
-  father_name: 'পিতার নাম',
-  village: 'গ্রাম',
+  mobile: tx('মোবাইল'),
+  name: tx('নাম'),
+  father_name: tx('পিতার নাম'),
+  village: tx('গ্রাম'),
 }
 
 /** Download a protected export (CSV) with the bearer token. */

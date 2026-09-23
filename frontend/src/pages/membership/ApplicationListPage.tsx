@@ -9,6 +9,7 @@ import { api, type Paginated } from '../../lib/api'
 import { digits, fmtDate } from '../../lib/format'
 import { APPLICATION_STATUS } from '../../lib/phase2'
 import type { Mouza } from '../../lib/types'
+import { t as tx } from '../../lib/i18n'
 
 type Row = {
   id: number
@@ -37,18 +38,18 @@ export default function ApplicationListPage() {
   return (
     <>
       <div className="page-header">
-        <h2>সদস্যপদ আবেদন</h2>
+        <h2>{tx('সদস্যপদ আবেদন')}</h2>
         <Can perm="membership.create">
           <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate('/membership/applications/new')}>
-            নতুন আবেদন
+            {tx('নতুন আবেদন')}
           </Button>
         </Can>
       </div>
       <div className="toolbar">
-        <Input.Search placeholder="আবেদন নং, নাম বা Farmer ID" allowClear style={{ width: 260 }} onSearch={(search) => set({ search })} />
-        <Select placeholder="অবস্থা" allowClear style={{ width: 200 }} options={Object.entries(APPLICATION_STATUS).map(([value, s]) => ({ value, label: s.label }))} onChange={(status) => set({ status })} />
+        <Input.Search placeholder={tx('আবেদন নং, নাম বা Farmer ID')} allowClear style={{ width: 260 }} onSearch={(search) => set({ search })} />
+        <Select placeholder={tx('অবস্থা')} allowClear style={{ width: 200 }} options={Object.entries(APPLICATION_STATUS).map(([value, s]) => ({ value, label: s.label }))} onChange={(status) => set({ status })} />
         <Select
-          placeholder="মৌজা"
+          placeholder={tx('মৌজা')}
           allowClear
           showSearch={{ optionFilterProp: 'label' }}
           style={{ width: 180 }}
@@ -71,23 +72,23 @@ export default function ApplicationListPage() {
           total: data?.total,
           showSizeChanger: true,
           pageSizeOptions: [25, 50, 100],
-          showTotal: (t) => `মোট ${digits(t)}টি`,
+          showTotal: (t) => tx('মোট {{p0}}টি', { p0: digits(t) }),
           onChange: (page, per_page) => setParams((p) => ({ ...p, page, per_page })),
         }}
         columns={[
-          { title: 'আবেদন নং', dataIndex: 'application_no', render: (v, r) => <Link to={`/membership/applications/${r.id}`}>{v}</Link> },
-          { title: 'কৃষক', render: (_, r) => <Link to={`/farmers/${r.farmer.id}`}>{r.farmer.name_bn}</Link> },
-          { title: 'পিতা', render: (_, r) => r.farmer.father_name },
-          { title: 'গ্রাম', render: (_, r) => r.farmer.village?.name_bn },
-          { title: 'তারিখ', dataIndex: 'applied_on', render: fmtDate },
-          { title: 'ভর্তি ফি', dataIndex: 'admission_fee', render: (v) => `৳ ${digits(Number(v))}` },
+          { title: tx('আবেদন নং'), dataIndex: 'application_no', render: (v, r) => <Link to={`/membership/applications/${r.id}`}>{v}</Link> },
+          { title: tx('কৃষক'), render: (_, r) => <Link to={`/farmers/${r.farmer.id}`}>{r.farmer.name_bn}</Link> },
+          { title: tx('পিতা'), render: (_, r) => r.farmer.father_name },
+          { title: tx('গ্রাম'), render: (_, r) => r.farmer.village?.name_bn },
+          { title: tx('তারিখ'), dataIndex: 'applied_on', render: fmtDate },
+          { title: tx('ভর্তি ফি'), dataIndex: 'admission_fee', render: (v) => tx('৳ {{p0}}', { p0: digits(Number(v)) }) },
           {
-            title: 'অবস্থা',
+            title: tx('অবস্থা'),
             dataIndex: 'status',
             render: (s, r) => (
               <>
                 <Tag color={APPLICATION_STATUS[s]?.color}>{APPLICATION_STATUS[s]?.label ?? s}</Tag>
-                {r.member && <Tag color="green">সদস্য নং {digits(r.member.member_no)}</Tag>}
+                {r.member && <Tag color="green">{tx('সদস্য নং')}{' '}{digits(r.member.member_no)}</Tag>}
               </>
             ),
           },

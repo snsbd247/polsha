@@ -37,7 +37,7 @@ class ImportController extends Controller
     {
         abort_unless(in_array($type, self::TYPES, true), 404);
         $this->authorizeType($request, $type);
-        $request->validate(['file' => ['required', 'file', 'mimes:csv,txt', 'max:10240']], ['file.mimes' => 'শুধু CSV ফাইল দিন।']);
+        $request->validate(['file' => ['required', 'file', 'mimes:csv,txt', 'max:10240']], ['file.mimes' => __('শুধু CSV ফাইল দিন।')]);
 
         return response()->json($this->imports->preview($type, $request->file('file'), $request->user()));
     }

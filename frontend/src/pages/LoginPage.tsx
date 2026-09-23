@@ -5,6 +5,8 @@ import { LockOutlined, UserOutlined } from '@ant-design/icons'
 import { useAuth } from '../auth/AuthContext'
 import { errorMessage } from '../lib/api'
 import { logoUrl, usePublicSettings } from '../lib/settings'
+import { nameOf, t as tx } from '../lib/i18n'
+import LanguageToggle from '../components/LanguageToggle'
 
 type Values = { username: string; password: string; remember: boolean }
 
@@ -35,30 +37,33 @@ export default function LoginPage() {
   return (
     <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', padding: 16 }}>
       <Card style={{ width: '100%', maxWidth: 400 }}>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
+          <LanguageToggle />
+        </div>
         <div style={{ textAlign: 'center', marginBottom: 24 }}>
           {settings?.logo && <img src={logoUrl()} alt="" style={{ height: 64, marginBottom: 8 }} />}
           <Typography.Title level={4} style={{ margin: 0 }}>
-            {settings?.society_name_bn ?? 'সমবায় ERP'}
+            {nameOf({ name_bn: settings?.society_name_bn, name_en: settings?.society_name_en }) || tx('সমবায় ERP')}
           </Typography.Title>
-          <Typography.Text type="secondary">আপনার অ্যাকাউন্টে লগইন করুন</Typography.Text>
+          <Typography.Text type="secondary">{tx('আপনার অ্যাকাউন্টে লগইন করুন')}</Typography.Text>
         </div>
         {error && <Alert type="error" title={error} showIcon style={{ marginBottom: 16 }} />}
         <Form layout="vertical" onFinish={onFinish} initialValues={{ remember: false }} requiredMark={false}>
-          <Form.Item name="username" label="ইউজারনেম বা মোবাইল" rules={[{ required: true, message: 'ইউজারনেম বা মোবাইল দিন' }]}>
+          <Form.Item name="username" label={tx('ইউজারনেম বা মোবাইল')} rules={[{ required: true, message: tx('ইউজারনেম বা মোবাইল দিন') }]}>
             <Input prefix={<UserOutlined />} autoFocus autoComplete="username" size="large" />
           </Form.Item>
-          <Form.Item name="password" label="পাসওয়ার্ড" rules={[{ required: true, message: 'পাসওয়ার্ড দিন' }]}>
+          <Form.Item name="password" label={tx('পাসওয়ার্ড')} rules={[{ required: true, message: tx('পাসওয়ার্ড দিন') }]}>
             <Input.Password prefix={<LockOutlined />} autoComplete="current-password" size="large" />
           </Form.Item>
           <Form.Item name="remember" valuePropName="checked">
-            <Checkbox>আমাকে মনে রাখো</Checkbox>
+            <Checkbox>{tx('আমাকে মনে রাখো')}</Checkbox>
           </Form.Item>
           <Button type="primary" htmlType="submit" block size="large" loading={submitting}>
-            লগইন
+            {tx('লগইন')}
           </Button>
         </Form>
         <Typography.Paragraph type="secondary" style={{ marginTop: 16, marginBottom: 0, fontSize: 13, textAlign: 'center' }}>
-          পাসওয়ার্ড ভুলে গেলে অ্যাডমিনের সাথে যোগাযোগ করুন।
+          {tx('পাসওয়ার্ড ভুলে গেলে অ্যাডমিনের সাথে যোগাযোগ করুন।')}
         </Typography.Paragraph>
       </Card>
     </div>

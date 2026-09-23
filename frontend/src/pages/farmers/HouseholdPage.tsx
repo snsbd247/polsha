@@ -8,6 +8,7 @@ import FarmerPicker from '../../components/FarmerPicker'
 import { api, errorMessage, type Paginated } from '../../lib/api'
 import { digits } from '../../lib/format'
 import { MEMBER_STATUS, toOptions, useFarmerMeta, type MemberRef } from '../../lib/phase2'
+import { t as tx } from '../../lib/i18n'
 
 type Row = { id: number; code: string; head: { id: number; name_bn: string; farmer_code: string } | null; village: { name_bn: string } | null; farmers_count: number; members_count: number }
 type Detail = Row & {
@@ -38,11 +39,11 @@ function HouseholdDrawer({ id, onClose }: { id: number | null; onClose: () => vo
   }
 
   return (
-    <Drawer open={!!id} onClose={onClose} title={data ? `খানা ${data.code}` : ''} size={720}>
+    <Drawer open={!!id} onClose={onClose} title={data ? tx('খানা {{p0}}', { p0: data.code }) : ''} size={720}>
       {data && (
         <>
           <p>
-            খানাপ্রধান: <strong>{data.head?.name_bn ?? '—'}</strong> · গ্রাম: {data.village?.name_bn ?? '—'}
+            {tx('খানাপ্রধান:')}{' '}<strong>{data.head?.name_bn ?? '—'}</strong>{' '}{tx('· গ্রাম:')}{' '}{data.village?.name_bn ?? '—'}
           </p>
           <Table
             rowKey="id"
@@ -51,11 +52,11 @@ function HouseholdDrawer({ id, onClose }: { id: number | null; onClose: () => vo
             dataSource={data.farmers}
             scroll={{ x: 560 }}
             columns={[
-              { title: 'নাম', dataIndex: 'name_bn', render: (v, f) => <Link to={`/farmers/${f.id}`}>{v}</Link> },
-              { title: 'সম্পর্ক', dataIndex: 'household_relation', render: (r) => (r ? meta?.relations[r] ?? r : '—') },
+              { title: tx('নাম'), dataIndex: 'name_bn', render: (v, f) => <Link to={`/farmers/${f.id}`}>{v}</Link> },
+              { title: tx('সম্পর্ক'), dataIndex: 'household_relation', render: (r) => (r ? meta?.relations[r] ?? r : '—') },
               {
-                title: 'সমিতির সদস্য',
-                render: (_, f) => (f.member ? <Tag color={MEMBER_STATUS[f.member.status].color}>নং {digits(f.member.member_no)}</Tag> : '—'),
+                title: tx('সমিতির সদস্য'),
+                render: (_, f) => (f.member ? <Tag color={MEMBER_STATUS[f.member.status].color}>{tx('নং')}{' '}{digits(f.member.member_no)}</Tag> : '—'),
               },
               {
                 title: '',
@@ -64,10 +65,10 @@ function HouseholdDrawer({ id, onClose }: { id: number | null; onClose: () => vo
                   f.id !== data.head?.id && (
                     <Space>
                       <Button size="small" onClick={() => act(() => api.post(`/households/${data.id}/head`, { head_farmer_id: f.id }))}>
-                        খানাপ্রধান করুন
+                        {tx('খানাপ্রধান করুন')}
                       </Button>
                       <Button size="small" danger onClick={() => act(() => api.delete(`/households/${data.id}/members/${f.id}`))}>
-                        বাদ দিন
+                        {tx('বাদ দিন')}
                       </Button>
                     </Space>
                   ),
@@ -76,16 +77,16 @@ function HouseholdDrawer({ id, onClose }: { id: number | null; onClose: () => vo
           />
           <Can perm="farmer.edit">
             <Button icon={<PlusOutlined />} style={{ marginTop: 12 }} onClick={() => setAdding(true)}>
-              সদস্য যোগ করুন
+              {tx('সদস্য যোগ করুন')}
             </Button>
           </Can>
           <Modal
             open={adding}
-            title="খানায় সদস্য যোগ"
+            title={tx('খানায় সদস্য যোগ')}
             forceRender
             onCancel={() => setAdding(false)}
-            okText="যোগ করুন"
-            cancelText="বাতিল"
+            okText={tx('যোগ করুন')}
+            cancelText={tx('বাতিল')}
             onOk={async () => {
               const v = await form.validateFields()
               await act(() => api.post(`/households/${data.id}/members`, { farmer_id: v.farmer_id, relation: v.relation }))
@@ -94,10 +95,10 @@ function HouseholdDrawer({ id, onClose }: { id: number | null; onClose: () => vo
             }}
           >
             <Form form={form} layout="vertical">
-              <Form.Item name="farmer_id" label="কৃষক" rules={[{ required: true, message: 'কৃষক বাছাই করুন' }]}>
+              <Form.Item name="farmer_id" label={tx('কৃষক')} rules={[{ required: true, message: tx('কৃষক বাছাই করুন') }]}>
                 <FarmerPicker />
               </Form.Item>
-              <Form.Item name="relation" label="খানাপ্রধানের সাথে সম্পর্ক" rules={[{ required: true, message: 'সম্পর্ক দিন' }]}>
+              <Form.Item name="relation" label={tx('খানাপ্রধানের সাথে সম্পর্ক')} rules={[{ required: true, message: tx('সম্পর্ক দিন') }]}>
                 <Select options={toOptions(meta?.relations).filter((o) => o.value !== 'self')} />
               </Form.Item>
             </Form>
@@ -127,7 +128,7 @@ export default function HouseholdPage() {
     const v = await form.validateFields()
     try {
       const r = await api.post('/households', v)
-      message.success('খানা তৈরি হয়েছে।')
+      message.success(tx('খানা তৈরি হয়েছে।'))
       setCreating(false)
       form.resetFields()
       queryClient.invalidateQueries({ queryKey: ['households'] })
@@ -140,15 +141,15 @@ export default function HouseholdPage() {
   return (
     <>
       <div className="page-header">
-        <h2>খানা (Household)</h2>
+        <h2>{tx('খানা (Household)')}</h2>
         <Can perm="farmer.edit">
           <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreating(true)}>
-            নতুন খানা
+            {tx('নতুন খানা')}
           </Button>
         </Can>
       </div>
       <div className="toolbar">
-        <Input.Search placeholder="খানার কোড বা খানাপ্রধানের নাম" allowClear style={{ width: 300 }} onSearch={(search) => setParams((p) => ({ ...p, search, page: 1 }))} />
+        <Input.Search placeholder={tx('খানার কোড বা খানাপ্রধানের নাম')} allowClear style={{ width: 300 }} onSearch={(search) => setParams((p) => ({ ...p, search, page: 1 }))} />
       </div>
       <Table<Row>
         rowKey="id"
@@ -162,24 +163,24 @@ export default function HouseholdPage() {
           total: data?.total,
           showSizeChanger: true,
           pageSizeOptions: [25, 50, 100],
-          showTotal: (t) => `মোট ${digits(t)}টি`,
+          showTotal: (t) => tx('মোট {{p0}}টি', { p0: digits(t) }),
           onChange: (page, per_page) => setParams((p) => ({ ...p, page, per_page })),
         }}
         columns={[
-          { title: 'খানা', dataIndex: 'code' },
-          { title: 'খানাপ্রধান', render: (_, r) => r.head?.name_bn ?? '—' },
-          { title: 'গ্রাম', render: (_, r) => r.village?.name_bn ?? '—' },
-          { title: 'সদস্য সংখ্যা', dataIndex: 'farmers_count', render: digits },
-          { title: 'সমিতির সক্রিয় সদস্য', dataIndex: 'members_count', render: digits },
+          { title: tx('খানা'), dataIndex: 'code' },
+          { title: tx('খানাপ্রধান'), render: (_, r) => r.head?.name_bn ?? '—' },
+          { title: tx('গ্রাম'), render: (_, r) => r.village?.name_bn ?? '—' },
+          { title: tx('সদস্য সংখ্যা'), dataIndex: 'farmers_count', render: digits },
+          { title: tx('সমিতির সক্রিয় সদস্য'), dataIndex: 'members_count', render: digits },
         ]}
       />
       <HouseholdDrawer id={openId} onClose={() => setSp({})} />
-      <Modal open={creating} title="নতুন খানা" forceRender onCancel={() => setCreating(false)} onOk={create} okText="তৈরি করুন" cancelText="বাতিল">
+      <Modal open={creating} title={tx('নতুন খানা')} forceRender onCancel={() => setCreating(false)} onOk={create} okText={tx('তৈরি করুন')} cancelText={tx('বাতিল')}>
         <Form form={form} layout="vertical">
-          <Form.Item name="head_farmer_id" label="খানাপ্রধান" rules={[{ required: true, message: 'খানাপ্রধান বাছাই করুন' }]}>
+          <Form.Item name="head_farmer_id" label={tx('খানাপ্রধান')} rules={[{ required: true, message: tx('খানাপ্রধান বাছাই করুন') }]}>
             <FarmerPicker />
           </Form.Item>
-          <Form.Item name="remarks" label="মন্তব্য">
+          <Form.Item name="remarks" label={tx('মন্তব্য')}>
             <Input />
           </Form.Item>
         </Form>

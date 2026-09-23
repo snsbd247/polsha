@@ -5,6 +5,7 @@ import { Alert, App, Button, Card, Radio, Space, Spin, Table, Tag, Typography } 
 import { api, errorMessage } from '../../lib/api'
 import { digits, fmtDate } from '../../lib/format'
 import { useFarmerMeta, type FarmerMeta } from '../../lib/phase2'
+import { t as tx } from '../../lib/i18n'
 
 type F = Record<string, unknown> & {
   id: number
@@ -18,10 +19,10 @@ type F = Record<string, unknown> & {
 }
 
 const LABELS: Record<string, string> = {
-  name_bn: 'নাম (বাংলা)', name_en: 'নাম (ইংরেজি)', father_name: 'পিতার নাম', mother_name: 'মাতার নাম', spouse_name: 'স্বামী/স্ত্রী',
-  gender: 'লিঙ্গ', date_of_birth: 'জন্মতারিখ', nid: 'NID', birth_reg_no: 'জন্ম নিবন্ধন', mobile: 'মোবাইল', alt_mobile: 'বিকল্প মোবাইল',
-  photo: 'ছবি', village_id: 'গ্রাম', mouza_id: 'মৌজা', para: 'পাড়া', post_office: 'ডাকঘর', household_id: 'খানা',
-  household_relation: 'খানায় সম্পর্ক', occupation: 'পেশা', remarks: 'মন্তব্য',
+  name_bn: tx('নাম (বাংলা)'), name_en: tx('নাম (ইংরেজি)'), father_name: tx('পিতার নাম'), mother_name: tx('মাতার নাম'), spouse_name: tx('স্বামী/স্ত্রী'),
+  gender: tx('লিঙ্গ'), date_of_birth: tx('জন্মতারিখ'), nid: 'NID', birth_reg_no: tx('জন্ম নিবন্ধন'), mobile: tx('মোবাইল'), alt_mobile: tx('বিকল্প মোবাইল'),
+  photo: tx('ছবি'), village_id: tx('গ্রাম'), mouza_id: tx('মৌজা'), para: tx('পাড়া'), post_office: tx('ডাকঘর'), household_id: tx('খানা'),
+  household_relation: tx('খানায় সম্পর্ক'), occupation: tx('পেশা'), remarks: tx('মন্তব্য'),
 }
 
 const CODED: Record<string, keyof FarmerMeta> = { gender: 'genders', household_relation: 'relations', occupation: 'occupations' }
@@ -31,7 +32,7 @@ function display(f: F, field: string, meta?: FarmerMeta): string {
   if (field === 'village_id') return f.village?.name_bn ?? '—'
   if (field === 'mouza_id') return f.mouza?.name_bn ?? '—'
   if (field === 'household_id') return f.household?.code ?? '—'
-  if (field === 'photo') return f.photo ? 'আছে' : '—'
+  if (field === 'photo') return f.photo ? tx('আছে') : '—'
   if (field === 'date_of_birth') return fmtDate(f.date_of_birth as string | null)
   const v = f[field]
   return v === null || v === undefined || v === '' ? '—' : digits(String(v))
@@ -89,12 +90,12 @@ export default function MergePage() {
     return (
       <Space orientation="vertical" size={0}>
         <Radio checked={keepSide === side} onChange={() => setKeepSide(side)}>
-          <strong>এটি রাখুন</strong>
+          <strong>{tx('এটি রাখুন')}</strong>
         </Radio>
         <span>
-          {f.farmer_code} {f.member && <Tag color="green">সদস্য নং {digits(f.member.member_no)}</Tag>}
+          {f.farmer_code} {f.member && <Tag color="green">{tx('সদস্য নং')}{' '}{digits(f.member.member_no)}</Tag>}
         </span>
-        <Typography.Text type="secondary">ডকুমেন্ট: {digits(f.documents_count)}টি</Typography.Text>
+        <Typography.Text type="secondary">{tx('ডকুমেন্ট:')}{' '}{digits(f.documents_count)}{tx('টি')}</Typography.Text>
       </Space>
     )
   }
@@ -102,16 +103,16 @@ export default function MergePage() {
   return (
     <>
       <div className="page-header">
-        <h2>কৃষক মার্জ</h2>
+        <h2>{tx('কৃষক মার্জ')}</h2>
       </div>
       {bothMembers ? (
-        <Alert type="error" showIcon style={{ marginBottom: 16 }} title="দুজনই সদস্য। মার্জের আগে একজনের সদস্যপদ বাতিল করতে হবে।" />
+        <Alert type="error" showIcon style={{ marginBottom: 16 }} title={tx('দুজনই সদস্য। মার্জের আগে একজনের সদস্যপদ বাতিল করতে হবে।')} />
       ) : (
         <Alert
           type="info"
           showIcon
           style={{ marginBottom: 16 }}
-          title="কোন রেকর্ডটি থাকবে তা বাছাই করুন, এবং প্রতিটি তথ্য কোন রেকর্ড থেকে নেওয়া হবে তা ঠিক করুন। অন্য রেকর্ডের ডকুমেন্ট, সদস্যপদ ও আবেদন রাখা রেকর্ডে চলে যাবে। অনুমোদনের পর কার্যকর হবে।"
+          title={tx('কোন রেকর্ডটি থাকবে তা বাছাই করুন, এবং প্রতিটি তথ্য কোন রেকর্ড থেকে নেওয়া হবে তা ঠিক করুন। অন্য রেকর্ডের ডকুমেন্ট, সদস্যপদ ও আবেদন রাখা রেকর্ডে চলে যাবে। অনুমোদনের পর কার্যকর হবে।')}
         />
       )}
       <Card styles={{ body: { padding: 0 } }}>
@@ -122,7 +123,7 @@ export default function MergePage() {
           scroll={{ x: 700 }}
           dataSource={data.fields.map((field) => ({ field }))}
           columns={[
-            { title: 'তথ্য', dataIndex: 'field', width: 160, render: (f) => LABELS[f] ?? f },
+            { title: tx('তথ্য'), dataIndex: 'field', width: 160, render: (f) => LABELS[f] ?? f },
             ...(['a', 'b'] as const).map((side) => ({
               title: header(side),
               render: (_: unknown, { field }: { field: string }) => {
@@ -144,9 +145,9 @@ export default function MergePage() {
       </Card>
       <Space style={{ marginTop: 16 }}>
         <Button type="primary" danger disabled={bothMembers} loading={saving} onClick={submit}>
-          {remove.farmer_code} → {keep.farmer_code} মার্জের অনুরোধ পাঠান
+          {remove.farmer_code} → {keep.farmer_code}{' '}{tx('মার্জের অনুরোধ পাঠান')}
         </Button>
-        <Button onClick={() => navigate(-1)}>বাতিল</Button>
+        <Button onClick={() => navigate(-1)}>{tx('বাতিল')}</Button>
       </Space>
     </>
   )

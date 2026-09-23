@@ -1,11 +1,13 @@
 import dayjs from 'dayjs'
+import { lang, t as tx } from './i18n'
 
 const BN = ['০', '১', '২', '৩', '৪', '৫', '৬', '৭', '৮', '৯']
 
-let useBnDigits = true
+// English UI always shows Western digits; Bangla UI follows the society setting.
+let useBnDigits = lang === 'bn'
 
 export function setDigitPreference(digits: 'bn' | 'en') {
-  useBnDigits = digits === 'bn'
+  useBnDigits = lang === 'bn' && digits === 'bn'
 }
 
 export function digits(value: string | number | null | undefined): string {
@@ -33,28 +35,28 @@ export function fmtBytes(bytes: number): string {
 }
 
 export const ACTION_LABELS: Record<string, string> = {
-  create: 'তৈরি',
-  update: 'পরিবর্তন',
-  delete: 'মুছা',
-  restore: 'পুনরুদ্ধার',
-  login: 'লগইন',
-  password_change: 'পাসওয়ার্ড পরিবর্তন',
-  password_reset: 'পাসওয়ার্ড রিসেট',
-  force_logout: 'জোর করে লগআউট',
-  logout_all: 'সব ডিভাইস থেকে লগআউট',
-  roles_change: 'রোল পরিবর্তন',
-  permissions_change: 'অনুমতি পরিবর্তন',
-  submit: 'অনুমোদনে পাঠানো',
-  approve: 'অনুমোদন',
-  reject: 'প্রত্যাখ্যান',
-  return: 'ফেরত',
-  auto_approve: 'স্বয়ংক্রিয় অনুমোদন',
-  download: 'ডাউনলোড',
+  create: tx('তৈরি'),
+  update: tx('পরিবর্তন'),
+  delete: tx('মুছা'),
+  restore: tx('পুনরুদ্ধার'),
+  login: tx('লগইন'),
+  password_change: tx('পাসওয়ার্ড পরিবর্তন'),
+  password_reset: tx('পাসওয়ার্ড রিসেট'),
+  force_logout: tx('জোর করে লগআউট'),
+  logout_all: tx('সব ডিভাইস থেকে লগআউট'),
+  roles_change: tx('রোল পরিবর্তন'),
+  permissions_change: tx('অনুমতি পরিবর্তন'),
+  submit: tx('অনুমোদনে পাঠানো'),
+  approve: tx('অনুমোদন'),
+  reject: tx('প্রত্যাখ্যান'),
+  return: tx('ফেরত'),
+  auto_approve: tx('স্বয়ংক্রিয় অনুমোদন'),
+  download: tx('ডাউনলোড'),
 }
 
 export const APPROVAL_STATUS: Record<string, { label: string; color: string }> = {
-  pending: { label: 'অপেক্ষমাণ', color: 'gold' },
-  approved: { label: 'অনুমোদিত', color: 'green' },
-  rejected: { label: 'প্রত্যাখ্যাত', color: 'red' },
-  returned: { label: 'ফেরত', color: 'orange' },
+  pending: { label: tx('অপেক্ষমাণ'), color: 'gold' },
+  approved: { label: tx('অনুমোদিত'), color: 'green' },
+  rejected: { label: tx('প্রত্যাখ্যাত'), color: 'red' },
+  returned: { label: tx('ফেরত'), color: 'orange' },
 }

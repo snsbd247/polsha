@@ -38,7 +38,7 @@ class FarmerMergeService
 
         return $this->approvals->submit(
             'farmer.merge',
-            "কৃষক মার্জ: {$remove->farmer_code} → {$keep->farmer_code} ({$keep->name_bn})",
+            __('কৃষক মার্জ: :p0 → :p1 (:p2)', ['p0' => $remove->farmer_code, 'p1' => $keep->farmer_code, 'p2' => $keep->name_bn]),
             $keep,
             ['keep_id' => $keep->id, 'remove_id' => $remove->id, 'values' => $values],
             ['keep' => $keep->farmer_code, 'remove' => $remove->farmer_code],
@@ -48,18 +48,18 @@ class FarmerMergeService
     public function assertMergeable(Farmer $keep, Farmer $remove): void
     {
         if ($keep->id === $remove->id) {
-            throw ValidationException::withMessages(['remove_id' => 'একই কৃষককে মার্জ করা যায় না।']);
+            throw ValidationException::withMessages(['remove_id' => __('একই কৃষককে মার্জ করা যায় না।')]);
         }
         if ($keep->merged_into_id || $remove->merged_into_id) {
-            throw ValidationException::withMessages(['remove_id' => 'একটি রেকর্ড ইতিমধ্যে মার্জ হয়েছে।']);
+            throw ValidationException::withMessages(['remove_id' => __('একটি রেকর্ড ইতিমধ্যে মার্জ হয়েছে।')]);
         }
         if ($keep->member()->exists() && $remove->member()->exists()) {
-            throw ValidationException::withMessages(['remove_id' => 'দুজনই সদস্য। আগে একজনের সদস্যপদ বাতিল করুন।']);
+            throw ValidationException::withMessages(['remove_id' => __('দুজনই সদস্য। আগে একজনের সদস্যপদ বাতিল করুন।')]);
         }
         $pending = ApprovalRequest::where('action_key', 'farmer.merge')->where('status', ApprovalRequest::PENDING)->get()
             ->contains(fn ($r) => array_intersect([$keep->id, $remove->id], [$r->payload['keep_id'] ?? 0, $r->payload['remove_id'] ?? 0]));
         if ($pending) {
-            throw ValidationException::withMessages(['remove_id' => 'এই কৃষকদের একটি মার্জ অনুরোধ ইতিমধ্যে অপেক্ষমাণ।']);
+            throw ValidationException::withMessages(['remove_id' => __('এই কৃষকদের একটি মার্জ অনুরোধ ইতিমধ্যে অপেক্ষমাণ।')]);
         }
     }
 
@@ -90,10 +90,10 @@ class FarmerMergeService
     private function assertMergeableAtApply(Farmer $keep, Farmer $remove): void
     {
         if ($keep->merged_into_id || $remove->merged_into_id) {
-            throw ValidationException::withMessages(['remove_id' => 'একটি রেকর্ড ইতিমধ্যে মার্জ হয়েছে।']);
+            throw ValidationException::withMessages(['remove_id' => __('একটি রেকর্ড ইতিমধ্যে মার্জ হয়েছে।')]);
         }
         if (Member::whereIn('farmer_id', [$keep->id, $remove->id])->count() > 1) {
-            throw ValidationException::withMessages(['remove_id' => 'দুজনই সদস্য। আগে একজনের সদস্যপদ বাতিল করুন।']);
+            throw ValidationException::withMessages(['remove_id' => __('দুজনই সদস্য। আগে একজনের সদস্যপদ বাতিল করুন।')]);
         }
     }
 }

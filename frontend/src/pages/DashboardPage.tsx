@@ -4,6 +4,7 @@ import { Alert, Card, Col, Row, Statistic, Typography } from 'antd'
 import { useAuth } from '../auth/AuthContext'
 import { api } from '../lib/api'
 import { digits } from '../lib/format'
+import { nameOf, t as tx } from '../lib/i18n'
 
 /** Placeholder until Phase 9 builds the KPI dashboard. */
 export default function DashboardPage() {
@@ -16,13 +17,13 @@ export default function DashboardPage() {
   return (
     <>
       <div className="page-header">
-        <h2>স্বাগতম, {user?.name_bn}</h2>
+        <h2>{tx('স্বাগতম,')}{' '}{nameOf(user)}</h2>
       </div>
       <Row gutter={[16, 16]}>
         <Col xs={24} sm={12} lg={6}>
           <Link to="/approvals">
             <Card hoverable>
-              <Statistic title="আমার অনুমোদনের অপেক্ষায়" value={digits(pending)} />
+              <Statistic title={tx('আমার অনুমোদনের অপেক্ষায়')} value={digits(pending)} />
             </Card>
           </Link>
         </Col>
@@ -31,10 +32,10 @@ export default function DashboardPage() {
         style={{ marginTop: 16 }}
         type="info"
         showIcon
-        title="পূর্ণাঙ্গ ড্যাশবোর্ড (KPI, দৈনিক আদায়ের চার্ট, সতর্কতা) ফেজ ৯-এ যুক্ত হবে।"
+        title={tx('পূর্ণাঙ্গ ড্যাশবোর্ড (KPI, দৈনিক আদায়ের চার্ট, সতর্কতা) ফেজ ৯-এ যুক্ত হবে।')}
       />
       <Typography.Paragraph type="secondary" style={{ marginTop: 16 }}>
-        আপনার রোল: {user?.roles.map((r) => r.label ?? r.name).join(', ')}
+        {tx('আপনার রোল:')}{' '}{user?.roles.map((r) => r.label ?? r.name).join(', ')}
       </Typography.Paragraph>
     </>
   )

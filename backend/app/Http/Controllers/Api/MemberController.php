@@ -31,11 +31,11 @@ class MemberController extends Controller
         $rows = $this->filtered($request)->with(['farmer.village:id,name_bn', 'farmer.mouza:id,name_bn'])->orderBy('member_no')->lazy()
             ->map(fn (Member $m) => [
                 $m->member_no, $m->farmer->farmer_code, $m->farmer->name_bn, $m->farmer->father_name, $m->farmer->mobile,
-                $m->farmer->village?->name_bn, $m->farmer->mouza?->name_bn, $m->admitted_on, self::STATUS[$m->status] ?? $m->status,
+                $m->farmer->village?->name_bn, $m->farmer->mouza?->name_bn, $m->admitted_on, __(self::STATUS[$m->status] ?? $m->status),
             ]);
 
         return CsvExport::download('members-'.now()->format('Ymd').'.csv',
-            ['সদস্য নং', 'Farmer ID', 'নাম', 'পিতা', 'মোবাইল', 'গ্রাম', 'মৌজা', 'ভর্তির তারিখ', 'অবস্থা'], $rows);
+            [__('সদস্য নং'), 'Farmer ID', __('নাম'), __('পিতা'), __('মোবাইল'), __('গ্রাম'), __('মৌজা'), __('ভর্তির তারিখ'), __('অবস্থা')], $rows);
     }
 
     /** status: deactivate | activate | cancel | reactivate — always goes through approval. */
@@ -48,14 +48,14 @@ class MemberController extends Controller
             'reason' => ['required', 'string', 'max:1000'],
             'resolution_no' => ['nullable', 'required_if:action,cancel', 'string', 'max:50'],
             'fee' => ['nullable', 'numeric', 'min:0'],
-        ], ['resolution_no.required_if' => 'সদস্যপদ বাতিলে সভার সিদ্ধান্ত নম্বর আবশ্যক।', 'reason_type.required_if' => 'বাতিলের কারণ বাছাই করুন।']);
+        ], ['resolution_no.required_if' => __('সদস্যপদ বাতিলে সভার সিদ্ধান্ত নম্বর আবশ্যক।'), 'reason_type.required_if' => __('বাতিলের কারণ বাছাই করুন।')]);
 
         $req = $this->membership->requestStatusChange($member, $data['action'], $data);
 
         return response()->json([
             'approval_id' => $req->id,
             'status' => $req->status,
-            'message' => $req->status === 'approved' ? 'পরিবর্তন সম্পন্ন হয়েছে।' : 'অনুমোদনের জন্য পাঠানো হয়েছে।',
+            'message' => $req->status === 'approved' ? __('পরিবর্তন সম্পন্ন হয়েছে।') : __('অনুমোদনের জন্য পাঠানো হয়েছে।'),
         ], 201);
     }
 
@@ -68,7 +68,7 @@ class MemberController extends Controller
             'member_no' => ['required', 'integer', 'min:1', 'unique:members,member_no'],
             'admitted_on' => ['required', 'date', 'before_or_equal:today'],
             'remarks' => ['nullable', 'string', 'max:500'],
-        ], ['member_no.unique' => 'এই সদস্য নম্বর ইতিমধ্যে ব্যবহৃত।']);
+        ], ['member_no.unique' => __('এই সদস্য নম্বর ইতিমধ্যে ব্যবহৃত।')]);
 
         $member = $this->membership->createLegacy(
             Farmer::findOrFail($data['farmer_id']), (int) $data['member_no'], $data['admitted_on'], $data['remarks'] ?? null, $request->user()->id,
@@ -92,7 +92,7 @@ class MemberController extends Controller
         });
 
         return CsvExport::download('admission-register-'.now()->format('Ymd').'.csv',
-            ['ক্রমিক', 'সদস্য নং', 'নাম', 'পিতা', 'ঠিকানা', 'ভর্তির তারিখ', 'ভর্তি ফি', 'প্রাথমিক শেয়ার', 'নমিনি', 'সভার সিদ্ধান্ত নং', 'বাতিলের তারিখ', 'বাতিলের কারণ'], $rows);
+            [__('ক্রমিক'), __('সদস্য নং'), __('নাম'), __('পিতা'), __('ঠিকানা'), __('ভর্তির তারিখ'), __('ভর্তি ফি'), __('প্রাথমিক শেয়ার'), __('নমিনি'), __('সভার সিদ্ধান্ত নং'), __('বাতিলের তারিখ'), __('বাতিলের কারণ')], $rows);
     }
 
     private const STATUS = ['active' => 'সক্রিয়', 'inactive' => 'নিষ্ক্রিয়', 'cancelled' => 'বাতিল'];

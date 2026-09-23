@@ -9,6 +9,7 @@ import { digits } from '../../lib/format'
 import { CULTIVATION_COLOR, fmtArea, LAND_STATUS_COLOR, useLandMeta, type LandRow } from '../../lib/land'
 import { downloadExport } from '../../lib/phase2'
 import type { Mouza } from '../../lib/types'
+import { t as tx } from '../../lib/i18n'
 
 type Params = { page: number; per_page: number; search?: string; mouza_id?: number; land_type_id?: number; status?: string; cultivation?: string; survey?: string }
 
@@ -30,7 +31,7 @@ export default function LandListPage() {
   return (
     <>
       <div className="page-header">
-        <h2>জমি</h2>
+        <h2>{tx('জমি')}</h2>
         <Space wrap>
           <Can perm="land.export">
             <Button icon={<DownloadOutlined />} onClick={() => downloadExport('/lands/export', { ...params, page: undefined }, 'lands.csv').catch((e) => message.error(errorMessage(e)))}>
@@ -39,15 +40,15 @@ export default function LandListPage() {
           </Can>
           <Can perm="land.create">
             <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate('/lands/new')}>
-              নতুন জমি
+              {tx('নতুন জমি')}
             </Button>
           </Can>
         </Space>
       </div>
       <div className="toolbar">
-        <Input.Search placeholder="Land ID, দাগ, খতিয়ান, মালিক বা চাষি" allowClear style={{ width: 300 }} onSearch={(search) => set({ search })} />
+        <Input.Search placeholder={tx('Land ID, দাগ, খতিয়ান, মালিক বা চাষি')} allowClear style={{ width: 300 }} onSearch={(search) => set({ search })} />
         <Select
-          placeholder="মৌজা"
+          placeholder={tx('মৌজা')}
           allowClear
           showSearch={{ optionFilterProp: 'label' }}
           style={{ width: 180 }}
@@ -55,15 +56,15 @@ export default function LandListPage() {
           options={mouzas.data?.map((m) => ({ value: m.id, label: `${m.name_bn} (JL ${m.jl_no})` }))}
           onChange={(mouza_id) => set({ mouza_id })}
         />
-        <Select placeholder="জমির ধরন" allowClear style={{ width: 170 }} options={meta?.land_types.map((t) => ({ value: t.id, label: t.name_bn }))} onChange={(land_type_id) => set({ land_type_id })} />
+        <Select placeholder={tx('জমির ধরন')} allowClear style={{ width: 170 }} options={meta?.land_types.map((t) => ({ value: t.id, label: t.name_bn }))} onChange={(land_type_id) => set({ land_type_id })} />
         <Select
-          placeholder="চাষ"
+          placeholder={tx('চাষ')}
           allowClear
           style={{ width: 150 }}
-          options={[...Object.entries(meta?.cultivation_types ?? {}).map(([value, label]) => ({ value, label })), { value: 'none', label: 'চাষি নেই' }]}
+          options={[...Object.entries(meta?.cultivation_types ?? {}).map(([value, label]) => ({ value, label })), { value: 'none', label: tx('চাষি নেই') }]}
           onChange={(cultivation) => set({ cultivation })}
         />
-        <Select placeholder="অবস্থা" allowClear style={{ width: 130 }} options={Object.entries(meta?.statuses ?? {}).map(([value, label]) => ({ value, label }))} onChange={(status) => set({ status })} />
+        <Select placeholder={tx('অবস্থা')} allowClear style={{ width: 130 }} options={Object.entries(meta?.statuses ?? {}).map(([value, label]) => ({ value, label }))} onChange={(status) => set({ status })} />
       </div>
       <Table<LandRow>
         rowKey="id"
@@ -76,17 +77,17 @@ export default function LandListPage() {
           total: data?.total,
           showSizeChanger: true,
           pageSizeOptions: [25, 50, 100],
-          showTotal: (t) => `মোট ${digits(t)}টি জমি · ${fmtArea(data?.total_area, meta)}`,
+          showTotal: (t) => tx('মোট {{p0}}টি জমি · {{p1}}', { p0: digits(t), p1: fmtArea(data?.total_area, meta) }),
           onChange: (page, per_page) => setParams((p) => ({ ...p, page, per_page })),
         }}
         columns={[
           { title: 'Land ID', dataIndex: 'land_code', width: 110, render: (v, l) => <Link to={`/lands/${l.id}`}>{v}</Link> },
-          { title: 'মৌজা', dataIndex: 'mouza' },
-          { title: 'খতিয়ান', render: (_, l) => `${digits(l.khatian_no)} (${meta?.surveys[l.survey] ?? l.survey})` },
-          { title: 'দাগ', dataIndex: 'dag_no', render: digits },
-          { title: 'পরিমাণ', dataIndex: 'area_decimal', render: (v) => fmtArea(v, meta) },
+          { title: tx('মৌজা'), dataIndex: 'mouza' },
+          { title: tx('খতিয়ান'), render: (_, l) => `${digits(l.khatian_no)} (${meta?.surveys[l.survey] ?? l.survey})` },
+          { title: tx('দাগ'), dataIndex: 'dag_no', render: digits },
+          { title: tx('পরিমাণ'), dataIndex: 'area_decimal', render: (v) => fmtArea(v, meta) },
           {
-            title: 'মালিক',
+            title: tx('মালিক'),
             render: (_, l) =>
               l.owners.map((o) => (
                 <div key={o.id}>
@@ -96,7 +97,7 @@ export default function LandListPage() {
               )),
           },
           {
-            title: 'চাষি',
+            title: tx('চাষি'),
             render: (_, l) =>
               l.cultivation ? (
                 <>
@@ -107,8 +108,8 @@ export default function LandListPage() {
                 <Typography.Text type="secondary">—</Typography.Text>
               ),
           },
-          { title: 'ধরন', dataIndex: 'land_type' },
-          { title: 'অবস্থা', dataIndex: 'status', render: (s) => <Tag color={LAND_STATUS_COLOR[s]}>{meta?.statuses[s] ?? s}</Tag> },
+          { title: tx('ধরন'), dataIndex: 'land_type' },
+          { title: tx('অবস্থা'), dataIndex: 'status', render: (s) => <Tag color={LAND_STATUS_COLOR[s]}>{meta?.statuses[s] ?? s}</Tag> },
         ]}
       />
     </>

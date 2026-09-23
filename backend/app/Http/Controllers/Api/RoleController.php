@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Support\Tr;
 use App\Http\Controllers\Controller;
 use App\Models\Role;
 use App\Services\AuditLogger;
@@ -27,7 +28,7 @@ class RoleController extends Controller
     /** Name → label only, for any signed-in user (approval steps show role names). */
     public function options(): JsonResponse
     {
-        return response()->json(Role::orderBy('id')->get(['name', 'label']));
+        return response()->json(Role::orderBy('id')->get(['name', 'label'])->map(fn ($r) => ['name' => $r->name, 'label' => Tr::label($r->label)]));
     }
 
     public function store(Request $request): JsonResponse
@@ -48,7 +49,7 @@ class RoleController extends Controller
     public function duplicate(Role $role): JsonResponse
     {
         $copy = DB::transaction(function () use ($role) {
-            $label = $role->label.' (কপি)';
+            $label = $role->label.__(' (কপি)');
             $copy = Role::create(['name' => $this->slug($label), 'label' => $label, 'description' => $role->description, 'guard_name' => 'web']);
             $copy->syncPermissions($role->permissions);
 
@@ -61,14 +62,14 @@ class RoleController extends Controller
     public function destroy(Role $role): JsonResponse
     {
         if ($role->is_system) {
-            throw ValidationException::withMessages(['role' => 'সিস্টেম রোল মুছা যাবে না।']);
+            throw ValidationException::withMessages(['role' => __('সিস্টেম রোল মুছা যাবে না।')]);
         }
         if ($role->users()->exists()) {
-            throw ValidationException::withMessages(['role' => 'এই রোলে ইউজার আছে, তাই মুছা যাবে না।']);
+            throw ValidationException::withMessages(['role' => __('এই রোলে ইউজার আছে, তাই মুছা যাবে না।')]);
         }
         $role->delete();
 
-        return response()->json(['message' => 'রোল মুছে ফেলা হয়েছে।']);
+        return response()->json(['message' => __('রোল মুছে ফেলা হয়েছে।')]);
     }
 
     /** Modules × actions grid plus the permissions this role currently holds. */
@@ -76,8 +77,8 @@ class RoleController extends Controller
     {
         return response()->json([
             'role' => $this->row($role->loadCount('users')),
-            'modules' => config('erp.modules'),
-            'actions' => config('erp.actions'),
+            'modules' => Tr::map(config('erp.modules')),
+            'actions' => Tr::map(config('erp.actions')),
             'granted' => $role->name === 'super_admin' ? Permission::pluck('name') : $role->permissions->pluck('name'),
             'locked' => $role->name === 'super_admin',
         ]);
@@ -86,7 +87,7 @@ class RoleController extends Controller
     public function syncPermissions(Request $request, Role $role): JsonResponse
     {
         if ($role->name === 'super_admin') {
-            throw ValidationException::withMessages(['role' => 'সুপার অ্যাডমিনের অনুমতি পরিবর্তন করা যাবে না।']);
+            throw ValidationException::withMessages(['role' => __('সুপার অ্যাডমিনের অনুমতি পরিবর্তন করা যাবে না।')]);
         }
         $data = $request->validate([
             'permissions' => ['present', 'array'],
@@ -102,7 +103,7 @@ class RoleController extends Controller
             ['removed' => array_values(array_diff($before, $after))],
             ['added' => array_values(array_diff($after, $before))]);
 
-        return response()->json(['message' => 'অনুমতি সংরক্ষণ হয়েছে।', 'granted' => $after]);
+        return response()->json(['message' => __('অনুমতি সংরক্ষণ হয়েছে।'), 'granted' => $after]);
     }
 
     private function validated(Request $request, ?Role $role = null): array
@@ -130,8 +131,8 @@ class RoleController extends Controller
         return [
             'id' => $r->id,
             'name' => $r->name,
-            'label' => $r->label,
-            'description' => $r->description,
+            'label' => Tr::label($r->label),
+            'description' => Tr::label($r->description),
             'is_system' => $r->is_system,
             'users_count' => $r->users_count ?? 0,
         ];

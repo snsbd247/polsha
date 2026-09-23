@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Support\Tr;
 use App\Http\Controllers\Controller;
 use App\Models\AuditLog;
 use Illuminate\Http\JsonResponse;
@@ -36,7 +37,7 @@ class AuditLogController extends Controller
     public function meta(): JsonResponse
     {
         return response()->json([
-            'modules' => config('erp.modules'),
+            'modules' => Tr::map(config('erp.modules')),
             'actions' => AuditLog::query()->distinct()->orderBy('action')->pluck('action'),
         ]);
     }

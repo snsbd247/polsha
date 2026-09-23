@@ -4,6 +4,7 @@ import { Select } from 'antd'
 import { api } from '../lib/api'
 import { digits } from '../lib/format'
 import type { FarmerLookup } from '../lib/phase2'
+import { t as tx } from '../lib/i18n'
 
 type Props = {
   value?: number | null
@@ -30,7 +31,7 @@ export default function FarmerPicker({ value, onChange, type, valueField = 'id',
     .filter((f) => !exclude.includes(f[valueField] ?? 0))
     .map((f) => ({
       value: f[valueField] as number,
-      label: `${f.name_bn} (${f.farmer_code}${f.member_no ? ', সদস্য নং ' + digits(f.member_no) : ''}) — পিতা: ${f.father_name}${f.village ? ', ' + f.village : ''}`,
+      label: tx('{{p0}} ({{p1}}{{p2}}) — পিতা: {{p3}}{{p4}}', { p0: f.name_bn, p1: f.farmer_code, p2: f.member_no ? tx(', সদস্য নং ') + digits(f.member_no) : '', p3: f.father_name, p4: f.village ? ', ' + f.village : '' }),
       farmer: f,
     }))
   if (value && initialLabel && !options.some((o) => o.value === value)) {
@@ -44,9 +45,9 @@ export default function FarmerPicker({ value, onChange, type, valueField = 'id',
       disabled={disabled}
       loading={isFetching}
       value={value ?? undefined}
-      placeholder={placeholder ?? 'নাম, Farmer ID, NID, মোবাইল বা সদস্য নং দিয়ে খুঁজুন'}
+      placeholder={placeholder ?? tx('নাম, Farmer ID, NID, মোবাইল বা সদস্য নং দিয়ে খুঁজুন')}
       options={options}
-      notFoundContent={isFetching ? 'খোঁজা হচ্ছে…' : 'কাউকে পাওয়া যায়নি'}
+      notFoundContent={isFetching ? tx('খোঁজা হচ্ছে…') : tx('কাউকে পাওয়া যায়নি')}
       onChange={(v, opt) => onChange?.(v ?? null, (opt as { farmer?: FarmerLookup } | undefined)?.farmer)}
       style={{ width: '100%' }}
     />

@@ -6,6 +6,7 @@ import { useAuth } from '../../auth/AuthContext'
 import { api, type Paginated } from '../../lib/api'
 import { APPROVAL_STATUS, digits, fmtDateTime } from '../../lib/format'
 import type { ApprovalRequest } from '../../lib/types'
+import { t as tx } from '../../lib/i18n'
 
 export default function ApprovalInboxPage() {
   const { can } = useAuth()
@@ -22,15 +23,15 @@ export default function ApprovalInboxPage() {
   })
 
   const tabs = [
-    { key: 'mine', label: 'আমার কাছে অপেক্ষমাণ' },
-    { key: 'sent', label: 'আমার পাঠানো' },
-    ...(can('approval.admin') ? [{ key: 'all', label: 'সব' }] : []),
+    { key: 'mine', label: tx('আমার কাছে অপেক্ষমাণ') },
+    { key: 'sent', label: tx('আমার পাঠানো') },
+    ...(can('approval.admin') ? [{ key: 'all', label: tx('সব') }] : []),
   ]
 
   return (
     <>
       <div className="page-header">
-        <h2>অনুমোদন</h2>
+        <h2>{tx('অনুমোদন')}</h2>
       </div>
       <Card>
         <Tabs
@@ -43,7 +44,7 @@ export default function ApprovalInboxPage() {
           tabBarExtraContent={
             tab !== 'mine' && (
               <Select
-                placeholder="অবস্থা"
+                placeholder={tx('অবস্থা')}
                 allowClear
                 style={{ width: 140 }}
                 value={status}
@@ -61,7 +62,7 @@ export default function ApprovalInboxPage() {
           loading={isFetching}
           dataSource={data?.data}
           scroll={{ x: 800 }}
-          locale={{ emptyText: tab === 'mine' ? 'আপনার অনুমোদনের অপেক্ষায় কিছু নেই।' : undefined }}
+          locale={{ emptyText: tab === 'mine' ? tx('আপনার অনুমোদনের অপেক্ষায় কিছু নেই।') : undefined }}
           pagination={{
             current: page,
             pageSize: perPage,
@@ -74,16 +75,16 @@ export default function ApprovalInboxPage() {
             },
           }}
           columns={[
-            { title: 'বিষয়', dataIndex: 'title', render: (v, r) => <Link to={`/approvals/${r.id}`}>{v}</Link> },
-            { title: 'পাঠিয়েছেন', render: (_, r) => r.requester?.name_bn },
-            { title: 'সময়', dataIndex: 'created_at', render: fmtDateTime },
-            { title: 'পরিমাণ', dataIndex: 'amount', render: (v) => (v ? `৳ ${digits(v)}` : '—') },
+            { title: tx('বিষয়'), dataIndex: 'title', render: (v, r) => <Link to={`/approvals/${r.id}`}>{v}</Link> },
+            { title: tx('পাঠিয়েছেন'), render: (_, r) => r.requester?.name_bn },
+            { title: tx('সময়'), dataIndex: 'created_at', render: fmtDateTime },
+            { title: tx('পরিমাণ'), dataIndex: 'amount', render: (v) => (v ? tx('৳ {{p0}}', { p0: digits(v) }) : '—') },
             {
-              title: 'ধাপ',
+              title: tx('ধাপ'),
               render: (_, r) => (r.total_steps ? `${digits(Math.min(r.current_step, r.total_steps))} / ${digits(r.total_steps)}` : '—'),
             },
             {
-              title: 'অবস্থা',
+              title: tx('অবস্থা'),
               dataIndex: 'status',
               render: (s: string) => <Tag color={APPROVAL_STATUS[s]?.color}>{APPROVAL_STATUS[s]?.label ?? s}</Tag>,
             },

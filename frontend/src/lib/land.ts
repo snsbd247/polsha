@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { api } from './api'
 import { digits } from './format'
+import { t as tx } from './i18n'
 
 export type LandMeta = {
   surveys: Record<string, string>
@@ -24,11 +25,11 @@ const num = (n: number, max = 2) => digits(Number(n.toFixed(max)).toString())
 /** "৩৩ শতক" plus the bigha/acre equivalent when it's a sensible size. */
 export function fmtArea(decimal: number | string | null | undefined, meta?: LandMeta): string {
   const d = Number(decimal ?? 0)
-  const base = `${num(d)} শতক`
+  const base = tx('{{p0}} শতক', { p0: num(d) })
   if (!meta || d <= 0) return base
   const bigha = meta.unit_factors.bigha
-  if (d >= 100) return `${base} (${num(d / 100)} একর)`
-  if (bigha && d >= bigha / 2) return `${base} (${num(d / bigha)} বিঘা)`
+  if (d >= 100) return tx('{{p0}} ({{p1}} একর)', { p0: base, p1: num(d / 100) })
+  if (bigha && d >= bigha / 2) return tx('{{p0}} ({{p1}} বিঘা)', { p0: base, p1: num(d / bigha) })
   return base
 }
 

@@ -13,6 +13,7 @@ import { toEnDigits } from '../../lib/format'
 import { toOptions, useFarmerMeta, type DuplicateMatch } from '../../lib/phase2'
 import { required } from '../../lib/rules'
 import type { Mouza } from '../../lib/types'
+import { t as tx } from '../../lib/i18n'
 
 type FarmerDetail = Record<string, unknown> & {
   id: number
@@ -99,14 +100,14 @@ function FarmerForm({ id, existing }: { id?: string; existing?: FarmerDetail }) 
   const save = async (confirm = false) => {
     const values = await form.validateFields()
     if (!villageId) {
-      message.error('গ্রাম বাছাই করুন।')
+      message.error(tx('গ্রাম বাছাই করুন।'))
       return
     }
     setSaving(true)
     try {
       const body = buildBody(values, confirm)
       const r = isEdit ? await api.post(`/farmers/${id}`, body) : await api.post('/farmers', body)
-      message.success('সংরক্ষণ হয়েছে।')
+      message.success(tx('সংরক্ষণ হয়েছে।'))
       queryClient.invalidateQueries({ queryKey: ['farmers'] })
       setDuplicates(null)
       navigate(`/farmers/${r.data.id}`)
@@ -125,75 +126,75 @@ function FarmerForm({ id, existing }: { id?: string; existing?: FarmerDetail }) 
   return (
     <>
       <div className="page-header">
-        <h2>{isEdit ? `কৃষক সম্পাদনা — ${existing?.farmer_code}` : 'নতুন কৃষক'}</h2>
+        <h2>{isEdit ? tx('কৃষক সম্পাদনা — {{p0}}', { p0: existing?.farmer_code }) : tx('নতুন কৃষক')}</h2>
       </div>
       <Form form={form} layout="vertical" initialValues={initialValues} onFinish={() => save(false)}>
         <Row gutter={[16, 16]}>
           <Col xs={24} xl={14}>
-            <Card title="ক. ব্যক্তিগত তথ্য">
+            <Card title={tx('ক. ব্যক্তিগত তথ্য')}>
               <Row gutter={16}>
                 <Col xs={24} md={12}>
-                  <Form.Item name="name_bn" label="নাম (বাংলা)" rules={[required('নাম দিন')]}>
+                  <Form.Item name="name_bn" label={tx('নাম (বাংলা)')} rules={[required(tx('নাম দিন'))]}>
                     <Input />
                   </Form.Item>
                 </Col>
                 <Col xs={24} md={12}>
-                  <Form.Item name="name_en" label="নাম (ইংরেজি)">
+                  <Form.Item name="name_en" label={tx('নাম (ইংরেজি)')}>
                     <Input />
                   </Form.Item>
                 </Col>
                 <Col xs={24} md={12}>
-                  <Form.Item name="father_name" label="পিতার নাম" rules={[required('পিতার নাম দিন')]}>
+                  <Form.Item name="father_name" label={tx('পিতার নাম')} rules={[required(tx('পিতার নাম দিন'))]}>
                     <Input />
                   </Form.Item>
                 </Col>
                 <Col xs={24} md={12}>
-                  <Form.Item name="mother_name" label="মাতার নাম">
+                  <Form.Item name="mother_name" label={tx('মাতার নাম')}>
                     <Input />
                   </Form.Item>
                 </Col>
                 <Col xs={24} md={12}>
-                  <Form.Item name="spouse_name" label="স্বামী/স্ত্রীর নাম">
+                  <Form.Item name="spouse_name" label={tx('স্বামী/স্ত্রীর নাম')}>
                     <Input />
                   </Form.Item>
                 </Col>
                 <Col xs={24} md={12}>
-                  <Form.Item name="gender" label="লিঙ্গ" rules={[required('লিঙ্গ বাছাই করুন')]}>
+                  <Form.Item name="gender" label={tx('লিঙ্গ')} rules={[required(tx('লিঙ্গ বাছাই করুন'))]}>
                     <Radio.Group options={toOptions(meta?.genders)} />
                   </Form.Item>
                 </Col>
                 <Col xs={24} md={12}>
                   <Form.Item
                     name="date_of_birth"
-                    label="জন্মতারিখ"
-                    help={isMinor ? 'সতর্কতা: বয়স ১৮ বছরের কম।' : undefined}
+                    label={tx('জন্মতারিখ')}
+                    help={isMinor ? tx('সতর্কতা: বয়স ১৮ বছরের কম।') : undefined}
                     validateStatus={isMinor ? 'warning' : undefined}
                   >
                     <DatePicker format="DD/MM/YYYY" style={{ width: '100%' }} disabledDate={(d) => d.isAfter(dayjs())} />
                   </Form.Item>
                 </Col>
                 <Col xs={24} md={12}>
-                  <Form.Item name="nid" label="NID" rules={[digitRule(/^(\d{10}|\d{13}|\d{17})$/, 'NID ১০, ১৩ বা ১৭ অঙ্কের হতে হবে')]}>
+                  <Form.Item name="nid" label="NID" rules={[digitRule(/^(\d{10}|\d{13}|\d{17})$/, tx('NID ১০, ১৩ বা ১৭ অঙ্কের হতে হবে'))]}>
                     <Input inputMode="numeric" />
                   </Form.Item>
                 </Col>
                 <Col xs={24} md={12}>
-                  <Form.Item name="birth_reg_no" label="জন্ম নিবন্ধন নম্বর" extra="NID না থাকলে" rules={[digitRule(/^\d{17}$/, '১৭ অঙ্কের হতে হবে')]}>
+                  <Form.Item name="birth_reg_no" label={tx('জন্ম নিবন্ধন নম্বর')} extra={tx('NID না থাকলে')} rules={[digitRule(/^\d{17}$/, tx('১৭ অঙ্কের হতে হবে'))]}>
                     <Input inputMode="numeric" />
                   </Form.Item>
                 </Col>
                 <Col xs={24} md={12}>
-                  <Form.Item name="mobile" label="মোবাইল" rules={[digitRule(/^01[3-9]\d{8}$/, 'সঠিক মোবাইল নম্বর দিন')]}>
+                  <Form.Item name="mobile" label={tx('মোবাইল')} rules={[digitRule(/^01[3-9]\d{8}$/, tx('সঠিক মোবাইল নম্বর দিন'))]}>
                     <Input inputMode="numeric" placeholder="01XXXXXXXXX" />
                   </Form.Item>
                 </Col>
                 <Col xs={24} md={12}>
-                  <Form.Item name="alt_mobile" label="বিকল্প মোবাইল" rules={[digitRule(/^01[3-9]\d{8}$/, 'সঠিক মোবাইল নম্বর দিন')]}>
+                  <Form.Item name="alt_mobile" label={tx('বিকল্প মোবাইল')} rules={[digitRule(/^01[3-9]\d{8}$/, tx('সঠিক মোবাইল নম্বর দিন'))]}>
                     <Input inputMode="numeric" />
                   </Form.Item>
                 </Col>
                 <Col xs={24} md={12}>
-                  <Form.Item label="ছবি" extra="সর্বোচ্চ ২MB; স্বয়ংক্রিয়ভাবে ছোট করা হবে">
+                  <Form.Item label={tx('ছবি')} extra={tx('সর্বোচ্চ ২MB; স্বয়ংক্রিয়ভাবে ছোট করা হবে')}>
                     <Space>
                       {isEdit && !photo && <ProtectedImage url={existing?.photo_url ?? null} size={48} />}
                       <Upload
@@ -201,7 +202,7 @@ function FarmerForm({ id, existing }: { id?: string; existing?: FarmerDetail }) 
                         maxCount={1}
                         beforeUpload={(f) => {
                           if (f.size > 2 * 1024 * 1024) {
-                            message.error('ছবি ২MB-এর বেশি।')
+                            message.error(tx('ছবি ২MB-এর বেশি।'))
                             return Upload.LIST_IGNORE
                           }
                           setPhoto(f)
@@ -209,7 +210,7 @@ function FarmerForm({ id, existing }: { id?: string; existing?: FarmerDetail }) 
                         }}
                         onRemove={() => setPhoto(null)}
                       >
-                        <Button icon={<UploadOutlined />}>ছবি বাছাই</Button>
+                        <Button icon={<UploadOutlined />}>{tx('ছবি বাছাই')}</Button>
                       </Upload>
                     </Space>
                   </Form.Item>
@@ -219,8 +220,8 @@ function FarmerForm({ id, existing }: { id?: string; existing?: FarmerDetail }) 
           </Col>
 
           <Col xs={24} xl={10}>
-            <Card title="খ. ঠিকানা">
-              <Form.Item label="বিভাগ → জেলা → উপজেলা → ইউনিয়ন → গ্রাম" required>
+            <Card title={tx('খ. ঠিকানা')}>
+              <Form.Item label={tx('বিভাগ → জেলা → উপজেলা → ইউনিয়ন → গ্রাম')} required>
                 <LocationCascader
                   value={path}
                   onChange={(v) => {
@@ -231,50 +232,50 @@ function FarmerForm({ id, existing }: { id?: string; existing?: FarmerDetail }) 
               </Form.Item>
               <Form.Item
                 name="mouza_id"
-                label="মৌজা"
-                rules={[required('মৌজা বাছাই করুন')]}
-                extra={villageId && mouzas.data?.length === 0 ? 'এই গ্রামের সাথে কোনো মৌজা যুক্ত নেই — মৌজা পাতায় যুক্ত করুন।' : undefined}
+                label={tx('মৌজা')}
+                rules={[required(tx('মৌজা বাছাই করুন'))]}
+                extra={villageId && mouzas.data?.length === 0 ? tx('এই গ্রামের সাথে কোনো মৌজা যুক্ত নেই — মৌজা পাতায় যুক্ত করুন।') : undefined}
               >
                 <Select
                   disabled={!villageId}
                   loading={mouzas.isFetching}
-                  placeholder={villageId ? 'মৌজা বাছাই করুন' : 'আগে গ্রাম বাছাই করুন'}
+                  placeholder={villageId ? tx('মৌজা বাছাই করুন') : tx('আগে গ্রাম বাছাই করুন')}
                   options={mouzas.data?.map((m) => ({ value: m.id, label: `${m.name_bn} (JL ${m.jl_no})` }))}
                 />
               </Form.Item>
               <Row gutter={16}>
                 <Col span={12}>
-                  <Form.Item name="para" label="বাড়ি/পাড়া">
+                  <Form.Item name="para" label={tx('বাড়ি/পাড়া')}>
                     <Input />
                   </Form.Item>
                 </Col>
                 <Col span={12}>
-                  <Form.Item name="post_office" label="ডাকঘর">
+                  <Form.Item name="post_office" label={tx('ডাকঘর')}>
                     <Input />
                   </Form.Item>
                 </Col>
               </Row>
             </Card>
 
-            <Card title="গ. খানা (Household)" style={{ marginTop: 16 }}>
+            <Card title={tx('গ. খানা (Household)')} style={{ marginTop: 16 }}>
               <Radio.Group
                 value={householdMode}
                 onChange={(e) => setHouseholdMode(e.target.value)}
                 style={{ marginBottom: 12 }}
                 options={[
-                  { value: 'none', label: 'কোনো খানা নয়' },
-                  { value: 'existing', label: 'বিদ্যমান খানা' },
-                  ...(existing?.household ? [] : [{ value: 'new', label: 'নতুন খানা (ইনি খানাপ্রধান)' }]),
+                  { value: 'none', label: tx('কোনো খানা নয়') },
+                  { value: 'existing', label: tx('বিদ্যমান খানা') },
+                  ...(existing?.household ? [] : [{ value: 'new', label: tx('নতুন খানা (ইনি খানাপ্রধান)') }]),
                 ]}
               />
               {householdMode === 'existing' && (
                 <Row gutter={16}>
                   <Col xs={24} md={14}>
-                    <Form.Item name="household_id" label="খানা" rules={[required('খানা বাছাই করুন')]}>
+                    <Form.Item name="household_id" label={tx('খানা')} rules={[required(tx('খানা বাছাই করুন'))]}>
                       <Select
                         showSearch={{ filterOption: false, onSearch: setHouseholdTerm }}
                         loading={households.isFetching}
-                        placeholder="খানার কোড বা খানাপ্রধানের নাম"
+                        placeholder={tx('খানার কোড বা খানাপ্রধানের নাম')}
                         options={[
                           ...(existing?.household && !households.data?.some((h) => h.id === existing.household!.id)
                             ? [{ value: existing.household.id, label: `${existing.household.code} — ${existing.household.head?.name_bn ?? ''}` }]
@@ -285,7 +286,7 @@ function FarmerForm({ id, existing }: { id?: string; existing?: FarmerDetail }) 
                     </Form.Item>
                   </Col>
                   <Col xs={24} md={10}>
-                    <Form.Item name="household_relation" label="খানাপ্রধানের সাথে সম্পর্ক" rules={[required('সম্পর্ক দিন')]}>
+                    <Form.Item name="household_relation" label={tx('খানাপ্রধানের সাথে সম্পর্ক')} rules={[required(tx('সম্পর্ক দিন'))]}>
                       <Select options={toOptions(meta?.relations)} />
                     </Form.Item>
                   </Col>
@@ -293,16 +294,16 @@ function FarmerForm({ id, existing }: { id?: string; existing?: FarmerDetail }) 
               )}
             </Card>
 
-            <Card title="ঘ. অন্যান্য" style={{ marginTop: 16 }}>
-              <Form.Item name="occupation" label="পেশা">
+            <Card title={tx('ঘ. অন্যান্য')} style={{ marginTop: 16 }}>
+              <Form.Item name="occupation" label={tx('পেশা')}>
                 <Select allowClear options={toOptions(meta?.occupations)} />
               </Form.Item>
-              <Form.Item name="remarks" label="মন্তব্য">
+              <Form.Item name="remarks" label={tx('মন্তব্য')}>
                 <Input.TextArea rows={2} />
               </Form.Item>
               {isEdit && (
                 <Form.Item name="is_active" valuePropName="checked">
-                  <Checkbox>সক্রিয়</Checkbox>
+                  <Checkbox>{tx('সক্রিয়')}</Checkbox>
                 </Form.Item>
               )}
             </Card>
@@ -311,23 +312,23 @@ function FarmerForm({ id, existing }: { id?: string; existing?: FarmerDetail }) 
 
         <Space style={{ marginTop: 16 }}>
           <Button type="primary" htmlType="submit" loading={saving}>
-            সংরক্ষণ
+            {tx('সংরক্ষণ')}
           </Button>
-          <Button onClick={() => navigate(-1)}>বাতিল</Button>
+          <Button onClick={() => navigate(-1)}>{tx('বাতিল')}</Button>
         </Space>
       </Form>
 
       <Modal
         open={!!duplicates}
         width={760}
-        title="সম্ভাব্য ডুপ্লিকেট কৃষক"
+        title={tx('সম্ভাব্য ডুপ্লিকেট কৃষক')}
         onCancel={() => setDuplicates(null)}
         footer={[
           <Button key="cancel" onClick={() => setDuplicates(null)}>
-            ফিরে যান
+            {tx('ফিরে যান')}
           </Button>,
           <Button key="save" type="primary" danger loading={saving} onClick={() => save(true)}>
-            ইনি আলাদা ব্যক্তি — সংরক্ষণ করুন
+            {tx('ইনি আলাদা ব্যক্তি — সংরক্ষণ করুন')}
           </Button>,
         ]}
       >
@@ -335,7 +336,7 @@ function FarmerForm({ id, existing }: { id?: string; existing?: FarmerDetail }) 
           type="warning"
           showIcon
           style={{ marginBottom: 12 }}
-          title="এই তথ্যের সাথে মিলে যায় এমন কৃষক আগে থেকেই আছেন। একই ব্যক্তি হলে নতুন রেকর্ড না করে আগেরটি খুলুন।"
+          title={tx('এই তথ্যের সাথে মিলে যায় এমন কৃষক আগে থেকেই আছেন। একই ব্যক্তি হলে নতুন রেকর্ড না করে আগেরটি খুলুন।')}
         />
         <DuplicateMatches matches={duplicates ?? []} />
       </Modal>

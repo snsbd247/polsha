@@ -8,10 +8,11 @@ import AuditLogTable from '../../components/AuditLogTable'
 import { api, type Paginated } from '../../lib/api'
 import { digits, fmtDateTime } from '../../lib/format'
 import type { AuditLog, UserRow } from '../../lib/types'
+import { t as tx } from '../../lib/i18n'
 
 type LoginLog = { id: number; success: boolean; reason: string | null; ip_address: string | null; user_agent: string | null; created_at: string }
 
-const REASONS: Record<string, string> = { wrong_password: 'ভুল পাসওয়ার্ড', locked: 'লক করা', inactive: 'নিষ্ক্রিয়', unknown_user: 'অজানা ইউজার' }
+const REASONS: Record<string, string> = { wrong_password: tx('ভুল পাসওয়ার্ড'), locked: tx('লক করা'), inactive: tx('নিষ্ক্রিয়'), unknown_user: tx('অজানা ইউজার') }
 
 export default function UserDetailPage() {
   const { id } = useParams()
@@ -44,7 +45,7 @@ export default function UserDetailPage() {
         <h2>{user.name_bn}</h2>
         <Can perm="user.edit">
           <Button icon={<EditOutlined />} onClick={() => navigate(`/admin/users/${user.id}/edit`)}>
-            সম্পাদনা
+            {tx('সম্পাদনা')}
           </Button>
         </Can>
       </div>
@@ -53,34 +54,34 @@ export default function UserDetailPage() {
           items={[
             {
               key: 'info',
-              label: 'তথ্য',
+              label: tx('তথ্য'),
               children: (
                 <Descriptions column={{ xs: 1, md: 2 }} bordered size="small">
-                  <Descriptions.Item label="নাম (বাংলা)">{user.name_bn}</Descriptions.Item>
-                  <Descriptions.Item label="নাম (ইংরেজি)">{user.name_en ?? '—'}</Descriptions.Item>
-                  <Descriptions.Item label="ইউজারনেম">{user.username}</Descriptions.Item>
-                  <Descriptions.Item label="মোবাইল">{digits(user.mobile)}</Descriptions.Item>
-                  <Descriptions.Item label="ইমেইল">{user.email ?? '—'}</Descriptions.Item>
-                  <Descriptions.Item label="রোল">
+                  <Descriptions.Item label={tx('নাম (বাংলা)')}>{user.name_bn}</Descriptions.Item>
+                  <Descriptions.Item label={tx('নাম (ইংরেজি)')}>{user.name_en ?? '—'}</Descriptions.Item>
+                  <Descriptions.Item label={tx('ইউজারনেম')}>{user.username}</Descriptions.Item>
+                  <Descriptions.Item label={tx('মোবাইল')}>{digits(user.mobile)}</Descriptions.Item>
+                  <Descriptions.Item label={tx('ইমেইল')}>{user.email ?? '—'}</Descriptions.Item>
+                  <Descriptions.Item label={tx('রোল')}>
                     {user.roles.map((r) => (
                       <Tag key={r.name}>{r.label ?? r.name}</Tag>
                     ))}
                   </Descriptions.Item>
-                  <Descriptions.Item label="অবস্থা">
+                  <Descriptions.Item label={tx('অবস্থা')}>
                     <Space>
-                      {user.is_active ? <Tag color="green">সক্রিয়</Tag> : <Tag color="red">নিষ্ক্রিয়</Tag>}
-                      {user.is_locked && <Tag color="orange">লক</Tag>}
-                      {user.must_change_password && <Tag>পাসওয়ার্ড বদলানো বাকি</Tag>}
+                      {user.is_active ? <Tag color="green">{tx('সক্রিয়')}</Tag> : <Tag color="red">{tx('নিষ্ক্রিয়')}</Tag>}
+                      {user.is_locked && <Tag color="orange">{tx('লক')}</Tag>}
+                      {user.must_change_password && <Tag>{tx('পাসওয়ার্ড বদলানো বাকি')}</Tag>}
                     </Space>
                   </Descriptions.Item>
-                  <Descriptions.Item label="শেষ লগইন">{fmtDateTime(user.last_login_at)}</Descriptions.Item>
-                  <Descriptions.Item label="তৈরি">{fmtDateTime(user.created_at)}</Descriptions.Item>
+                  <Descriptions.Item label={tx('শেষ লগইন')}>{fmtDateTime(user.last_login_at)}</Descriptions.Item>
+                  <Descriptions.Item label={tx('তৈরি')}>{fmtDateTime(user.created_at)}</Descriptions.Item>
                 </Descriptions>
               ),
             },
             {
               key: 'logins',
-              label: 'লগইন ইতিহাস',
+              label: tx('লগইন ইতিহাস'),
               children: (
                 <Table<LoginLog>
                   rowKey="id"
@@ -90,10 +91,10 @@ export default function UserDetailPage() {
                   scroll={{ x: 600 }}
                   pagination={{ current: loginPage, pageSize: logins.data?.per_page, total: logins.data?.total, onChange: setLoginPage, showSizeChanger: false }}
                   columns={[
-                    { title: 'সময়', dataIndex: 'created_at', render: fmtDateTime },
-                    { title: 'ফলাফল', render: (_, l) => (l.success ? <Tag color="green">সফল</Tag> : <Tag color="red">{REASONS[l.reason ?? ''] ?? 'ব্যর্থ'}</Tag>) },
+                    { title: tx('সময়'), dataIndex: 'created_at', render: fmtDateTime },
+                    { title: tx('ফলাফল'), render: (_, l) => (l.success ? <Tag color="green">{tx('সফল')}</Tag> : <Tag color="red">{REASONS[l.reason ?? ''] ?? tx('ব্যর্থ')}</Tag>) },
                     { title: 'IP', dataIndex: 'ip_address' },
-                    { title: 'ডিভাইস', dataIndex: 'user_agent', ellipsis: true },
+                    { title: tx('ডিভাইস'), dataIndex: 'user_agent', ellipsis: true },
                   ]}
                 />
               ),
@@ -102,7 +103,7 @@ export default function UserDetailPage() {
               ? [
                   {
                     key: 'activity',
-                    label: 'কাজের ইতিহাস',
+                    label: tx('কাজের ইতিহাস'),
                     children: (
                       <AuditLogTable
                         data={activity.data}

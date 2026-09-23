@@ -6,13 +6,14 @@ import { CheckCircleOutlined, ReloadOutlined } from '@ant-design/icons'
 import { api, type Paginated } from '../../lib/api'
 import { digits } from '../../lib/format'
 import { fmtArea, useLandMeta } from '../../lib/land'
+import { t as tx } from '../../lib/i18n'
 
 type Check = { key: string; label: string; entity: 'land' | 'farmer' | 'mouza'; severity: 'error' | 'warning' | 'info'; count: number | null }
 type MouzaRow = { id: number; name_bn: string; jl_no: string; union: string | null; upazila: string | null; is_active: boolean; villages_count: number; land_count: number; area_decimal: number; farmer_count: number; issue_count: number }
 type Item = { id: number; code: string; link: string; title: string; detail: string; mouza: string | null }
 
-const SEVERITY = { error: { color: '#cf1322', label: 'গুরুতর' }, warning: { color: '#d48806', label: 'সতর্কতা' }, info: { color: '#1677ff', label: 'তথ্য' } }
-const ENTITY = { land: 'জমি', farmer: 'কৃষক', mouza: 'মৌজা' }
+const SEVERITY = { error: { color: '#cf1322', label: tx('গুরুতর') }, warning: { color: '#d48806', label: tx('সতর্কতা') }, info: { color: '#1677ff', label: tx('তথ্য') } }
+const ENTITY = { land: tx('জমি'), farmer: tx('কৃষক'), mouza: tx('মৌজা') }
 
 export default function DataHealthPage() {
   const navigate = useNavigate()
@@ -49,7 +50,7 @@ export default function DataHealthPage() {
         <h2>Data Health</h2>
         <div style={{ display: 'flex', gap: 8 }}>
           <Select
-            placeholder="সব মৌজা"
+            placeholder={tx('সব মৌজা')}
             allowClear
             showSearch={{ optionFilterProp: 'label' }}
             style={{ width: 200 }}
@@ -57,30 +58,30 @@ export default function DataHealthPage() {
             onChange={setMouzaId}
             options={mouzas.data?.map((m) => ({ value: m.id, label: `${m.name_bn} (JL ${m.jl_no})` }))}
           />
-          <Button icon={<ReloadOutlined />} onClick={() => (summary.refetch(), mouzas.refetch())} aria-label="আবার যাচাই" />
+          <Button icon={<ReloadOutlined />} onClick={() => (summary.refetch(), mouzas.refetch())} aria-label={tx('আবার যাচাই')} />
         </div>
       </div>
 
       <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
         <Col xs={12} md={6}>
           <Card>
-            <Statistic title="মোট জমি" value={digits(totals.lands)} />
+            <Statistic title={tx('মোট জমি')} value={digits(totals.lands)} />
           </Card>
         </Col>
         <Col xs={12} md={6}>
           <Card>
-            <Statistic title="মোট পরিমাণ" value={fmtArea(totals.area, meta)} styles={{ content: { fontSize: 18 } }} />
+            <Statistic title={tx('মোট পরিমাণ')} value={fmtArea(totals.area, meta)} styles={{ content: { fontSize: 18 } }} />
           </Card>
         </Col>
         <Col xs={12} md={6}>
           <Card>
-            <Statistic title="মোট কৃষক" value={digits(totals.farmers)} />
+            <Statistic title={tx('মোট কৃষক')} value={digits(totals.farmers)} />
           </Card>
         </Col>
         <Col xs={12} md={6}>
           <Card>
             <Statistic
-              title="সমাধান দরকার"
+              title={tx('সমাধান দরকার')}
               value={digits(problems)}
               styles={{ content: { color: problems ? '#cf1322' : '#389e0d' } }}
               prefix={problems ? undefined : <CheckCircleOutlined />}
@@ -89,7 +90,7 @@ export default function DataHealthPage() {
         </Col>
       </Row>
 
-      <Card title="যাচাইয়ের ফলাফল" style={{ marginBottom: 16 }} loading={summary.isLoading}>
+      <Card title={tx('যাচাইয়ের ফলাফল')} style={{ marginBottom: 16 }} loading={summary.isLoading}>
         <Row gutter={[12, 12]}>
           {checks.map((c) => (
             <Col xs={24} md={12} xl={8} key={c.key}>
@@ -109,7 +110,7 @@ export default function DataHealthPage() {
         </Row>
       </Card>
 
-      <Card title="মৌজাভিত্তিক হিসাব" styles={{ body: { padding: 0 } }}>
+      <Card title={tx('মৌজাভিত্তিক হিসাব')} styles={{ body: { padding: 0 } }}>
         <Table<MouzaRow>
           rowKey="id"
           size="small"
@@ -118,15 +119,15 @@ export default function DataHealthPage() {
           scroll={{ x: 800 }}
           pagination={{ pageSize: 50, hideOnSinglePage: true }}
           columns={[
-            { title: 'মৌজা', render: (_, m) => <>{m.name_bn} {!m.is_active && <Tag>নিষ্ক্রিয়</Tag>}</> },
+            { title: tx('মৌজা'), render: (_, m) => <>{m.name_bn} {!m.is_active && <Tag>{tx('নিষ্ক্রিয়')}</Tag>}</> },
             { title: 'JL', dataIndex: 'jl_no', render: digits },
-            { title: 'ইউনিয়ন', dataIndex: 'union' },
-            { title: 'গ্রাম', dataIndex: 'villages_count', render: digits },
-            { title: 'জমি', dataIndex: 'land_count', render: (v, m) => <Link to={`/lands?mouza_id=${m.id}`}>{digits(v)}</Link>, sorter: (a, b) => a.land_count - b.land_count },
-            { title: 'পরিমাণ', dataIndex: 'area_decimal', render: (v) => fmtArea(v, meta), sorter: (a, b) => a.area_decimal - b.area_decimal },
-            { title: 'কৃষক', dataIndex: 'farmer_count', render: digits, sorter: (a, b) => a.farmer_count - b.farmer_count },
+            { title: tx('ইউনিয়ন'), dataIndex: 'union' },
+            { title: tx('গ্রাম'), dataIndex: 'villages_count', render: digits },
+            { title: tx('জমি'), dataIndex: 'land_count', render: (v, m) => <Link to={`/lands?mouza_id=${m.id}`}>{digits(v)}</Link>, sorter: (a, b) => a.land_count - b.land_count },
+            { title: tx('পরিমাণ'), dataIndex: 'area_decimal', render: (v) => fmtArea(v, meta), sorter: (a, b) => a.area_decimal - b.area_decimal },
+            { title: tx('কৃষক'), dataIndex: 'farmer_count', render: digits, sorter: (a, b) => a.farmer_count - b.farmer_count },
             {
-              title: 'সমস্যা',
+              title: tx('সমস্যা'),
               dataIndex: 'issue_count',
               defaultSortOrder: 'descend',
               sorter: (a, b) => a.issue_count - b.issue_count,
@@ -145,8 +146,8 @@ export default function DataHealthPage() {
           pagination={{ current: page, pageSize: items.data?.per_page, total: items.data?.total, onChange: setPage, showSizeChanger: false }}
           columns={[
             { title: 'ID', dataIndex: 'code', render: (v, i) => <Link to={i.link}>{v}</Link> },
-            { title: 'বিবরণ', render: (_, i) => <><div>{i.title}</div><Typography.Text type="secondary">{i.detail}</Typography.Text></> },
-            { title: 'মৌজা', dataIndex: 'mouza' },
+            { title: tx('বিবরণ'), render: (_, i) => <><div>{i.title}</div><Typography.Text type="secondary">{i.detail}</Typography.Text></> },
+            { title: tx('মৌজা'), dataIndex: 'mouza' },
           ]}
         />
       </Drawer>

@@ -6,13 +6,14 @@ import { useAuth } from '../../auth/AuthContext'
 import { api, applyFormErrors, errorMessage } from '../../lib/api'
 import { required } from '../../lib/rules'
 import type { LocationItem } from '../../lib/types'
+import { t as tx } from '../../lib/i18n'
 
 const LEVELS = [
-  { key: 'divisions', label: 'বিভাগ', parentKey: null },
-  { key: 'districts', label: 'জেলা', parentKey: 'division_id' },
-  { key: 'upazilas', label: 'উপজেলা', parentKey: 'district_id' },
-  { key: 'unions', label: 'ইউনিয়ন', parentKey: 'upazila_id' },
-  { key: 'villages', label: 'গ্রাম', parentKey: 'union_id' },
+  { key: 'divisions', label: tx('বিভাগ'), parentKey: null },
+  { key: 'districts', label: tx('জেলা'), parentKey: 'division_id' },
+  { key: 'upazilas', label: tx('উপজেলা'), parentKey: 'district_id' },
+  { key: 'unions', label: tx('ইউনিয়ন'), parentKey: 'upazila_id' },
+  { key: 'villages', label: tx('গ্রাম'), parentKey: 'union_id' },
 ] as const
 
 type Level = (typeof LEVELS)[number]
@@ -49,21 +50,21 @@ function LevelColumn({
       title={level.label}
       extra={
         can('location.create') &&
-        enabled && <Button size="small" type="link" icon={<PlusOutlined />} onClick={() => onEdit(level, null)} aria-label={`নতুন ${level.label}`} />
+        enabled && <Button size="small" type="link" icon={<PlusOutlined />} onClick={() => onEdit(level, null)} aria-label={tx('নতুন {{p0}}', { p0: level.label })} />
       }
       styles={{ body: { padding: 0, height: 420, overflow: 'auto' } }}
     >
       {!enabled ? (
-        <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="বাম পাশ থেকে বাছাই করুন" style={{ marginTop: 60 }} />
+        <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={tx('বাম পাশ থেকে বাছাই করুন')} style={{ marginTop: 60 }} />
       ) : (
         <>
           <div style={{ padding: 8 }}>
-            <Input size="small" placeholder="খুঁজুন" allowClear value={search} onChange={(e) => setSearch(e.target.value)} />
+            <Input size="small" placeholder={tx('খুঁজুন')} allowClear value={search} onChange={(e) => setSearch(e.target.value)} />
           </div>
           {isLoading ? (
             <Spin style={{ display: 'block', marginTop: 40 }} />
           ) : items.length === 0 ? (
-            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="কিছু নেই" />
+            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={tx('কিছু নেই')} />
           ) : (
             items.map((item) => (
               <div
@@ -75,14 +76,14 @@ function LevelColumn({
                 onKeyDown={(e) => !isLeaf && e.key === 'Enter' && onSelect(item)}
               >
                 <span style={{ flex: 1, opacity: item.is_active ? 1 : 0.5 }}>
-                  {item.name_bn} {!item.is_active && <Tag>নিষ্ক্রিয়</Tag>}
+                  {item.name_bn} {!item.is_active && <Tag>{tx('নিষ্ক্রিয়')}</Tag>}
                 </span>
                 {can('location.edit') && (
                   <Button
                     size="small"
                     type="text"
                     icon={<EditOutlined />}
-                    aria-label="সম্পাদনা"
+                    aria-label={tx('সম্পাদনা')}
                     onClick={(e) => {
                       e.stopPropagation()
                       onEdit(level, item)
@@ -124,7 +125,7 @@ export default function LocationPage() {
     try {
       if (item) await api.put(`/locations/${level.key}/${item.id}`, payload)
       else await api.post(`/locations/${level.key}`, payload)
-      message.success('সংরক্ষণ হয়েছে।')
+      message.success(tx('সংরক্ষণ হয়েছে।'))
       setEditing(null)
       queryClient.invalidateQueries({ queryKey: ['locations', level.key] })
     } catch (e) {
@@ -135,10 +136,10 @@ export default function LocationPage() {
   return (
     <>
       <div className="page-header">
-        <h2>এলাকা</h2>
+        <h2>{tx('এলাকা')}</h2>
       </div>
       <Typography.Paragraph type="secondary">
-        বিভাগ → জেলা → উপজেলা → ইউনিয়ন → গ্রাম। বিভাগ ও জেলা আগে থেকেই যোগ করা আছে; সমিতির এলাকার উপজেলা, ইউনিয়ন ও গ্রাম যোগ করুন।
+        {tx('বিভাগ → জেলা → উপজেলা → ইউনিয়ন → গ্রাম। বিভাগ ও জেলা আগে থেকেই যোগ করা আছে; সমিতির এলাকার উপজেলা, ইউনিয়ন ও গ্রাম যোগ করুন।')}
       </Typography.Paragraph>
       <Row gutter={[12, 12]}>
         {LEVELS.map((level, i) => (
@@ -155,25 +156,25 @@ export default function LocationPage() {
       </Row>
       <Modal
         open={!!editing}
-        title={editing ? `${editing.level.label} ${editing.item ? 'সম্পাদনা' : 'যোগ করুন'}` : ''}
+        title={editing ? `${editing.level.label} ${editing.item ? tx('সম্পাদনা') : tx('যোগ করুন')}` : ''}
         onCancel={() => setEditing(null)}
         onOk={save}
-        okText="সংরক্ষণ"
-        cancelText="বাতিল"
+        okText={tx('সংরক্ষণ')}
+        cancelText={tx('বাতিল')}
         forceRender
       >
         <Form form={form} layout="vertical">
-          <Form.Item name="name_bn" label="নাম (বাংলা)" rules={[required('নাম দিন')]}>
+          <Form.Item name="name_bn" label={tx('নাম (বাংলা)')} rules={[required(tx('নাম দিন'))]}>
             <Input />
           </Form.Item>
-          <Form.Item name="name_en" label="নাম (ইংরেজি)">
+          <Form.Item name="name_en" label={tx('নাম (ইংরেজি)')}>
             <Input />
           </Form.Item>
-          <Form.Item name="code" label="সরকারি কোড (BBS, ঐচ্ছিক)">
+          <Form.Item name="code" label={tx('সরকারি কোড (BBS, ঐচ্ছিক)')}>
             <Input />
           </Form.Item>
-          <Form.Item name="is_active" label="অবস্থা" valuePropName="checked">
-            <Switch checkedChildren="সক্রিয়" unCheckedChildren="নিষ্ক্রিয়" />
+          <Form.Item name="is_active" label={tx('অবস্থা')} valuePropName="checked">
+            <Switch checkedChildren={tx('সক্রিয়')} unCheckedChildren={tx('নিষ্ক্রিয়')} />
           </Form.Item>
         </Form>
       </Modal>

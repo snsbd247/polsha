@@ -21,67 +21,67 @@ class DataHealthService
 
         return [
             'land_no_owner' => [
-                'label' => 'মালিক নেই এমন জমি', 'entity' => 'land', 'severity' => 'error',
+                'label' => __('মালিক নেই এমন জমি'), 'entity' => 'land', 'severity' => 'error',
                 'query' => fn () => Land::query()->whereDoesntHave('owners'),
             ],
             'land_share_mismatch' => [
-                'label' => 'মালিকদের অংশ ১০০% নয়', 'entity' => 'land', 'severity' => 'error',
+                'label' => __('মালিকদের অংশ ১০০% নয়'), 'entity' => 'land', 'severity' => 'error',
                 'query' => fn () => Land::query()->whereIn('id', DB::table('land_owners')->whereNull('end_date')
                     ->groupBy('land_id')->havingRaw('abs(sum(share_percent) - 100) > 0.01')->select('land_id')),
             ],
             'land_duplicate' => [
-                'label' => 'একই মৌজা/জরিপ/খতিয়ান/দাগে একাধিক জমি', 'entity' => 'land', 'severity' => 'warning',
+                'label' => __('একই মৌজা/জরিপ/খতিয়ান/দাগে একাধিক জমি'), 'entity' => 'land', 'severity' => 'warning',
                 'query' => fn () => Land::query()->whereExists(fn ($q) => $q->from('lands as l2')
                     ->whereColumn('l2.mouza_id', 'lands.mouza_id')->whereColumn('l2.survey', 'lands.survey')
                     ->whereColumn('l2.khatian_no', 'lands.khatian_no')->whereColumn('l2.dag_no', 'lands.dag_no')
                     ->whereColumn('l2.id', '!=', 'lands.id')->whereNull('l2.deleted_at')),
             ],
             'land_incomplete' => [
-                'label' => 'অসম্পূর্ণ জমি (ধরন/পরিমাণ/দাগ/খতিয়ান নেই)', 'entity' => 'land', 'severity' => 'warning',
+                'label' => __('অসম্পূর্ণ জমি (ধরন/পরিমাণ/দাগ/খতিয়ান নেই)'), 'entity' => 'land', 'severity' => 'warning',
                 'query' => fn () => Land::query()->where(fn ($w) => $w->whereNull('land_type_id')->orWhere('area_decimal', '<=', 0)
                     ->orWhereIn('dag_no', ['', '0'])->orWhereIn('khatian_no', ['', '0'])),
             ],
             'land_no_cultivator' => [
-                'label' => 'চাষাধীন কিন্তু চাষি নেই', 'entity' => 'land', 'severity' => 'warning',
+                'label' => __('চাষাধীন কিন্তু চাষি নেই'), 'entity' => 'land', 'severity' => 'warning',
                 'query' => fn () => Land::query()->where('status', 'cultivated')->whereDoesntHave('cultivation'),
             ],
             'land_invalid_own' => [
-                'label' => '"নিজ চাষ" কিন্তু চাষি মালিক নন', 'entity' => 'land', 'severity' => 'error',
+                'label' => __('"নিজ চাষ" কিন্তু চাষি মালিক নন'), 'entity' => 'land', 'severity' => 'error',
                 'query' => fn () => Land::query()->whereHas('cultivation', fn ($c) => $c->where('type', 'own')
                     ->whereNotExists(fn ($o) => $o->from('land_owners')->whereColumn('land_owners.land_id', 'land_cultivations.land_id')
                         ->whereColumn('land_owners.farmer_id', 'land_cultivations.farmer_id')->whereNull('land_owners.end_date'))),
             ],
             'land_invalid_borga' => [
-                'label' => 'বর্গাচাষি নিজেই মালিক', 'entity' => 'land', 'severity' => 'error',
+                'label' => __('বর্গাচাষি নিজেই মালিক'), 'entity' => 'land', 'severity' => 'error',
                 'query' => fn () => Land::query()->whereHas('cultivation', fn ($c) => $c->where('type', 'borga')
                     ->whereExists(fn ($o) => $o->from('land_owners')->whereColumn('land_owners.land_id', 'land_cultivations.land_id')
                         ->whereColumn('land_owners.farmer_id', 'land_cultivations.farmer_id')->whereNull('land_owners.end_date'))),
             ],
             'land_inactive_party' => [
-                'label' => 'মালিক/চাষি নিষ্ক্রিয় বা মার্জ হয়ে গেছেন', 'entity' => 'land', 'severity' => 'error',
+                'label' => __('মালিক/চাষি নিষ্ক্রিয় বা মার্জ হয়ে গেছেন'), 'entity' => 'land', 'severity' => 'error',
                 'query' => fn () => Land::query()->where(fn ($w) => $w
                     ->whereHas('owners', fn ($o) => $o->whereNotIn('farmer_id', $liveFarmerIds()))
                     ->orWhereHas('cultivation', fn ($c) => $c->whereNotIn('farmer_id', $liveFarmerIds()))),
             ],
             'land_inactive_mouza' => [
-                'label' => 'নিষ্ক্রিয় মৌজায় জমি', 'entity' => 'land', 'severity' => 'warning',
+                'label' => __('নিষ্ক্রিয় মৌজায় জমি'), 'entity' => 'land', 'severity' => 'warning',
                 'query' => fn () => Land::query()->whereHas('mouza', fn ($m) => $m->where('is_active', false)),
             ],
             'farmer_wrong_mouza' => [
-                'label' => 'ভুল মৌজা (কৃষকের গ্রামের সাথে মৌজা যুক্ত নয়)', 'entity' => 'farmer', 'severity' => 'error',
+                'label' => __('ভুল মৌজা (কৃষকের গ্রামের সাথে মৌজা যুক্ত নয়)'), 'entity' => 'farmer', 'severity' => 'error',
                 'query' => fn () => Farmer::query()->whereNull('merged_into_id')->whereNotExists(fn ($q) => $q->from('mouza_village')
                     ->whereColumn('mouza_village.mouza_id', 'farmers.mouza_id')->whereColumn('mouza_village.village_id', 'farmers.village_id')),
             ],
             'farmer_no_id' => [
-                'label' => 'NID বা জন্ম নিবন্ধন নেই', 'entity' => 'farmer', 'severity' => 'info',
+                'label' => __('NID বা জন্ম নিবন্ধন নেই'), 'entity' => 'farmer', 'severity' => 'info',
                 'query' => fn () => Farmer::query()->whereNull('merged_into_id')->whereNull('nid')->whereNull('birth_reg_no'),
             ],
             'farmer_no_mobile' => [
-                'label' => 'মোবাইল নম্বর নেই', 'entity' => 'farmer', 'severity' => 'info',
+                'label' => __('মোবাইল নম্বর নেই'), 'entity' => 'farmer', 'severity' => 'info',
                 'query' => fn () => Farmer::query()->whereNull('merged_into_id')->whereNull('mobile'),
             ],
             'mouza_no_village' => [
-                'label' => 'কোনো গ্রাম যুক্ত নেই এমন মৌজা', 'entity' => 'mouza', 'severity' => 'warning',
+                'label' => __('কোনো গ্রাম যুক্ত নেই এমন মৌজা'), 'entity' => 'mouza', 'severity' => 'warning',
                 'query' => fn () => Mouza::query()->whereDoesntHave('villages'),
             ],
         ];
@@ -100,7 +100,7 @@ class DataHealthService
             ];
         }
         $out[] = [
-            'key' => 'farmer_duplicate', 'label' => 'সম্ভাব্য ডুপ্লিকেট কৃষক (জোড়া)', 'entity' => 'farmer', 'severity' => 'warning',
+            'key' => 'farmer_duplicate', 'label' => __('সম্ভাব্য ডুপ্লিকেট কৃষক (জোড়া)'), 'entity' => 'farmer', 'severity' => 'warning',
             'count' => $mouzaId ? null : app(FarmerDuplicateService::class)->pairs()->count(),
         ];
 
@@ -154,21 +154,21 @@ class DataHealthService
             'land' => $q->with(['mouza:id,name_bn', 'owners.farmer:id,name_bn', 'cultivation.farmer:id,name_bn'])->paginate($perPage)
                 ->through(fn (Land $l) => [
                     'id' => $l->id, 'code' => $l->land_code, 'link' => "/lands/{$l->id}",
-                    'title' => "দাগ {$l->dag_no}, খতিয়ান {$l->khatian_no} ({$l->survey})",
-                    'detail' => 'মালিক: '.($l->owners->map(fn ($o) => $o->farmer?->name_bn.' '.(float) $o->share_percent.'%')->implode(', ') ?: '—')
-                        .' · চাষি: '.($l->cultivation?->farmer?->name_bn ?? '—'),
+                    'title' => __('দাগ :p0, খতিয়ান :p1 (:p2)', ['p0' => $l->dag_no, 'p1' => $l->khatian_no, 'p2' => $l->survey]),
+                    'detail' => __('মালিক: ').($l->owners->map(fn ($o) => $o->farmer?->name_bn.' '.(float) $o->share_percent.'%')->implode(', ') ?: '—')
+                        .__(' · চাষি: ').($l->cultivation?->farmer?->name_bn ?? '—'),
                     'mouza' => $l->mouza?->name_bn,
                 ]),
             'farmer' => $q->with(['mouza:id,name_bn', 'village:id,name_bn'])->paginate($perPage)
                 ->through(fn (Farmer $f) => [
                     'id' => $f->id, 'code' => $f->farmer_code, 'link' => "/farmers/{$f->id}",
-                    'title' => $f->name_bn, 'detail' => "পিতা: {$f->father_name} · গ্রাম: ".($f->village?->name_bn ?? '—'),
+                    'title' => $f->name_bn, 'detail' => __('পিতা: :p0 · গ্রাম: ', ['p0' => $f->father_name]).($f->village?->name_bn ?? '—'),
                     'mouza' => $f->mouza?->name_bn,
                 ]),
             default => $q->with('union:id,name_bn')->paginate($perPage)
                 ->through(fn (Mouza $m) => [
                     'id' => $m->id, 'code' => 'JL '.$m->jl_no, 'link' => '/masters/mouzas',
-                    'title' => $m->name_bn, 'detail' => 'ইউনিয়ন: '.($m->union?->name_bn ?? '—'), 'mouza' => $m->name_bn,
+                    'title' => $m->name_bn, 'detail' => __('ইউনিয়ন: ').($m->union?->name_bn ?? '—'), 'mouza' => $m->name_bn,
                 ]),
         };
     }

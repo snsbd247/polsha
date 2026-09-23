@@ -11,6 +11,7 @@ import { api, errorMessage, type Paginated } from '../../lib/api'
 import { digits, fmtDate, fmtDateTime, fmtBytes } from '../../lib/format'
 import { APPLICATION_STATUS, MEMBER_STATUS, openProtectedFile, toOptions, useFarmerMeta, type MemberStatus } from '../../lib/phase2'
 import type { AuditLog } from '../../lib/types'
+import { nameOf, t as tx } from '../../lib/i18n'
 
 type HistoryRow = { id: number; action: string; from_status: string | null; to_status: string; effective_date: string; reason: string | null; resolution_no: string | null; fee: string | null; creator: { name_bn: string } | null }
 
@@ -55,12 +56,12 @@ type FarmerDetail = {
 type Doc = { id: number; type: string; original_name: string; size: number; remarks: string | null; created_at: string; uploader: { name_bn: string } | null }
 
 const ACTION: Record<string, string> = {
-  admit: 'সদস্যপদ অনুমোদন',
-  legacy: 'পুরোনো খাতা থেকে এন্ট্রি',
-  deactivate: 'নিষ্ক্রিয়',
-  activate: 'সক্রিয়',
-  cancel: 'সদস্যপদ বাতিল',
-  reactivate: 'পুনর্বহাল',
+  admit: tx('সদস্যপদ অনুমোদন'),
+  legacy: tx('পুরোনো খাতা থেকে এন্ট্রি'),
+  deactivate: tx('নিষ্ক্রিয়'),
+  activate: tx('সক্রিয়'),
+  cancel: tx('সদস্যপদ বাতিল'),
+  reactivate: tx('পুনর্বহাল'),
 }
 
 function DocumentsTab({ farmerId }: { farmerId: number }) {
@@ -81,7 +82,7 @@ function DocumentsTab({ farmerId }: { farmerId: number }) {
   const upload = async () => {
     const v = await form.validateFields()
     if (!file) {
-      message.error('ফাইল বাছাই করুন।')
+      message.error(tx('ফাইল বাছাই করুন।'))
       return
     }
     const fd = new FormData()
@@ -90,7 +91,7 @@ function DocumentsTab({ farmerId }: { farmerId: number }) {
     if (v.remarks) fd.append('remarks', v.remarks)
     try {
       await api.post(`/farmers/${farmerId}/documents`, fd)
-      message.success('আপলোড হয়েছে।')
+      message.success(tx('আপলোড হয়েছে।'))
       setOpen(false)
       setFile(null)
       form.resetFields()
@@ -102,10 +103,10 @@ function DocumentsTab({ farmerId }: { farmerId: number }) {
 
   const remove = (d: Doc) =>
     modal.confirm({
-      title: 'ডকুমেন্ট মুছবেন?',
-      okText: 'মুছুন',
+      title: tx('ডকুমেন্ট মুছবেন?'),
+      okText: tx('মুছুন'),
       okButtonProps: { danger: true },
-      cancelText: 'না',
+      cancelText: tx('না'),
       onOk: async () => {
         await api.delete(`/farmers/${farmerId}/documents/${d.id}`)
         refresh()
@@ -116,7 +117,7 @@ function DocumentsTab({ farmerId }: { farmerId: number }) {
     <>
       <Can perm="farmer.edit">
         <Button icon={<UploadOutlined />} style={{ marginBottom: 12 }} onClick={() => setOpen(true)}>
-          ডকুমেন্ট আপলোড
+          {tx('ডকুমেন্ট আপলোড')}
         </Button>
       </Can>
       <Table<Doc>
@@ -126,22 +127,22 @@ function DocumentsTab({ farmerId }: { farmerId: number }) {
         dataSource={data}
         pagination={false}
         scroll={{ x: 600 }}
-        locale={{ emptyText: 'কোনো ডকুমেন্ট নেই' }}
+        locale={{ emptyText: tx('কোনো ডকুমেন্ট নেই') }}
         columns={[
-          { title: 'ধরন', dataIndex: 'type', render: (t) => meta?.document_types[t] ?? t },
-          { title: 'ফাইল', dataIndex: 'original_name' },
-          { title: 'আকার', dataIndex: 'size', render: fmtBytes },
-          { title: 'আপলোড', render: (_, d) => `${d.uploader?.name_bn ?? ''} · ${fmtDate(d.created_at)}` },
+          { title: tx('ধরন'), dataIndex: 'type', render: (t) => meta?.document_types[t] ?? t },
+          { title: tx('ফাইল'), dataIndex: 'original_name' },
+          { title: tx('আকার'), dataIndex: 'size', render: fmtBytes },
+          { title: tx('আপলোড'), render: (_, d) => `${d.uploader?.name_bn ?? ''} · ${fmtDate(d.created_at)}` },
           {
             title: '',
             render: (_, d) => (
               <Space>
                 <Button size="small" onClick={() => openProtectedFile(`/farmers/${farmerId}/documents/${d.id}`).catch((e) => message.error(errorMessage(e)))}>
-                  দেখুন
+                  {tx('দেখুন')}
                 </Button>
                 {can('farmer.edit') && (
                   <Button size="small" danger onClick={() => remove(d)}>
-                    মুছুন
+                    {tx('মুছুন')}
                   </Button>
                 )}
               </Space>
@@ -149,17 +150,17 @@ function DocumentsTab({ farmerId }: { farmerId: number }) {
           },
         ]}
       />
-      <Modal open={open} title="ডকুমেন্ট আপলোড" onCancel={() => setOpen(false)} onOk={upload} okText="আপলোড" cancelText="বাতিল" forceRender>
+      <Modal open={open} title={tx('ডকুমেন্ট আপলোড')} onCancel={() => setOpen(false)} onOk={upload} okText={tx('আপলোড')} cancelText={tx('বাতিল')} forceRender>
         <Form form={form} layout="vertical">
-          <Form.Item name="type" label="ধরন" rules={[{ required: true, message: 'ধরন দিন' }]}>
+          <Form.Item name="type" label={tx('ধরন')} rules={[{ required: true, message: tx('ধরন দিন') }]}>
             <Select options={toOptions(meta?.document_types)} />
           </Form.Item>
-          <Form.Item label="ফাইল (JPG, PNG বা PDF; সর্বোচ্চ ৫MB)" required>
+          <Form.Item label={tx('ফাইল (JPG, PNG বা PDF; সর্বোচ্চ ৫MB)')} required>
             <Upload accept=".jpg,.jpeg,.png,.pdf" maxCount={1} beforeUpload={(f) => (setFile(f), false)} onRemove={() => setFile(null)}>
-              <Button icon={<UploadOutlined />}>ফাইল বাছাই</Button>
+              <Button icon={<UploadOutlined />}>{tx('ফাইল বাছাই')}</Button>
             </Upload>
           </Form.Item>
-          <Form.Item name="remarks" label="মন্তব্য">
+          <Form.Item name="remarks" label={tx('মন্তব্য')}>
             <Input />
           </Form.Item>
         </Form>
@@ -200,35 +201,36 @@ export default function FarmerProfilePage() {
             <ProtectedImage url={f.photo_url} size={88} />
             <div>
               <Typography.Title level={4} style={{ margin: 0 }}>
-                {f.name_bn} {f.name_en && <Typography.Text type="secondary">({f.name_en})</Typography.Text>}
+                {nameOf(f)}{' '}
+                {f.name_en && <Typography.Text type="secondary">({nameOf(f) === f.name_en ? f.name_bn : f.name_en})</Typography.Text>}
               </Typography.Title>
-              <div>পিতা: {f.father_name}</div>
+              <div>{tx('পিতা:')}{' '}{f.father_name}</div>
               <Space wrap style={{ marginTop: 8 }}>
                 <Tag>{f.farmer_code}</Tag>
                 {f.member ? (
                   <Tag color={MEMBER_STATUS[f.member.status].color}>
-                    সদস্য নং {digits(f.member.member_no)} · {MEMBER_STATUS[f.member.status].label}
+                    {tx('সদস্য নং')}{' '}{digits(f.member.member_no)} · {MEMBER_STATUS[f.member.status].label}
                   </Tag>
                 ) : (
-                  <Tag>নন-মেম্বার</Tag>
+                  <Tag>{tx('নন-মেম্বার')}</Tag>
                 )}
-                {!f.is_active && <Tag color="red">নিষ্ক্রিয়</Tag>}
+                {!f.is_active && <Tag color="red">{tx('নিষ্ক্রিয়')}</Tag>}
               </Space>
             </div>
           </Space>
           <Space wrap className="no-print">
             {can('farmer.edit') && !f.merged_into && (
               <Button icon={<EditOutlined />} onClick={() => navigate(`/farmers/${f.id}/edit`)}>
-                সম্পাদনা
+                {tx('সম্পাদনা')}
               </Button>
             )}
             {can('membership.create') && !f.member && f.is_active && !f.merged_into && (
               <Button type="primary" onClick={() => navigate(`/membership/applications/new?farmer=${f.id}`)}>
-                সদস্য করুন
+                {tx('সদস্য করুন')}
               </Button>
             )}
             <Button icon={<PrinterOutlined />} onClick={() => window.print()}>
-              প্রিন্ট
+              {tx('প্রিন্ট')}
             </Button>
           </Space>
         </Space>
@@ -239,7 +241,7 @@ export default function FarmerProfilePage() {
             style={{ marginTop: 12 }}
             title={
               <>
-                এই রেকর্ডটি <Link to={`/farmers/${f.merged_into.id}`}>{f.merged_into.farmer_code} ({f.merged_into.name_bn})</Link>-এর সাথে মার্জ করা হয়েছে।
+                {tx('এই রেকর্ডটি')}{' '}<Link to={`/farmers/${f.merged_into.id}`}>{f.merged_into.farmer_code} ({f.merged_into.name_bn})</Link>{tx('-এর সাথে মার্জ করা হয়েছে।')}
               </>
             }
           />
@@ -251,54 +253,54 @@ export default function FarmerProfilePage() {
           items={[
             {
               key: 'summary',
-              label: 'সারসংক্ষেপ',
+              label: tx('সারসংক্ষেপ'),
               children: (
                 <Descriptions bordered size="small" column={{ xs: 1, md: 2 }}>
-                  <Descriptions.Item label="মাতা">{f.mother_name ?? '—'}</Descriptions.Item>
-                  <Descriptions.Item label="স্বামী/স্ত্রী">{f.spouse_name ?? '—'}</Descriptions.Item>
-                  <Descriptions.Item label="লিঙ্গ">{meta?.genders[f.gender] ?? f.gender}</Descriptions.Item>
-                  <Descriptions.Item label="জন্মতারিখ">{fmtDate(f.date_of_birth)}</Descriptions.Item>
+                  <Descriptions.Item label={tx('মাতা')}>{f.mother_name ?? '—'}</Descriptions.Item>
+                  <Descriptions.Item label={tx('স্বামী/স্ত্রী')}>{f.spouse_name ?? '—'}</Descriptions.Item>
+                  <Descriptions.Item label={tx('লিঙ্গ')}>{meta?.genders[f.gender] ?? f.gender}</Descriptions.Item>
+                  <Descriptions.Item label={tx('জন্মতারিখ')}>{fmtDate(f.date_of_birth)}</Descriptions.Item>
                   <Descriptions.Item label="NID">{digits(f.nid) || '—'}</Descriptions.Item>
-                  <Descriptions.Item label="জন্ম নিবন্ধন">{digits(f.birth_reg_no) || '—'}</Descriptions.Item>
-                  <Descriptions.Item label="মোবাইল">{digits(f.mobile) || '—'}</Descriptions.Item>
-                  <Descriptions.Item label="বিকল্প মোবাইল">{digits(f.alt_mobile) || '—'}</Descriptions.Item>
-                  <Descriptions.Item label="ঠিকানা">{f.address}</Descriptions.Item>
-                  <Descriptions.Item label="ডাকঘর">{f.post_office ?? '—'}</Descriptions.Item>
-                  <Descriptions.Item label="মৌজা">{f.mouza ?? '—'}</Descriptions.Item>
-                  <Descriptions.Item label="পেশা">{f.occupation ? meta?.occupations[f.occupation] : '—'}</Descriptions.Item>
-                  <Descriptions.Item label="মন্তব্য" span="filled">
+                  <Descriptions.Item label={tx('জন্ম নিবন্ধন')}>{digits(f.birth_reg_no) || '—'}</Descriptions.Item>
+                  <Descriptions.Item label={tx('মোবাইল')}>{digits(f.mobile) || '—'}</Descriptions.Item>
+                  <Descriptions.Item label={tx('বিকল্প মোবাইল')}>{digits(f.alt_mobile) || '—'}</Descriptions.Item>
+                  <Descriptions.Item label={tx('ঠিকানা')}>{f.address}</Descriptions.Item>
+                  <Descriptions.Item label={tx('ডাকঘর')}>{f.post_office ?? '—'}</Descriptions.Item>
+                  <Descriptions.Item label={tx('মৌজা')}>{f.mouza ?? '—'}</Descriptions.Item>
+                  <Descriptions.Item label={tx('পেশা')}>{f.occupation ? meta?.occupations[f.occupation] : '—'}</Descriptions.Item>
+                  <Descriptions.Item label={tx('মন্তব্য')} span="filled">
                     {f.remarks ?? '—'}
                   </Descriptions.Item>
-                  <Descriptions.Item label="নিবন্ধন" span="filled">{fmtDateTime(f.created_at)}</Descriptions.Item>
+                  <Descriptions.Item label={tx('নিবন্ধন')} span="filled">{fmtDateTime(f.created_at)}</Descriptions.Item>
                 </Descriptions>
               ),
             },
             {
               key: 'membership',
-              label: 'সদস্যপদ',
+              label: tx('সদস্যপদ'),
               children: m ? (
                 <>
                   <Descriptions bordered size="small" column={{ xs: 1, md: 3 }} style={{ marginBottom: 16 }}>
-                    <Descriptions.Item label="সদস্য নং">{digits(m.member_no)}</Descriptions.Item>
-                    <Descriptions.Item label="ভর্তির তারিখ">{fmtDate(m.admitted_on)}</Descriptions.Item>
-                    <Descriptions.Item label="অবস্থা">
+                    <Descriptions.Item label={tx('সদস্য নং')}>{digits(m.member_no)}</Descriptions.Item>
+                    <Descriptions.Item label={tx('ভর্তির তারিখ')}>{fmtDate(m.admitted_on)}</Descriptions.Item>
+                    <Descriptions.Item label={tx('অবস্থা')}>
                       <Tag color={MEMBER_STATUS[m.status].color}>{MEMBER_STATUS[m.status].label}</Tag>
-                      {m.is_legacy && <Tag>পুরোনো খাতা</Tag>}
+                      {m.is_legacy && <Tag>{tx('পুরোনো খাতা')}</Tag>}
                     </Descriptions.Item>
-                    <Descriptions.Item label="নমিনি" span="filled">
+                    <Descriptions.Item label={tx('নমিনি')} span="filled">
                       {m.nominees.length ? m.nominees.map((n) => `${n.name} (${n.relation}, ${digits(Number(n.share_percent))}%)`).join(', ') : '—'}
                     </Descriptions.Item>
                   </Descriptions>
-                  <Typography.Title level={5}>সদস্যপদের ইতিহাস</Typography.Title>
+                  <Typography.Title level={5}>{tx('সদস্যপদের ইতিহাস')}</Typography.Title>
                   <Timeline
                     items={m.history.map((h) => ({
                       color: h.to_status === 'active' ? 'green' : h.to_status === 'cancelled' ? 'red' : 'orange',
                       content: (
                         <>
-                          <strong>{ACTION[h.action] ?? h.action}</strong> · কার্যকর {fmtDate(h.effective_date)}
-                          {h.reason && <div>কারণ: {h.reason}</div>}
-                          {h.resolution_no && <div>সভার সিদ্ধান্ত: {h.resolution_no}</div>}
-                          {h.fee && Number(h.fee) > 0 && <div>ফি: ৳ {digits(Number(h.fee))}</div>}
+                          <strong>{ACTION[h.action] ?? h.action}</strong>{' '}{tx('· কার্যকর')}{' '}{fmtDate(h.effective_date)}
+                          {h.reason && <div>{tx('কারণ:')}{' '}{h.reason}</div>}
+                          {h.resolution_no && <div>{tx('সভার সিদ্ধান্ত:')}{' '}{h.resolution_no}</div>}
+                          {h.fee && Number(h.fee) > 0 && <div>{tx('ফি: ৳')}{' '}{digits(Number(h.fee))}</div>}
                           {h.creator && <Typography.Text type="secondary">{h.creator.name_bn}</Typography.Text>}
                         </>
                       ),
@@ -307,7 +309,7 @@ export default function FarmerProfilePage() {
                 </>
               ) : (
                 <>
-                  <Empty description="সদস্য নন" />
+                  <Empty description={tx('সদস্য নন')} />
                   {f.applications.length > 0 && (
                     <Table
                       rowKey="id"
@@ -315,34 +317,34 @@ export default function FarmerProfilePage() {
                       pagination={false}
                       dataSource={f.applications}
                       columns={[
-                        { title: 'আবেদন নং', dataIndex: 'application_no', render: (v, a) => <Link to={`/membership/applications/${a.id}`}>{v}</Link> },
-                        { title: 'তারিখ', dataIndex: 'applied_on', render: fmtDate },
-                        { title: 'অবস্থা', dataIndex: 'status', render: (s) => <Tag color={APPLICATION_STATUS[s]?.color}>{APPLICATION_STATUS[s]?.label}</Tag> },
+                        { title: tx('আবেদন নং'), dataIndex: 'application_no', render: (v, a) => <Link to={`/membership/applications/${a.id}`}>{v}</Link> },
+                        { title: tx('তারিখ'), dataIndex: 'applied_on', render: fmtDate },
+                        { title: tx('অবস্থা'), dataIndex: 'status', render: (s) => <Tag color={APPLICATION_STATUS[s]?.color}>{APPLICATION_STATUS[s]?.label}</Tag> },
                       ]}
                     />
                   )}
                 </>
               ),
             },
-            { key: 'documents', label: 'ডকুমেন্ট', children: <DocumentsTab farmerId={f.id} /> },
+            { key: 'documents', label: tx('ডকুমেন্ট'), children: <DocumentsTab farmerId={f.id} /> },
             {
               key: 'household',
-              label: 'খানা',
+              label: tx('খানা'),
               children: f.household ? (
                 <Descriptions bordered size="small" column={1}>
-                  <Descriptions.Item label="খানা">
+                  <Descriptions.Item label={tx('খানা')}>
                     <Link to={`/households?open=${f.household.id}`}>{f.household.code}</Link>
                   </Descriptions.Item>
-                  <Descriptions.Item label="খানাপ্রধান">{f.household.head?.name_bn ?? '—'}</Descriptions.Item>
-                  <Descriptions.Item label="সম্পর্ক">{f.household_relation ? meta?.relations[f.household_relation] : '—'}</Descriptions.Item>
+                  <Descriptions.Item label={tx('খানাপ্রধান')}>{f.household.head?.name_bn ?? '—'}</Descriptions.Item>
+                  <Descriptions.Item label={tx('সম্পর্ক')}>{f.household_relation ? meta?.relations[f.household_relation] : '—'}</Descriptions.Item>
                 </Descriptions>
               ) : (
-                <Empty description="কোনো খানার সাথে যুক্ত নয়" />
+                <Empty description={tx('কোনো খানার সাথে যুক্ত নয়')} />
               ),
             },
-            { key: 'land', label: 'জমি', children: <FarmerLandsTab farmerId={f.id} /> },
-            { key: 'finance', label: 'আর্থিক তথ্য', children: <Empty description="সেচ, সঞ্চয়, শেয়ার ও ঋণের তথ্য ফেজ ৫–৭-এ যুক্ত হবে" /> },
-            ...(can('farmer.view') ? [{ key: 'history', label: 'ইতিহাস', children: <HistoryTab farmerId={f.id} /> }] : []),
+            { key: 'land', label: tx('জমি'), children: <FarmerLandsTab farmerId={f.id} /> },
+            { key: 'finance', label: tx('আর্থিক তথ্য'), children: <Empty description={tx('সেচ, সঞ্চয়, শেয়ার ও ঋণের তথ্য ফেজ ৫–৭-এ যুক্ত হবে')} /> },
+            ...(can('farmer.view') ? [{ key: 'history', label: tx('ইতিহাস'), children: <HistoryTab farmerId={f.id} /> }] : []),
           ]}
         />
       </Card>

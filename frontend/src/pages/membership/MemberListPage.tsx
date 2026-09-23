@@ -11,6 +11,7 @@ import { digits, fmtDate, toEnDigits } from '../../lib/format'
 import { downloadExport, MEMBER_STATUS, toOptions, useFarmerMeta, type MemberStatus } from '../../lib/phase2'
 import { required } from '../../lib/rules'
 import type { Mouza } from '../../lib/types'
+import { t as tx } from '../../lib/i18n'
 
 type Row = {
   id: number
@@ -23,10 +24,10 @@ type Row = {
 
 type Action = 'deactivate' | 'activate' | 'cancel' | 'reactivate'
 const ACTIONS: Record<Action, { label: string; from: MemberStatus[] }> = {
-  deactivate: { label: 'নিষ্ক্রিয় করুন', from: ['active'] },
-  activate: { label: 'সক্রিয় করুন', from: ['inactive'] },
-  cancel: { label: 'সদস্যপদ বাতিল', from: ['active', 'inactive'] },
-  reactivate: { label: 'পুনর্বহাল', from: ['cancelled'] },
+  deactivate: { label: tx('নিষ্ক্রিয় করুন'), from: ['active'] },
+  activate: { label: tx('সক্রিয় করুন'), from: ['inactive'] },
+  cancel: { label: tx('সদস্যপদ বাতিল'), from: ['active', 'inactive'] },
+  reactivate: { label: tx('পুনর্বহাল'), from: ['cancelled'] },
 }
 
 type Params = { page: number; per_page: number; search?: string; status?: string; mouza_id?: number }
@@ -78,7 +79,7 @@ export default function MemberListPage() {
     const v = await legacyForm.validateFields()
     try {
       await api.post('/members/legacy', { ...v, member_no: toEnDigits(String(v.member_no)), admitted_on: (v.admitted_on as Dayjs).format('YYYY-MM-DD') })
-      message.success('পুরোনো সদস্য এন্ট্রি হয়েছে।')
+      message.success(tx('পুরোনো সদস্য এন্ট্রি হয়েছে।'))
       setLegacyOpen(false)
       legacyForm.resetFields()
       queryClient.invalidateQueries({ queryKey: ['members'] })
@@ -90,7 +91,7 @@ export default function MemberListPage() {
   return (
     <>
       <div className="page-header">
-        <h2>সদস্য</h2>
+        <h2>{tx('সদস্য')}</h2>
         <Space wrap>
           <Can perm="member.export">
             <Button icon={<DownloadOutlined />} onClick={() => downloadExport('/members/export', { ...params, page: undefined }, 'members.csv').catch((e) => message.error(errorMessage(e)))}>
@@ -98,20 +99,20 @@ export default function MemberListPage() {
             </Button>
           </Can>
           <Can perm="member.admin">
-            <Button onClick={() => setLegacyOpen(true)}>পুরোনো খাতার সদস্য এন্ট্রি</Button>
+            <Button onClick={() => setLegacyOpen(true)}>{tx('পুরোনো খাতার সদস্য এন্ট্রি')}</Button>
           </Can>
           <Can perm="membership.create">
             <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate('/membership/applications/new')}>
-              নতুন আবেদন
+              {tx('নতুন আবেদন')}
             </Button>
           </Can>
         </Space>
       </div>
       <div className="toolbar">
-        <Input.Search placeholder="সদস্য নং, নাম, পিতা বা মোবাইল" allowClear style={{ width: 280 }} onSearch={(search) => set({ search })} />
-        <Select placeholder="অবস্থা" allowClear style={{ width: 140 }} options={Object.entries(MEMBER_STATUS).map(([value, s]) => ({ value, label: s.label }))} onChange={(status) => set({ status })} />
+        <Input.Search placeholder={tx('সদস্য নং, নাম, পিতা বা মোবাইল')} allowClear style={{ width: 280 }} onSearch={(search) => set({ search })} />
+        <Select placeholder={tx('অবস্থা')} allowClear style={{ width: 140 }} options={Object.entries(MEMBER_STATUS).map(([value, s]) => ({ value, label: s.label }))} onChange={(status) => set({ status })} />
         <Select
-          placeholder="মৌজা"
+          placeholder={tx('মৌজা')}
           allowClear
           showSearch={{ optionFilterProp: 'label' }}
           style={{ width: 180 }}
@@ -130,24 +131,24 @@ export default function MemberListPage() {
           total: data?.total,
           showSizeChanger: true,
           pageSizeOptions: [25, 50, 100],
-          showTotal: (t) => `মোট ${digits(t)} জন`,
+          showTotal: (t) => tx('মোট {{p0}} জন', { p0: digits(t) }),
           onChange: (page, per_page) => setParams((p) => ({ ...p, page, per_page })),
         }}
         columns={[
-          { title: 'সদস্য নং', dataIndex: 'member_no', width: 100, render: digits },
-          { title: 'নাম', render: (_, m) => <Link to={`/farmers/${m.farmer.id}`}>{m.farmer.name_bn}</Link> },
-          { title: 'পিতা', render: (_, m) => m.farmer.father_name },
-          { title: 'মোবাইল', render: (_, m) => digits(m.farmer.mobile) || '—' },
-          { title: 'গ্রাম', render: (_, m) => m.farmer.village?.name_bn },
-          { title: 'মৌজা', render: (_, m) => m.farmer.mouza?.name_bn },
-          { title: 'ভর্তি', dataIndex: 'admitted_on', render: fmtDate },
+          { title: tx('সদস্য নং'), dataIndex: 'member_no', width: 100, render: digits },
+          { title: tx('নাম'), render: (_, m) => <Link to={`/farmers/${m.farmer.id}`}>{m.farmer.name_bn}</Link> },
+          { title: tx('পিতা'), render: (_, m) => m.farmer.father_name },
+          { title: tx('মোবাইল'), render: (_, m) => digits(m.farmer.mobile) || '—' },
+          { title: tx('গ্রাম'), render: (_, m) => m.farmer.village?.name_bn },
+          { title: tx('মৌজা'), render: (_, m) => m.farmer.mouza?.name_bn },
+          { title: tx('ভর্তি'), dataIndex: 'admitted_on', render: fmtDate },
           {
-            title: 'অবস্থা',
+            title: tx('অবস্থা'),
             dataIndex: 'status',
             render: (s: MemberStatus, m) => (
               <>
                 <Tag color={MEMBER_STATUS[s].color}>{MEMBER_STATUS[s].label}</Tag>
-                {m.is_legacy && <Tag>পুরোনো</Tag>}
+                {m.is_legacy && <Tag>{tx('পুরোনো')}</Tag>}
               </>
             ),
           },
@@ -161,7 +162,7 @@ export default function MemberListPage() {
                 .map(([key, a]) => ({ key, label: a.label, danger: key === 'cancel', onClick: () => openChange(m, key) }))
               return (
                 <Dropdown menu={{ items }} trigger={['click']}>
-                  <Button type="text" icon={<MoreOutlined />} aria-label="আরও" />
+                  <Button type="text" icon={<MoreOutlined />} aria-label={tx('আরও')} />
                 </Dropdown>
               )
             },
@@ -171,53 +172,53 @@ export default function MemberListPage() {
 
       <Modal
         open={!!change}
-        title={change ? `${ACTIONS[change.action].label} — ${change.member.farmer.name_bn} (নং ${digits(change.member.member_no)})` : ''}
+        title={change ? tx('{{p0}} — {{p1}} (নং {{p2}})', { p0: ACTIONS[change.action].label, p1: change.member.farmer.name_bn, p2: digits(change.member.member_no) }) : ''}
         onCancel={() => setChange(null)}
         onOk={submitChange}
-        okText="অনুমোদনের জন্য পাঠান"
-        cancelText="বাতিল"
+        okText={tx('অনুমোদনের জন্য পাঠান')}
+        cancelText={tx('বাতিল')}
         okButtonProps={{ danger: change?.action === 'cancel' }}
         forceRender
       >
-        <Alert type="info" showIcon style={{ marginBottom: 12 }} title="ম্যানেজার ও সভাপতি/বোর্ডের অনুমোদনের পর কার্যকর হবে।" />
+        <Alert type="info" showIcon style={{ marginBottom: 12 }} title={tx('ম্যানেজার ও সভাপতি/বোর্ডের অনুমোদনের পর কার্যকর হবে।')} />
         <Form form={statusForm} layout="vertical">
-          <Form.Item name="effective_date" label="কার্যকর তারিখ" rules={[required('তারিখ দিন')]}>
+          <Form.Item name="effective_date" label={tx('কার্যকর তারিখ')} rules={[required(tx('তারিখ দিন'))]}>
             <DatePicker format="DD/MM/YYYY" style={{ width: '100%' }} />
           </Form.Item>
           {change?.action === 'cancel' && (
             <>
-              <Form.Item name="reason_type" label="বাতিলের কারণ" rules={[required('কারণ বাছাই করুন')]}>
+              <Form.Item name="reason_type" label={tx('বাতিলের কারণ')} rules={[required(tx('কারণ বাছাই করুন'))]}>
                 <Select options={toOptions(meta?.cancel_reasons)} />
               </Form.Item>
-              <Form.Item name="resolution_no" label="সভার সিদ্ধান্ত নম্বর" rules={[required('সিদ্ধান্ত নম্বর দিন')]}>
+              <Form.Item name="resolution_no" label={tx('সভার সিদ্ধান্ত নম্বর')} rules={[required(tx('সিদ্ধান্ত নম্বর দিন'))]}>
                 <Input />
               </Form.Item>
             </>
           )}
-          <Form.Item name="reason" label="বিস্তারিত কারণ" rules={[required('কারণ লিখুন')]}>
+          <Form.Item name="reason" label={tx('বিস্তারিত কারণ')} rules={[required(tx('কারণ লিখুন'))]}>
             <Input.TextArea rows={3} />
           </Form.Item>
           {change?.action === 'reactivate' && (
-            <Form.Item name="fee" label="পুনর্ভর্তি ফি">
-              <InputNumber min={0} prefix="৳" style={{ width: '100%' }} />
+            <Form.Item name="fee" label={tx('পুনর্ভর্তি ফি')}>
+              <InputNumber min={0} prefix={tx('৳')} style={{ width: '100%' }} />
             </Form.Item>
           )}
         </Form>
       </Modal>
 
-      <Modal open={legacyOpen} title="পুরোনো খাতার সদস্য এন্ট্রি" onCancel={() => setLegacyOpen(false)} onOk={submitLegacy} okText="সংরক্ষণ" cancelText="বাতিল" forceRender>
-        <Alert type="info" showIcon style={{ marginBottom: 12 }} title="খাতার সদস্য নম্বর হুবহু বসবে। নতুন সদস্যের নম্বর স্বয়ংক্রিয়ভাবে সবচেয়ে বড় পুরোনো নম্বরের পর থেকে চলবে।" />
+      <Modal open={legacyOpen} title={tx('পুরোনো খাতার সদস্য এন্ট্রি')} onCancel={() => setLegacyOpen(false)} onOk={submitLegacy} okText={tx('সংরক্ষণ')} cancelText={tx('বাতিল')} forceRender>
+        <Alert type="info" showIcon style={{ marginBottom: 12 }} title={tx('খাতার সদস্য নম্বর হুবহু বসবে। নতুন সদস্যের নম্বর স্বয়ংক্রিয়ভাবে সবচেয়ে বড় পুরোনো নম্বরের পর থেকে চলবে।')} />
         <Form form={legacyForm} layout="vertical">
-          <Form.Item name="farmer_id" label="কৃষক" rules={[required('কৃষক বাছাই করুন')]}>
+          <Form.Item name="farmer_id" label={tx('কৃষক')} rules={[required(tx('কৃষক বাছাই করুন'))]}>
             <FarmerPicker type="non_member" />
           </Form.Item>
-          <Form.Item name="member_no" label="খাতার সদস্য নম্বর" rules={[required('সদস্য নম্বর দিন')]}>
+          <Form.Item name="member_no" label={tx('খাতার সদস্য নম্বর')} rules={[required(tx('সদস্য নম্বর দিন'))]}>
             <Input inputMode="numeric" style={{ width: 160 }} />
           </Form.Item>
-          <Form.Item name="admitted_on" label="ভর্তির তারিখ" rules={[required('তারিখ দিন')]}>
+          <Form.Item name="admitted_on" label={tx('ভর্তির তারিখ')} rules={[required(tx('তারিখ দিন'))]}>
             <DatePicker format="DD/MM/YYYY" style={{ width: '100%' }} />
           </Form.Item>
-          <Form.Item name="remarks" label="মন্তব্য">
+          <Form.Item name="remarks" label={tx('মন্তব্য')}>
             <Input />
           </Form.Item>
         </Form>

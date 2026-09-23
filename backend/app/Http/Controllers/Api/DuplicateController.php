@@ -32,7 +32,7 @@ class DuplicateController extends Controller
         ]);
         $this->duplicates->dismiss($data['a'], $data['b'], $request->user()->id);
 
-        return response()->json(['message' => 'এই জোড়া আর ডুপ্লিকেট হিসেবে দেখাবে না।']);
+        return response()->json(['message' => __('এই জোড়া আর ডুপ্লিকেট হিসেবে দেখাবে না।')]);
     }
 
     /** Side-by-side data for the merge screen. */
@@ -65,7 +65,7 @@ class DuplicateController extends Controller
         return response()->json([
             'approval_id' => $req->id,
             'status' => $req->status,
-            'message' => $req->status === 'approved' ? 'মার্জ সম্পন্ন হয়েছে।' : 'মার্জ অনুরোধ অনুমোদনের জন্য পাঠানো হয়েছে।',
+            'message' => $req->status === 'approved' ? __('মার্জ সম্পন্ন হয়েছে।') : __('মার্জ অনুরোধ অনুমোদনের জন্য পাঠানো হয়েছে।'),
         ], 201);
     }
 }

@@ -5,6 +5,7 @@ import { Alert, App, Button, Card, Checkbox, Space, Spin, Table } from 'antd'
 import { useAuth } from '../../auth/AuthContext'
 import { api, errorMessage } from '../../lib/api'
 import type { Role } from '../../lib/types'
+import { t as tx } from '../../lib/i18n'
 
 type MatrixData = {
   role: Role
@@ -48,7 +49,7 @@ function Matrix({ id, data }: { id: string; data: MatrixData }) {
     setSaving(true)
     try {
       await api.put(`/roles/${id}/permissions`, { permissions: [...granted] })
-      message.success('অনুমতি সংরক্ষণ হয়েছে।')
+      message.success(tx('অনুমতি সংরক্ষণ হয়েছে।'))
       queryClient.invalidateQueries({ queryKey: ['roles', id, 'permissions'] })
     } catch (e) {
       message.error(errorMessage(e))
@@ -66,17 +67,17 @@ function Matrix({ id, data }: { id: string; data: MatrixData }) {
   return (
     <>
       <div className="page-header">
-        <h2>অনুমতি — {data.role.label}</h2>
+        <h2>{tx('অনুমতি —')}{' '}{data.role.label}</h2>
         {!readOnly && (
           <Space>
-            <Button onClick={() => setGranted(new Set(data.granted))}>আগের অবস্থায় ফেরান</Button>
+            <Button onClick={() => setGranted(new Set(data.granted))}>{tx('আগের অবস্থায় ফেরান')}</Button>
             <Button type="primary" loading={saving} onClick={save}>
-              সংরক্ষণ
+              {tx('সংরক্ষণ')}
             </Button>
           </Space>
         )}
       </div>
-      {data.locked && <Alert type="info" showIcon style={{ marginBottom: 16 }} title="সুপার অ্যাডমিন সবসময় সব অনুমতি পান; এটি পরিবর্তন করা যায় না।" />}
+      {data.locked && <Alert type="info" showIcon style={{ marginBottom: 16 }} title={tx('সুপার অ্যাডমিন সবসময় সব অনুমতি পান; এটি পরিবর্তন করা যায় না।')} />}
       <Card styles={{ body: { padding: 0 } }}>
         <Table
           rowKey={([m]) => m}
@@ -87,7 +88,7 @@ function Matrix({ id, data }: { id: string; data: MatrixData }) {
           sticky
           columns={[
             {
-              title: 'মডিউল',
+              title: tx('মডিউল'),
               fixed: 'left',
               width: 200,
               render: (_, [m, label]) => {

@@ -3,6 +3,7 @@ import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { Result, Spin } from 'antd'
 import { useAuth } from './auth/AuthContext'
 import AppLayout from './components/AppLayout'
+import { t as tx } from './lib/i18n'
 const LoginPage = lazy(() => import('./pages/LoginPage'))
 const ChangePasswordPage = lazy(() => import('./pages/ChangePasswordPage'))
 const DashboardPage = lazy(() => import('./pages/DashboardPage'))
@@ -52,7 +53,7 @@ function RequireAuth({ children }: { children: ReactNode }) {
 
 function Perm({ perm, children }: { perm: string | string[]; children: ReactNode }) {
   const { can } = useAuth()
-  return can(perm) ? <>{children}</> : <Result status="403" title="অনুমতি নেই" subTitle="এই পাতা দেখার অনুমতি আপনার নেই।" />
+  return can(perm) ? <>{children}</> : <Result status="403" title={tx('অনুমতি নেই')} subTitle={tx('এই পাতা দেখার অনুমতি আপনার নেই।')} />
 }
 
 export default function App() {
@@ -114,7 +115,7 @@ export default function App() {
         <Route path="data-health" element={<Perm perm="land.view"><DataHealthPage /></Perm>} />
         <Route path="imports" element={<Perm perm="import.create"><ImportPage /></Perm>} />
 
-        <Route path="*" element={<Result status="404" title="পাতা পাওয়া যায়নি" />} />
+        <Route path="*" element={<Result status="404" title={tx('পাতা পাওয়া যায়নি')} />} />
       </Route>
     </Routes>
     </Suspense>
