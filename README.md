@@ -66,8 +66,8 @@ FARMER ── LAND ──┬── OWNER
 
 | ফেজ | বিষয় | যার উপর নির্ভরশীল | অবস্থা |
 |---|---|---|---|
-| ১ | ভিত্তি, প্রশাসন ও অনুমোদন ব্যবস্থা | — | ✅ সম্পন্ন (লাইভ সার্ভারে ডিপ্লয় বাকি) |
-| ২ | কৃষক, সদস্য ও পাতওয়ারী | ১ | ✅ সম্পন্ন |
+| ১ | ভিত্তি, প্রশাসন ও অনুমোদন ব্যবস্থা | — | ✅ সম্পন্ন |
+| ২ | কৃষক, সদস্য ও পাতওয়ারী | ১ | ✅ সম্পন্ন (লাইভ) |
 | ৩ | জমি, বর্গা ও Data Health | ২ | ⚪ বাকি |
 | ৪ | Accounting Backbone, ক্যাশ ও ব্যাংক | ১ | ⚪ বাকি |
 | ৫ | সেচ ও রশিদ ব্যবস্থা | ৩, ৪ | ⚪ বাকি |
@@ -549,9 +549,9 @@ app(ApprovalService::class)->submit('membership.admit', 'সদস্যপদ: 
 - [x] পেজ lazy-load (প্রথম লোড ~২৮০KB)
 - [x] ব্রাউজার (Edge) দিয়ে পুরো flow যাচাই — console/HTTP error নেই
 
-**Deployment — 🟡 আংশিক**
+**Deployment — ✅ সম্পন্ন**
 - [x] cPanel নির্দেশিকা (নিচে ৯ নম্বর অংশ), React Router-এর জন্য `.htaccess`, cron
-- [ ] লাইভ cPanel সার্ভারে ডিপ্লয় ও যাচাই (হোস্টিং অ্যাকাউন্টের তথ্য প্রয়োজন)
+- [x] লাইভ cPanel সার্ভারে ডিপ্লয় ও যাচাই — https://smartirrigation.click (২৩/০৯/২০২৬)
 
 ### ফেজ ২ — কৃষক, সদস্য ও পাতওয়ারী — ✅ সম্পন্ন
 - [x] S-201/202/203 কৃষক তালিকা (Filter, Excel), যোগ/সম্পাদনা (ছবি স্বয়ংক্রিয় ছোট), প্রোফাইল (৭ ট্যাব, প্রিন্ট)
@@ -697,41 +697,57 @@ XAMPP-এ Windows: `.env`-এ `MYSQLDUMP_PATH="F:/web/mysql/bin/mysqldump.exe"`�
 
 ## ৯. cPanel ডিপ্লয়মেন্ট
 
-**Frontend build:** `frontend/.env.production`-এ `VITE_API_URL=https://api.yourdomain.com/api` লিখে `npm run build` চালান। তারপর `dist/`-এর সব ফাইল (`.htaccess`-সহ) `public_html`-এ আপলোড করুন।
+**লাইভ:** https://smartirrigation.click (প্রথম deploy: ২৩/০৯/২০২৬ — ফেজ ১ ও ২)
+
+### কাঠামো
 
 ```
-Shared cPanel
-├── public_html/              ← frontend/dist (npm run build)
-├── api.yourdomain.com/       ← backend/public-কে document root হিসেবে
-│   (Laravel কোড public_html-এর বাইরে রাখুন)
-└── MySQL Database
+/home/smartirrigation/
+├── public_html/                  ← frontend/dist (React build)
+│   ├── index.html, assets/
+│   ├── .htaccess                 ← /api/* → laravel.php, বাকি সব → index.html
+│   └── laravel.php               ← Laravel-এর front controller
+└── polsha/
+    ├── backend/                  ← Laravel (public_html-এর বাইরে, .env ওয়েব থেকে দেখা যায় না)
+    ├── backend.old/              ← আগের release (দরকারে ফেরত যাওয়ার জন্য)
+    ├── releases/                 ← আপলোড করা backend.tgz, frontend.tgz
+    └── server-deploy.sh          ← deploy/server-deploy.sh-এর কপি
 ```
 
-**Cron (প্রতি মিনিটে):**
+- API চলে **একই ডোমেইনের `/api` পথে** — আলাদা subdomain বা CORS লাগে না। `frontend/.env.production`-এ `VITE_API_URL=/api`।
+- `api.smartirrigation.click` subdomain ও `~/mk_erp` আগের একটি প্রজেক্টের — এগুলোতে হাত দেওয়া হয়নি।
+- ডেটাবেস: `smartirrigation_irrigdb` (ইউজার `smartirrigation_irrig`; পাসওয়ার্ড শুধু সার্ভারের `polsha/backend/.env`-এ)। cPanel প্রতিটি নামের আগে `smartirrigation_` যোগ করে।
+- PHP 8.2 (ea-php82), MariaDB 10.11।
 
-```
-* * * * * cd /home/USER/backend && php artisan schedule:run >> /dev/null 2>&1
-```
-
-এই একটি cron নিচের কাজগুলো চালাবে:
-- দৈনিক ব্যাকআপ (রাত ২টা)
-- queue খালি করা (স্থায়ী worker ছাড়া)
-- মেয়াদোত্তীর্ণ token মুছে ফেলা
-
-**Production `.env`:**
-
-| Key | মান |
-|---|---|
-| `APP_ENV` | `production` |
-| `APP_DEBUG` | `false` |
-| `APP_URL` | `https://api.yourdomain.com` |
-| `FRONTEND_URL` | `https://yourdomain.com` |
-| `MYSQLDUMP_PATH` | `mysqldump` |
-
-**ডিপ্লয়ের পর:**
+### নতুন ভার্সন deploy করার ধাপ
 
 ```bash
-php artisan migrate --force
-php artisan config:cache
-php artisan route:cache
+# লোকালে
+cd frontend && npm run build && tar -czf ../frontend.tgz -C dist . && cd ..
+git archive --format=tar.gz -o backend.tgz HEAD backend
+# দুটো ফাইল সার্ভারের ~/polsha/releases/-এ আপলোড করুন (SFTP / cPanel File Manager), তারপর SSH-এ:
+bash ~/polsha/server-deploy.sh
 ```
+
+`server-deploy.sh` যা করে:
+1. নতুন backend খোলে; আগের `.env` ও `storage/` (আপলোড করা ফাইল, ব্যাকআপ) রেখে দেয়
+2. `composer install --no-dev`, `migrate --force`
+3. release বদলায় (আগেরটা `backend.old`), তারপর config/route cache
+4. `public_html`-এ শুধু build-এর নিজের ফাইলগুলো বদলায়
+5. cron নিশ্চিত করে
+
+প্রথম deploy-এ `~/polsha/.first-deploy.env` (DB তথ্য, APP_URL, ADMIN_PASSWORD) থেকে `.env` তৈরি হয়, seed চলে, তারপর ফাইলটি মুছে ফেলা হয়।
+
+**সমস্যা হলে আগের release-এ ফেরা:** `cd ~/polsha && mv backend backend.bad && mv backend.old backend && cd backend && php artisan config:cache && php artisan route:cache`
+
+### Cron (স্বয়ংক্রিয়ভাবে বসানো)
+
+```
+* * * * * cd /home/smartirrigation/polsha/backend && /usr/local/bin/php artisan schedule:run >> /dev/null 2>&1
+```
+
+এই একটি cron চালায়: দৈনিক ব্যাকআপ (রাত ২টা, ৩০ দিন রাখা), queue খালি করা (স্থায়ী worker ছাড়া), মেয়াদোত্তীর্ণ token মুছে ফেলা।
+
+### প্রথম লগইন
+
+ইউজারনেম `admin`; প্রথম পাসওয়ার্ড deploy-এর সময় random তৈরি করে মালিককে আলাদাভাবে জানানো হয়েছে (README বা git-এ রাখা হয়নি)। প্রথম লগইনেই পাসওয়ার্ড বদলাতে হয়।

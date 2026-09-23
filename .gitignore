@@ -7,7 +7,6 @@ Thumbs.db
 # Local-only env files
 .env
 .env.*.local
-frontend/.env.production
 
 # Personal Claude Code settings
 .claude/settings.local.json

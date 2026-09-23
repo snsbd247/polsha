@@ -1,15 +1,27 @@
-# cPanel/Apache: send every non-file request to index.html so React Router
-# can handle deep links like /admin/users/5 on refresh.
+# public_html on cPanel (Apache/LiteSpeed).
+# /api/*  → laravel.php (Laravel lives outside public_html)
+# other   → real file if it exists, else index.html (React Router deep links)
+
+DirectoryIndex index.html
+Options -Indexes
+
 <IfModule mod_rewrite.c>
   RewriteEngine On
   RewriteBase /
+
+  # Shared hosts often drop the Authorization header — pass the Bearer token through.
+  RewriteCond %{HTTP:Authorization} .
+  RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+
+  RewriteRule ^api(/.*)?$ laravel.php [L,QSA]
+
   RewriteRule ^index\.html$ - [L]
   RewriteCond %{REQUEST_FILENAME} !-f
   RewriteCond %{REQUEST_FILENAME} !-d
   RewriteRule . /index.html [L]
 </IfModule>
 
-# Hashed assets never change — cache them for a year; never cache index.html.
+# Hashed assets never change — cache for a year; never cache index.html.
 <IfModule mod_headers.c>
   <FilesMatch "\.(js|css|woff2?|png|jpg|svg)$">
     Header set Cache-Control "public, max-age=31536000, immutable"
