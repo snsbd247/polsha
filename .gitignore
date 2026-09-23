@@ -1,0 +1,13 @@
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Local-only env files
+.env
+.env.*.local
+frontend/.env.production
+
+# Personal Claude Code settings
+.claude/settings.local.json

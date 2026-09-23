@@ -1,0 +1,80 @@
+import { lazy, Suspense, type ReactNode } from 'react'
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
+import { Result, Spin } from 'antd'
+import { useAuth } from './auth/AuthContext'
+import AppLayout from './components/AppLayout'
+const LoginPage = lazy(() => import('./pages/LoginPage'))
+const ChangePasswordPage = lazy(() => import('./pages/ChangePasswordPage'))
+const DashboardPage = lazy(() => import('./pages/DashboardPage'))
+const ProfilePage = lazy(() => import('./pages/ProfilePage'))
+const UserListPage = lazy(() => import('./pages/admin/UserListPage'))
+const UserFormPage = lazy(() => import('./pages/admin/UserFormPage'))
+const UserDetailPage = lazy(() => import('./pages/admin/UserDetailPage'))
+const RoleListPage = lazy(() => import('./pages/admin/RoleListPage'))
+const PermissionMatrixPage = lazy(() => import('./pages/admin/PermissionMatrixPage'))
+const BackupPage = lazy(() => import('./pages/admin/BackupPage'))
+const AuditLogPage = lazy(() => import('./pages/audit/AuditLogPage'))
+const ApprovalInboxPage = lazy(() => import('./pages/approvals/ApprovalInboxPage'))
+const ApprovalDetailPage = lazy(() => import('./pages/approvals/ApprovalDetailPage'))
+const ApprovalRulesPage = lazy(() => import('./pages/approvals/ApprovalRulesPage'))
+const LocationPage = lazy(() => import('./pages/masters/LocationPage'))
+const MouzaPage = lazy(() => import('./pages/masters/MouzaPage'))
+const GeneralSettingsPage = lazy(() => import('./pages/settings/GeneralSettingsPage'))
+const SequencePage = lazy(() => import('./pages/settings/SequencePage'))
+
+function RequireAuth({ children }: { children: ReactNode }) {
+  const { user, loading } = useAuth()
+  const location = useLocation()
+
+  if (loading) return <Spin fullscreen />
+  if (!user) return <Navigate to="/login" replace state={{ from: location.pathname }} />
+  if (user.must_change_password) return <Navigate to="/change-password" replace />
+  return <>{children}</>
+}
+
+function Perm({ perm, children }: { perm: string | string[]; children: ReactNode }) {
+  const { can } = useAuth()
+  return can(perm) ? <>{children}</> : <Result status="403" title="অনুমতি নেই" subTitle="এই পাতা দেখার অনুমতি আপনার নেই।" />
+}
+
+export default function App() {
+  return (
+    <Suspense fallback={<Spin fullscreen />}>
+    <Routes>
+      <Route path="/login" element={<LoginPage />} />
+      <Route path="/change-password" element={<ChangePasswordPage />} />
+      <Route
+        element={
+          <RequireAuth>
+            <AppLayout />
+          </RequireAuth>
+        }
+      >
+        <Route index element={<DashboardPage />} />
+        <Route path="profile" element={<ProfilePage />} />
+
+        <Route path="admin/users" element={<Perm perm="user.view"><UserListPage /></Perm>} />
+        <Route path="admin/users/new" element={<Perm perm="user.create"><UserFormPage /></Perm>} />
+        <Route path="admin/users/:id" element={<Perm perm="user.view"><UserDetailPage /></Perm>} />
+        <Route path="admin/users/:id/edit" element={<Perm perm="user.edit"><UserFormPage /></Perm>} />
+        <Route path="admin/roles" element={<Perm perm="role.view"><RoleListPage /></Perm>} />
+        <Route path="admin/roles/:id/permissions" element={<Perm perm="role.view"><PermissionMatrixPage /></Perm>} />
+        <Route path="admin/approval-rules" element={<Perm perm="approval.admin"><ApprovalRulesPage /></Perm>} />
+        <Route path="admin/backups" element={<Perm perm="__super_admin__"><BackupPage /></Perm>} />
+
+        <Route path="audit/logs" element={<Perm perm="audit.view"><AuditLogPage /></Perm>} />
+        <Route path="approvals" element={<ApprovalInboxPage />} />
+        <Route path="approvals/:id" element={<ApprovalDetailPage />} />
+
+        <Route path="masters/locations" element={<LocationPage />} />
+        <Route path="masters/mouzas" element={<MouzaPage />} />
+
+        <Route path="settings/general" element={<Perm perm="settings.admin"><GeneralSettingsPage /></Perm>} />
+        <Route path="settings/sequences" element={<Perm perm="settings.admin"><SequencePage /></Perm>} />
+
+        <Route path="*" element={<Result status="404" title="পাতা পাওয়া যায়নি" />} />
+      </Route>
+    </Routes>
+    </Suspense>
+  )
+}

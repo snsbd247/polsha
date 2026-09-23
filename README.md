@@ -1,0 +1,731 @@
+# পল্লী সমবায় সমিতি + কৃষি সেচ ERP (Polsha)
+
+সমবায় সমিতি ও কৃষি সেচ ব্যবস্থাপনার জন্য পূর্ণাঙ্গ ERP।
+**Stack:** React (Vite + TypeScript + Ant Design) → REST API → Laravel 12 → MySQL/MariaDB · **Deployment:** Shared cPanel
+
+```
+polsha/
+├── backend/    Laravel API  (cPanel: api.yourdomain.com)
+└── frontend/   React build  (cPanel: public_html)
+```
+
+---
+
+## সূচিপত্র
+
+1. [মূল নকশা-সিদ্ধান্ত](#১-মূল-নকশা-সিদ্ধান্ত)
+2. [১০ ফেজের রোডম্যাপ](#২-১০-ফেজের-রোডম্যাপ)
+3. [ফেজ ১ ও ২ — চূড়ান্ত সিদ্ধান্ত](#৩-ফেজ-১-ও-২--চূড়ান্ত-সিদ্ধান্ত)
+4. [ফেজ ১ — স্ক্রিন স্পেসিফিকেশন](#৪-ফেজ-১--স্ক্রিন-স্পেসিফিকেশন)
+5. [ফেজ ২ — স্ক্রিন স্পেসিফিকেশন](#৫-ফেজ-২--স্ক্রিন-স্পেসিফিকেশন)
+6. [ডেটাবেস ও API](#৬-ডেটাবেস-ও-api)
+7. [অগ্রগতি](#৭-অগ্রগতি)
+8. [লোকাল ডেভেলপমেন্ট](#৮-লোকাল-ডেভেলপমেন্ট)
+9. [cPanel ডিপ্লয়মেন্ট](#৯-cpanel-ডিপ্লয়মেন্ট)
+
+---
+
+## ১. মূল নকশা-সিদ্ধান্ত
+
+সব ফেজে এই নিয়মগুলো মানা হবে:
+
+1. **Accounting আগে, টাকার মডিউল পরে।** প্রতিটি আর্থিক লেনদেন একটি Posting Engine-এর মাধ্যমে সঙ্গে সঙ্গে ডাবল-এন্ট্রি জার্নালে যাবে। Operational টেবিল (সেচ/সঞ্চয়/ঋণ) বিস্তারিত রাখবে; Reconciliation দুটো মিলিয়ে দেখবে।
+2. **একটাই Approval Engine** — Draft → Pending → Approved/Rejected → Posted। সদস্যপদ, ঋণ, রেট পরিবর্তন, সম্পদ বাতিল সবাই এটা ব্যবহার করবে। যে পাঠায় সে নিজে অনুমোদন করতে পারবে না (Maker ≠ Checker)।
+3. **আর্থিক রেকর্ড কখনো ডিলিট নয়** — বাতিল মানে উল্টো এন্ট্রি (reverse journal) + Audit Log।
+4. **Invoice-এ Snapshot** — মালিকের নাম, পিতার নাম, দাগ, খতিয়ান, পরিমাণ ইনভয়েস তৈরির মুহূর্তে কপি হবে; পরে জমির মালিকানা বদলালেও পুরোনো ইনভয়েস বদলাবে না।
+5. **Shared hosting বাস্তবতা** — কোনো স্থায়ী queue worker নেই; প্রতি মিনিটের cron `schedule:run` দিয়ে SMS, ব্যাকআপ, রিপোর্ট ও queue চলবে।
+6. **কারিগরি মান** —
+   - টাকা `DECIMAL(15,2)`
+   - অর্থবছর জুলাই–জুন
+   - সিরিয়াল নম্বর DB lock দিয়ে
+   - বাংলা PDF-এর জন্য mPDF
+   - Sanctum Bearer token
+   - Timezone `Asia/Dhaka`
+
+**মূল পরিকল্পনায় যোগ করা:** খানা/Household, সঞ্চয়ের মুনাফা বণ্টন, শেয়ার লভ্যাংশ, ঋণের সুদ পদ্ধতি (Flat/Declining), Overdue Aging, দৈনিক স্বয়ংক্রিয় ব্যাকআপ।
+
+### সিস্টেমের মূল সম্পর্ক
+
+```
+                 FARMER
+          ┌────────┴────────┐
+       MEMBER          NON-MEMBER
+    ┌─────┼─────┐
+ Savings Share Loan
+
+FARMER ── LAND ──┬── OWNER
+                 └── CULTIVATOR → IRRIGATION → INVOICE → PAYMENT
+                                                          │
+                                              ┌───────────┴──────────┐
+                                          CASH/BANK             ACCOUNTING → GENERAL LEDGER
+```
+
+---
+
+## ২. ১০ ফেজের রোডম্যাপ
+
+| ফেজ | বিষয় | যার উপর নির্ভরশীল | অবস্থা |
+|---|---|---|---|
+| ১ | ভিত্তি, প্রশাসন ও অনুমোদন ব্যবস্থা | — | ✅ সম্পন্ন (লাইভ সার্ভারে ডিপ্লয় বাকি) |
+| ২ | কৃষক, সদস্য ও পাতওয়ারী | ১ | ⚪ বাকি |
+| ৩ | জমি, বর্গা ও Data Health | ২ | ⚪ বাকি |
+| ৪ | Accounting Backbone, ক্যাশ ও ব্যাংক | ১ | ⚪ বাকি |
+| ৫ | সেচ ও রশিদ ব্যবস্থা | ৩, ৪ | ⚪ বাকি |
+| ৬ | সঞ্চয় ও শেয়ার | ২, ৫ | ⚪ বাকি |
+| ৭ | ঋণ | ৬ | ⚪ বাকি |
+| ৮ | Combined Payment, Day Reconciliation, QR ও সম্পদ | ৫, ৬, ৭ | ⚪ বাকি |
+| ৯ | রিপোর্ট, ড্যাশবোর্ড, Integrity Scan ও SMS | ৮ | ⚪ বাকি |
+| ১০ | Import/Migration, UAT ও Go-Live | সব | ⚪ বাকি |
+
+> ফেজ ৪ শুধু ফেজ ১-এর উপর নির্ভরশীল — দুজন ডেভেলপার থাকলে ফেজ ২–৩-এর সমান্তরালে চালানো যায়।
+
+<details>
+<summary><b>ফেজ ১ — ভিত্তি, প্রশাসন ও অনুমোদন ব্যবস্থা</b></summary>
+
+- Laravel API + React প্রজেক্ট সেটআপ; cPanel deployment pipeline শুরু থেকেই
+- লগইন, ইউজার যোগ/নিষ্ক্রিয়, পাসওয়ার্ড রিসেট, User History
+- Role (১২টি) ও Permission (প্রতি মডিউলে View/Create/Edit/Delete/Approve/Export/Admin)
+- **Audit Log** — কে, কখন, কোন মডিউলে, কী করেছে, পুরোনো ও নতুন মান (Model Observer দিয়ে স্বয়ংক্রিয়)
+- **কেন্দ্রীয় Approval Engine**
+- **এলাকা:** বিভাগ → জেলা → উপজেলা → ইউনিয়ন → গ্রাম → মৌজা (মৌজা কোডসহ)
+- Settings: সমিতির নাম, ঠিকানা, লোগো, অর্থবছর; সিরিয়াল নম্বরের নিয়ম
+- দৈনিক স্বয়ংক্রিয় DB ব্যাকআপ (cron)
+
+**সম্পন্ন হওয়ার শর্ত:** ইউজার লগইন করতে পারবে, Role অনুযায়ী মেনু দেখাবে/লুকাবে, সব পরিবর্তন Audit Log-এ দেখা যাবে, লাইভ সার্ভারে চলবে।
+</details>
+
+<details>
+<summary><b>ফেজ ২ — কৃষক, সদস্য ও পাতওয়ারী</b></summary>
+
+- **কৃষক:** তালিকা, যোগ, প্রোফাইল, NID/মোবাইল/পিতা-মাতা/ঠিকানা/গ্রাম/মৌজা, খানা, ডকুমেন্ট, History
+- **Duplicate Detection ও Farmer Merge** (অনুমোদনসহ)
+- **সদস্যপদ:** আবেদন → ভর্তি ফি → অনুমোদন (দুই ধাপ) → Member Number
+- সক্রিয়/নিষ্ক্রিয়, বাতিল, পুনর্বহাল, Membership History
+- ভর্তি রেজিস্টার, ভোটার তালিকা
+- **পাতওয়ারী:** তালিকা, দায়িত্বাধীন মৌজা, দায়িত্বের ইতিহাস
+
+**সম্পন্ন হওয়ার শর্ত:** একজন কৃষক যোগ করে সদস্য বানানো যাবে; ডুপ্লিকেট হলে সিস্টেম সতর্ক করবে।
+</details>
+
+<details>
+<summary><b>ফেজ ৩ — জমি, বর্গা ও Data Health</b></summary>
+
+- **জমি:** Land ID, মৌজা, দাগ, খতিয়ান, পরিমাণ (শতক/একর রূপান্তর), ধরন, অবস্থা
+- **মালিকানা ও চাষি সম্পর্ক:** আলাদা টেবিলে, শুরু/শেষ তারিখসহ — কিছুই overwrite হবে না
+  - একাধিক মালিক ও তাদের অংশ
+  - মালিক আর চাষি একই বা ভিন্ন ব্যক্তি
+- **বর্গা:** বর্গাচাষি, মেয়াদ, ইতিহাস
+- জমি ↔ পাতওয়ারী সংযোগ
+- **Data Health প্যানেল:** ভুল মৌজা, অসম্পূর্ণ তথ্য, ডুপ্লিকেট জমি, চাষিবিহীন জমি, অবৈধ সম্পর্ক
+- কৃষক ও জমির প্রাথমিক Excel Import
+
+**সম্পন্ন হওয়ার শর্ত:** যেকোনো জমির মালিক ও চাষির পূর্ণ ইতিহাস দেখা যাবে; মৌজাভিত্তিক গণনা সঠিক হবে।
+</details>
+
+<details>
+<summary><b>ফেজ ৪ — Accounting Backbone, ক্যাশ ও ব্যাংক</b></summary>
+
+- **Chart of Accounts:** সম্পদ, দায়, মূলধন, আয়, ব্যয় — আগে থেকে সাজানো
+- Journal, Voucher (হাতে দেওয়া এন্ট্রি + অনুমোদন)
+- **Posting Engine:** প্রতিটি লেনদেনের ধরনের জন্য ডেবিট/ক্রেডিট নিয়ম
+- **আলাদা Cash Stream:** সেচের নগদ, সমিতির নগদ, বিবিধ নগদ
+- **ব্যাংক:** অ্যাকাউন্ট, জমা, উত্তোলন, স্থানান্তর, FDR
+- Accounting Period ও Period Close (বন্ধ মাসে এন্ট্রি নিষিদ্ধ)
+- Opening Balance
+- General Ledger, Trial Balance, Cash Book
+
+**সম্পন্ন হওয়ার শর্ত:** ভাউচার দিলে Trial Balance মিলবে; বন্ধ মাসে এন্ট্রি করা যাবে না।
+</details>
+
+<details>
+<summary><b>ফেজ ৫ — সেচ ও রশিদ ব্যবস্থা</b></summary>
+
+- **মৌসুম:** ফসল, শুরু, শেষ, অবস্থা
+- **রেট:** জমির ধরন × ক্যাটাগরি × মৌসুম × কার্যকর তারিখ; রেটের ইতিহাস; পরিবর্তনে অনুমোদন
+- **ইনভয়েস:**
+  - একক বা Bulk (পুরো মৌসুম/মৌজা)
+  - Billing Split Preview
+  - ইনভয়েস চাষির নামে, মালিকের তথ্য snapshot হিসেবে
+- **রশিদের সাধারণ ব্যবস্থা (সব মডিউল ব্যবহার করবে):**
+  - নগদ/ব্যাংক/অন্যান্য
+  - বাংলা রশিদ প্রিন্ট (QR সহ)
+  - রশিদ বাতিল = অনুমোদন + উল্টো এন্ট্রি
+- সেচ আদায় (আংশিকও), বকেয়া, পুরোনো রশিদ এন্ট্রি, Due Mismatch, Rate Audit
+
+**সম্পন্ন হওয়ার শর্ত:** এক মৌসুমের ইনভয়েস → আদায় → রশিদ → লেজার স্বয়ংক্রিয়ভাবে মিলবে।
+</details>
+
+<details>
+<summary><b>ফেজ ৬ — সঞ্চয় ও শেয়ার</b></summary>
+
+- **সঞ্চয়** (শুধু সক্রিয় সদস্য):
+  - অ্যাকাউন্ট, প্রারম্ভিক ব্যালেন্স
+  - জমা, উত্তোলন, সমন্বয় (অনুমোদনসহ)
+  - দৈনিক/মাসিক/বার্ষিক স্টেটমেন্ট
+- **সঞ্চয়ের মুনাফা বণ্টন:** হার → Preview → অনুমোদন → Posting
+- **শেয়ার:** ক্রয়, প্রারম্ভিক শেয়ার, হস্তান্তর (অনুমোদনসহ), সমন্বয়, স্টেটমেন্ট
+- **লভ্যাংশ:** শেয়ারের অনুপাতে
+- শেয়ার ও সঞ্চয় কখনো এক অ্যাকাউন্টে নয়
+- Share Capital Reconciliation
+
+**সম্পন্ন হওয়ার শর্ত:** সদস্যের স্টেটমেন্ট ব্যালেন্স = লেজার ব্যালেন্স।
+</details>
+
+<details>
+<summary><b>ফেজ ৭ — ঋণ</b></summary>
+
+- **ঋণের ধরন:** সর্বোচ্চ সীমা, সুদ, মেয়াদ, কিস্তির সংখ্যা ও ধরন, **Flat বা Declining** পদ্ধতি
+- **ধাপ:** আবেদন → Pending → অনুমোদন → বিতরণ → কিস্তি → সমাপ্ত
+- **জামিনদার:** অবশ্যই সদস্য; একজন কতজনের জামিনদার হতে পারবে তার সীমা
+- **কিস্তির তালিকা:** স্বয়ংক্রিয়; আসল ও সুদ আলাদা
+- **জরিমানা:** দেরিতে দিলে
+- **পরিশোধ ভাগের ক্রম:** জরিমানা → সুদ → আসল
+- **Overdue Aging:** ১–৩০ / ৩১–৯০ / ৯০+ দিন
+- ঋণের স্টেটমেন্ট ও ইতিহাস
+
+**সম্পন্ন হওয়ার শর্ত:** বিতরণ থেকে শেষ কিস্তি পর্যন্ত; লেজারে আসল/সুদ/জরিমানা আলাদা খাতে।
+</details>
+
+<details>
+<summary><b>ফেজ ৮ — Combined Payment, Day Reconciliation, QR ও সম্পদ</b></summary>
+
+- **Combined Payment:**
+  - এক রশিদে সেচ + সঞ্চয় + ঋণ + শেয়ার
+  - স্বয়ংক্রিয় ভাগ; দরকারে ইউজার বদলাতে পারবে
+  - কোন খাত আগে মিটবে তা Settings-এ
+- **Day Reconciliation:**
+  - প্রারম্ভিক + আদায় − পরিশোধ = প্রত্যাশিত শেষ ব্যালেন্স
+  - আসল নগদের সাথে মিলিয়ে দিন বন্ধ; অমিল থাকলে লিখে রাখতে হবে
+- **Bank Reconciliation:** মাসিক, স্টেটমেন্টের সাথে এক এক করে
+- **QR:** কৃষক, সদস্য, জমি, রশিদ, সম্পদ; মোবাইল ক্যামেরায় স্ক্যান; স্ক্যানের ইতিহাস
+- **সম্পদ:**
+  - Registry, ক্রয়, স্থাপন, স্থানান্তর
+  - রক্ষণাবেক্ষণের সময়সূচি ও মেরামত
+  - মাসিক অবচয় (স্বয়ংক্রিয় Posting)
+  - বিক্রয়/বাতিলে অনুমোদন
+
+**সম্পন্ন হওয়ার শর্ত:** এক পেমেন্ট ৪ মডিউলে সঠিক ভাগ হবে; দিনশেষে ক্যাশ মিলিয়ে দিন বন্ধ করা যাবে।
+</details>
+
+<details>
+<summary><b>ফেজ ৯ — রিপোর্ট, ড্যাশবোর্ড, Integrity Scan ও SMS</b></summary>
+
+- **রিপোর্ট** (Filter + বাংলা PDF + Excel):
+  - কৃষক/সদস্য, জমি, সেচ, সঞ্চয়, ঋণ
+  - হিসাব: Cash Book, Ledger, Trial Balance, আয়-ব্যয়, Balance Sheet, Cash Flow
+- **ড্যাশবোর্ড:**
+  - ১৩টি KPI
+  - ৪০ দিনের দৈনিক আদায়ের চার্ট
+  - আজকের আদায় ও পেমেন্ট, Pending Approval, সতর্কতা
+  - cache করা, যাতে shared hosting-এও দ্রুত
+- **রাতের Integrity Scan:**
+  - ডুপ্লিকেট কৃষক/NID/জমি
+  - Invoice/Payment/Cash/Ledger mismatch
+  - Missing relation, ঋণাত্মক ব্যালেন্স
+- **Ledger Integrity:** মডিউলের হিসাব বনাম লেজার
+- **SMS:**
+  - Settings, Template, Log
+  - OTP, পেমেন্ট নিশ্চিতকরণ
+  - বকেয়া/ঋণ/সেচের রিমাইন্ডার
+  - cron-নির্ভর queue
+
+**সম্পন্ন হওয়ার শর্ত:** ম্যানেজার শুধু ড্যাশবোর্ড দেখেই অবস্থা বুঝবেন; প্রতিদিন সকালে Integrity রিপোর্ট তৈরি থাকবে।
+</details>
+
+<details>
+<summary><b>ফেজ ১০ — Import/Migration, UAT ও Go-Live</b></summary>
+
+- **Import Wizard:** Excel আপলোড → কলাম মেলানো → যাচাই → ভুলের রিপোর্ট → Preview → নিশ্চিত → Import → Audit
+  - কৃষক, জমি, সঞ্চয়/শেয়ার/ঋণের প্রারম্ভিক ব্যালেন্স, পুরোনো সেচ, পেমেন্ট
+  - প্রতিটি Import-এর Batch ID; দরকারে পুরো Batch Rollback
+- **বাকি Settings:**
+  - ইনভয়েস, রশিদ ও সদস্য কার্ডের নকশা
+  - লেটারহেড, স্বাক্ষর, ফুটার
+  - License, মেয়াদ, ইনস্টলেশনের তথ্য
+- **UAT:** প্রতিটি Role দিয়ে আসল কাজের পরিস্থিতি
+- **Parallel Run:** ২–৪ সপ্তাহ পুরোনো খাতা ও নতুন সিস্টেম পাশাপাশি
+- **নিরাপত্তা ও গতি:**
+  - নিরাপত্তা পর্যালোচনা, ধীর query ঠিক করা
+  - cPanel-এ OPcache এবং config ও route cache
+- **প্রশিক্ষণ:** Role-ভিত্তিক বাংলা ব্যবহার-নির্দেশিকা → Go-Live
+
+**সম্পন্ন হওয়ার শর্ত:** পুরোনো ডেটার মোট = নতুন সিস্টেমের মোট; সমিতি পুরোপুরি নতুন সিস্টেমে।
+</details>
+
+---
+
+## ৩. ফেজ ১ ও ২ — চূড়ান্ত সিদ্ধান্ত
+
+| বিষয় | সিদ্ধান্ত |
+|---|---|
+| **Farmer ID** | `F-000001` — সিস্টেম-প্রদত্ত, অপরিবর্তনীয়। মৌজা/গ্রাম কোড ID-তে থাকবে না। |
+| **Member Number** | পুরোনো খাতার নম্বর **হুবহু** থাকবে (নমুনা: `10001`, `230`, `5876`, `96` — সব সংখ্যা)। সংখ্যা হিসেবে সংরক্ষণ, স্ক্রিনে বাংলা অঙ্কে। নতুন সদস্য = পুরোনোদের সর্বোচ্চ + ১ (যেমন `10002`)। Prefix নেই (Settings-এ যোগ করা যায়)। হাতে নম্বর বসানো শুধু পুরোনো এন্ট্রি/Import-এ, `member.admin` অনুমতিতে, ডুপ্লিকেট নিষিদ্ধ। |
+| **ভর্তি ফি** | Settings-এ নির্দিষ্ট ফি স্বয়ংক্রিয় বসবে; ইউজার হাতে বদলাতে পারবে — তখন কারণ বাধ্যতামূলক, নির্দিষ্ট ও আসল ফি দুটোই Audit Log-এ। |
+| **সদস্য হওয়ার যোগ্যতা** | যেকোনো সক্রিয় কৃষক আবেদন করতে পারবে। |
+| **ভোটার তালিকা** | কাট-অফ তারিখে সব সক্রিয় সদস্য = ভোটার। মেয়াদের কোনো শর্ত নেই (Settings-এ শর্ত যোগের সুযোগ আছে)। |
+| **সদস্যপদ অনুমোদন** | দুই ধাপ: **Manager → সভাপতি/বোর্ড (President)**। Reactivation-এও একই। |
+| **কাজের এলাকা** | শুধু Role ও Permission ভিত্তিক; মৌজা-ভিত্তিক সীমাবদ্ধতা নেই। |
+| **ফোল্ডার নাম** | `backend/` (Laravel), `frontend/` (React)। |
+
+### Role (১২টি)
+
+| Role | নাম | মূল দায়িত্ব |
+|---|---|---|
+| Super Admin | সুপার অ্যাডমিন | সব অনুমতি (পরিবর্তনযোগ্য নয়) |
+| Admin | অ্যাডমিন | সিস্টেম ও ইউজার ব্যবস্থাপনা |
+| President | সভাপতি/বোর্ড | চূড়ান্ত অনুমোদন |
+| Manager | ম্যানেজার | দৈনন্দিন কাজ, প্রথম ধাপের অনুমোদন |
+| Accountant | হিসাবরক্ষক | হিসাব, লেজার |
+| Cashier | ক্যাশিয়ার | টাকা গ্রহণ ও প্রদান |
+| Irrigation Officer | সেচ কর্মকর্তা | সেচ ইনভয়েস ও আদায় |
+| Member Officer | সদস্য কর্মকর্তা | কৃষক ও সদস্য |
+| Loan Officer | ঋণ কর্মকর্তা | ঋণ |
+| Asset Officer | সম্পদ কর্মকর্তা | সম্পদ |
+| Auditor | অডিটর | শুধু দেখা ও Export |
+| Data Entry | ডাটা এন্ট্রি | তথ্য এন্ট্রি |
+
+**Permission ফরম্যাট:** `module.action` — action: `view`, `create`, `edit`, `delete`, `approve`, `export`, `admin`।
+মডিউল তালিকা: [backend/config/erp.php](backend/config/erp.php)।
+
+---
+
+## ৪. ফেজ ১ — স্ক্রিন স্পেসিফিকেশন
+
+**সাধারণ নিয়ম:**
+- সব তালিকায়: Search, Filter, Pagination (২৫/৫০/১০০), Sort
+- Export বাটন দেখাবে শুধু `*.export` অনুমতি থাকলে
+- যার অনুমতি নেই সে বাটন দেখবে না; API-তেও একই অনুমতি আবার যাচাই হবে
+- Delete সবক্ষেত্রে Soft Delete; কোথাও ব্যবহৃত রেকর্ড ডিলিট করা যাবে না
+- ইনপুটে বাংলা অঙ্ক (০–৯) দিলে স্বয়ংক্রিয়ভাবে ইংরেজিতে রূপান্তর হবে
+- তারিখ `DD/MM/YYYY`
+
+| কোড | স্ক্রিন | Route | অনুমতি |
+|---|---|---|---|
+| S-101 | লগইন | `/login` | Public |
+| S-102 | পাসওয়ার্ড রিসেট | `/forgot-password` | Public (SMS আসবে ফেজ ৯-এ; তার আগে শুধু Admin রিসেট করবে) |
+| S-103 | আমার প্রোফাইল ও পাসওয়ার্ড | `/profile` | সবাই |
+| S-104 | App Layout (Sidebar, Topbar, Footer) | — | সবাই |
+| S-105 | ইউজার তালিকা | `/admin/users` | `user.view` |
+| S-106 | ইউজার যোগ/সম্পাদনা | `/admin/users/new`, `/:id/edit` | `user.create` / `user.edit` |
+| S-107 | ইউজারের বিস্তারিত (তথ্য, লগইন ইতিহাস, কাজ) | `/admin/users/:id` | `user.view` (+ `audit.view`) |
+| S-108 | Role তালিকা | `/admin/roles` | `role.view` / `role.create` / `role.edit` / `role.delete` |
+| S-109 | Permission Matrix | `/admin/roles/:id/permissions` | `role.admin` |
+| S-110 | Audit Log (আগের/পরের মান পাশাপাশি) | `/audit/logs` | `audit.view`, `audit.export` |
+| S-111 | Approval Inbox (আমার কাছে / আমার পাঠানো / সব) | `/approvals` | `approval.view` (+ step role) |
+| S-112 | অনুমোদনের বিস্তারিত (পরিবর্তন, ডকুমেন্ট, মন্তব্য, টাইমলাইন) | `/approvals/:id` | সংশ্লিষ্টরা |
+| S-113 | অনুমোদনের নিয়ম | `/admin/approval-rules` | `approval.admin` |
+| S-114 | Location Master (tree) | `/masters/locations` | `location.*` |
+| S-115 | মৌজা তালিকা ও ফর্ম | `/masters/mouzas` | `mouza.*` |
+| S-116 | সাধারণ সেটিংস | `/settings/general` | `settings.admin` |
+| S-117 | সিরিয়াল নম্বরের নিয়ম | `/settings/sequences` | `settings.admin` |
+| S-118 | ব্যাকআপ | `/admin/backups` | শুধু Super Admin |
+
+**গুরুত্বপূর্ণ নিয়ম:**
+- **লগইন:**
+  - ইউজারনেম বা মোবাইল দিয়ে লগইন
+  - পরপর ৫ বার ভুল হলে ১৫ মিনিট লক
+  - প্রতিটি চেষ্টা (সফল/ব্যর্থ) লগে থাকবে
+- **প্রথম লগইন:** পাসওয়ার্ড না বদলানো পর্যন্ত অন্য কোনো API কাজ করবে না।
+- **পাসওয়ার্ড:** কমপক্ষে ৮ অক্ষর, অন্তত একটি অক্ষর ও একটি সংখ্যা। বদলালে অন্য সব ডিভাইস থেকে লগআউট।
+- **ইউজার:**
+  - নিজেকে নিষ্ক্রিয় করা যাবে না
+  - শুধু Super Admin আরেকজনকে Super Admin বানাতে পারবে
+- **Role:**
+  - System Role ও ইউজার আছে এমন Role মোছা যাবে না
+  - Super Admin-এর অনুমতি অপরিবর্তনীয়
+- **Audit Log:**
+  - শুধু পড়া যাবে, কেউ বদলাতে বা মুছতে পারবে না
+  - পাসওয়ার্ড কখনো লগে যাবে না
+- **Approval:**
+  - নিজের অনুরোধ নিজে অনুমোদন নয়
+  - প্রত্যাখ্যান বা ফেরত পাঠাতে কারণ বাধ্যতামূলক
+  - নিয়ম বন্ধ থাকলে (বা পরিমাণ সীমার নিচে হলে) স্বয়ংক্রিয় অনুমোদন
+- **মৌজা:** একই উপজেলায় JL নম্বর অনন্য।
+- **সিরিয়াল নম্বর:** "পরের নম্বর" কমানো যাবে না।
+- **ব্যাকআপ:**
+  - প্রতিদিন রাত ২টায় স্বয়ংক্রিয়
+  - ৩০ দিন রাখা হবে
+  - gzip করা `.sql.gz`
+
+---
+
+## ৫. ফেজ ২ — স্ক্রিন স্পেসিফিকেশন
+
+| কোড | স্ক্রিন | Route | অনুমতি |
+|---|---|---|---|
+| S-201 | কৃষক তালিকা | `/farmers` | `farmer.view`, `farmer.export` |
+| S-202 | কৃষক যোগ/সম্পাদনা | `/farmers/new`, `/:id/edit` | `farmer.create` / `farmer.edit` |
+| S-203 | কৃষকের প্রোফাইল (৭ ট্যাব) | `/farmers/:id` | `farmer.view` |
+| S-204 | কৃষকের ডকুমেন্ট | প্রোফাইল ট্যাব | `farmer.view` / `farmer.edit` |
+| S-205 | ডুপ্লিকেট পর্যালোচনা | `/farmers/duplicates` | `farmer.view` / `farmer.edit` |
+| S-206 | কৃষক Merge | `/farmers/merge` | `farmer.edit` → `farmer.approve` |
+| S-207 | খানা তালিকা ও বিস্তারিত | `/households` | `farmer.view` / `farmer.edit` |
+| S-208 | সদস্যপদ আবেদন তালিকা | `/membership/applications` | `membership.*` |
+| S-209 | সদস্যপদ আবেদন ফর্ম | `/membership/applications/new` | `membership.create` |
+| S-210 | সদস্য তালিকা | `/members` | `member.view`, `member.export` |
+| S-211 | সদস্যপদের অবস্থা পরিবর্তন (Modal) | — | `member.edit` → `member.approve` |
+| S-212 | ভর্তি রেজিস্টার | `/members/admission-register` | `member.view`, `member.export` |
+| S-213 | ভোটার তালিকা | `/members/voters` | `member.view` (তৈরি: `member.admin`) |
+| S-214 | পাতওয়ারী তালিকা ও ফর্ম | `/masters/patwaris` | `patwari.*` |
+
+### কৃষক ফর্মের ফিল্ড (S-202)
+
+**ক. ব্যক্তিগত তথ্য**
+
+| ফিল্ড | নিয়ম |
+|---|---|
+| নাম (বাংলা) | বাধ্যতামূলক |
+| নাম (ইংরেজি) | ঐচ্ছিক |
+| পিতার নাম | বাধ্যতামূলক |
+| মাতার নাম, স্বামী/স্ত্রীর নাম | ঐচ্ছিক |
+| লিঙ্গ | বাধ্যতামূলক |
+| জন্মতারিখ | ঐচ্ছিক; বয়স ১৮-এর কম হলে সতর্কতা |
+| NID | ১০/১৩/১৭ অঙ্ক, অনন্য |
+| জন্ম নিবন্ধন নম্বর | NID না থাকলে |
+| মোবাইল | `01XXXXXXXXX` |
+| বিকল্প মোবাইল | ঐচ্ছিক |
+| ছবি | সর্বোচ্চ ২MB, স্বয়ংক্রিয় compress |
+
+**খ. ঠিকানা**
+
+| ফিল্ড | নিয়ম |
+|---|---|
+| বিভাগ → জেলা → উপজেলা → ইউনিয়ন → গ্রাম | cascading; গ্রাম বাধ্যতামূলক |
+| মৌজা | বাধ্যতামূলক, বাছাই করা গ্রাম অনুযায়ী |
+| বাড়ি/পাড়া, ডাকঘর | ঐচ্ছিক |
+
+**গ. খানা**
+
+| ফিল্ড | নিয়ম |
+|---|---|
+| খানা | খুঁজে বাছাই অথবা নতুন |
+| খানাপ্রধানের সাথে সম্পর্ক | খানা বাছাই করলে বাধ্যতামূলক |
+
+**ঘ. অন্যান্য**
+
+| ফিল্ড | নিয়ম |
+|---|---|
+| পেশা | ঐচ্ছিক |
+| মন্তব্য | ঐচ্ছিক |
+
+**সংরক্ষণের আগে ডুপ্লিকেট যাচাই:**
+- একই NID → সংরক্ষণ **আটকে যাবে**।
+- একই মোবাইল, অথবা একই নাম + পিতার নাম + গ্রাম → সতর্কবার্তা ও মিলে যাওয়াদের তালিকা। ইউজার বেছে নেবে: "আলাদা ব্যক্তি, সংরক্ষণ করুন" অথবা "আগেরজনকে খুলুন"।
+
+### কৃষক প্রোফাইলের ট্যাব (S-203)
+
+1. সারসংক্ষেপ
+2. সদস্যপদ
+3. ডকুমেন্ট
+4. খানা
+5. জমি (খালি জায়গা, পূরণ হবে ফেজ ৩-এ)
+6. আর্থিক তথ্য (খালি জায়গা, পূরণ হবে ফেজ ৫–৭-এ)
+7. ইতিহাস (Audit টাইমলাইন)
+
+### সদস্যপদ আবেদন ফর্ম (S-209)
+
+| ফিল্ড | নিয়ম |
+|---|---|
+| কৃষক | বাধ্যতামূলক; নন-মেম্বার ও সক্রিয় কৃষক |
+| আবেদনের তারিখ | বাধ্যতামূলক; ভবিষ্যৎ তারিখ নয় |
+| নমিনি (এক বা একাধিক) | নাম, সম্পর্ক, NID, মোবাইল, অংশ %; সবার অংশ যোগ করে ১০০% |
+| প্রস্তাবক / সমর্থক | ঐচ্ছিক; সক্রিয় সদস্যদের মধ্য থেকে |
+| ভর্তি ফি | Settings থেকে স্বয়ংক্রিয়; হাতে বদলালে কারণ বাধ্যতামূলক |
+| ফি পরিশোধের অবস্থা | পরিশোধিত / বাকি |
+| প্রাথমিক শেয়ার (কয়টি) | শুধু তথ্য; আসল শেয়ার হিসাব ফেজ ৬-এ |
+| আবেদনপত্রের স্ক্যান | ঐচ্ছিক |
+| স্বাক্ষর / টিপসই | ঐচ্ছিক |
+
+- একজন কৃষকের একই সময়ে একটির বেশি অপেক্ষমাণ আবেদন নয়।
+- চূড়ান্ত অনুমোদনের পর:
+  - Member Number তৈরি হবে
+  - কৃষকের ধরন "সদস্য" হবে
+  - সদস্যপদের ইতিহাসে লাইন যোগ হবে
+- ঐচ্ছিক: সভার সিদ্ধান্ত নম্বর ও তারিখ।
+- **ভর্তি ফি:** এখন শুধু "গ্রহণ করা হয়েছে" হিসেবে লেখা থাকবে। ফেজ ৪–৫-এর পর Migration Job দিয়ে লেজারে যাবে।
+
+### সদস্যপদের অবস্থা পরিবর্তন (S-211)
+
+প্রতিটি কাজে দুই ধাপের অনুমোদন (Manager → President) লাগবে।
+
+| কাজ | ফিল্ড |
+|---|---|
+| নিষ্ক্রিয় করা | কারণ, কার্যকর তারিখ |
+| সক্রিয় করা | কারণ, কার্যকর তারিখ |
+| সদস্যপদ বাতিল | কারণ (মৃত্যু/পদত্যাগ/বহিষ্কার/অন্যান্য), কার্যকর তারিখ, সভার সিদ্ধান্ত নম্বর |
+| পুনর্বহাল | কারণ, পুনর্ভর্তি ফি |
+
+- বাতিল হওয়া Member Number কখনো অন্য কাউকে দেওয়া হবে না।
+- পুনর্বহাল হলে পুরোনো নম্বরই ফিরে আসবে।
+- ফেজ ৫–৭-এর পর: সঞ্চয়, শেয়ার বা ঋণে টাকা বাকি থাকলে সদস্যপদ বাতিল করা যাবে না।
+
+---
+
+## ৬. ডেটাবেস ও API
+
+### টেবিল
+
+```
+ফেজ ১: users, login_logs, roles, permissions, model_has_roles, role_has_permissions,
+        personal_access_tokens, audit_logs, approval_rules, approval_requests,
+        approval_steps, approval_comments, divisions, districts, upazilas, unions,
+        villages, mouzas, mouza_village, settings, sequences, backups
+
+ফেজ ২: farmers, farmer_documents, households, duplicate_dismissals, farmer_merges,
+        membership_applications, membership_nominees, members,
+        membership_status_history, voter_lists, voter_list_items,
+        patwaris, patwari_mouza_history
+```
+
+### API (ফেজ ১ — তৈরি হয়েছে)
+
+```
+POST   /api/auth/login                      (throttle 10/min)
+POST   /api/auth/logout
+GET    /api/public/settings | /api/public/logo
+GET    /api/me ; POST /api/me ; POST /api/me/password ; POST /api/me/logout-all
+
+GET|POST       /api/users ; GET|PUT /api/users/{id}
+POST           /api/users/{id}/toggle-active | reset-password | force-logout
+GET            /api/users/{id}/login-logs | activity | photo
+
+GET|POST       /api/roles ; PUT|DELETE /api/roles/{id} ; POST /api/roles/{id}/duplicate
+GET|PUT        /api/roles/{id}/permissions
+
+GET            /api/audit-logs ; /api/audit-logs/meta ; /api/audit-logs/{id}
+
+GET            /api/approvals?tab=mine|sent|all ; /api/approvals/pending-count
+GET            /api/approvals/{id} ; POST /api/approvals/{id}/decide | comments
+GET|PUT        /api/approval-rules[/{id}]
+
+GET|POST       /api/locations/{divisions|districts|upazilas|unions|villages}
+PUT            /api/locations/{level}/{id}
+GET|POST       /api/mouzas ; GET|PUT /api/mouzas/{id}
+
+GET|PUT        /api/settings ; POST /api/settings/logo
+GET            /api/sequences ; PUT /api/sequences/{id}
+GET|POST       /api/backups ; GET /api/backups/{id}/download
+```
+
+### Approval Engine ব্যবহার (পরের মডিউলগুলোর জন্য)
+
+```php
+// 1) config/erp.php → 'approval_handlers' => ['membership.admit' => MembershipAdmitHandler::class]
+// 2) Handler implements App\Approvals\ApprovalHandler (approved / rejected / returned)
+// 3) অনুরোধ পাঠানো:
+app(ApprovalService::class)->submit('membership.admit', 'সদস্যপদ: করিম', $application, $payload);
+```
+
+---
+
+## ৭. অগ্রগতি
+
+### ফেজ ১
+
+**Backend — ✅ সম্পন্ন**
+- [x] Laravel 12 + Sanctum + spatie/laravel-permission, MySQL, `Asia/Dhaka`, CORS
+- [x] Migration: users, login_logs, audit_logs, approvals, locations, mouzas, settings, sequences, backups
+- [x] লগইন (ইউজারনেম/মোবাইল, বাংলা অঙ্ক), ৫ বার ভুলে লক, token মেয়াদ, প্রথম লগইনে পাসওয়ার্ড বদল
+- [x] User CRUD, সক্রিয়/নিষ্ক্রিয়, পাসওয়ার্ড রিসেট, জোর করে লগআউট, লগইন ও কাজের ইতিহাস
+- [x] Role CRUD, Duplicate, Permission Matrix (২৫ মডিউল × ৭ action), ১২টি Role-এর ডিফল্ট অনুমতি
+- [x] Auditable trait — create/update/delete/restore স্বয়ংক্রিয় লগ, পাসওয়ার্ড বাদ
+- [x] Approval Engine — বহু ধাপ, Maker≠Checker, কারণ বাধ্যতামূলক, Inbox, মন্তব্য, নিয়ম সম্পাদনা
+- [x] Location (৮ বিভাগ + ৬৪ জেলা seed), মৌজা (JL নম্বর উপজেলায় অনন্য)
+- [x] Settings, লোগো, Sequence (Farmer/Member/Application/Household)
+- [x] ব্যাকআপ (mysqldump + gzip, দৈনিক cron, ৩০ দিন রাখা)
+- [x] Feature test: ১৫টি পাস (Auth, Approval, Sequence, Sanctum guard-এ Role তালিকা)
+
+**Frontend — ✅ সম্পন্ন**
+- [x] Vite + React + TypeScript + Ant Design 6 + React Router + TanStack Query; বাংলা locale, Hind Siliguri ফন্ট
+- [x] API client (Bearer token, 401-এ লগআউট, 422 ফিল্ড-এরর ফর্মে), Auth context, `Can` কম্পোনেন্ট
+- [x] S-101 লগইন, প্রথম লগইনে বাধ্যতামূলক পাসওয়ার্ড বদল, S-103 প্রোফাইল
+- [x] S-104 Layout — অনুমতি অনুযায়ী মেনু, অনুমোদন Badge, মোবাইলে Drawer মেনু
+- [x] S-105/106/107 ইউজার তালিকা, ফর্ম, বিস্তারিত (লগইন ও কাজের ইতিহাস), পাসওয়ার্ড রিসেট, জোর করে লগআউট
+- [x] S-108 Role তালিকা, S-109 Permission Matrix (সারি/কলাম একসাথে টিক)
+- [x] S-110 Audit Log (Filter + আগের/পরের মান পাশাপাশি)
+- [x] S-111/112/113 Approval Inbox, বিস্তারিত (ধাপ টাইমলাইন, মন্তব্য, সিদ্ধান্ত), নিয়ম সম্পাদনা
+- [x] S-114 এলাকা (৫ কলামের cascading), S-115 মৌজা (JL নম্বর, গ্রাম সংযোগ)
+- [x] S-116 সাধারণ সেটিংস ও লোগো, S-117 সিরিয়াল নম্বর, S-118 ব্যাকআপ
+- [x] পেজ lazy-load (প্রথম লোড ~২৮০KB)
+- [x] ব্রাউজার (Edge) দিয়ে পুরো flow যাচাই — console/HTTP error নেই
+
+**Deployment — 🟡 আংশিক**
+- [x] cPanel নির্দেশিকা (নিচে ৯ নম্বর অংশ), React Router-এর জন্য `.htaccess`, cron
+- [ ] লাইভ cPanel সার্ভারে ডিপ্লয় ও যাচাই (হোস্টিং অ্যাকাউন্টের তথ্য প্রয়োজন)
+
+### ফেজ ২ — কৃষক, সদস্য ও পাতওয়ারী — ⚪ বাকি
+- [ ] কৃষক তালিকা, যোগ/সম্পাদনা, প্রোফাইল (৭ ট্যাব)
+- [ ] কৃষকের ডকুমেন্ট আপলোড (private storage)
+- [ ] খানা (Household) তালিকা ও বিস্তারিত
+- [ ] Duplicate Detection (NID আটকানো, মোবাইল/নাম+পিতা+গ্রামে সতর্কতা) ও পর্যালোচনা স্ক্রিন
+- [ ] Farmer Merge (অনুমোদনসহ)
+- [ ] সদস্যপদ আবেদন (নমিনি, প্রস্তাবক, ভর্তি ফি) → দুই ধাপ অনুমোদন → Member Number
+- [ ] সদস্য তালিকা, নিষ্ক্রিয়/সক্রিয়/বাতিল/পুনর্বহাল (অনুমোদনসহ), Membership History
+- [ ] পুরোনো সদস্য নম্বর হাতে এন্ট্রি (`member.admin`)
+- [ ] ভর্তি রেজিস্টার (প্রিন্ট/PDF/Excel)
+- [ ] ভোটার তালিকা (Snapshot) ও Voter Audit
+- [ ] পাতওয়ারী তালিকা ও মৌজা দায়িত্বের ইতিহাস
+
+### ফেজ ৩ — জমি, বর্গা ও Data Health — ⚪ বাকি
+- [ ] জমির তথ্য: Land ID, মৌজা, দাগ, খতিয়ান, পরিমাণ (একক রূপান্তর), ধরন, অবস্থা
+- [ ] মালিকানা (একাধিক মালিক ও অংশ) — শুরু/শেষ তারিখসহ ইতিহাস
+- [ ] চাষি সম্পর্ক (Owner বনাম Cultivator) ও বর্গা (মেয়াদসহ)
+- [ ] জমির History
+- [ ] জমি ↔ পাতওয়ারী সংযোগ
+- [ ] কৃষক প্রোফাইলের "জমি" ট্যাব
+- [ ] মৌজার Data Health (Land Count, Farmer Count, ভুল মৌজা, Missing data, Duplicate, অসম্পূর্ণ জমি, Invalid relation)
+- [ ] কৃষক ও জমির প্রাথমিক Excel Import
+
+### ফেজ ৪ — Accounting Backbone, ক্যাশ ও ব্যাংক — ⚪ বাকি
+- [ ] Chart of Accounts (সম্পদ/দায়/মূলধন/আয়/ব্যয়) seed
+- [ ] Journal Entry, Journal Lines, Voucher (অনুমোদনসহ)
+- [ ] Posting Engine (লেনদেনের ধরন → ডেবিট/ক্রেডিট নিয়ম)
+- [ ] Cash Stream: সেচের নগদ, সমিতির নগদ, বিবিধ নগদ
+- [ ] Opening Cash, Cash Receipt, Cash Payment, Cash Transfer, Closing Cash
+- [ ] ব্যাংক অ্যাকাউন্ট, জমা, উত্তোলন, স্থানান্তর, FDR, Bank Balance
+- [ ] Opening Balance
+- [ ] Accounting Period ও Period Close
+- [ ] General Ledger, Trial Balance, Cash Book
+- [ ] ভর্তি ফি-র লেজারে তোলার Migration Job
+
+### ফেজ ৫ — সেচ ও রশিদ ব্যবস্থা — ⚪ বাকি
+- [ ] মৌসুম (ফসল, শুরু, শেষ, অবস্থা)
+- [ ] সেচের রেট (জমির ধরন, ক্যাটাগরি, মৌসুম, কার্যকর তারিখ), Rate History, রেট পরিবর্তনে অনুমোদন
+- [ ] ইনভয়েস তৈরি — একক ও Bulk, Billing Split Preview, মালিকের তথ্য Snapshot
+- [ ] নিজের জমি → কৃষকের নামে; বর্গা → বর্গাচাষির নামে (মালিক, পিতা, মৌজা, দাগ, খতিয়ান, পরিমাণসহ)
+- [ ] Payment/Receipt Engine: নগদ/ব্যাংক/অন্যান্য, রশিদ তালিকা, বাংলা রশিদ প্রিন্ট (QR)
+- [ ] রশিদ বাতিল (অনুমোদন + উল্টো এন্ট্রি), Cancelled Receipt, Receipt Audit
+- [ ] সেচ আদায় (আংশিকসহ), সেচ বকেয়া, Invoice History
+- [ ] পুরোনো রশিদ এন্ট্রি (Legacy)
+- [ ] Due Mismatch, Rate Audit
+
+### ফেজ ৬ — সঞ্চয় ও শেয়ার — ⚪ বাকি
+- [ ] সঞ্চয় অ্যাকাউন্ট (শুধু সক্রিয় সদস্য), অ্যাকাউন্ট নম্বর, Opening Balance
+- [ ] জমা, উত্তোলন, সমন্বয় (অনুমোদনসহ)
+- [ ] সঞ্চয় রশিদ, Savings History
+- [ ] Member Statement (দৈনিক/মাসিক/বার্ষিক), Account Ledger
+- [ ] সঞ্চয়ের মুনাফা বণ্টন (হার → Preview → অনুমোদন → Posting)
+- [ ] Savings Audit
+- [ ] শেয়ার অ্যাকাউন্ট, ক্রয়, Opening Share
+- [ ] শেয়ার হস্তান্তর (অনুমোদনসহ), সমন্বয়
+- [ ] Share Capital Statement
+- [ ] লভ্যাংশ (Dividend) বণ্টন
+- [ ] Share Capital Reconciliation
+
+### ফেজ ৭ — ঋণ — ⚪ বাকি
+- [ ] Loan Product (ধরন, সর্বোচ্চ সীমা, সুদ, মেয়াদ, কিস্তি, Flat/Declining)
+- [ ] আবেদন → Pending → অনুমোদন → বিতরণ → কিস্তি → সমাপ্ত
+- [ ] জামিনদার (সদস্য হতে হবে, জামিনের সীমা)
+- [ ] Loan Plan ও কিস্তির তালিকা (আসল/সুদ আলাদা)
+- [ ] জরিমানার নিয়ম
+- [ ] ঋণ পরিশোধ (ভাগের ক্রম: জরিমানা → সুদ → আসল)
+- [ ] Loan Statement, Loan Due, Loan History
+- [ ] Overdue Aging (১–৩০ / ৩১–৯০ / ৯০+)
+
+### ফেজ ৮ — Combined Payment, Day Reconciliation, QR ও সম্পদ — ⚪ বাকি
+- [ ] Combined Payment (সেচ + সঞ্চয় + ঋণ + শেয়ার, স্বয়ংক্রিয় ভাগ, অগ্রাধিকার Settings)
+- [ ] Day Reconciliation (প্রত্যাশিত বনাম আসল নগদ, অমিল লেখা, দিন বন্ধ)
+- [ ] Bank Reconciliation (মাসিক, স্টেটমেন্টের সাথে)
+- [ ] QR: কৃষক, সদস্য, জমি, রশিদ, সম্পদ; QR Scanner; Scan History
+- [ ] Asset Registry (ID, নাম, ক্যাটাগরি, ক্রয়ের তারিখ ও মূল্য, অবস্থান, বর্তমান মূল্য, অবস্থা)
+- [ ] সম্পদ ক্রয়, Stock, স্থানান্তর, স্থাপন
+- [ ] রক্ষণাবেক্ষণের সময়সূচি, মেরামত
+- [ ] অবচয় (মাসিক, স্বয়ংক্রিয় Posting)
+- [ ] বিক্রয় ও বাতিল (অনুমোদনসহ)
+
+### ফেজ ৯ — রিপোর্ট, ড্যাশবোর্ড, Integrity Scan ও SMS — ⚪ বাকি
+- [ ] কৃষক/সদস্য রিপোর্ট: Farmer, Member, Non-member, Member History, Household, Voter
+- [ ] জমি রিপোর্ট: Land, Owner, Cultivator, Borga, Land History, মৌজাভিত্তিক, ধরনভিত্তিক
+- [ ] সেচ রিপোর্ট: Invoice, Collection, Due, Season, Rate, Cultivation History
+- [ ] সঞ্চয় রিপোর্ট: Collection, Statement, Balance
+- [ ] ঋণ রিপোর্ট: Loan, Disbursement, Installment Collection, Due
+- [ ] হিসাব রিপোর্ট: Cash Book, Ledger, Trial Balance, আয়-ব্যয়, Balance Sheet, Cash Flow, Bank Reconciliation
+- [ ] সব রিপোর্টে বাংলা PDF (mPDF) ও Excel Export
+- [ ] ড্যাশবোর্ড: ১৩টি KPI, ৪০ দিনের চার্ট, সাম্প্রতিক লেনদেন, Pending Approval, আজকের আদায়/পেমেন্ট, সতর্কতা
+- [ ] রাতের Integrity Scan (ডুপ্লিকেট, mismatch, missing relation, ঋণাত্মক ব্যালেন্স)
+- [ ] Ledger Integrity (মডিউল বনাম লেজার)
+- [ ] SMS: Settings, Template, Log, OTP, পেমেন্ট নিশ্চিতকরণ, বকেয়া/ঋণ/সেচ রিমাইন্ডার, সঞ্চয় নিশ্চিতকরণ
+- [ ] SMS দিয়ে পাসওয়ার্ড রিসেট (S-102)
+
+### ফেজ ১০ — Import/Migration, UAT ও Go-Live — ⚪ বাকি
+- [ ] Import Wizard (আপলোড → কলাম মেলানো → যাচাই → ভুলের রিপোর্ট → Preview → নিশ্চিত → Import → Audit)
+- [ ] Import: কৃষক, জমি, সঞ্চয়/শেয়ার/ঋণ Opening, পেমেন্ট, পুরোনো সেচ, অন্যান্য
+- [ ] Import Batch ও Rollback
+- [ ] নকশা: ইনভয়েস, রশিদ, সদস্য কার্ড, লেটারহেড, স্বাক্ষর, ফুটার
+- [ ] License, মেয়াদ, ইনস্টলেশনের তথ্য
+- [ ] UAT (প্রতিটি Role দিয়ে)
+- [ ] Parallel Run (২–৪ সপ্তাহ)
+- [ ] নিরাপত্তা পর্যালোচনা ও গতি বাড়ানো
+- [ ] Role-ভিত্তিক বাংলা ব্যবহার-নির্দেশিকা ও প্রশিক্ষণ
+- [ ] Go-Live
+
+> **নিয়ম:** প্রতিটি কাজ শেষ হলে এখানে `[x]` করা হবে এবং [রোডম্যাপ টেবিলের](#২-১০-ফেজের-রোডম্যাপ) অবস্থা আপডেট হবে (⚪ বাকি → 🟡 চলছে → ✅ সম্পন্ন)।
+
+---
+
+## ৮. লোকাল ডেভেলপমেন্ট
+
+**প্রয়োজন:** PHP ≥ 8.2 (pdo_mysql, mbstring, intl, gd, zip, fileinfo), Composer 2, Node 20+, MySQL/MariaDB (XAMPP চলবে)।
+
+```bash
+# Backend
+cd backend
+cp .env.example .env              # DB_*, FRONTEND_URL, MYSQLDUMP_PATH ঠিক করুন
+composer install
+php artisan key:generate
+php artisan migrate --seed
+php artisan serve --port=8000      # http://127.0.0.1:8000
+php artisan test                   # Feature tests
+
+# Frontend
+cd frontend
+npm install
+npm run dev                        # http://localhost:5173
+```
+
+**প্রথম লগইন:** ইউজারনেম `admin`, পাসওয়ার্ড `admin12345` (অথবা `.env`-এর `ADMIN_PASSWORD`)। প্রথম লগইনেই পাসওয়ার্ড বদলাতে হবে।
+
+XAMPP-এ Windows: `.env`-এ `MYSQLDUMP_PATH="F:/web/mysql/bin/mysqldump.exe"`।
+
+---
+
+## ৯. cPanel ডিপ্লয়মেন্ট
+
+**Frontend build:** `frontend/.env.production`-এ `VITE_API_URL=https://api.yourdomain.com/api` লিখে `npm run build` চালান। তারপর `dist/`-এর সব ফাইল (`.htaccess`-সহ) `public_html`-এ আপলোড করুন।
+
+```
+Shared cPanel
+├── public_html/              ← frontend/dist (npm run build)
+├── api.yourdomain.com/       ← backend/public-কে document root হিসেবে
+│   (Laravel কোড public_html-এর বাইরে রাখুন)
+└── MySQL Database
+```
+
+**Cron (প্রতি মিনিটে):**
+
+```
+* * * * * cd /home/USER/backend && php artisan schedule:run >> /dev/null 2>&1
+```
+
+এই একটি cron নিচের কাজগুলো চালাবে:
+- দৈনিক ব্যাকআপ (রাত ২টা)
+- queue খালি করা (স্থায়ী worker ছাড়া)
+- মেয়াদোত্তীর্ণ token মুছে ফেলা
+
+**Production `.env`:**
+
+| Key | মান |
+|---|---|
+| `APP_ENV` | `production` |
+| `APP_DEBUG` | `false` |
+| `APP_URL` | `https://api.yourdomain.com` |
+| `FRONTEND_URL` | `https://yourdomain.com` |
+| `MYSQLDUMP_PATH` | `mysqldump` |
+
+**ডিপ্লয়ের পর:**
+
+```bash
+php artisan migrate --force
+php artisan config:cache
+php artisan route:cache
+```
