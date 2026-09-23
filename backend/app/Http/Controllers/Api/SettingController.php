@@ -37,6 +37,7 @@ class SettingController extends Controller
             'currency_symbol' => ['required', 'string', 'max:5'],
             'admission_fee' => ['required', 'numeric', 'min:0'],
             'voter_min_membership_months' => ['required', 'integer', 'min:0'],
+            'bigha_decimal' => ['required', 'numeric', 'min:1', 'max:200'],
         ]);
         SettingService::setMany($data);
 

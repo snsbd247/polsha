@@ -17,8 +17,14 @@ class PatwariController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
+        // Lands a patwari is responsible for = live lands in their current mouzas.
+        $landsCount = DB::table('lands')->whereNull('lands.deleted_at')
+            ->whereIn('lands.mouza_id', DB::table('patwari_mouza_assignments')->whereColumn('patwari_id', 'patwaris.id')->whereNull('end_date')->select('mouza_id'))
+            ->selectRaw('count(*)');
+
         return response()->json($this->filtered($request)
             ->with(['currentAssignments.mouza:id,name_bn,jl_no', 'farmer:id,farmer_code,name_bn'])
+            ->select('patwaris.*')->selectSub($landsCount, 'lands_count')
             ->orderBy('name')->paginate($this->perPage($request)));
     }
 

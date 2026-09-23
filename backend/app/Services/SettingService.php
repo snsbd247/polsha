@@ -10,7 +10,7 @@ class SettingService
     private const CACHE_KEY = 'settings.all';
 
     /** Keys safe to expose before login (login page branding). */
-    public const PUBLIC_KEYS = ['society_name_bn', 'society_name_en', 'logo', 'digits'];
+    public const PUBLIC_KEYS = ['society_name_bn', 'society_name_en', 'logo', 'digits', 'bigha_decimal'];
 
     public const DEFAULTS = [
         'society_name_bn' => 'সমবায় সমিতি লিমিটেড',
@@ -27,6 +27,8 @@ class SettingService
         'currency_symbol' => '৳',
         'admission_fee' => 0,
         'voter_min_membership_months' => 0,
+        // Local bigha size varies by district; 33 decimals is the common standard.
+        'bigha_decimal' => 33,
     ];
 
     public static function all(): array

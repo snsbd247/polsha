@@ -5,6 +5,7 @@ import { Alert, App, Button, Card, Descriptions, Empty, Form, Input, Modal, Sele
 import { EditOutlined, PrinterOutlined, UploadOutlined } from '@ant-design/icons'
 import { Can, useAuth } from '../../auth/AuthContext'
 import AuditLogTable from '../../components/AuditLogTable'
+import FarmerLandsTab from '../../components/FarmerLandsTab'
 import ProtectedImage from '../../components/ProtectedImage'
 import { api, errorMessage, type Paginated } from '../../lib/api'
 import { digits, fmtDate, fmtDateTime, fmtBytes } from '../../lib/format'
@@ -339,7 +340,7 @@ export default function FarmerProfilePage() {
                 <Empty description="কোনো খানার সাথে যুক্ত নয়" />
               ),
             },
-            { key: 'land', label: 'জমি', children: <Empty description="জমির তথ্য ফেজ ৩-এ যুক্ত হবে" /> },
+            { key: 'land', label: 'জমি', children: <FarmerLandsTab farmerId={f.id} /> },
             { key: 'finance', label: 'আর্থিক তথ্য', children: <Empty description="সেচ, সঞ্চয়, শেয়ার ও ঋণের তথ্য ফেজ ৫–৭-এ যুক্ত হবে" /> },
             ...(can('farmer.view') ? [{ key: 'history', label: 'ইতিহাস', children: <HistoryTab farmerId={f.id} /> }] : []),
           ]}

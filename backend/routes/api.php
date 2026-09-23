@@ -4,7 +4,11 @@ use App\Http\Controllers\Api\ApprovalController;
 use App\Http\Controllers\Api\AuditLogController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BackupController;
+use App\Http\Controllers\Api\DataHealthController;
 use App\Http\Controllers\Api\DuplicateController;
+use App\Http\Controllers\Api\ImportController;
+use App\Http\Controllers\Api\LandController;
+use App\Http\Controllers\Api\LandTypeController;
 use App\Http\Controllers\Api\FarmerController;
 use App\Http\Controllers\Api\FarmerDocumentController;
 use App\Http\Controllers\Api\HouseholdController;
@@ -153,6 +157,40 @@ Route::middleware(['auth:sanctum', 'usable'])->group(function () {
     Route::get('patwaris/{patwari}', [PatwariController::class, 'show'])->middleware('permission:patwari.view');
     Route::post('patwaris', [PatwariController::class, 'store'])->middleware('permission:patwari.create');
     Route::put('patwaris/{patwari}', [PatwariController::class, 'update'])->middleware('permission:patwari.edit');
+
+    // ---- Phase 3: land ----
+    Route::get('lands/meta', [LandController::class, 'meta']);
+    Route::middleware('permission:land.view')->group(function () {
+        Route::get('lands', [LandController::class, 'index']);
+        Route::get('lands/export', [LandController::class, 'export'])->middleware('permission:land.export');
+        Route::post('lands/check-duplicate', [LandController::class, 'checkDuplicate']);
+        Route::get('lands/{land}', [LandController::class, 'show']);
+        Route::get('lands/{land}/history', [LandController::class, 'history']);
+        Route::get('farmers/{farmer}/lands', [LandController::class, 'forFarmer']);
+        Route::get('data-health/summary', [DataHealthController::class, 'summary']);
+        Route::get('data-health/mouzas', [DataHealthController::class, 'mouzas']);
+        Route::get('data-health/items/{key}', [DataHealthController::class, 'items']);
+    });
+    Route::post('lands', [LandController::class, 'store'])->middleware('permission:land.create');
+    Route::middleware('permission:land.edit')->group(function () {
+        Route::put('lands/{land}', [LandController::class, 'update']);
+        Route::post('lands/{land}/transfer', [LandController::class, 'transfer']);
+        Route::post('lands/{land}/cultivation', [LandController::class, 'changeCultivation']);
+        Route::post('lands/{land}/cultivation/end', [LandController::class, 'endCultivation']);
+    });
+    Route::delete('lands/{land}', [LandController::class, 'destroy'])->middleware('permission:land.delete');
+    Route::get('land-types', [LandTypeController::class, 'index']);
+    Route::post('land-types', [LandTypeController::class, 'store'])->middleware('permission:settings.admin');
+    Route::put('land-types/{landType}', [LandTypeController::class, 'update'])->middleware('permission:settings.admin');
+
+    // ---- Phase 3: import ----
+    Route::middleware('permission:import.create')->group(function () {
+        Route::get('imports', [ImportController::class, 'index']);
+        Route::get('imports/template/{type}', [ImportController::class, 'template']);
+        Route::post('imports/{type}/preview', [ImportController::class, 'preview']);
+        Route::post('imports/commit', [ImportController::class, 'commit']);
+        Route::get('imports/{batch}', [ImportController::class, 'show']);
+    });
 
     // Backups — Super Admin only
     Route::middleware('role:super_admin')->group(function () {

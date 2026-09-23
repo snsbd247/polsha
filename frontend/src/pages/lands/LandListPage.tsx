@@ -1,0 +1,116 @@
+import { useState } from 'react'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { keepPreviousData, useQuery } from '@tanstack/react-query'
+import { App, Button, Input, Select, Space, Table, Tag, Typography } from 'antd'
+import { DownloadOutlined, PlusOutlined } from '@ant-design/icons'
+import { Can } from '../../auth/AuthContext'
+import { api, errorMessage, type Paginated } from '../../lib/api'
+import { digits } from '../../lib/format'
+import { CULTIVATION_COLOR, fmtArea, LAND_STATUS_COLOR, useLandMeta, type LandRow } from '../../lib/land'
+import { downloadExport } from '../../lib/phase2'
+import type { Mouza } from '../../lib/types'
+
+type Params = { page: number; per_page: number; search?: string; mouza_id?: number; land_type_id?: number; status?: string; cultivation?: string; survey?: string }
+
+export default function LandListPage() {
+  const navigate = useNavigate()
+  const { message } = App.useApp()
+  const { data: meta } = useLandMeta()
+  const [sp] = useSearchParams()
+  const [params, setParams] = useState<Params>(() => ({ page: 1, per_page: 25, mouza_id: sp.get('mouza_id') ? Number(sp.get('mouza_id')) : undefined }))
+  const set = (patch: Partial<Params>) => setParams((p) => ({ ...p, ...patch, page: 1 }))
+
+  const { data, isFetching } = useQuery({
+    queryKey: ['lands', params],
+    queryFn: async () => (await api.get<Paginated<LandRow> & { total_area: number }>('/lands', { params })).data,
+    placeholderData: keepPreviousData,
+  })
+  const mouzas = useQuery({ queryKey: ['mouzas', 'all'], queryFn: async () => (await api.get<Mouza[]>('/mouzas', { params: { all: 1 } })).data })
+
+  return (
+    <>
+      <div className="page-header">
+        <h2>জমি</h2>
+        <Space wrap>
+          <Can perm="land.export">
+            <Button icon={<DownloadOutlined />} onClick={() => downloadExport('/lands/export', { ...params, page: undefined }, 'lands.csv').catch((e) => message.error(errorMessage(e)))}>
+              Excel
+            </Button>
+          </Can>
+          <Can perm="land.create">
+            <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate('/lands/new')}>
+              নতুন জমি
+            </Button>
+          </Can>
+        </Space>
+      </div>
+      <div className="toolbar">
+        <Input.Search placeholder="Land ID, দাগ, খতিয়ান, মালিক বা চাষি" allowClear style={{ width: 300 }} onSearch={(search) => set({ search })} />
+        <Select
+          placeholder="মৌজা"
+          allowClear
+          showSearch={{ optionFilterProp: 'label' }}
+          style={{ width: 180 }}
+          value={params.mouza_id}
+          options={mouzas.data?.map((m) => ({ value: m.id, label: `${m.name_bn} (JL ${m.jl_no})` }))}
+          onChange={(mouza_id) => set({ mouza_id })}
+        />
+        <Select placeholder="জমির ধরন" allowClear style={{ width: 170 }} options={meta?.land_types.map((t) => ({ value: t.id, label: t.name_bn }))} onChange={(land_type_id) => set({ land_type_id })} />
+        <Select
+          placeholder="চাষ"
+          allowClear
+          style={{ width: 150 }}
+          options={[...Object.entries(meta?.cultivation_types ?? {}).map(([value, label]) => ({ value, label })), { value: 'none', label: 'চাষি নেই' }]}
+          onChange={(cultivation) => set({ cultivation })}
+        />
+        <Select placeholder="অবস্থা" allowClear style={{ width: 130 }} options={Object.entries(meta?.statuses ?? {}).map(([value, label]) => ({ value, label }))} onChange={(status) => set({ status })} />
+      </div>
+      <Table<LandRow>
+        rowKey="id"
+        loading={isFetching}
+        dataSource={data?.data}
+        scroll={{ x: 1100 }}
+        pagination={{
+          current: params.page,
+          pageSize: params.per_page,
+          total: data?.total,
+          showSizeChanger: true,
+          pageSizeOptions: [25, 50, 100],
+          showTotal: (t) => `মোট ${digits(t)}টি জমি · ${fmtArea(data?.total_area, meta)}`,
+          onChange: (page, per_page) => setParams((p) => ({ ...p, page, per_page })),
+        }}
+        columns={[
+          { title: 'Land ID', dataIndex: 'land_code', width: 110, render: (v, l) => <Link to={`/lands/${l.id}`}>{v}</Link> },
+          { title: 'মৌজা', dataIndex: 'mouza' },
+          { title: 'খতিয়ান', render: (_, l) => `${digits(l.khatian_no)} (${meta?.surveys[l.survey] ?? l.survey})` },
+          { title: 'দাগ', dataIndex: 'dag_no', render: digits },
+          { title: 'পরিমাণ', dataIndex: 'area_decimal', render: (v) => fmtArea(v, meta) },
+          {
+            title: 'মালিক',
+            render: (_, l) =>
+              l.owners.map((o) => (
+                <div key={o.id}>
+                  <Link to={`/farmers/${o.farmer_id}`}>{o.name_bn}</Link>
+                  {l.owners.length > 1 && <Typography.Text type="secondary"> ({digits(o.share_percent)}%)</Typography.Text>}
+                </div>
+              )),
+          },
+          {
+            title: 'চাষি',
+            render: (_, l) =>
+              l.cultivation ? (
+                <>
+                  <Link to={`/farmers/${l.cultivation.farmer_id}`}>{l.cultivation.name_bn}</Link>{' '}
+                  <Tag color={CULTIVATION_COLOR[l.cultivation.type]}>{meta?.cultivation_types[l.cultivation.type]}</Tag>
+                </>
+              ) : (
+                <Typography.Text type="secondary">—</Typography.Text>
+              ),
+          },
+          { title: 'ধরন', dataIndex: 'land_type' },
+          { title: 'অবস্থা', dataIndex: 'status', render: (s) => <Tag color={LAND_STATUS_COLOR[s]}>{meta?.statuses[s] ?? s}</Tag> },
+        ]}
+      />
+    </>
+  )
+}

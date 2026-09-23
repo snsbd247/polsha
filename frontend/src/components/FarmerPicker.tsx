@@ -30,7 +30,7 @@ export default function FarmerPicker({ value, onChange, type, valueField = 'id',
     .filter((f) => !exclude.includes(f[valueField] ?? 0))
     .map((f) => ({
       value: f[valueField] as number,
-      label: `${f.name_bn} (${f.member_no ? 'সদস্য নং ' + digits(f.member_no) : f.farmer_code}) — পিতা: ${f.father_name}${f.village ? ', ' + f.village : ''}`,
+      label: `${f.name_bn} (${f.farmer_code}${f.member_no ? ', সদস্য নং ' + digits(f.member_no) : ''}) — পিতা: ${f.father_name}${f.village ? ', ' + f.village : ''}`,
       farmer: f,
     }))
   if (value && initialLabel && !options.some((o) => o.value === value)) {

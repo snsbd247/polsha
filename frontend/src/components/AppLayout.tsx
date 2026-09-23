@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Avatar, Badge, Button, Drawer, Dropdown, Grid, Layout, Menu, Spin, Typography, type MenuProps } from 'antd'
 import {
   AuditOutlined,
+  BorderOuterOutlined,
   CheckSquareOutlined,
   DashboardOutlined,
   EnvironmentOutlined,
@@ -50,6 +51,17 @@ const NAV: NavItem[] = [
     ],
   },
   {
+    key: 'lands-menu',
+    label: 'জমি',
+    icon: <BorderOuterOutlined />,
+    children: [
+      { key: '/lands', label: 'জমির তালিকা', perm: 'land.view' },
+      { key: '/lands/new', label: 'নতুন জমি', perm: 'land.create' },
+      { key: '/data-health', label: 'Data Health', perm: 'land.view' },
+      { key: '/imports', label: 'Import (Excel/CSV)', perm: 'import.create' },
+    ],
+  },
+  {
     key: 'masters',
     label: 'এলাকা ও মৌজা',
     icon: <EnvironmentOutlined />,
@@ -78,6 +90,7 @@ const NAV: NavItem[] = [
     children: [
       { key: '/settings/general', label: 'সাধারণ', perm: 'settings.admin' },
       { key: '/settings/sequences', label: 'সিরিয়াল নম্বর', perm: 'settings.admin' },
+      { key: '/settings/land-types', label: 'জমির ধরন', perm: 'settings.admin' },
     ],
   },
 ]

@@ -125,6 +125,11 @@ export default function GeneralSettingsPage() {
                 <InputNumber min={0} style={{ width: '100%' }} />
               </Form.Item>
             </Card>
+            <Card title="জমি" style={{ marginTop: 16 }}>
+              <Form.Item name="bigha_decimal" label="১ বিঘা = কত শতক" extra="এলাকাভেদে আলাদা (সাধারণত ৩৩)। ১ কাঠা = বিঘার ২০ ভাগের ১ ভাগ।" rules={[required('মান দিন')]}>
+                <InputNumber min={1} max={200} style={{ width: '100%' }} />
+              </Form.Item>
+            </Card>
           </Col>
         </Row>
         <Button type="primary" htmlType="submit" style={{ marginTop: 16 }}>

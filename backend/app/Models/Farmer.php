@@ -17,7 +17,7 @@ class Farmer extends Model
         'farmer_code', 'name_bn', 'name_en', 'father_name', 'mother_name', 'spouse_name', 'gender',
         'date_of_birth', 'nid', 'birth_reg_no', 'mobile', 'alt_mobile', 'photo', 'village_id', 'mouza_id',
         'para', 'post_office', 'household_id', 'household_relation', 'occupation', 'remarks', 'is_active',
-        'merged_into_id', 'created_by',
+        'merged_into_id', 'created_by', 'import_batch_id',
     ];
 
     protected $casts = ['date_of_birth' => 'date:Y-m-d', 'is_active' => 'boolean'];
@@ -50,6 +50,16 @@ class Farmer extends Model
     public function applications()
     {
         return $this->hasMany(MembershipApplication::class)->latest('id');
+    }
+
+    public function ownerships()
+    {
+        return $this->hasMany(LandOwner::class);
+    }
+
+    public function cultivations()
+    {
+        return $this->hasMany(LandCultivation::class);
     }
 
     public function mergedInto()

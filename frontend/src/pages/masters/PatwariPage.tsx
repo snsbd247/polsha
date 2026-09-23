@@ -22,6 +22,7 @@ type Patwari = {
   farmer: { id: number; farmer_code: string; name_bn: string } | null
   is_active: boolean
   current_assignments: Assignment[]
+  lands_count?: number
   assignments?: Assignment[]
 }
 
@@ -110,7 +111,7 @@ export default function PatwariPage() {
           { title: 'পিতা', dataIndex: 'father_name' },
           { title: 'মোবাইল', dataIndex: 'mobile', render: digits },
           { title: 'দায়িত্বাধীন মৌজা', render: (_, p) => p.current_assignments.map((a) => <Tag key={a.id}>{a.mouza.name_bn}</Tag>) },
-          { title: 'দায়িত্বাধীন জমি', render: () => <span style={{ color: '#999' }}>ফেজ ৩</span> },
+          { title: 'দায়িত্বাধীন জমি', dataIndex: 'lands_count', render: (v) => `${digits(v ?? 0)}টি` },
           { title: 'অবস্থা', dataIndex: 'is_active', render: (v) => (v ? <Tag color="green">সক্রিয়</Tag> : <Tag>নিষ্ক্রিয়</Tag>) },
           {
             title: '',

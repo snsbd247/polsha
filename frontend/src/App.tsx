@@ -33,6 +33,12 @@ const MemberListPage = lazy(() => import('./pages/membership/MemberListPage'))
 const AdmissionRegisterPage = lazy(() => import('./pages/membership/AdmissionRegisterPage'))
 const VoterListPage = lazy(() => import('./pages/membership/VoterListPage'))
 const PatwariPage = lazy(() => import('./pages/masters/PatwariPage'))
+const LandListPage = lazy(() => import('./pages/lands/LandListPage'))
+const LandFormPage = lazy(() => import('./pages/lands/LandFormPage'))
+const LandDetailPage = lazy(() => import('./pages/lands/LandDetailPage'))
+const DataHealthPage = lazy(() => import('./pages/lands/DataHealthPage'))
+const ImportPage = lazy(() => import('./pages/lands/ImportPage'))
+const LandTypesPage = lazy(() => import('./pages/settings/LandTypesPage'))
 
 function RequireAuth({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth()
@@ -99,6 +105,14 @@ export default function App() {
 
         <Route path="settings/general" element={<Perm perm="settings.admin"><GeneralSettingsPage /></Perm>} />
         <Route path="settings/sequences" element={<Perm perm="settings.admin"><SequencePage /></Perm>} />
+        <Route path="settings/land-types" element={<Perm perm="settings.admin"><LandTypesPage /></Perm>} />
+
+        <Route path="lands" element={<Perm perm="land.view"><LandListPage /></Perm>} />
+        <Route path="lands/new" element={<Perm perm="land.create"><LandFormPage /></Perm>} />
+        <Route path="lands/:id" element={<Perm perm="land.view"><LandDetailPage /></Perm>} />
+        <Route path="lands/:id/edit" element={<Perm perm="land.edit"><LandFormPage /></Perm>} />
+        <Route path="data-health" element={<Perm perm="land.view"><DataHealthPage /></Perm>} />
+        <Route path="imports" element={<Perm perm="import.create"><ImportPage /></Perm>} />
 
         <Route path="*" element={<Result status="404" title="পাতা পাওয়া যায়নি" />} />
       </Route>

@@ -38,7 +38,7 @@ class RolePermissionSeeder extends Seeder
     private function defaults(string $role, array $modules): array
     {
         $p = fn (array $mods, array $acts) => collect($mods)->crossJoin($acts)->map(fn ($x) => "$x[0].$x[1]")->all();
-        $system = ['user', 'role', 'audit', 'approval', 'location', 'mouza', 'settings'];
+        $system = ['user', 'role', 'audit', 'approval', 'location', 'mouza', 'settings', 'import'];
 
         return array_values(array_unique(match ($role) {
             'admin' => array_merge(
@@ -49,7 +49,7 @@ class RolePermissionSeeder extends Seeder
             'manager' => array_merge(
                 $p(self::OPERATIONS, ['view', 'create', 'edit', 'export', 'approve']),
                 $p(['location', 'mouza'], ['view', 'create', 'edit']),
-                ['audit.view', 'user.view'],
+                ['audit.view', 'user.view', 'import.view', 'import.create'],
             ),
             'accountant' => array_merge(
                 $p(['accounting', 'cash', 'bank', 'payment'], ['view', 'create', 'edit', 'export']),
@@ -76,6 +76,7 @@ class RolePermissionSeeder extends Seeder
             'data_entry' => array_merge(
                 $p(['farmer', 'land', 'membership'], ['view', 'create', 'edit']),
                 $p(['member', 'mouza', 'patwari'], ['view']),
+                ['import.view', 'import.create'],
             ),
             default => [],
         }));
