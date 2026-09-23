@@ -72,7 +72,31 @@ return [
     ],
 
     // action_key => class implementing App\Approvals\ApprovalHandler
-    'approval_handlers' => [],
+    'approval_handlers' => [
+        'membership.admit' => App\Approvals\MembershipAdmitHandler::class,
+        'member.deactivate' => App\Approvals\MemberStatusHandler::class,
+        'member.activate' => App\Approvals\MemberStatusHandler::class,
+        'member.cancel' => App\Approvals\MemberStatusHandler::class,
+        'member.reactivate' => App\Approvals\MemberStatusHandler::class,
+        'farmer.merge' => App\Approvals\FarmerMergeHandler::class,
+    ],
+
+    'farmer' => [
+        'genders' => ['male' => 'পুরুষ', 'female' => 'মহিলা', 'other' => 'অন্যান্য'],
+        'document_types' => [
+            'nid_front' => 'NID (সামনে)', 'nid_back' => 'NID (পেছনে)', 'photo' => 'ছবি',
+            'land_deed' => 'জমির দলিল', 'other' => 'অন্যান্য',
+        ],
+        'relations' => [
+            'self' => 'নিজে (খানাপ্রধান)', 'spouse' => 'স্বামী/স্ত্রী', 'son' => 'পুত্র', 'daughter' => 'কন্যা',
+            'father' => 'পিতা', 'mother' => 'মাতা', 'brother' => 'ভাই', 'sister' => 'বোন', 'other' => 'অন্যান্য',
+        ],
+        'occupations' => ['farmer' => 'কৃষক', 'business' => 'ব্যবসায়ী', 'service' => 'চাকরিজীবী', 'labour' => 'শ্রমিক', 'housewife' => 'গৃহিণী', 'other' => 'অন্যান্য'],
+    ],
+
+    'member' => [
+        'cancel_reasons' => ['death' => 'মৃত্যু', 'resignation' => 'পদত্যাগ', 'expulsion' => 'বহিষ্কার', 'other' => 'অন্যান্য'],
+    ],
 
     'backup' => [
         'keep_days' => 30,

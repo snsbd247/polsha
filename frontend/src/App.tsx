@@ -21,6 +21,18 @@ const LocationPage = lazy(() => import('./pages/masters/LocationPage'))
 const MouzaPage = lazy(() => import('./pages/masters/MouzaPage'))
 const GeneralSettingsPage = lazy(() => import('./pages/settings/GeneralSettingsPage'))
 const SequencePage = lazy(() => import('./pages/settings/SequencePage'))
+const FarmerListPage = lazy(() => import('./pages/farmers/FarmerListPage'))
+const FarmerFormPage = lazy(() => import('./pages/farmers/FarmerFormPage'))
+const FarmerProfilePage = lazy(() => import('./pages/farmers/FarmerProfilePage'))
+const DuplicatesPage = lazy(() => import('./pages/farmers/DuplicatesPage'))
+const MergePage = lazy(() => import('./pages/farmers/MergePage'))
+const HouseholdPage = lazy(() => import('./pages/farmers/HouseholdPage'))
+const ApplicationListPage = lazy(() => import('./pages/membership/ApplicationListPage'))
+const ApplicationFormPage = lazy(() => import('./pages/membership/ApplicationFormPage'))
+const MemberListPage = lazy(() => import('./pages/membership/MemberListPage'))
+const AdmissionRegisterPage = lazy(() => import('./pages/membership/AdmissionRegisterPage'))
+const VoterListPage = lazy(() => import('./pages/membership/VoterListPage'))
+const PatwariPage = lazy(() => import('./pages/masters/PatwariPage'))
 
 function RequireAuth({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth()
@@ -68,6 +80,22 @@ export default function App() {
 
         <Route path="masters/locations" element={<LocationPage />} />
         <Route path="masters/mouzas" element={<MouzaPage />} />
+        <Route path="masters/patwaris" element={<Perm perm="patwari.view"><PatwariPage /></Perm>} />
+
+        <Route path="farmers" element={<Perm perm="farmer.view"><FarmerListPage /></Perm>} />
+        <Route path="farmers/new" element={<Perm perm="farmer.create"><FarmerFormPage /></Perm>} />
+        <Route path="farmers/duplicates" element={<Perm perm="farmer.view"><DuplicatesPage /></Perm>} />
+        <Route path="farmers/merge" element={<Perm perm="farmer.edit"><MergePage /></Perm>} />
+        <Route path="farmers/:id" element={<Perm perm="farmer.view"><FarmerProfilePage /></Perm>} />
+        <Route path="farmers/:id/edit" element={<Perm perm="farmer.edit"><FarmerFormPage /></Perm>} />
+        <Route path="households" element={<Perm perm="farmer.view"><HouseholdPage /></Perm>} />
+
+        <Route path="membership/applications" element={<Perm perm="membership.view"><ApplicationListPage /></Perm>} />
+        <Route path="membership/applications/new" element={<Perm perm="membership.create"><ApplicationFormPage /></Perm>} />
+        <Route path="membership/applications/:id" element={<Perm perm="membership.view"><ApplicationFormPage /></Perm>} />
+        <Route path="members" element={<Perm perm="member.view"><MemberListPage /></Perm>} />
+        <Route path="members/admission-register" element={<Perm perm="member.view"><AdmissionRegisterPage /></Perm>} />
+        <Route path="members/voters" element={<Perm perm="member.view"><VoterListPage /></Perm>} />
 
         <Route path="settings/general" element={<Perm perm="settings.admin"><GeneralSettingsPage /></Perm>} />
         <Route path="settings/sequences" element={<Perm perm="settings.admin"><SequencePage /></Perm>} />

@@ -24,6 +24,12 @@ class RoleController extends Controller
         return response()->json($roles);
     }
 
+    /** Name → label only, for any signed-in user (approval steps show role names). */
+    public function options(): JsonResponse
+    {
+        return response()->json(Role::orderBy('id')->get(['name', 'label']));
+    }
+
     public function store(Request $request): JsonResponse
     {
         $data = $this->validated($request);

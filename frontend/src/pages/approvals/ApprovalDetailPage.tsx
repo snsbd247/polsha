@@ -4,20 +4,20 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { App, Button, Card, Col, Descriptions, Empty, Form, Input, Modal, Row, Space, Spin, Steps, Table, Tag, Typography } from 'antd'
 import { api, errorMessage } from '../../lib/api'
 import { APPROVAL_STATUS, digits, fmtDateTime } from '../../lib/format'
-import { useRoles } from '../../lib/queries'
+import { useRoleLabels } from '../../lib/queries'
 import type { ApprovalRequest } from '../../lib/types'
 
 type Decision = 'approve' | 'reject' | 'return'
 
 const DECISION_LABEL: Record<Decision, string> = { approve: 'অনুমোদন', reject: 'প্রত্যাখ্যান', return: 'সংশোধনের জন্য ফেরত' }
 
-const show = (v: unknown) => (v === null || v === undefined || v === '' ? '—' : typeof v === 'object' ? JSON.stringify(v) : String(v))
+const show = (v: unknown) => (v === null || v === undefined || v === '' ? '—' : digits(typeof v === 'object' ? JSON.stringify(v) : String(v)))
 
 export default function ApprovalDetailPage() {
   const { id } = useParams()
   const { message } = App.useApp()
   const queryClient = useQueryClient()
-  const { data: roles } = useRoles()
+  const { data: roles } = useRoleLabels()
   const [decision, setDecision] = useState<Decision | null>(null)
   const [remarks, setRemarks] = useState('')
   const [comment, setComment] = useState('')
@@ -94,7 +94,7 @@ export default function ApprovalDetailPage() {
               <Descriptions.Item label="পাঠিয়েছেন">{req.requester?.name_bn}</Descriptions.Item>
               <Descriptions.Item label="পাঠানোর সময়">{fmtDateTime(req.created_at)}</Descriptions.Item>
               <Descriptions.Item label="সিদ্ধান্তের সময়">{fmtDateTime(req.decided_at)}</Descriptions.Item>
-              {req.amount && <Descriptions.Item label="পরিমাণ">৳ {digits(req.amount)}</Descriptions.Item>}
+              {req.amount && <Descriptions.Item label="পরিমাণ" span="filled">৳ {digits(req.amount)}</Descriptions.Item>}
             </Descriptions>
 
             <h4 style={{ marginTop: 20 }}>প্রস্তাবিত পরিবর্তন</h4>

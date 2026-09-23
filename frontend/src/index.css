@@ -66,8 +66,36 @@ body {
   background: #f6ffed;
 }
 
+.print-only {
+  display: none;
+}
+
 @media print {
-  .no-print {
+  .no-print,
+  .ant-layout-sider,
+  .ant-pagination,
+  .ant-drawer-header,
+  .ant-drawer-mask {
     display: none !important;
+  }
+
+  .print-only {
+    display: block;
+  }
+
+  body,
+  .ant-layout {
+    background: #fff !important;
+  }
+
+  .ant-layout-content {
+    padding: 0 !important;
+  }
+
+  .ant-drawer,
+  .ant-drawer-content-wrapper {
+    position: static !important;
+    width: 100% !important;
+    box-shadow: none !important;
   }
 }

@@ -25,7 +25,7 @@ class ApprovalTest extends TestCase
     {
         parent::setUp();
         $this->seed(RolePermissionSeeder::class);
-        config(['erp.approval_handlers.test.action' => FakeApprovalHandler::class]);
+        config(['erp.approval_handlers' => config('erp.approval_handlers') + ['test.action' => FakeApprovalHandler::class]]);
         FakeApprovalHandler::$calls = [];
 
         ApprovalRule::create([

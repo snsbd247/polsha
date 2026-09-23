@@ -1,0 +1,165 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Models\Member;
+use App\Models\MembershipApplication;
+use App\Models\Patwari;
+use App\Models\Sequence;
+use App\Models\VoterListItem;
+use App\Services\SettingService;
+
+class MembershipTest extends Phase2TestCase
+{
+    public function test_full_two_step_admission_flow(): void
+    {
+        $farmer = $this->makeFarmer();
+
+        $res = $this->actingAs($this->officer)->postJson('/api/membership-applications', $this->applicationPayload($farmer, ['submit' => true]))
+            ->assertCreated()->assertJson(['status' => 'pending']);
+        $app = MembershipApplication::find($res->json('id'));
+        $this->assertStringStartsWith('MA-'.date('Y').'-', $app->application_no);
+
+        // After the manager only: still pending, no member yet.
+        $this->actingAs($this->manager)->postJson("/api/approvals/{$app->approval_request_id}/decide", ['decision' => 'approve'])->assertOk();
+        $this->assertNull($farmer->member()->first());
+
+        $this->actingAs($this->president)->postJson("/api/approvals/{$app->approval_request_id}/decide", ['decision' => 'approve'])->assertOk();
+
+        $member = $farmer->member()->first();
+        $this->assertNotNull($member);
+        $this->assertSame(1, $member->member_no);
+        $this->assertSame('approved', $app->fresh()->status);
+        $this->assertSame(1, $member->nominees()->count());
+        $this->assertSame('admit', $member->history()->first()->action);
+    }
+
+    public function test_new_member_number_continues_after_legacy_numbers(): void
+    {
+        $admin = $this->userWithRole('admin');
+        $admin->givePermissionTo('member.admin');
+
+        foreach ([96, 230, 5876, 10001] as $no) {
+            $this->actingAs($admin)->postJson('/api/members/legacy', [
+                'farmer_id' => $this->makeFarmer(['name_bn' => "পুরোনো $no"])->id,
+                'member_no' => (string) $no, 'admitted_on' => '2010-01-01',
+            ])->assertCreated();
+        }
+        $this->assertSame(10002, Sequence::where('key', 'member')->value('next_value'));
+
+        // Duplicate legacy number is refused.
+        $this->actingAs($admin)->postJson('/api/members/legacy', [
+            'farmer_id' => $this->makeFarmer(['name_bn' => 'আরেকজন'])->id, 'member_no' => '২৩০', 'admitted_on' => '2010-01-01',
+        ])->assertStatus(422)->assertJsonValidationErrors('member_no');
+
+        $farmer = $this->makeFarmer(['name_bn' => 'নতুন সদস্য']);
+        $res = $this->actingAs($this->officer)->postJson('/api/membership-applications', $this->applicationPayload($farmer, ['submit' => true]));
+        $this->approveBothSteps(MembershipApplication::find($res->json('id'))->approval_request_id);
+
+        $this->assertSame(10002, $farmer->member()->first()->member_no);
+    }
+
+    public function test_fee_override_needs_reason_and_nominees_must_total_100(): void
+    {
+        SettingService::setMany(['admission_fee' => 100]);
+        $farmer = $this->makeFarmer();
+
+        $this->actingAs($this->officer)->postJson('/api/membership-applications', $this->applicationPayload($farmer, ['admission_fee' => 50]))
+            ->assertStatus(422)->assertJsonValidationErrors('fee_override_reason');
+
+        $this->actingAs($this->officer)->postJson('/api/membership-applications', $this->applicationPayload($farmer, [
+            'admission_fee' => 100,
+            'nominees' => [['name' => 'ক', 'relation' => 'পুত্র', 'share_percent' => 60], ['name' => 'খ', 'relation' => 'কন্যা', 'share_percent' => 30]],
+        ]))->assertStatus(422)->assertJsonValidationErrors('nominees');
+
+        $this->actingAs($this->officer)->postJson('/api/membership-applications', $this->applicationPayload($farmer, [
+            'admission_fee' => 50, 'fee_override_reason' => 'দরিদ্র কৃষক — বোর্ডের সিদ্ধান্ত',
+        ]))->assertCreated()->assertJson(['default_fee' => '100.00', 'admission_fee' => '50.00']);
+    }
+
+    public function test_only_one_pending_application_per_farmer_and_members_cannot_apply(): void
+    {
+        $farmer = $this->makeFarmer();
+        $this->actingAs($this->officer)->postJson('/api/membership-applications', $this->applicationPayload($farmer, ['submit' => true]))->assertCreated();
+
+        $this->actingAs($this->officer)->postJson('/api/membership-applications', $this->applicationPayload($farmer))
+            ->assertStatus(422)->assertJsonValidationErrors('farmer_id');
+    }
+
+    public function test_returned_application_can_be_edited_and_resubmitted(): void
+    {
+        $farmer = $this->makeFarmer();
+        $res = $this->actingAs($this->officer)->postJson('/api/membership-applications', $this->applicationPayload($farmer, ['submit' => true]));
+        $app = MembershipApplication::find($res->json('id'));
+
+        $this->actingAs($this->manager)->postJson("/api/approvals/{$app->approval_request_id}/decide", ['decision' => 'return', 'remarks' => 'নমিনির NID দিন'])->assertOk();
+        $this->assertSame('returned', $app->fresh()->status);
+
+        $this->actingAs($this->officer)->postJson("/api/membership-applications/{$app->id}", $this->applicationPayload($farmer, [
+            'submit' => true, 'nominees' => [['name' => 'সেলিনা', 'relation' => 'স্ত্রী', 'nid' => '1234567890', 'share_percent' => 100]],
+        ]))->assertOk()->assertJson(['status' => 'pending']);
+    }
+
+    public function test_cancel_membership_needs_two_approvals_and_updates_voters(): void
+    {
+        $a = $this->makeFarmer(['name_bn' => 'সদস্য এক']);
+        $b = $this->makeFarmer(['name_bn' => 'সদস্য দুই']);
+        foreach ([$a, $b] as $f) {
+            $res = $this->actingAs($this->officer)->postJson('/api/membership-applications', $this->applicationPayload($f, ['submit' => true]));
+            $this->approveBothSteps(MembershipApplication::find($res->json('id'))->approval_request_id);
+        }
+        $member = $b->member()->first();
+
+        $this->actingAs($this->manager)->postJson("/api/members/{$member->id}/status", [
+            'action' => 'cancel', 'effective_date' => now()->toDateString(), 'reason' => 'মৃত্যু',
+        ])->assertStatus(422)->assertJsonValidationErrors(['reason_type', 'resolution_no']);
+
+        $res = $this->actingAs($this->officer)->postJson("/api/members/{$member->id}/status", [
+            'action' => 'cancel', 'effective_date' => now()->toDateString(), 'reason_type' => 'death',
+            'reason' => 'মৃত্যু', 'resolution_no' => 'সভা-১২',
+        ])->assertCreated();
+        $this->assertSame(Member::ACTIVE, $member->fresh()->status);
+
+        $this->approveBothSteps($res->json('approval_id'));
+        $this->assertSame(Member::CANCELLED, $member->fresh()->status);
+
+        $admin = $this->userWithRole('admin');
+        $admin->givePermissionTo('member.admin');
+        $list = $this->actingAs($admin)->postJson('/api/voter-lists', ['title' => 'বার্ষিক সাধারণ সভা', 'cutoff_date' => now()->toDateString()])
+            ->assertCreated()->assertJson(['eligible_count' => 1, 'ineligible_count' => 1]);
+
+        $out = VoterListItem::where('voter_list_id', $list->json('id'))->where('eligible', false)->first();
+        $this->assertSame('সদস্য দুই', $out->name);
+        $this->assertSame('সদস্যপদ বাতিল', $out->reason);
+
+        // Reactivation returns the same member number.
+        $no = $member->member_no;
+        $res = $this->actingAs($this->officer)->postJson("/api/members/{$member->id}/status", [
+            'action' => 'reactivate', 'effective_date' => now()->toDateString(), 'reason' => 'ভুল তথ্য সংশোধন',
+        ])->assertCreated();
+        $this->approveBothSteps($res->json('approval_id'));
+        $this->assertSame([Member::ACTIVE, $no], [$member->fresh()->status, $member->fresh()->member_no]);
+    }
+
+    public function test_patwari_mouza_change_keeps_history(): void
+    {
+        $admin = $this->userWithRole('admin');
+        $admin->givePermissionTo(['patwari.create', 'patwari.edit', 'patwari.view']);
+        $other = \App\Models\Mouza::create(['union_id' => $this->mouza->union_id, 'upazila_id' => $this->mouza->upazila_id, 'name_bn' => 'বাইপাইল', 'jl_no' => '13']);
+
+        $res = $this->actingAs($admin)->postJson('/api/patwaris', [
+            'name' => 'জলিল', 'father_name' => 'খলিল', 'mobile' => '01712345678',
+            'mouza_ids' => [$this->mouza->id], 'start_date' => '2024-01-01',
+        ])->assertCreated();
+
+        $this->actingAs($admin)->putJson('/api/patwaris/'.$res->json('id'), [
+            'name' => 'জলিল', 'father_name' => 'খলিল', 'mobile' => '01712345678',
+            'mouza_ids' => [$other->id], 'start_date' => '2026-07-01',
+        ])->assertOk();
+
+        $p = Patwari::find($res->json('id'));
+        $this->assertSame(2, $p->assignments()->count());
+        $this->assertSame([$other->id], $p->currentAssignments()->pluck('mouza_id')->all());
+        $this->assertSame('2026-07-01', $p->assignments()->whereNotNull('end_date')->first()->end_date->toDateString());
+    }
+}

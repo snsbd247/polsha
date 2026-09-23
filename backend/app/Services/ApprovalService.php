@@ -120,7 +120,8 @@ class ApprovalService
 
     private function handler(string $actionKey): ApprovalHandler
     {
-        $class = config("erp.approval_handlers.$actionKey");
+        // Action keys contain dots, so index the array rather than using dot-notation lookup.
+        $class = config('erp.approval_handlers')[$actionKey] ?? null;
         if (! $class) {
             throw new RuntimeException("No approval handler registered for [$actionKey].");
         }

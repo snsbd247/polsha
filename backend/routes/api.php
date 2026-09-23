@@ -4,6 +4,14 @@ use App\Http\Controllers\Api\ApprovalController;
 use App\Http\Controllers\Api\AuditLogController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BackupController;
+use App\Http\Controllers\Api\DuplicateController;
+use App\Http\Controllers\Api\FarmerController;
+use App\Http\Controllers\Api\FarmerDocumentController;
+use App\Http\Controllers\Api\HouseholdController;
+use App\Http\Controllers\Api\MemberController;
+use App\Http\Controllers\Api\MembershipApplicationController;
+use App\Http\Controllers\Api\PatwariController;
+use App\Http\Controllers\Api\VoterListController;
 use App\Http\Controllers\Api\LocationController;
 use App\Http\Controllers\Api\MouzaController;
 use App\Http\Controllers\Api\ProfileController;
@@ -38,6 +46,7 @@ Route::middleware(['auth:sanctum', 'usable'])->group(function () {
     Route::get('users/{user}/photo', [UserController::class, 'photo']);
 
     // Roles & permissions
+    Route::get('roles/options', [RoleController::class, 'options']);
     Route::get('roles', [RoleController::class, 'index'])->middleware('permission:role.view|user.create|user.edit');
     Route::post('roles', [RoleController::class, 'store'])->middleware('permission:role.create');
     Route::put('roles/{role}', [RoleController::class, 'update'])->middleware('permission:role.edit');
@@ -77,6 +86,73 @@ Route::middleware(['auth:sanctum', 'usable'])->group(function () {
         Route::get('sequences', [SettingController::class, 'sequences']);
         Route::put('sequences/{sequence}', [SettingController::class, 'updateSequence']);
     });
+
+    // ---- Phase 2: farmers ----
+    Route::get('farmers/meta', [FarmerController::class, 'meta']);
+    Route::get('farmers/lookup', [FarmerController::class, 'lookup'])->middleware('permission:farmer.view|membership.create|member.admin|patwari.create|patwari.edit');
+    Route::middleware('permission:farmer.view')->group(function () {
+        Route::get('farmers', [FarmerController::class, 'index']);
+        Route::get('farmers/export', [FarmerController::class, 'export'])->middleware('permission:farmer.export');
+        Route::post('farmers/check-duplicate', [FarmerController::class, 'checkDuplicate']);
+        Route::get('farmers/duplicates', [DuplicateController::class, 'index']);
+        Route::get('farmers/compare', [DuplicateController::class, 'compare']);
+        Route::get('farmers/{farmer}', [FarmerController::class, 'show']);
+        Route::get('farmers/{farmer}/photo', [FarmerController::class, 'photo']);
+        Route::get('farmers/{farmer}/history', [FarmerController::class, 'history']);
+        Route::get('farmers/{farmer}/documents', [FarmerDocumentController::class, 'index']);
+        Route::get('farmers/{farmer}/documents/{document}', [FarmerDocumentController::class, 'download']);
+        Route::get('households', [HouseholdController::class, 'index']);
+        Route::get('households/lookup', [HouseholdController::class, 'lookup']);
+        Route::get('households/{household}', [HouseholdController::class, 'show']);
+    });
+    Route::post('farmers', [FarmerController::class, 'store'])->middleware('permission:farmer.create');
+    Route::middleware('permission:farmer.edit')->group(function () {
+        Route::post('farmers/{farmer}', [FarmerController::class, 'update']); // POST: multipart photo upload
+        Route::post('farmers/{farmer}/toggle-active', [FarmerController::class, 'toggleActive']);
+        Route::post('farmers/{farmer}/documents', [FarmerDocumentController::class, 'store']);
+        Route::delete('farmers/{farmer}/documents/{document}', [FarmerDocumentController::class, 'destroy']);
+        Route::post('farmers-duplicates/dismiss', [DuplicateController::class, 'dismiss']);
+        Route::post('farmers-merge', [DuplicateController::class, 'requestMerge']);
+        Route::post('households', [HouseholdController::class, 'store']);
+        Route::post('households/{household}/head', [HouseholdController::class, 'changeHead']);
+        Route::post('households/{household}/members', [HouseholdController::class, 'addMember']);
+        Route::delete('households/{household}/members/{farmer}', [HouseholdController::class, 'removeMember']);
+    });
+    Route::delete('farmers/{farmer}', [FarmerController::class, 'destroy'])->middleware('permission:farmer.delete');
+
+    // ---- Phase 2: membership ----
+    Route::middleware('permission:membership.view')->group(function () {
+        Route::get('membership-applications', [MembershipApplicationController::class, 'index']);
+        Route::get('membership-applications/defaults', [MembershipApplicationController::class, 'defaults']);
+        Route::get('membership-applications/{application}', [MembershipApplicationController::class, 'show']);
+        Route::get('membership-applications/{application}/file/{kind}', [MembershipApplicationController::class, 'file']);
+    });
+    Route::post('membership-applications', [MembershipApplicationController::class, 'store'])->middleware('permission:membership.create');
+    Route::middleware('permission:membership.edit|membership.create')->group(function () {
+        Route::post('membership-applications/{application}', [MembershipApplicationController::class, 'update']);
+        Route::post('membership-applications/{application}/submit', [MembershipApplicationController::class, 'submit']);
+        Route::post('membership-applications/{application}/cancel', [MembershipApplicationController::class, 'cancel']);
+    });
+
+    Route::middleware('permission:member.view')->group(function () {
+        Route::get('members', [MemberController::class, 'index']);
+        Route::get('members/export', [MemberController::class, 'export'])->middleware('permission:member.export');
+        Route::get('members/admission-register', [MemberController::class, 'admissionRegister']);
+        Route::get('members/admission-register/export', [MemberController::class, 'admissionRegisterExport'])->middleware('permission:member.export');
+        Route::get('voter-lists', [VoterListController::class, 'index']);
+        Route::get('voter-lists/{voterList}', [VoterListController::class, 'show']);
+        Route::get('voter-lists/{voterList}/export', [VoterListController::class, 'export'])->middleware('permission:member.export');
+    });
+    Route::post('members/{member}/status', [MemberController::class, 'requestStatusChange'])->middleware('permission:member.edit');
+    Route::post('members/legacy', [MemberController::class, 'storeLegacy'])->middleware('permission:member.admin');
+    Route::post('voter-lists', [VoterListController::class, 'store'])->middleware('permission:member.admin');
+
+    // ---- Phase 2: patwari ----
+    Route::get('patwaris', [PatwariController::class, 'index'])->middleware('permission:patwari.view');
+    Route::get('patwaris/export', [PatwariController::class, 'export'])->middleware('permission:patwari.export');
+    Route::get('patwaris/{patwari}', [PatwariController::class, 'show'])->middleware('permission:patwari.view');
+    Route::post('patwaris', [PatwariController::class, 'store'])->middleware('permission:patwari.create');
+    Route::put('patwaris/{patwari}', [PatwariController::class, 'update'])->middleware('permission:patwari.edit');
 
     // Backups — Super Admin only
     Route::middleware('role:super_admin')->group(function () {
