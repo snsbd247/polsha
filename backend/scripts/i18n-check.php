@@ -47,6 +47,11 @@ $extra = array_merge(
     $labels(App\Models\Land::SURVEYS), $labels(App\Models\Land::STATUSES), $labels(App\Models\Land::CULTIVATION_TYPES),
     $labels(App\Support\AreaUnit::LABELS),
     $labels((new ReflectionClassConstant(App\Http\Controllers\Api\MemberController::class, 'STATUS'))->getValue()),
+    $labels(App\Models\Account::TYPES), $labels(App\Models\Journal::TYPES), $labels(App\Models\Journal::STATUSES),
+    $labels(App\Models\BankAccount::TYPES),
+    ['জার্নাল ভাউচার', 'প্রাপ্তি ভাউচার', 'পরিশোধ ভাউচার', 'কন্ট্রা ভাউচার', 'জার্নাল এন্ট্রি অনুমোদন', 'ভাউচার বাতিল (রিভার্সাল)'],
+    // Approval payload keys (shown translated on the approval page).
+    ['ভাউচার', 'তারিখ', 'বিবরণ', 'পরিমাণ', 'কারণ'],
     // Seeded reference data shown as labels.
     ['উঁচু জমি', 'মাঝারি উঁচু জমি', 'মাঝারি নিচু জমি', 'নিচু জমি', 'বসতভিটা', 'পুকুর/জলাশয়', 'উঁচু', 'মাঝারি', 'নিচু', 'অকৃষি'],
     ['সদস্যপদ আবেদন', 'খানা (Household)'],

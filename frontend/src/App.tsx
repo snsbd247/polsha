@@ -40,6 +40,15 @@ const LandDetailPage = lazy(() => import('./pages/lands/LandDetailPage'))
 const DataHealthPage = lazy(() => import('./pages/lands/DataHealthPage'))
 const ImportPage = lazy(() => import('./pages/lands/ImportPage'))
 const LandTypesPage = lazy(() => import('./pages/settings/LandTypesPage'))
+const ChartOfAccountsPage = lazy(() => import('./pages/accounting/ChartOfAccountsPage'))
+const JournalListPage = lazy(() => import('./pages/accounting/JournalListPage'))
+const JournalFormPage = lazy(() => import('./pages/accounting/JournalFormPage'))
+const JournalDetailPage = lazy(() => import('./pages/accounting/JournalDetailPage'))
+const FundsPage = lazy(() => import('./pages/accounting/FundsPage'))
+const LedgerPage = lazy(() => import('./pages/accounting/LedgerPage'))
+const BankAccountsPage = lazy(() => import('./pages/accounting/BankAccountsPage'))
+const TrialBalancePage = lazy(() => import('./pages/accounting/TrialBalancePage'))
+const PeriodsPage = lazy(() => import('./pages/accounting/PeriodsPage'))
 
 function RequireAuth({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth()
@@ -114,6 +123,17 @@ export default function App() {
         <Route path="lands/:id/edit" element={<Perm perm="land.edit"><LandFormPage /></Perm>} />
         <Route path="data-health" element={<Perm perm="land.view"><DataHealthPage /></Perm>} />
         <Route path="imports" element={<Perm perm="import.create"><ImportPage /></Perm>} />
+
+        <Route path="accounting/funds" element={<Perm perm={['cash.view', 'bank.view']}><FundsPage /></Perm>} />
+        <Route path="accounting/ledger" element={<Perm perm={['accounting.view', 'cash.view', 'bank.view']}><LedgerPage /></Perm>} />
+        <Route path="accounting/bank-accounts" element={<Perm perm="bank.view"><BankAccountsPage /></Perm>} />
+        <Route path="accounting/journals" element={<Perm perm="accounting.view"><JournalListPage /></Perm>} />
+        <Route path="accounting/journals/new" element={<Perm perm="accounting.create"><JournalFormPage /></Perm>} />
+        <Route path="accounting/journals/:id" element={<Perm perm="accounting.view"><JournalDetailPage /></Perm>} />
+        <Route path="accounting/journals/:id/edit" element={<Perm perm="accounting.create"><JournalFormPage /></Perm>} />
+        <Route path="accounting/accounts" element={<Perm perm="accounting.view"><ChartOfAccountsPage /></Perm>} />
+        <Route path="accounting/trial-balance" element={<Perm perm="accounting.view"><TrialBalancePage /></Perm>} />
+        <Route path="accounting/periods" element={<Perm perm="accounting.view"><PeriodsPage /></Perm>} />
 
         <Route path="*" element={<Result status="404" title={tx('পাতা পাওয়া যায়নি')} />} />
       </Route>

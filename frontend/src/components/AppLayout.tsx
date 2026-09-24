@@ -3,6 +3,7 @@ import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { Avatar, Badge, Button, Drawer, Dropdown, Grid, Layout, Menu, Spin, Typography, type MenuProps } from 'antd'
 import {
+  AccountBookOutlined,
   AuditOutlined,
   BorderOuterOutlined,
   CheckSquareOutlined,
@@ -71,6 +72,20 @@ const NAV: NavItem[] = [
       { key: '/masters/locations', label: tx('এলাকা') },
       { key: '/masters/mouzas', label: tx('মৌজা') },
       { key: '/masters/patwaris', label: tx('পাতওয়ারী'), perm: 'patwari.view' },
+    ],
+  },
+  {
+    key: 'accounting-menu',
+    label: tx('হিসাব ও তহবিল'),
+    icon: <AccountBookOutlined />,
+    children: [
+      { key: '/accounting/funds', label: tx('নগদ ও ব্যাংক অবস্থান'), perm: ['cash.view', 'bank.view'] },
+      { key: '/accounting/ledger', label: tx('ক্যাশ বই / খতিয়ান'), perm: ['accounting.view', 'cash.view', 'bank.view'] },
+      { key: '/accounting/bank-accounts', label: tx('ব্যাংক হিসাব'), perm: 'bank.view' },
+      { key: '/accounting/journals', label: tx('ভাউচার'), perm: 'accounting.view' },
+      { key: '/accounting/accounts', label: tx('হিসাবের তালিকা'), perm: 'accounting.view' },
+      { key: '/accounting/trial-balance', label: tx('রেওয়ামিল'), perm: 'accounting.view' },
+      { key: '/accounting/periods', label: tx('হিসাবকাল'), perm: 'accounting.view' },
     ],
   },
   { key: '/audit/logs', label: tx('অডিট লগ'), icon: <AuditOutlined />, perm: 'audit.view' },

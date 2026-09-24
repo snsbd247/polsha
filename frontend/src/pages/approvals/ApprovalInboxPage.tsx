@@ -78,7 +78,7 @@ export default function ApprovalInboxPage() {
             { title: tx('বিষয়'), dataIndex: 'title', render: (v, r) => <Link to={`/approvals/${r.id}`}>{v}</Link> },
             { title: tx('পাঠিয়েছেন'), render: (_, r) => r.requester?.name_bn },
             { title: tx('সময়'), dataIndex: 'created_at', render: fmtDateTime },
-            { title: tx('পরিমাণ'), dataIndex: 'amount', render: (v) => (v ? tx('৳ {{p0}}', { p0: digits(v) }) : '—') },
+            { title: tx('টাকার পরিমাণ'), dataIndex: 'amount', render: (v) => (v ? tx('৳ {{p0}}', { p0: digits(v) }) : '—') },
             {
               title: tx('ধাপ'),
               render: (_, r) => (r.total_steps ? `${digits(Math.min(r.current_step, r.total_steps))} / ${digits(r.total_steps)}` : '—'),

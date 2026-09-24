@@ -79,6 +79,8 @@ export type ApprovalRequest = {
   current_step: number
   total_steps: number
   requested_by: number
+  approvable_type?: string | null
+  approvable_id?: number | null
   requester?: { id: number; name_bn: string; username?: string }
   steps: ApprovalStep[]
   comments?: { id: number; body: string; created_at: string; user: { id: number; name_bn: string } }[]

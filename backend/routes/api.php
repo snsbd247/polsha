@@ -1,6 +1,11 @@
 <?php
 
+use App\Http\Controllers\Api\AccountController;
+use App\Http\Controllers\Api\AccountingReportController;
 use App\Http\Controllers\Api\ApprovalController;
+use App\Http\Controllers\Api\BankAccountController;
+use App\Http\Controllers\Api\FundController;
+use App\Http\Controllers\Api\JournalController;
 use App\Http\Controllers\Api\AuditLogController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BackupController;
@@ -191,6 +196,47 @@ Route::middleware(['auth:sanctum', 'usable'])->group(function () {
         Route::post('imports/{type}/preview', [ImportController::class, 'preview']);
         Route::post('imports/commit', [ImportController::class, 'commit']);
         Route::get('imports/{batch}', [ImportController::class, 'show']);
+    });
+
+    // ---- Phase 4: accounting, cash & bank ----
+    Route::get('accounts/options', [AccountController::class, 'options'])->middleware('permission:accounting.view|cash.view|bank.view');
+    Route::middleware('permission:accounting.view')->group(function () {
+        Route::get('accounts', [AccountController::class, 'index']);
+        Route::get('journals', [JournalController::class, 'index']);
+        Route::get('journals/{journal}', [JournalController::class, 'show']);
+        Route::get('accounting/trial-balance', [AccountingReportController::class, 'trialBalance']);
+        Route::get('accounting/periods', [AccountingReportController::class, 'periods']);
+    });
+    Route::get('accounting/ledger', [AccountingReportController::class, 'ledger'])->middleware('permission:accounting.view|cash.view|bank.view');
+    Route::middleware('permission:accounting.edit')->group(function () {
+        Route::post('accounts', [AccountController::class, 'store']);
+        Route::put('accounts/{account}', [AccountController::class, 'update']);
+        Route::delete('accounts/{account}', [AccountController::class, 'destroy']);
+    });
+    Route::middleware('permission:accounting.create')->group(function () {
+        Route::post('journals', [JournalController::class, 'store']);
+        Route::put('journals/{journal}', [JournalController::class, 'update']);
+        Route::post('journals/{journal}/reverse', [JournalController::class, 'reverse']);
+    });
+    Route::middleware('permission:accounting.approve')->group(function () {
+        Route::post('accounting/periods/{period}/close', [AccountingReportController::class, 'closePeriod']);
+        Route::post('accounting/periods/{period}/reopen', [AccountingReportController::class, 'reopenPeriod']);
+    });
+    Route::get('funds', [FundController::class, 'index'])->middleware('permission:cash.view|bank.view');
+    // Per-fund permission (cash.create / bank.create) is checked inside the controller.
+    Route::middleware('permission:cash.create|bank.create')->group(function () {
+        Route::post('funds/receipt', [FundController::class, 'receipt']);
+        Route::post('funds/payment', [FundController::class, 'payment']);
+        Route::post('funds/transfer', [FundController::class, 'transfer']);
+    });
+    Route::middleware('permission:bank.view')->group(function () {
+        Route::get('bank-accounts', [BankAccountController::class, 'index']);
+        Route::get('bank-accounts/{bankAccount}/statement', [BankAccountController::class, 'statement']);
+    });
+    Route::post('bank-accounts', [BankAccountController::class, 'store'])->middleware('permission:bank.create');
+    Route::middleware('permission:bank.edit')->group(function () {
+        Route::put('bank-accounts/{bankAccount}', [BankAccountController::class, 'update']);
+        Route::post('bank-accounts/{bankAccount}/lines/{line}/reconcile', [BankAccountController::class, 'reconcile']);
     });
 
     // Backups — Super Admin only

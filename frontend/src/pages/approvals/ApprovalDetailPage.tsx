@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
+import { useAuth } from '../../auth/AuthContext'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { App, Button, Card, Col, Descriptions, Empty, Form, Input, Modal, Row, Space, Spin, Steps, Table, Tag, Typography } from 'antd'
 import { api, errorMessage } from '../../lib/api'
@@ -40,6 +41,7 @@ const show = (v: unknown) =>
 export default function ApprovalDetailPage() {
   const { id } = useParams()
   const { message } = App.useApp()
+  const { can } = useAuth()
   const queryClient = useQueryClient()
   const { data: roles } = useRoleLabels()
   const [decision, setDecision] = useState<Decision | null>(null)
@@ -118,7 +120,12 @@ export default function ApprovalDetailPage() {
               <Descriptions.Item label={tx('পাঠিয়েছেন')}>{req.requester?.name_bn}</Descriptions.Item>
               <Descriptions.Item label={tx('পাঠানোর সময়')}>{fmtDateTime(req.created_at)}</Descriptions.Item>
               <Descriptions.Item label={tx('সিদ্ধান্তের সময়')}>{fmtDateTime(req.decided_at)}</Descriptions.Item>
-              {req.amount && <Descriptions.Item label={tx('পরিমাণ')} span="filled">{tx('৳')}{' '}{digits(req.amount)}</Descriptions.Item>}
+              {req.amount && <Descriptions.Item label={tx('টাকার পরিমাণ')} span="filled">{tx('৳')}{' '}{digits(req.amount)}</Descriptions.Item>}
+              {req.approvable_type?.endsWith('\\Journal') && can('accounting.view') && (
+                <Descriptions.Item label={tx('সংশ্লিষ্ট ভাউচার')} span="filled">
+                  <Link to={`/accounting/journals/${req.approvable_id}`}>{tx('ভাউচার দেখুন')}</Link>
+                </Descriptions.Item>
+              )}
             </Descriptions>
 
             <h4 style={{ marginTop: 20 }}>{tx('প্রস্তাবিত পরিবর্তন')}</h4>

@@ -79,6 +79,8 @@ return [
         'member.cancel' => App\Approvals\MemberStatusHandler::class,
         'member.reactivate' => App\Approvals\MemberStatusHandler::class,
         'farmer.merge' => App\Approvals\FarmerMergeHandler::class,
+        'accounting.journal' => App\Approvals\JournalHandler::class,
+        'accounting.reversal' => App\Approvals\JournalReversalHandler::class,
     ],
 
     'farmer' => [
