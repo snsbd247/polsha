@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Member;
 use App\Models\MembershipApplication;
+use App\Models\Mouza;
 use App\Models\Patwari;
 use App\Models\Sequence;
 use App\Models\VoterListItem;
@@ -145,7 +146,7 @@ class MembershipTest extends Phase2TestCase
     {
         $admin = $this->userWithRole('admin');
         $admin->givePermissionTo(['patwari.create', 'patwari.edit', 'patwari.view']);
-        $other = \App\Models\Mouza::create(['union_id' => $this->mouza->union_id, 'upazila_id' => $this->mouza->upazila_id, 'name_bn' => 'বাইপাইল', 'jl_no' => '13']);
+        $other = Mouza::create(['union_id' => $this->mouza->union_id, 'upazila_id' => $this->mouza->upazila_id, 'name_bn' => 'বাইপাইল', 'jl_no' => '13']);
 
         $res = $this->actingAs($admin)->postJson('/api/patwaris', [
             'name' => 'জলিল', 'father_name' => 'খলিল', 'mobile' => '01712345678',

@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Support\Tr;
 use App\Http\Controllers\Controller;
 use App\Models\AuditLog;
 use App\Models\Farmer;
@@ -13,6 +12,7 @@ use App\Services\ImageService;
 use App\Services\SequenceService;
 use App\Support\Bn;
 use App\Support\CsvExport;
+use App\Support\Tr;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;

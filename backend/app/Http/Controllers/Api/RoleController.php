@@ -2,10 +2,10 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Support\Tr;
 use App\Http\Controllers\Controller;
 use App\Models\Role;
 use App\Services\AuditLogger;
+use App\Support\Tr;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;

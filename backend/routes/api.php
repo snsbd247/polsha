@@ -3,36 +3,43 @@
 use App\Http\Controllers\Api\AccountController;
 use App\Http\Controllers\Api\AccountingReportController;
 use App\Http\Controllers\Api\ApprovalController;
-use App\Http\Controllers\Api\BankAccountController;
-use App\Http\Controllers\Api\FundController;
-use App\Http\Controllers\Api\JournalController;
 use App\Http\Controllers\Api\AuditLogController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BackupController;
+use App\Http\Controllers\Api\BankAccountController;
 use App\Http\Controllers\Api\DataHealthController;
 use App\Http\Controllers\Api\DuplicateController;
-use App\Http\Controllers\Api\ImportController;
-use App\Http\Controllers\Api\LandController;
-use App\Http\Controllers\Api\LandTypeController;
 use App\Http\Controllers\Api\FarmerController;
 use App\Http\Controllers\Api\FarmerDocumentController;
+use App\Http\Controllers\Api\FundController;
 use App\Http\Controllers\Api\HouseholdController;
+use App\Http\Controllers\Api\ImportController;
+use App\Http\Controllers\Api\InvoiceController;
+use App\Http\Controllers\Api\IrrigationRateController;
+use App\Http\Controllers\Api\IrrigationReportController;
+use App\Http\Controllers\Api\IrrigationTypeController;
+use App\Http\Controllers\Api\JournalController;
+use App\Http\Controllers\Api\LandController;
+use App\Http\Controllers\Api\LandTypeController;
+use App\Http\Controllers\Api\LocationController;
 use App\Http\Controllers\Api\MemberController;
 use App\Http\Controllers\Api\MembershipApplicationController;
-use App\Http\Controllers\Api\PatwariController;
-use App\Http\Controllers\Api\VoterListController;
-use App\Http\Controllers\Api\LocationController;
 use App\Http\Controllers\Api\MouzaController;
+use App\Http\Controllers\Api\PatwariController;
 use App\Http\Controllers\Api\ProfileController;
+use App\Http\Controllers\Api\ReceiptController;
 use App\Http\Controllers\Api\RoleController;
+use App\Http\Controllers\Api\SeasonController;
 use App\Http\Controllers\Api\SettingController;
 use App\Http\Controllers\Api\UserController;
+use App\Http\Controllers\Api\VoterListController;
 use Illuminate\Support\Facades\Route;
 
 // ---- Public ----
 Route::post('auth/login', [AuthController::class, 'login'])->middleware('throttle:10,1');
 Route::get('public/settings', [AuthController::class, 'publicSettings']);
 Route::get('public/logo', [SettingController::class, 'logo']);
+Route::get('public/receipts/{token}', [ReceiptController::class, 'verify'])->middleware('throttle:30,1');
 
 // ---- Authenticated ----
 Route::middleware(['auth:sanctum', 'usable'])->group(function () {
@@ -237,6 +244,44 @@ Route::middleware(['auth:sanctum', 'usable'])->group(function () {
     Route::middleware('permission:bank.edit')->group(function () {
         Route::put('bank-accounts/{bankAccount}', [BankAccountController::class, 'update']);
         Route::post('bank-accounts/{bankAccount}/lines/{line}/reconcile', [BankAccountController::class, 'reconcile']);
+    });
+
+    // ---- Phase 5: irrigation, invoices & receipts ----
+    Route::get('irrigation-types', [IrrigationTypeController::class, 'index']);
+    Route::post('irrigation-types', [IrrigationTypeController::class, 'store'])->middleware('permission:settings.admin');
+    Route::put('irrigation-types/{irrigationType}', [IrrigationTypeController::class, 'update'])->middleware('permission:settings.admin');
+    Route::middleware('permission:irrigation.view')->group(function () {
+        Route::get('seasons', [SeasonController::class, 'index']);
+        Route::get('irrigation-rates', [IrrigationRateController::class, 'index']);
+        Route::get('invoices/meta', [InvoiceController::class, 'meta']);
+        Route::get('invoices', [InvoiceController::class, 'index']);
+        Route::get('invoices/{invoice}', [InvoiceController::class, 'show']);
+        Route::get('irrigation/dues', [IrrigationReportController::class, 'dues']);
+        Route::get('irrigation/farmers/{farmer}/statement', [IrrigationReportController::class, 'statement']);
+        Route::get('irrigation/mismatch', [IrrigationReportController::class, 'mismatch']);
+        Route::get('irrigation/rate-audit', [IrrigationReportController::class, 'rateAudit']);
+    });
+    Route::middleware('permission:irrigation.create')->group(function () {
+        Route::post('invoices/quote', [InvoiceController::class, 'quote']);
+        Route::post('invoices', [InvoiceController::class, 'store']);
+        Route::post('invoices/bulk/preview', [InvoiceController::class, 'bulkPreview']);
+        Route::post('invoices/bulk', [InvoiceController::class, 'bulkStore']);
+    });
+    Route::middleware('permission:irrigation.edit')->group(function () {
+        Route::post('seasons', [SeasonController::class, 'store']);
+        Route::put('seasons/{season}', [SeasonController::class, 'update']);
+        Route::post('irrigation-rates', [IrrigationRateController::class, 'store']);
+        Route::post('invoices/{invoice}/cancel', [InvoiceController::class, 'cancel']);
+    });
+    Route::middleware('permission:payment.view')->group(function () {
+        Route::get('receipts', [ReceiptController::class, 'index']);
+        Route::get('receipts/dues', [ReceiptController::class, 'dues']);
+        Route::get('receipts/funds', [ReceiptController::class, 'funds']);
+        Route::get('receipts/{receipt}', [ReceiptController::class, 'show']);
+    });
+    Route::middleware('permission:payment.create')->group(function () {
+        Route::post('receipts', [ReceiptController::class, 'store']);
+        Route::post('receipts/{receipt}/cancel', [ReceiptController::class, 'cancel']);
     });
 
     // Backups — Super Admin only

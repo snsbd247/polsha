@@ -2,10 +2,10 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Support\Tr;
 use App\Http\Controllers\Controller;
 use App\Models\AuditLog;
 use App\Models\Farmer;
+use App\Models\IrrigationType;
 use App\Models\Land;
 use App\Models\LandCultivation;
 use App\Models\LandOwner;
@@ -14,6 +14,7 @@ use App\Services\LandService;
 use App\Support\AreaUnit;
 use App\Support\Bn;
 use App\Support\CsvExport;
+use App\Support\Tr;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -31,6 +32,7 @@ class LandController extends Controller
             'cultivation_types' => Tr::map(Land::CULTIVATION_TYPES),
             'units' => Tr::map(AreaUnit::LABELS),
             'unit_factors' => AreaUnit::factors(),
+            'irrigation_types' => IrrigationType::where('is_active', true)->orderBy('sort_order')->get(['id', 'name_bn'])->map(fn ($t) => ['id' => $t->id, 'name_bn' => __($t->name_bn)]),
             'land_types' => LandType::where('is_active', true)->orderBy('sort_order')->get(['id', 'name_bn', 'category'])->map(fn ($t) => ['id' => $t->id, 'name_bn' => __($t->name_bn), 'category' => Tr::label($t->category)]),
         ]);
     }
@@ -66,7 +68,7 @@ class LandController extends Controller
     public function show(Land $land): JsonResponse
     {
         $land->load([
-            'mouza.union.upazila', 'landType:id,name_bn',
+            'mouza.union.upazila', 'landType:id,name_bn', 'irrigationType:id,name_bn',
             'ownerHistory.farmer:id,farmer_code,name_bn,father_name',
             'cultivationHistory.farmer:id,farmer_code,name_bn,father_name',
         ]);
@@ -188,7 +190,7 @@ class LandController extends Controller
     private function listRelations(): array
     {
         return [
-            'mouza:id,name_bn,jl_no', 'landType:id,name_bn',
+            'mouza:id,name_bn,jl_no', 'landType:id,name_bn', 'irrigationType:id,name_bn',
             'owners.farmer:id,farmer_code,name_bn,father_name',
             'cultivation.farmer:id,farmer_code,name_bn,father_name',
         ];
@@ -204,7 +206,7 @@ class LandController extends Controller
                 ->orWhereHas('owners.farmer', fn ($f) => $f->where('name_bn', 'like', "%$search%")->orWhere('farmer_code', $en))
                 ->orWhereHas('cultivation.farmer', fn ($f) => $f->where('name_bn', 'like', "%$search%")->orWhere('farmer_code', $en)));
         }
-        foreach (['mouza_id', 'land_type_id', 'status', 'survey'] as $f) {
+        foreach (['mouza_id', 'land_type_id', 'irrigation_type_id', 'status', 'survey'] as $f) {
             if ($request->filled($f)) {
                 $q->where($f, $request->query($f));
             }
@@ -246,6 +248,7 @@ class LandController extends Controller
             'area' => ['required', 'numeric', 'gt:0'],
             'area_unit' => ['required', Rule::in(array_keys(AreaUnit::LABELS))],
             'land_type_id' => ['required', Rule::exists('land_types', 'id')],
+            'irrigation_type_id' => ['nullable', Rule::exists('irrigation_types', 'id')],
             'status' => ['required', Rule::in(array_keys(Land::STATUSES))],
             'remarks' => ['nullable', 'string', 'max:2000'],
         ], ['area.gt' => __('জমির পরিমাণ শূন্যের বেশি হতে হবে।')]);
@@ -280,6 +283,8 @@ class LandController extends Controller
             'dag_no' => $l->dag_no,
             'area_decimal' => (float) $l->area_decimal,
             'land_type' => Tr::label($l->landType?->name_bn),
+            'irrigation_type_id' => $l->irrigation_type_id,
+            'irrigation_type' => Tr::label($l->irrigationType?->name_bn),
             'status' => $l->status,
             'owners' => $l->owners->map(fn ($o) => [
                 'id' => $o->id, 'farmer_id' => $o->farmer_id, 'farmer_code' => $o->farmer?->farmer_code,

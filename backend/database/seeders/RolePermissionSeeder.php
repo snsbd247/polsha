@@ -61,6 +61,7 @@ class RolePermissionSeeder extends Seeder
             ),
             'irrigation_officer' => array_merge(
                 $p(['irrigation', 'land'], ['view', 'create', 'edit', 'export']),
+                $p(['payment'], ['view', 'create']),
                 $p(['farmer', 'member', 'mouza', 'patwari', 'report'], ['view']),
             ),
             'member_officer' => array_merge(

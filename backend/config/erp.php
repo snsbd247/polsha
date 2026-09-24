@@ -1,5 +1,14 @@
 <?php
 
+use App\Approvals\FarmerMergeHandler;
+use App\Approvals\InvoiceCancelHandler;
+use App\Approvals\IrrigationRateHandler;
+use App\Approvals\JournalHandler;
+use App\Approvals\JournalReversalHandler;
+use App\Approvals\MembershipAdmitHandler;
+use App\Approvals\MemberStatusHandler;
+use App\Approvals\ReceiptCancelHandler;
+
 /*
 | ERP-wide constants. Permission names are "{module}.{action}".
 | Modules for later phases are listed now so the permission matrix is
@@ -73,14 +82,17 @@ return [
 
     // action_key => class implementing App\Approvals\ApprovalHandler
     'approval_handlers' => [
-        'membership.admit' => App\Approvals\MembershipAdmitHandler::class,
-        'member.deactivate' => App\Approvals\MemberStatusHandler::class,
-        'member.activate' => App\Approvals\MemberStatusHandler::class,
-        'member.cancel' => App\Approvals\MemberStatusHandler::class,
-        'member.reactivate' => App\Approvals\MemberStatusHandler::class,
-        'farmer.merge' => App\Approvals\FarmerMergeHandler::class,
-        'accounting.journal' => App\Approvals\JournalHandler::class,
-        'accounting.reversal' => App\Approvals\JournalReversalHandler::class,
+        'membership.admit' => MembershipAdmitHandler::class,
+        'member.deactivate' => MemberStatusHandler::class,
+        'member.activate' => MemberStatusHandler::class,
+        'member.cancel' => MemberStatusHandler::class,
+        'member.reactivate' => MemberStatusHandler::class,
+        'farmer.merge' => FarmerMergeHandler::class,
+        'accounting.journal' => JournalHandler::class,
+        'accounting.reversal' => JournalReversalHandler::class,
+        'irrigation.rate' => IrrigationRateHandler::class,
+        'irrigation.invoice_cancel' => InvoiceCancelHandler::class,
+        'payment.receipt_cancel' => ReceiptCancelHandler::class,
     ],
 
     'farmer' => [

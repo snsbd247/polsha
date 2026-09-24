@@ -29,7 +29,7 @@ const FIELD_LABEL: Record<string, string> = {
   values: tx('চূড়ান্ত তথ্য'),
 }
 const fieldLabel = (k: string) => FIELD_LABEL[k] ?? tx(k)
-const VALUE_LABEL: Record<string, string> = { active: tx('সক্রিয়'), inactive: tx('নিষ্ক্রিয়'), cancelled: tx('বাতিল') }
+const VALUE_LABEL: Record<string, string> = { active: tx('সক্রিয়'), inactive: tx('নিষ্ক্রিয়'), cancelled: tx('বাতিলকৃত') }
 
 const show = (v: unknown) =>
   v === null || v === undefined || v === ''

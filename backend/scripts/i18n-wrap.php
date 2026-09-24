@@ -40,8 +40,24 @@ foreach ($it as $file) {
     $text = fn ($t) => is_array($t) ? $t[1] : $t;
     $id = fn ($t) => is_array($t) ? $t[0] : $t;
     $isWs = fn ($t) => is_array($t) && in_array($t[0], [T_WHITESPACE, T_COMMENT, T_DOC_COMMENT], true);
-    $prev = function ($i) use ($tokens, $isWs) { for ($j = $i - 1; $j >= 0; $j--) { if (! $isWs($tokens[$j])) { return $j; } } return -1; };
-    $next = function ($i) use ($tokens, $n, $isWs) { for ($j = $i + 1; $j < $n; $j++) { if (! $isWs($tokens[$j])) { return $j; } } return $n; };
+    $prev = function ($i) use ($tokens, $isWs) {
+        for ($j = $i - 1; $j >= 0; $j--) {
+            if (! $isWs($tokens[$j])) {
+                return $j;
+            }
+        }
+
+return -1;
+    };
+    $next = function ($i) use ($tokens, $n, $isWs) {
+        for ($j = $i + 1; $j < $n; $j++) {
+            if (! $isWs($tokens[$j])) {
+                return $j;
+            }
+        }
+
+return $n;
+    };
 
     // Mark token ranges to leave alone: const/property declarations and skipped functions.
     $skip = array_fill(0, $n, false);

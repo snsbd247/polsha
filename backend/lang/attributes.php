@@ -100,6 +100,25 @@ $fields = [
     'from' => ['শুরুর তারিখ', 'from date'],
     'to' => ['শেষের তারিখ', 'to date'],
     'as_of' => ['তারিখ', 'date'],
+    // Phase 5
+    'season_id' => ['মৌসুম', 'season'],
+    'irrigation_type_id' => ['সেচের ধরন', 'irrigation type'],
+    'crop' => ['ফসল', 'crop'],
+    'due_date' => ['পরিশোধের শেষ তারিখ', 'due date'],
+    'rate' => ['রেট', 'rate'],
+    'effective_from' => ['কার্যকর তারিখ', 'effective date'],
+    'land_id' => ['জমি', 'land'],
+    'invoice_date' => ['ইনভয়েসের তারিখ', 'invoice date'],
+    'area_decimal' => ['পরিমাণ (শতক)', 'area (decimal)'],
+    'method' => ['মাধ্যম', 'method'],
+    'is_legacy' => ['পুরনো রশিদ', 'old receipt'],
+    'legacy_no' => ['পুরনো রশিদ নং', 'old receipt no.'],
+    'items' => ['বকেয়া', 'dues'],
+    'items.*.invoice_id' => ['ইনভয়েস', 'invoice'],
+    'items.*.amount' => ['টাকার পরিমাণ', 'amount'],
+    'remarks' => ['মন্তব্য', 'remarks'],
+    'sort_order' => ['ক্রম', 'order'],
+    'is_active' => ['সক্রিয়', 'active'],
 ];
 
 return [

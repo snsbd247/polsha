@@ -49,6 +49,21 @@ const LedgerPage = lazy(() => import('./pages/accounting/LedgerPage'))
 const BankAccountsPage = lazy(() => import('./pages/accounting/BankAccountsPage'))
 const TrialBalancePage = lazy(() => import('./pages/accounting/TrialBalancePage'))
 const PeriodsPage = lazy(() => import('./pages/accounting/PeriodsPage'))
+const IrrigationTypesPage = lazy(() => import('./pages/settings/IrrigationTypesPage'))
+const SeasonsPage = lazy(() => import('./pages/irrigation/SeasonsPage'))
+const RatesPage = lazy(() => import('./pages/irrigation/RatesPage'))
+const InvoiceListPage = lazy(() => import('./pages/irrigation/InvoiceListPage'))
+const InvoiceFormPage = lazy(() => import('./pages/irrigation/InvoiceFormPage'))
+const BulkInvoicePage = lazy(() => import('./pages/irrigation/BulkInvoicePage'))
+const InvoiceDetailPage = lazy(() => import('./pages/irrigation/InvoiceDetailPage'))
+const DuesPage = lazy(() => import('./pages/irrigation/DuesPage'))
+const FarmerStatementPage = lazy(() => import('./pages/irrigation/FarmerStatementPage'))
+const MismatchPage = lazy(() => import('./pages/irrigation/MismatchPage'))
+const RateAuditPage = lazy(() => import('./pages/irrigation/RateAuditPage'))
+const CollectionPage = lazy(() => import('./pages/payments/CollectionPage'))
+const ReceiptListPage = lazy(() => import('./pages/payments/ReceiptListPage'))
+const ReceiptDetailPage = lazy(() => import('./pages/payments/ReceiptDetailPage'))
+const VerifyReceiptPage = lazy(() => import('./pages/VerifyReceiptPage'))
 
 function RequireAuth({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth()
@@ -71,6 +86,7 @@ export default function App() {
     <Routes>
       <Route path="/login" element={<LoginPage />} />
       <Route path="/change-password" element={<ChangePasswordPage />} />
+      <Route path="/verify/receipt/:token" element={<VerifyReceiptPage />} />
       <Route
         element={
           <RequireAuth>
@@ -116,6 +132,7 @@ export default function App() {
         <Route path="settings/general" element={<Perm perm="settings.admin"><GeneralSettingsPage /></Perm>} />
         <Route path="settings/sequences" element={<Perm perm="settings.admin"><SequencePage /></Perm>} />
         <Route path="settings/land-types" element={<Perm perm="settings.admin"><LandTypesPage /></Perm>} />
+        <Route path="settings/irrigation-types" element={<Perm perm="settings.admin"><IrrigationTypesPage /></Perm>} />
 
         <Route path="lands" element={<Perm perm="land.view"><LandListPage /></Perm>} />
         <Route path="lands/new" element={<Perm perm="land.create"><LandFormPage /></Perm>} />
@@ -134,6 +151,20 @@ export default function App() {
         <Route path="accounting/accounts" element={<Perm perm="accounting.view"><ChartOfAccountsPage /></Perm>} />
         <Route path="accounting/trial-balance" element={<Perm perm="accounting.view"><TrialBalancePage /></Perm>} />
         <Route path="accounting/periods" element={<Perm perm="accounting.view"><PeriodsPage /></Perm>} />
+
+        <Route path="irrigation/seasons" element={<Perm perm="irrigation.view"><SeasonsPage /></Perm>} />
+        <Route path="irrigation/rates" element={<Perm perm="irrigation.view"><RatesPage /></Perm>} />
+        <Route path="irrigation/invoices" element={<Perm perm="irrigation.view"><InvoiceListPage /></Perm>} />
+        <Route path="irrigation/invoices/new" element={<Perm perm="irrigation.create"><InvoiceFormPage /></Perm>} />
+        <Route path="irrigation/invoices/bulk" element={<Perm perm="irrigation.create"><BulkInvoicePage /></Perm>} />
+        <Route path="irrigation/invoices/:id" element={<Perm perm="irrigation.view"><InvoiceDetailPage /></Perm>} />
+        <Route path="irrigation/dues" element={<Perm perm="irrigation.view"><DuesPage /></Perm>} />
+        <Route path="irrigation/farmers/:id/statement" element={<Perm perm="irrigation.view"><FarmerStatementPage /></Perm>} />
+        <Route path="irrigation/mismatch" element={<Perm perm="irrigation.view"><MismatchPage /></Perm>} />
+        <Route path="irrigation/rate-audit" element={<Perm perm="irrigation.view"><RateAuditPage /></Perm>} />
+        <Route path="payments/collect" element={<Perm perm="payment.create"><CollectionPage /></Perm>} />
+        <Route path="payments/receipts" element={<Perm perm="payment.view"><ReceiptListPage /></Perm>} />
+        <Route path="payments/receipts/:id" element={<Perm perm="payment.view"><ReceiptDetailPage /></Perm>} />
 
         <Route path="*" element={<Result status="404" title={tx('পাতা পাওয়া যায়নি')} />} />
       </Route>

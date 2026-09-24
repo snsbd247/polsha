@@ -1,5 +1,18 @@
 <?php
 
+use App\Http\Controllers\Api\MemberController;
+use App\Models\Account;
+use App\Models\BankAccount;
+use App\Models\Invoice;
+use App\Models\IrrigationRate;
+use App\Models\Journal;
+use App\Models\Land;
+use App\Models\Receipt;
+use App\Models\Season;
+use App\Services\IrrigationService;
+use App\Support\AreaUnit;
+use Illuminate\Contracts\Console\Kernel;
+
 /*
  * Lists translation keys with no English entry in lang/en.json and keeps
  * lang/bn.json (identity map) in sync so Bangla never falls back to English.
@@ -10,7 +23,7 @@
 
 require __DIR__.'/../vendor/autoload.php';
 $app = require __DIR__.'/../bootstrap/app.php';
-$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+$app->make(Kernel::class)->bootstrap();
 
 $keys = [];
 $it = new RecursiveIteratorIterator(new RecursiveDirectoryIterator(__DIR__.'/../app'));
@@ -44,11 +57,11 @@ $extra = array_merge(
     $labels(config('erp.modules')), $labels(config('erp.actions')), $labels(config('erp.roles')),
     array_merge(...array_map($labels, array_values(config('erp.farmer')))),
     $labels(config('erp.member.cancel_reasons')),
-    $labels(App\Models\Land::SURVEYS), $labels(App\Models\Land::STATUSES), $labels(App\Models\Land::CULTIVATION_TYPES),
-    $labels(App\Support\AreaUnit::LABELS),
-    $labels((new ReflectionClassConstant(App\Http\Controllers\Api\MemberController::class, 'STATUS'))->getValue()),
-    $labels(App\Models\Account::TYPES), $labels(App\Models\Journal::TYPES), $labels(App\Models\Journal::STATUSES),
-    $labels(App\Models\BankAccount::TYPES),
+    $labels(Land::SURVEYS), $labels(Land::STATUSES), $labels(Land::CULTIVATION_TYPES),
+    $labels(AreaUnit::LABELS),
+    $labels((new ReflectionClassConstant(MemberController::class, 'STATUS'))->getValue()),
+    $labels(Account::TYPES), $labels(Journal::TYPES), $labels(Journal::STATUSES),
+    $labels(BankAccount::TYPES),
     ['জার্নাল ভাউচার', 'প্রাপ্তি ভাউচার', 'পরিশোধ ভাউচার', 'কন্ট্রা ভাউচার', 'জার্নাল এন্ট্রি অনুমোদন', 'ভাউচার বাতিল (রিভার্সাল)'],
     // Approval payload keys (shown translated on the approval page).
     ['ভাউচার', 'তারিখ', 'বিবরণ', 'পরিমাণ', 'কারণ'],
@@ -56,6 +69,13 @@ $extra = array_merge(
     ['উঁচু জমি', 'মাঝারি উঁচু জমি', 'মাঝারি নিচু জমি', 'নিচু জমি', 'বসতভিটা', 'পুকুর/জলাশয়', 'উঁচু', 'মাঝারি', 'নিচু', 'অকৃষি'],
     ['সদস্যপদ আবেদন', 'খানা (Household)'],
     ['সদস্যপদ অনুমোদন', 'সদস্য নিষ্ক্রিয়করণ', 'সদস্য সক্রিয়করণ', 'সদস্যপদ বাতিল', 'সদস্যপদ পুনর্বহাল', 'কৃষক মার্জ'],
+    // Phase 5: irrigation & receipts.
+    $labels(Season::STATUSES), $labels(IrrigationRate::STATUSES), $labels(Invoice::STATUSES),
+    $labels(Receipt::STATUSES), $labels(Receipt::METHODS), $labels(Receipt::MODULES),
+    $labels(IrrigationService::SKIP_REASONS),
+    ['গভীর নলকূপ', 'অগভীর নলকূপ', 'খাল/নালা', 'পাওয়ার পাম্প (এলএলপি)', 'সেচ চার্জ পাওনা', 'সেচ চার্জ আয়', 'সেচ ইনভয়েস', 'টাকার রশিদ'],
+    ['সেচের রেট অনুমোদন', 'সেচ ইনভয়েস বাতিল', 'রশিদ বাতিল', 'সব ধরনের জমি'],
+    ['মৌসুম', 'সেচের ধরন', 'জমির ধরন', 'নতুন রেট (প্রতি শতক)', 'কার্যকর তারিখ', 'রেট (প্রতি শতক)', 'ইনভয়েস', 'চাষি', 'রশিদ', 'প্রদানকারী', 'টাকা', 'দাগ', 'জমি'],
 );
 foreach ($extra as $k) {
     $keys[$k] = true;

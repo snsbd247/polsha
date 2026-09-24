@@ -54,7 +54,7 @@ function LandForm({ id, existing }: { id?: string; existing?: LandDetail }) {
 
   const save = async (confirm = false) => {
     const v = await form.validateFields()
-    const payload: Record<string, unknown> = { ...v, confirm_duplicate: confirm }
+    const payload: Record<string, unknown> = { ...v, irrigation_type_id: v.irrigation_type_id ?? null, confirm_duplicate: confirm }
     if (!isEdit) {
       payload.owned_since = (v.owned_since as Dayjs).format('YYYY-MM-DD')
       payload.cultivation = withCultivation ? { ...v.cultivation, start_date: (v.cultivation.start_date as Dayjs).format('YYYY-MM-DD') } : null
@@ -118,6 +118,11 @@ function LandForm({ id, existing }: { id?: string; existing?: LandDetail }) {
                 <Col xs={24} md={12}>
                   <Form.Item name="land_type_id" label={tx('জমির ধরন')} rules={[required(tx('ধরন বাছাই করুন'))]}>
                     <Select options={meta?.land_types.map((t) => ({ value: t.id, label: t.name_bn }))} />
+                  </Form.Item>
+                </Col>
+                <Col xs={24} md={12}>
+                  <Form.Item name="irrigation_type_id" label={tx('সেচের ধরন')} extra={tx('সেচের রেট এই ধরন অনুযায়ী ঠিক হয়')}>
+                    <Select allowClear options={meta?.irrigation_types.map((t) => ({ value: t.id, label: t.name_bn }))} />
                   </Form.Item>
                 </Col>
                 <Col xs={24} md={12}>

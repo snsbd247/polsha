@@ -97,6 +97,9 @@ export default function LandDetailPage() {
           {tx('জমি')}{' '}{land.land_code} <Tag color={LAND_STATUS_COLOR[land.status]}>{meta?.statuses[land.status]}</Tag>
         </h2>
         <Space wrap className="no-print">
+          <Can perm="irrigation.create">
+            <Button onClick={() => navigate(`/irrigation/invoices/new?land_id=${id}`)}>{tx('সেচ ইনভয়েস')}</Button>
+          </Can>
           <Can perm="land.edit">
             <Button icon={<EditOutlined />} onClick={() => navigate(`/lands/${id}/edit`)}>
               {tx('সম্পাদনা')}
@@ -123,6 +126,7 @@ export default function LandDetailPage() {
               </Descriptions.Item>
               <Descriptions.Item label={tx('পরিমাণ')}>{fmtArea(land.area_decimal, meta)}</Descriptions.Item>
               <Descriptions.Item label={tx('জমির ধরন')}>{land.land_type ?? '—'}</Descriptions.Item>
+              <Descriptions.Item label={tx('সেচের ধরন')}>{land.irrigation_type || '—'}</Descriptions.Item>
               <Descriptions.Item label={tx('পাতওয়ারী')}>{land.patwaris.length ? land.patwaris.map((p) => `${p.name} (${digits(p.mobile)})`).join(', ') : '—'}</Descriptions.Item>
               <Descriptions.Item label={tx('মন্তব্য')}>{land.remarks ?? '—'}</Descriptions.Item>
               <Descriptions.Item label={tx('এন্ট্রি')}>{fmtDateTime(land.created_at)}</Descriptions.Item>

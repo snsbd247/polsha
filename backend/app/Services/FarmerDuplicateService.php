@@ -31,6 +31,7 @@ class FarmerDuplicateService
                 }
             }
         }
+
         // Drop punctuation and all whitespace.
         return preg_replace('/[\s\.\:\-ঃ,]+/u', '', $s) ?? $s;
     }

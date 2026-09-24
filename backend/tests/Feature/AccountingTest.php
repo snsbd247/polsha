@@ -7,6 +7,7 @@ use App\Models\AccountingPeriod;
 use App\Models\ApprovalRequest;
 use App\Models\Journal;
 use App\Models\User;
+use App\Services\SettingService;
 
 class AccountingTest extends Phase2TestCase
 {
@@ -229,7 +230,7 @@ class AccountingTest extends Phase2TestCase
 
     public function test_admission_fee_is_posted_when_member_is_admitted(): void
     {
-        \App\Services\SettingService::setMany(['admission_fee' => 500]);
+        SettingService::setMany(['admission_fee' => 500]);
         $res = $this->actingAs($this->officer)->postJson('/api/membership-applications',
             $this->applicationPayload($this->makeFarmer(), ['admission_fee' => 500, 'submit' => true]))->assertCreated();
         $this->approveBothSteps(ApprovalRequest::findOrFail($res->json('approval_request_id'))->id);

@@ -26,7 +26,7 @@ export type MemberStatus = 'active' | 'inactive' | 'cancelled'
 export const MEMBER_STATUS: Record<MemberStatus, { label: string; color: string }> = {
   active: { label: tx('সক্রিয়'), color: 'green' },
   inactive: { label: tx('নিষ্ক্রিয়'), color: 'orange' },
-  cancelled: { label: tx('বাতিল'), color: 'red' },
+  cancelled: { label: tx('বাতিলকৃত'), color: 'red' },
 }
 
 export const APPLICATION_STATUS: Record<string, { label: string; color: string }> = {
@@ -35,7 +35,7 @@ export const APPLICATION_STATUS: Record<string, { label: string; color: string }
   approved: { label: tx('অনুমোদিত'), color: 'green' },
   rejected: { label: tx('প্রত্যাখ্যাত'), color: 'red' },
   returned: { label: tx('সংশোধনের জন্য ফেরত'), color: 'orange' },
-  cancelled: { label: tx('বাতিল'), color: 'default' },
+  cancelled: { label: tx('বাতিলকৃত'), color: 'default' },
 }
 
 export type FarmerRow = {

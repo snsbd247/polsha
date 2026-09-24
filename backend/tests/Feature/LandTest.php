@@ -7,6 +7,7 @@ use App\Models\ImportBatch;
 use App\Models\Land;
 use App\Models\LandType;
 use App\Models\Member;
+use App\Models\Mouza;
 use Illuminate\Http\UploadedFile;
 
 class LandTest extends Phase2TestCase
@@ -128,7 +129,7 @@ class LandTest extends Phase2TestCase
         $user = $this->officer();
         $this->actingAs($user)->postJson('/api/lands', $this->landPayload([['farmer_id' => $owner->id, 'share_percent' => 100]]))->assertCreated();
         // A farmer whose mouza isn't linked to their village.
-        $other = \App\Models\Mouza::create(['union_id' => $this->mouza->union_id, 'upazila_id' => $this->mouza->upazila_id, 'name_bn' => 'অন্য', 'jl_no' => '99']);
+        $other = Mouza::create(['union_id' => $this->mouza->union_id, 'upazila_id' => $this->mouza->upazila_id, 'name_bn' => 'অন্য', 'jl_no' => '99']);
         Farmer::create($this->farmerPayload(['name_bn' => 'ভুল মৌজা', 'mouza_id' => $other->id]) + ['farmer_code' => 'F-X']);
 
         $summary = collect($this->actingAs($user)->getJson('/api/data-health/summary')->assertOk()->json())->keyBy('key');

@@ -9,6 +9,7 @@ import {
   CheckSquareOutlined,
   DashboardOutlined,
   EnvironmentOutlined,
+  ExperimentOutlined,
   IdcardOutlined,
   LogoutOutlined,
   SolutionOutlined,
@@ -65,6 +66,21 @@ const NAV: NavItem[] = [
     ],
   },
   {
+    key: 'irrigation-menu',
+    label: tx('সেচ ও রশিদ'),
+    icon: <ExperimentOutlined />,
+    children: [
+      { key: '/payments/collect', label: tx('টাকা আদায়'), perm: 'payment.create' },
+      { key: '/payments/receipts', label: tx('টাকার রশিদ'), perm: 'payment.view' },
+      { key: '/irrigation/invoices', label: tx('সেচ ইনভয়েস'), perm: 'irrigation.view' },
+      { key: '/irrigation/dues', label: tx('বকেয়া তালিকা'), perm: 'irrigation.view' },
+      { key: '/irrigation/seasons', label: tx('মৌসুম'), perm: 'irrigation.view' },
+      { key: '/irrigation/rates', label: tx('সেচের রেট'), perm: 'irrigation.view' },
+      { key: '/irrigation/rate-audit', label: tx('রেট অডিট'), perm: 'irrigation.view' },
+      { key: '/irrigation/mismatch', label: tx('বকেয়া মিলকরণ'), perm: 'irrigation.view' },
+    ],
+  },
+  {
     key: 'masters',
     label: tx('এলাকা ও মৌজা'),
     icon: <EnvironmentOutlined />,
@@ -108,6 +124,7 @@ const NAV: NavItem[] = [
       { key: '/settings/general', label: tx('সাধারণ'), perm: 'settings.admin' },
       { key: '/settings/sequences', label: tx('সিরিয়াল নম্বর'), perm: 'settings.admin' },
       { key: '/settings/land-types', label: tx('জমির ধরন'), perm: 'settings.admin' },
+      { key: '/settings/irrigation-types', label: tx('সেচের ধরন'), perm: 'settings.admin' },
     ],
   },
 ]

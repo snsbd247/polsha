@@ -1,0 +1,181 @@
+<?php
+
+namespace App\Http\Controllers\Api;
+
+use App\Http\Controllers\Controller;
+use App\Models\Account;
+use App\Models\Farmer;
+use App\Models\Invoice;
+use App\Models\Receipt;
+use App\Services\ReceiptService;
+use App\Services\SettingService;
+use App\Support\Bn;
+use App\Support\CsvExport;
+use App\Support\Tr;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
+
+class ReceiptController extends Controller
+{
+    public function __construct(private ReceiptService $receipts) {}
+
+    public function index(Request $request)
+    {
+        $q = $this->filtered($request);
+        if ($request->query('export') === 'csv') {
+            $methods = Tr::map(Receipt::METHODS);
+            $statuses = Tr::map(Receipt::STATUSES);
+
+            return CsvExport::download('receipts-'.now()->format('Ymd').'.csv',
+                [__('রশিদ নং'), __('তারিখ'), __('প্রদানকারী'), __('মাধ্যম'), __('রেফারেন্স'), __('পুরনো রশিদ নং'), __('টাকা'), __('অবস্থা')],
+                $q->orderBy('receipt_no')->lazy()->map(fn (Receipt $r) => [$r->receipt_no, $r->date, $r->payer_name, $methods[$r->method] ?? $r->method,
+                    $r->reference, $r->legacy_no, $r->amount, $statuses[$r->status] ?? $r->status]));
+        }
+        $total = (clone $q)->reorder()->where('status', '!=', 'cancelled')->sum('amount');
+
+        return response()->json($q->with(['farmer:id,farmer_code', 'creator:id,name_bn,name_en'])->orderByDesc('date')->orderByDesc('id')
+            ->paginate($this->perPage($request))->toArray()
+            + ['total_amount' => round((float) $total, 2), 'methods' => Tr::map(Receipt::METHODS), 'statuses' => Tr::map(Receipt::STATUSES)]);
+    }
+
+    public function show(Receipt $receipt): JsonResponse
+    {
+        $receipt->load(['items', 'farmer:id,farmer_code,name_bn,name_en,father_name,mobile', 'fund:id,code,name_bn,name_en',
+            'journal:id,voucher_no,status,reversed_by_id', 'journal.reversedBy:id,voucher_no', 'creator:id,name_bn,name_en', 'canceller:id,name_bn,name_en']);
+        $invoices = Invoice::whereIn('id', $receipt->items->where('payable_type', (new Invoice)->getMorphClass())->pluck('payable_id'))
+            ->get()->keyBy('id');
+        $settings = SettingService::all();
+
+        return response()->json([
+            ...$receipt->toArray(),
+            'items' => $receipt->items->map(fn ($it) => $it->toArray() + ['invoice' => ($inv = $invoices[$it->payable_id] ?? null) ? [
+                'id' => $inv->id, 'invoice_no' => $inv->invoice_no, 'season' => $inv->snapshot['season'] ?? null,
+                'mouza' => $inv->snapshot['mouza'] ?? null, 'dag_no' => $inv->snapshot['dag_no'] ?? null, 'khatian_no' => $inv->snapshot['khatian_no'] ?? null,
+                'area_decimal' => (float) $inv->area_decimal, 'rate' => (float) $inv->rate, 'amount' => (float) $inv->amount,
+                'due_after' => $it->due_after !== null ? (float) $it->due_after : $inv->dueAmount(), 'owners' => $inv->snapshot['owners'] ?? [], 'cultivation_type' => $inv->cultivation_type,
+            ] : null])->values(),
+            'verify_token' => $receipt->verify_token,
+            'society' => ['name_bn' => $settings['society_name_bn'], 'name_en' => $settings['society_name_en'], 'address' => $settings['address'],
+                'phone' => $settings['phone'], 'registration_no' => $settings['registration_no'], 'logo' => $settings['logo']],
+            'methods' => Tr::map(Receipt::METHODS),
+            'statuses' => Tr::map(Receipt::STATUSES),
+        ]);
+    }
+
+    /** A farmer's open irrigation bills, oldest first — what the collection screen offers. */
+    public function dues(Request $request): JsonResponse
+    {
+        $farmer = Farmer::findOrFail($request->query('farmer_id'));
+        $invoices = Invoice::where('farmer_id', $farmer->id)->whereIn('status', ['unpaid', 'partial'])
+            ->with('season:id,name_bn')->orderBy('invoice_date')->orderBy('id')->get()
+            ->map(fn (Invoice $i) => [
+                'id' => $i->id, 'invoice_no' => $i->invoice_no, 'invoice_date' => $i->invoice_date->toDateString(),
+                'due_date' => $i->due_date?->toDateString(), 'season' => $i->season?->name_bn,
+                'mouza' => $i->snapshot['mouza'] ?? null, 'dag_no' => $i->snapshot['dag_no'] ?? null,
+                'area_decimal' => (float) $i->area_decimal, 'amount' => (float) $i->amount, 'paid_amount' => (float) $i->paid_amount,
+                'due' => $i->dueAmount(), 'cultivation_type' => $i->cultivation_type,
+            ]);
+
+        return response()->json([
+            'farmer' => $farmer->only(['id', 'farmer_code', 'name_bn', 'name_en', 'father_name', 'mobile']),
+            'invoices' => $invoices,
+            'total_due' => round($invoices->sum('due'), 2),
+        ]);
+    }
+
+    /** Accounts a receipt can go into: the cash streams and active bank accounts. */
+    public function funds(): JsonResponse
+    {
+        return response()->json(Account::with('bankAccount')->where('is_postable', true)->where('is_active', true)
+            ->where(fn ($q) => $q->whereIn('key', Account::CASH_STREAMS)->orWhereHas('bankAccount', fn ($b) => $b->where('is_active', true)))
+            ->orderBy('code')->get()
+            ->map(fn (Account $a) => ['id' => $a->id, 'key' => $a->key, 'code' => $a->code, 'name_bn' => $a->name_bn, 'name_en' => $a->name_en,
+                'kind' => $a->bankAccount ? 'bank' : 'cash', 'account_no' => $a->bankAccount?->account_no]));
+    }
+
+    public function store(Request $request): JsonResponse
+    {
+        $legacy = $request->boolean('is_legacy');
+        $data = $request->validate([
+            'farmer_id' => ['required', 'exists:farmers,id'],
+            'date' => ['required', 'date', 'before_or_equal:today'],
+            'method' => ['required', Rule::in(array_keys(Receipt::METHODS))],
+            'fund_account_id' => ['nullable', 'integer'],
+            'reference' => ['nullable', 'string', 'max:100'],
+            'remarks' => ['nullable', 'string', 'max:500'],
+            'is_legacy' => ['boolean'],
+            'legacy_no' => [$legacy ? 'required' : 'nullable', 'string', 'max:50', Rule::unique('receipts', 'legacy_no')],
+            'items' => ['required', 'array', 'min:1', 'max:100'],
+            'items.*.invoice_id' => ['required', 'integer', 'distinct'],
+            'items.*.amount' => ['required', 'numeric', 'min:0', 'max:9999999999999'],
+        ]);
+        $farmer = Farmer::findOrFail($data['farmer_id']);
+        $invoices = Invoice::whereIn('id', array_column($data['items'], 'invoice_id'))->get()->keyBy('id');
+        $items = [];
+        foreach ($data['items'] as $i => $it) {
+            $inv = $invoices[$it['invoice_id']] ?? null;
+            if (! $inv || $inv->farmer_id !== $farmer->id) {
+                throw ValidationException::withMessages(["items.$i.invoice_id" => __('ইনভয়েসটি এই চাষির নয়।')]);
+            }
+            $items[] = ['payable' => $inv, 'amount' => (float) $it['amount']];
+        }
+
+        $receipt = $this->receipts->create([
+            'module' => 'irrigation', 'farmer_id' => $farmer->id, 'payer_name' => $farmer->name_bn,
+            'date' => $data['date'], 'method' => $data['method'], 'fund_account_id' => $data['fund_account_id'] ?? null,
+            'reference' => $data['reference'] ?? null, 'remarks' => $data['remarks'] ?? null,
+            'is_legacy' => $legacy, 'legacy_no' => $data['legacy_no'] ?? null,
+        ], $items);
+
+        return response()->json(['id' => $receipt->id, 'receipt_no' => $receipt->receipt_no], 201);
+    }
+
+    public function cancel(Request $request, Receipt $receipt): JsonResponse
+    {
+        $data = $request->validate(['reason' => ['required', 'string', 'max:300']]);
+
+        return response()->json($this->receipts->requestCancel($receipt, $data['reason']), 201);
+    }
+
+    /** Public QR check: proves a printed receipt is genuine without logging in. */
+    public function verify(string $token): JsonResponse
+    {
+        $r = Receipt::where('verify_token', $token)->first();
+        abort_unless($r, 404, __('রশিদ পাওয়া যায়নি।'));
+
+        return response()->json([
+            'receipt_no' => $r->receipt_no, 'date' => $r->date->toDateString(), 'payer_name' => $r->payer_name,
+            'amount' => (float) $r->amount, 'status' => $r->status, 'status_label' => __(Receipt::STATUSES[$r->status]),
+            'society' => SettingService::get('society_name_bn'),
+        ]);
+    }
+
+    private function filtered(Request $request): Builder
+    {
+        $q = Receipt::query();
+        foreach (['module', 'status', 'method', 'farmer_id'] as $f) {
+            if ($request->filled($f)) {
+                $q->where($f, $request->query($f));
+            }
+        }
+        if ($request->filled('is_legacy')) {
+            $q->where('is_legacy', $request->boolean('is_legacy'));
+        }
+        if ($request->filled('from')) {
+            $q->whereDate('date', '>=', $request->query('from'));
+        }
+        if ($request->filled('to')) {
+            $q->whereDate('date', '<=', $request->query('to'));
+        }
+        if ($search = trim((string) $request->query('search'))) {
+            $en = Bn::toEnDigits($search);
+            $q->where(fn ($w) => $w->where('receipt_no', 'like', "%$en%")->orWhere('legacy_no', 'like', "%$en%")
+                ->orWhere('payer_name', 'like', "%$search%")->orWhere('reference', 'like', "%$en%"));
+        }
+
+        return $q;
+    }
+}
