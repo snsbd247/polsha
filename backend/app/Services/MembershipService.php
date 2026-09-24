@@ -4,7 +4,9 @@ namespace App\Services;
 
 use App\Models\ApprovalRequest;
 use App\Models\Farmer;
+use App\Models\Loan;
 use App\Models\Member;
+use App\Models\MemberAccount;
 use App\Models\MembershipApplication;
 use App\Models\MembershipStatusHistory;
 use App\Models\Sequence;
@@ -155,6 +157,9 @@ class MembershipService
         if ($pending) {
             throw ValidationException::withMessages(['action' => __('এই সদস্যের একটি পরিবর্তন ইতিমধ্যে অনুমোদনের অপেক্ষায় আছে।')]);
         }
+        if ($action === 'cancel') {
+            $this->assertNothingOutstanding($member);
+        }
 
         $member->loadMissing('farmer');
         $labels = ['deactivate' => __('নিষ্ক্রিয়করণ'), 'activate' => __('সক্রিয়করণ'), 'cancel' => __('সদস্যপদ বাতিল'), 'reactivate' => __('পুনর্বহাল')];
@@ -184,6 +189,9 @@ class MembershipService
 
         DB::transaction(function () use ($request, $action, $p) {
             $member = Member::whereKey($request->approvable_id)->lockForUpdate()->firstOrFail();
+            if ($action === 'cancel') {
+                $this->assertNothingOutstanding($member); // money may have moved since the request
+            }
             $from = $member->status;
             $member->update(['status' => $p['status'], 'status_changed_on' => $p['effective_date']]);
 
@@ -201,6 +209,21 @@ class MembershipService
                 'created_by' => $request->requested_by,
             ]);
         });
+    }
+
+    /** Membership cannot be cancelled while savings, share or a loan is still open. */
+    private function assertNothingOutstanding(Member $member): void
+    {
+        $balances = MemberAccount::where('member_id', $member->id)->where('balance', '>', 0)->pluck('kind')->all();
+        $loan = Loan::where('member_id', $member->id)->whereIn('status', Loan::OPEN)->value('loan_no');
+        $problems = array_filter([
+            in_array('savings', $balances, true) ? __('সঞ্চয় হিসাবে জমা আছে') : null,
+            in_array('share', $balances, true) ? __('শেয়ার হিসাবে জমা আছে') : null,
+            $loan ? __('ঋণ চলমান (:no)', ['no' => $loan]) : null,
+        ]);
+        if ($problems) {
+            throw ValidationException::withMessages(['action' => __('সদস্যপদ বাতিল করা যাবে না: :list। আগে নিষ্পত্তি করুন।', ['list' => implode(', ', $problems)])]);
+        }
     }
 
     public function nextMemberNo(): int

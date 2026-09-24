@@ -7,9 +7,13 @@ use App\Models\Invoice;
 use App\Models\IrrigationRate;
 use App\Models\Journal;
 use App\Models\Land;
+use App\Models\Loan;
+use App\Models\LoanPayment;
+use App\Models\LoanProduct;
 use App\Models\Receipt;
 use App\Models\Season;
 use App\Services\IrrigationService;
+use App\Services\LoanService;
 use App\Support\AreaUnit;
 use Illuminate\Contracts\Console\Kernel;
 
@@ -75,6 +79,10 @@ $extra = array_merge(
     $labels(IrrigationService::SKIP_REASONS),
     ['গভীর নলকূপ', 'অগভীর নলকূপ', 'খাল/নালা', 'পাওয়ার পাম্প (এলএলপি)', 'সেচ চার্জ পাওনা', 'সেচ চার্জ আয়', 'সেচ ইনভয়েস', 'টাকার রশিদ'],
     ['সেচের রেট অনুমোদন', 'সেচ ইনভয়েস বাতিল', 'রশিদ বাতিল', 'সব ধরনের জমি'],
+    // Phase 7: loans.
+    $labels(Loan::STATUSES), $labels(LoanPayment::STATUSES), $labels(LoanProduct::CATEGORIES), $labels(LoanProduct::METHODS),
+    $labels(LoanProduct::FREQUENCIES), $labels(LoanService::BUCKETS),
+    ['ঋণ আবেদন অনুমোদন', 'ঋণ পরিশোধ বাতিল', 'ঋণ নং', 'ঋণের ধরন', 'ঋণসীমা', 'টাকার পরিমাণ', 'মোট সুদ', 'জামিনদার', 'উদ্দেশ্য', 'কিস্তি', 'সুদ', 'আসল', 'জরিমানা', 'রশিদ নং', 'সদস্য'],
     ['মৌসুম', 'সেচের ধরন', 'জমির ধরন', 'নতুন রেট (প্রতি শতক)', 'কার্যকর তারিখ', 'রেট (প্রতি শতক)', 'ইনভয়েস', 'চাষি', 'রশিদ', 'প্রদানকারী', 'টাকা', 'দাগ', 'জমি'],
 );
 foreach ($extra as $k) {

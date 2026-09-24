@@ -22,6 +22,8 @@ use App\Http\Controllers\Api\IrrigationTypeController;
 use App\Http\Controllers\Api\JournalController;
 use App\Http\Controllers\Api\LandController;
 use App\Http\Controllers\Api\LandTypeController;
+use App\Http\Controllers\Api\LoanController;
+use App\Http\Controllers\Api\LoanProductController;
 use App\Http\Controllers\Api\LocationController;
 use App\Http\Controllers\Api\MemberController;
 use App\Http\Controllers\Api\MemberFundController;
@@ -304,6 +306,36 @@ Route::middleware(['auth:sanctum', 'usable'])->group(function () {
     Route::get('distributions/{run}', [DistributionController::class, 'show'])->whereNumber('run');
     Route::get('distributions/{kind}/preview', [DistributionController::class, 'preview'])->whereIn('kind', ['profit', 'dividend']);
     Route::post('distributions/{kind}', [DistributionController::class, 'store'])->whereIn('kind', ['profit', 'dividend']);
+
+    // ---- Phase 7: loans ----
+    Route::middleware('permission:loan.view')->group(function () {
+        Route::get('loan-products', [LoanProductController::class, 'index']);
+        Route::get('loan-products/preview', [LoanProductController::class, 'preview']);
+        Route::get('loans/meta', [LoanController::class, 'meta']);
+        Route::get('loans/funds', [ReceiptController::class, 'funds']);
+        Route::get('loans/members', [LoanController::class, 'members']);
+        Route::get('loans/eligibility', [LoanController::class, 'eligibility']);
+        Route::get('loans/dues', [LoanController::class, 'dues']);
+        Route::get('loans/audit', [LoanController::class, 'audit']);
+        Route::get('loans/payments', [LoanController::class, 'payments']);
+        Route::get('loans/payments/{payment}', [LoanController::class, 'showPayment']);
+        Route::get('loans', [LoanController::class, 'index']);
+        Route::get('loans/{loan}', [LoanController::class, 'show'])->whereNumber('loan');
+        Route::get('loans/{loan}/statement', [LoanController::class, 'statement'])->whereNumber('loan');
+        Route::get('loans/{loan}/position', [LoanController::class, 'position'])->whereNumber('loan');
+        // repayments: loan staff or cashiers (checked in the controller)
+        Route::post('loans/{loan}/payments', [LoanController::class, 'pay'])->whereNumber('loan');
+        Route::post('loans/payments/{payment}/cancel', [LoanController::class, 'cancelPayment']);
+    });
+    Route::middleware('permission:loan.create')->group(function () {
+        Route::post('loans', [LoanController::class, 'store']);
+        Route::post('loans/{loan}/disburse', [LoanController::class, 'disburse'])->whereNumber('loan');
+        Route::post('loans/{loan}/cancel', [LoanController::class, 'cancel'])->whereNumber('loan');
+    });
+    Route::middleware('permission:loan.edit')->group(function () {
+        Route::post('loan-products', [LoanProductController::class, 'store']);
+        Route::put('loan-products/{product}', [LoanProductController::class, 'update']);
+    });
 
     // Backups — Super Admin only
     Route::middleware('role:super_admin')->group(function () {

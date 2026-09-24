@@ -131,6 +131,11 @@ export default function GeneralSettingsPage() {
                 <InputNumber min={1} max={200} style={{ width: '100%' }} />
               </Form.Item>
             </Card>
+            <Card title={tx('ঋণ')} style={{ marginTop: 16 }}>
+              <Form.Item name="loan_max_guarantees" label={tx('একজন সদস্য সর্বোচ্চ কতটি চলমান ঋণের জামিনদার হতে পারবেন')} rules={[required(tx('মান দিন'))]}>
+                <InputNumber min={1} max={20} style={{ width: '100%' }} />
+              </Form.Item>
+            </Card>
           </Col>
         </Row>
         <Button type="primary" htmlType="submit" style={{ marginTop: 16 }}>

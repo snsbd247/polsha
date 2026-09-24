@@ -29,6 +29,8 @@ class SettingService
         'voter_min_membership_months' => 0,
         // Local bigha size varies by district; 33 decimals is the common standard.
         'bigha_decimal' => 33,
+        // how many running loans one member may stand guarantor for
+        'loan_max_guarantees' => 2,
     ];
 
     public static function all(): array

@@ -6,6 +6,8 @@ use App\Approvals\InvoiceCancelHandler;
 use App\Approvals\IrrigationRateHandler;
 use App\Approvals\JournalHandler;
 use App\Approvals\JournalReversalHandler;
+use App\Approvals\LoanApplicationHandler;
+use App\Approvals\LoanPaymentCancelHandler;
 use App\Approvals\MembershipAdmitHandler;
 use App\Approvals\MemberStatusHandler;
 use App\Approvals\MemberTxnCancelHandler;
@@ -106,6 +108,8 @@ return [
         'share.adjustment' => MemberTxnHandler::class,
         'share.txn_cancel' => MemberTxnCancelHandler::class,
         'share.dividend' => DistributionRunHandler::class,
+        'loan.application' => LoanApplicationHandler::class,
+        'loan.payment_cancel' => LoanPaymentCancelHandler::class,
     ],
 
     'farmer' => [

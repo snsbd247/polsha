@@ -5,6 +5,7 @@ import { Avatar, Badge, Button, Drawer, Dropdown, Grid, Layout, Menu, Spin, Typo
 import {
   AccountBookOutlined,
   AuditOutlined,
+  BankOutlined,
   BorderOuterOutlined,
   CheckSquareOutlined,
   DashboardOutlined,
@@ -93,6 +94,19 @@ const NAV: NavItem[] = [
       { key: '/funds/share/transactions', label: tx('শেয়ারের লেনদেন'), perm: 'share.view' },
       { key: '/funds/share/audit', label: tx('শেয়ার মূলধন মিলকরণ'), perm: 'share.view' },
       { key: '/funds/distributions', label: tx('মুনাফা ও লভ্যাংশ'), perm: ['savings.view', 'share.view'] },
+    ],
+  },
+  {
+    key: 'loans-menu',
+    label: tx('ঋণ'),
+    icon: <BankOutlined />,
+    children: [
+      { key: '/loans', label: tx('ঋণের তালিকা'), perm: 'loan.view' },
+      { key: '/loans/new', label: tx('ঋণের আবেদন'), perm: 'loan.create' },
+      { key: '/loans/payments', label: tx('ঋণ পরিশোধ ও রশিদ'), perm: 'loan.view' },
+      { key: '/loans/dues', label: tx('ঋণের বকেয়া ও Aging'), perm: 'loan.view' },
+      { key: '/loans/products', label: tx('ঋণের ধরন'), perm: 'loan.view' },
+      { key: '/loans/audit', label: tx('ঋণ অডিট'), perm: 'loan.view' },
     ],
   },
   {

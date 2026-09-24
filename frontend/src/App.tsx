@@ -72,7 +72,15 @@ const FundAuditPage = lazy(() => import('./pages/funds/FundAuditPage'))
 const DistributionListPage = lazy(() => import('./pages/funds/DistributionListPage'))
 const DistributionFormPage = lazy(() => import('./pages/funds/DistributionFormPage'))
 const DistributionDetailPage = lazy(() => import('./pages/funds/DistributionDetailPage'))
-const VerifyReceiptPage = lazy(() => import('./pages/VerifyReceiptPage'))
+const LoanListPage = lazy(() => import('./pages/loans/LoanListPage'))
+const LoanFormPage = lazy(() => import('./pages/loans/LoanFormPage'))
+const LoanDetailPage = lazy(() => import('./pages/loans/LoanDetailPage'))
+const LoanProductsPage = lazy(() => import('./pages/loans/LoanProductsPage'))
+const LoanPaymentListPage = lazy(() => import('./pages/loans/LoanPaymentListPage'))
+const LoanPaymentDetailPage = lazy(() => import('./pages/loans/LoanPaymentDetailPage'))
+const LoanDuesPage = lazy(() => import('./pages/loans/LoanDuesPage'))
+const LoanAuditPage = lazy(() => import('./pages/loans/LoanAuditPage'))
+const VerifyReceiptPage =lazy(() => import('./pages/VerifyReceiptPage'))
 
 function RequireAuth({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth()
@@ -185,6 +193,14 @@ export default function App() {
         <Route path="funds/distributions" element={<Perm perm={['savings.view', 'share.view']}><DistributionListPage /></Perm>} />
         <Route path="funds/distributions/new/:kind" element={<Perm perm={['savings.edit', 'share.edit']}><DistributionFormPage /></Perm>} />
         <Route path="funds/distributions/:id" element={<Perm perm={['savings.view', 'share.view']}><DistributionDetailPage /></Perm>} />
+        <Route path="loans" element={<Perm perm="loan.view"><LoanListPage /></Perm>} />
+        <Route path="loans/new" element={<Perm perm="loan.create"><LoanFormPage /></Perm>} />
+        <Route path="loans/products" element={<Perm perm="loan.view"><LoanProductsPage /></Perm>} />
+        <Route path="loans/payments" element={<Perm perm="loan.view"><LoanPaymentListPage /></Perm>} />
+        <Route path="loans/payments/:id" element={<Perm perm="loan.view"><LoanPaymentDetailPage /></Perm>} />
+        <Route path="loans/dues" element={<Perm perm="loan.view"><LoanDuesPage /></Perm>} />
+        <Route path="loans/audit" element={<Perm perm="loan.view"><LoanAuditPage /></Perm>} />
+        <Route path="loans/:id" element={<Perm perm="loan.view"><LoanDetailPage /></Perm>} />
 
         <Route path="*" element={<Result status="404" title={tx('পাতা পাওয়া যায়নি')} />} />
       </Route>

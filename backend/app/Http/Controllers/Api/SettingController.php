@@ -38,6 +38,7 @@ class SettingController extends Controller
             'admission_fee' => ['required', 'numeric', 'min:0'],
             'voter_min_membership_months' => ['required', 'integer', 'min:0'],
             'bigha_decimal' => ['required', 'numeric', 'min:1', 'max:200'],
+            'loan_max_guarantees' => ['required', 'integer', 'min:1', 'max:20'],
         ]);
         SettingService::setMany($data);
 
