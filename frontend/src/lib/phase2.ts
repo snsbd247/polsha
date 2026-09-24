@@ -51,7 +51,12 @@ export type FarmerRow = {
   is_active: boolean
   member: MemberRef | null
   photo_url: string | null
+  occupation?: string | null
+  land_acre?: number
+  pending_application?: boolean
 }
+
+export type FarmerSummary = { total: number; members: number; non_members: number; pending: number; land_acre: number }
 
 export type FarmerLookup = {
   id: number

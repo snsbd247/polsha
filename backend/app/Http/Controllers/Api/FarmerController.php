@@ -32,12 +32,40 @@ class FarmerController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        $q = $this->filtered($request)->with(['village:id,name_bn', 'mouza:id,name_bn', 'member:id,farmer_id,member_no,status']);
+        $q = $this->filtered($request)->with(['village:id,name_bn', 'mouza:id,name_bn', 'member:id,farmer_id,member_no,status'])
+            ->select('farmers.*')
+            ->selectSub($this->ownedDecimal(), 'owned_decimal')
+            ->withExists(['applications as pending_application' => fn ($a) => $a->where('status', 'pending')]);
 
         $sort = in_array($request->query('sort'), ['farmer_code', 'name_bn', 'created_at'], true) ? $request->query('sort') : 'id';
         $q->orderBy($sort, $request->query('order') === 'asc' ? 'asc' : 'desc');
 
         return response()->json($q->paginate($this->perPage($request))->through(fn ($f) => $this->row($f)));
+    }
+
+    /** Header cards of the farmer list: people, membership and land in acres. */
+    public function summary(): JsonResponse
+    {
+        $live = Farmer::query()->live();
+        $total = (clone $live)->count();
+        $members = (clone $live)->whereHas('member')->count();
+
+        return response()->json([
+            'total' => $total,
+            'members' => $members,
+            'non_members' => $total - $members,
+            'pending' => DB::table('membership_applications')->where('status', 'pending')->count(),
+            'land_acre' => round((float) DB::table('lands')->whereNull('deleted_at')->sum('area_decimal') / 100, 2),
+        ]);
+    }
+
+    /** Current owned area (শতক) of the outer farmer row, weighted by ownership share. */
+    private function ownedDecimal()
+    {
+        return DB::table('land_owners')->join('lands', 'lands.id', '=', 'land_owners.land_id')
+            ->whereColumn('land_owners.farmer_id', 'farmers.id')
+            ->whereNull('land_owners.end_date')->whereNull('lands.deleted_at')
+            ->selectRaw('COALESCE(SUM(lands.area_decimal * land_owners.share_percent / 100), 0)');
     }
 
     public function export(Request $request)
@@ -246,6 +274,20 @@ class FarmerController extends Controller
             'non_member' => $q->whereDoesntHave('member'),
             default => null,
         };
+        match ($request->query('member_status')) {
+            'active', 'inactive', 'cancelled' => $q->whereHas('member', fn ($m) => $m->where('status', $request->query('member_status'))),
+            'non_member' => $q->whereDoesntHave('member'),
+            'pending' => $q->whereDoesntHave('member')->whereHas('applications', fn ($a) => $a->where('status', 'pending')),
+            default => null,
+        };
+        if ($request->filled('occupation')) {
+            $q->where('occupation', $request->query('occupation'));
+        }
+        match ($request->query('land_owner')) {
+            'yes' => $q->whereHas('ownerships', fn ($o) => $o->whereNull('end_date')),
+            'no' => $q->whereDoesntHave('ownerships', fn ($o) => $o->whereNull('end_date')),
+            default => null,
+        };
         if ($request->filled('is_active')) {
             $q->where('is_active', $request->boolean('is_active'));
         }
@@ -368,6 +410,9 @@ class FarmerController extends Controller
             'is_active' => $f->is_active,
             'member' => $f->member ? ['id' => $f->member->id, 'member_no' => $f->member->member_no, 'status' => $f->member->status] : null,
             'photo_url' => $f->photo ? url("api/farmers/{$f->id}/photo") : null,
+            'occupation' => $f->occupation,
+            'land_acre' => isset($f->owned_decimal) ? round((float) $f->owned_decimal / 100, 2) : null,
+            'pending_application' => (bool) ($f->pending_application ?? false),
         ];
     }
 }

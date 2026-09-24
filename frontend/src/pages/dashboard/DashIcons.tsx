@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { ReactNode } from 'react'
 
 /** Line icons for the dashboard cards (24×24 stroke paths, drawn in the card's colour). */
 const PATHS: Record<string, ReactNode> = {
@@ -22,6 +22,14 @@ const PATHS: Record<string, ReactNode> = {
       <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
       <circle cx="9" cy="7" r="4" />
       <path d="m17 8 5 5M22 8l-5 5" />
+    </>
+  ),
+  userClock: (
+    <>
+      <path d="M12 15H6a4 4 0 0 0-4 4v2" />
+      <circle cx="9" cy="7" r="4" />
+      <circle cx="17.5" cy="17.5" r="4.5" />
+      <path d="M17.5 15.5v2l1.3 1" />
     </>
   ),
   layers: (
@@ -108,32 +116,12 @@ const PATHS: Record<string, ReactNode> = {
       <path d="M20 8v6M17 11v3M23 11v3" />
     </>
   ),
-};
+}
 
-export function DashIcon({
-  name,
-  size = 28,
-  color = "currentColor",
-  stroke = 2,
-}: {
-  name: string;
-  size?: number;
-  color?: string;
-  stroke?: number;
-}) {
+export function DashIcon({ name, size = 28, color = 'currentColor', stroke = 2 }: { name: string; size?: number; color?: string; stroke?: number }) {
   return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke={color}
-      strokeWidth={stroke}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={stroke} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
       {PATHS[name] ?? PATHS.file}
     </svg>
-  );
+  )
 }

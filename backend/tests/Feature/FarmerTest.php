@@ -5,6 +5,8 @@ namespace Tests\Feature;
 use App\Models\ApprovalRequest;
 use App\Models\Farmer;
 use App\Models\FarmerDocument;
+use App\Models\LandType;
+use App\Models\MembershipApplication;
 use App\Services\FarmerDuplicateService;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -111,5 +113,36 @@ class FarmerTest extends Phase2TestCase
         $this->assertSame('self', $f->household_relation);
         $this->assertSame($f->id, $f->household->head_farmer_id);
         $this->assertSame('H-00001', $f->household->code);
+    }
+
+    public function test_list_summary_and_status_filters(): void
+    {
+        $admin = $this->userWithRole('super_admin');
+        $member = $this->makeFarmer(['name_bn' => 'সদস্য', 'occupation' => 'farmer']);
+        $pending = $this->makeFarmer(['name_bn' => 'আবেদনকারী', 'occupation' => 'business']);
+        $this->makeFarmer(['name_bn' => 'সাধারণ']);
+
+        $this->actingAs($admin)->postJson('/api/lands', [
+            'mouza_id' => $this->mouza->id, 'survey' => 'RS', 'khatian_no' => '1', 'dag_no' => '1', 'area' => 1, 'area_unit' => 'bigha',
+            'land_type_id' => LandType::first()->id, 'status' => 'cultivated', 'owners' => [['farmer_id' => $member->id, 'share_percent' => 100]], 'owned_since' => '2015-01-01',
+        ])->assertCreated();
+        $res = $this->actingAs($this->officer)->postJson('/api/membership-applications', $this->applicationPayload($member, ['submit' => true]))->assertCreated();
+        $this->approveBothSteps(MembershipApplication::find($res->json('id'))->approval_request_id);
+        $this->actingAs($this->officer)->postJson('/api/membership-applications', $this->applicationPayload($pending, ['submit' => true]))->assertCreated();
+
+        $this->actingAs($admin)->getJson('/api/farmers/summary')->assertOk()
+            ->assertJson(['total' => 3, 'members' => 1, 'non_members' => 2, 'pending' => 1, 'land_acre' => 0.33]);
+
+        $names = fn (array $q) => collect($this->actingAs($admin)->getJson('/api/farmers?'.http_build_query($q))->assertOk()->json('data'))->pluck('name_bn')->sort()->values()->all();
+        $this->assertSame(['সদস্য'], $names(['member_status' => 'active']));
+        $this->assertSame(['আবেদনকারী'], $names(['member_status' => 'pending']));
+        $this->assertSame(['আবেদনকারী', 'সাধারণ'], $names(['member_status' => 'non_member']));
+        $this->assertSame(['আবেদনকারী'], $names(['occupation' => 'business']));
+        $this->assertSame(['সদস্য'], $names(['land_owner' => 'yes']));
+        $this->assertSame(['আবেদনকারী', 'সাধারণ'], $names(['land_owner' => 'no']));
+
+        $row = collect($this->actingAs($admin)->getJson('/api/farmers?search=সদস্য')->json('data'))->firstWhere('name_bn', 'সদস্য');
+        $this->assertSame(0.33, $row['land_acre']);
+        $this->assertFalse($row['pending_application']);
     }
 }

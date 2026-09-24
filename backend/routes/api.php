@@ -141,6 +141,7 @@ Route::middleware(['auth:sanctum', 'usable'])->group(function () {
     Route::get('farmers/lookup', [FarmerController::class, 'lookup'])->middleware('permission:farmer.view|membership.create|member.admin|patwari.create|patwari.edit');
     Route::middleware('permission:farmer.view')->group(function () {
         Route::get('farmers', [FarmerController::class, 'index']);
+        Route::get('farmers/summary', [FarmerController::class, 'summary']);
         Route::get('farmers/export', [FarmerController::class, 'export'])->middleware('permission:farmer.export');
         Route::post('farmers/check-duplicate', [FarmerController::class, 'checkDuplicate']);
         Route::get('farmers/duplicates', [DuplicateController::class, 'index']);
