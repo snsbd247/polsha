@@ -9,6 +9,7 @@ use App\Models\Invoice;
 use App\Models\Receipt;
 use App\Services\ReceiptService;
 use App\Services\SettingService;
+use App\Services\SmsService;
 use App\Support\Bn;
 use App\Support\CsvExport;
 use App\Support\Tr;
@@ -129,6 +130,7 @@ class ReceiptController extends Controller
             'reference' => $data['reference'] ?? null, 'remarks' => $data['remarks'] ?? null,
             'is_legacy' => $legacy, 'legacy_no' => $data['legacy_no'] ?? null,
         ], $items);
+        $legacy || app(SmsService::class)->paymentConfirmation($farmer->mobile, $farmer->name_bn, (float) $receipt->amount, $receipt->receipt_no, $data['date'], $receipt);
 
         return response()->json(['id' => $receipt->id, 'receipt_no' => $receipt->receipt_no], 201);
     }

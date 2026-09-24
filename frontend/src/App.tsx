@@ -101,6 +101,48 @@ const AssetMovementsPage = lazy(() => import('./pages/assets/AssetMovementsPage'
 const MaintenancePage = lazy(() => import('./pages/assets/MaintenancePage'))
 const DepreciationPage = lazy(() => import('./pages/assets/DepreciationPage'))
 const AssetCategoriesPage = lazy(() => import('./pages/assets/AssetCategoriesPage'))
+const ReportPage = lazy(() => import('./pages/reports/ReportPage'))
+const ReportCenterPage = lazy(() => import('./pages/reports/ReportCenterPage'))
+const DeletedFarmersPage = lazy(() => import('./pages/farmers/DeletedFarmersPage'))
+const LedgerIntegrityPage = lazy(() => import('./pages/accounting/LedgerIntegrityPage'))
+const PublicPaymentsPage = lazy(() => import('./pages/accounting/PublicPaymentsPage'))
+const IntegrityScanPage = lazy(() => import('./pages/audit/IntegrityScanPage'))
+const ReceiptSerialPage = lazy(() => import('./pages/admin/ReceiptSerialPage'))
+const SmsSettingsPage = lazy(() => import('./pages/settings/SmsSettingsPage'))
+const SmsTemplatesPage = lazy(() => import('./pages/settings/SmsTemplatesPage'))
+const SmsLogsPage = lazy(() => import('./pages/settings/SmsLogsPage'))
+const FinancialYearPage = lazy(() => import('./pages/settings/FinancialYearPage'))
+const PublicPaymentPage = lazy(() => import('./pages/PublicPaymentPage'))
+const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage'))
+
+/** Menu items that are simply one or more server reports (the page shows only those the user may open). */
+const REPORT_ROUTES: { path: string; title: string; keys: string[] }[] = [
+  { path: 'lands/owners', title: tx('মালিক ও চাষি'), keys: ['land_owners', 'land_cultivators'] },
+  { path: 'lands/borga', title: tx('বর্গা চাষ'), keys: ['borga'] },
+  { path: 'lands/transfers', title: tx('জমি হস্তান্তর'), keys: ['land_history'] },
+  { path: 'lands/reports', title: tx('জমির রিপোর্ট'), keys: ['lands', 'land_by_mouza', 'land_by_type'] },
+  { path: 'irrigation/lookup', title: tx('মৌসুম / জমির ধরন অনুসন্ধান'), keys: ['irrigation_rates'] },
+  { path: 'irrigation/category-rates', title: tx('ক্যাটাগরিভিত্তিক রেট'), keys: ['rate_matrix'] },
+  { path: 'members/voter-history', title: tx('ভোটার ইতিহাস'), keys: ['voter_lists', 'voters'] },
+  { path: 'members/voter-audit', title: tx('ভোটার অডিট'), keys: ['voter_changes'] },
+  { path: 'loans/guarantors', title: tx('জামিনদার'), keys: ['guarantors'] },
+  { path: 'cashbook/irrigation', title: tx('সেচ নগদ বিবরণী'), keys: ['cash_irrigation'] },
+  { path: 'cashbook/society', title: tx('সমিতির নগদ বিবরণী'), keys: ['cash_society'] },
+  { path: 'cashbook/income-expense', title: tx('আয়-ব্যয় নগদ বই'), keys: ['income_expense_cashbook'] },
+  { path: 'audit/exports', title: tx('Export অডিট'), keys: ['export_logs'] },
+  { path: 'assets/reports', title: tx('সম্পদের রিপোর্ট'), keys: ['asset_register', 'asset_by_category', 'asset_depreciation', 'asset_maintenance'] },
+  { path: 'accounting/summary', title: tx('আর্থিক সারসংক্ষেপ'), keys: ['income_statement', 'balance_sheet', 'cash_flow'] },
+  { path: 'accounting/source-vs-ledger', title: tx('উৎস বনাম খতিয়ান'), keys: ['source_vs_ledger'] },
+  { path: 'accounting/irrigation-cash-bank', title: tx('সেচের নগদ ও ব্যাংক'), keys: ['irrigation_cash_bank'] },
+  { path: 'accounting/payment-reconciliation', title: tx('পেমেন্ট মিলকরণ'), keys: ['payment_reconciliation'] },
+  {
+    path: 'reports/collections',
+    title: tx('আদায়ের রিপোর্ট'),
+    keys: ['collection_daily', 'collection_by_user', 'irrigation_collection', 'loan_collection', 'savings_collection', 'combined_payments'],
+  },
+  { path: 'reports/dues', title: tx('বকেয়ার রিপোর্ট'), keys: ['irrigation_due', 'loan_due'] },
+  { path: 'reports/audit', title: tx('অডিট রিপোর্ট'), keys: ['audit_activity', 'audit_summary', 'approvals', 'cancellations', 'login_history'] },
+]
 
 function RequireAuth({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth()
@@ -130,6 +172,8 @@ export default function App() {
       <Route path="/login" element={<LoginPage />} />
       <Route path="/change-password" element={<ChangePasswordPage />} />
       <Route path="/verify/:kind/:token" element={<VerifyReceiptPage />} />
+      <Route path="/pay" element={<PublicPaymentPage />} />
+      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       <Route
         element={
           <RequireAuth>
@@ -257,6 +301,20 @@ export default function App() {
         <Route path="assets/new" element={<Perm perm="asset.create"><AssetFormPage /></Perm>} />
         <Route path="assets/:id" element={<Perm perm="asset.view"><AssetDetailPage /></Perm>} />
         <Route path="assets/:id/edit" element={<Perm perm="asset.edit"><AssetFormPage /></Perm>} />
+
+        <Route path="reports" element={<ReportCenterPage />} />
+        {REPORT_ROUTES.map((r) => (
+          <Route key={r.path} path={r.path} element={<ReportPage key={r.path} title={r.title} keys={r.keys} />} />
+        ))}
+        <Route path="farmers/deleted" element={<Perm perm="farmer.view"><DeletedFarmersPage /></Perm>} />
+        <Route path="accounting/ledger-integrity" element={<Perm perm="accounting.view"><LedgerIntegrityPage /></Perm>} />
+        <Route path="accounting/public-payments" element={<Perm perm="payment.view"><PublicPaymentsPage /></Perm>} />
+        <Route path="audit/integrity-scan" element={<Perm perm="audit.view"><IntegrityScanPage /></Perm>} />
+        <Route path="admin/receipt-serials" element={<Perm perm="settings.admin"><ReceiptSerialPage /></Perm>} />
+        <Route path="settings/sms" element={<Perm perm={['settings.admin', 'sms.admin']}><SmsSettingsPage /></Perm>} />
+        <Route path="settings/sms-templates" element={<Perm perm={['settings.admin', 'sms.admin']}><SmsTemplatesPage /></Perm>} />
+        <Route path="settings/sms-logs" element={<Perm perm={['settings.admin', 'sms.view', 'sms.admin']}><SmsLogsPage /></Perm>} />
+        <Route path="settings/financial-year" element={<Perm perm="settings.admin"><FinancialYearPage /></Perm>} />
 
         {Object.entries(SOON).map(([path, page]) => (
           <Route key={path} path={path.slice(1)} element={<ComingSoonPage page={page} />} />

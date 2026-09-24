@@ -35,7 +35,27 @@ class SettingService
         'combined_payment_order' => ['loan', 'irrigation', 'share'],
         // share capital every member should hold; the gap is a "share due" in combined payment
         'share_min_amount' => 0,
+        // SMS gateway (any HTTP API); without it messages are only logged
+        'sms_enabled' => false,
+        'sms_gateway_url' => '',
+        'sms_http_method' => 'GET',
+        'sms_api_key' => '',
+        'sms_sender_id' => '',
+        'sms_success_text' => '',
+        'sms_auto_payment' => true,
+        'sms_auto_savings' => true,
+        'sms_reminders' => true,
+        'sms_reminder_days' => 3,
+        // public (no-login) bKash/Nagad payment requests
+        'public_payment_enabled' => false,
+        'public_payment_bkash' => '',
+        'public_payment_nagad' => '',
+        'public_payment_rocket' => '',
+        'public_payment_note' => '',
     ];
+
+    /** Never sent to the browser as is. */
+    public const SECRET_KEYS = ['sms_api_key'];
 
     public static function all(): array
     {

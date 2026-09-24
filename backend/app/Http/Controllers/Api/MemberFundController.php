@@ -10,6 +10,7 @@ use App\Models\Receipt;
 use App\Services\LedgerService;
 use App\Services\MemberFundService;
 use App\Services\SettingService;
+use App\Services\SmsService;
 use App\Support\Bn;
 use App\Support\CsvExport;
 use App\Support\Tr;
@@ -207,6 +208,13 @@ class MemberFundController extends Controller
             'adjustment' => $this->funds->requestAdjustment($account, $data['direction'], $data),
             'transfer' => $this->funds->requestTransfer($account, Member::findOrFail($data['to_member_id']), $data),
         };
+        if ($kind === 'savings' && $type === $in && $txn->status === 'posted' && SettingService::get('sms_auto_savings')) {
+            $farmer = $account->member?->farmer;
+            app(SmsService::class)->queue('savings', $farmer?->mobile, [
+                'name' => $farmer?->name_bn, 'account_no' => $account->account_no, 'amount' => number_format((float) $txn->amount, 2),
+                'balance' => number_format((float) ($txn->balance_after ?? $account->fresh()->balance), 2),
+            ], $txn);
+        }
 
         return response()->json([
             'id' => $txn->id, 'txn_no' => $txn->txn_no, 'status' => $txn->status,

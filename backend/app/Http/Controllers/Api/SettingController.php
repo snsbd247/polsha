@@ -17,6 +17,10 @@ class SettingController extends Controller
     {
         $all = SettingService::all();
         $all['logo_url'] = $all['logo'] ? url('api/public/logo') : null;
+        foreach (SettingService::SECRET_KEYS as $key) {
+            $all[$key.'_set'] = (string) $all[$key] !== '';
+            unset($all[$key]);
+        }
 
         return response()->json($all);
     }

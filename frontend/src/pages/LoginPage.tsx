@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Navigate, useLocation, useNavigate } from 'react-router-dom'
+import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { Alert, Button, Card, Checkbox, Form, Input, Typography } from 'antd'
 import { LockOutlined, UserOutlined } from '@ant-design/icons'
 import { useAuth } from '../auth/AuthContext'
@@ -62,9 +62,10 @@ export default function LoginPage() {
             {tx('লগইন')}
           </Button>
         </Form>
-        <Typography.Paragraph type="secondary" style={{ marginTop: 16, marginBottom: 0, fontSize: 13, textAlign: 'center' }}>
-          {tx('পাসওয়ার্ড ভুলে গেলে অ্যাডমিনের সাথে যোগাযোগ করুন।')}
-        </Typography.Paragraph>
+        <div style={{ marginTop: 16, display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+          <Link to="/forgot-password">{tx('পাসওয়ার্ড ভুলে গেছেন?')}</Link>
+          <Link to="/pay">{tx('অনলাইন পেমেন্ট জমা')}</Link>
+        </div>
       </Card>
     </div>
   )

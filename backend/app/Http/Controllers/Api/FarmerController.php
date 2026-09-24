@@ -143,14 +143,48 @@ class FarmerController extends Controller
         return response()->json(['is_active' => $farmer->is_active]);
     }
 
-    public function destroy(Farmer $farmer): JsonResponse
+    public function destroy(Request $request, Farmer $farmer): JsonResponse
     {
+        $reason = $request->validate(['reason' => ['nullable', 'string', 'max:300']])['reason'] ?? null;
         if ($farmer->member()->exists() || $farmer->applications()->exists()) {
             throw ValidationException::withMessages(['farmer' => __('সদস্যপদ বা আবেদন আছে এমন কৃষক মুছা যাবে না; নিষ্ক্রিয় করুন।')]);
         }
         $farmer->delete();
+        if ($reason) {
+            AuditLog::where('auditable_type', 'Farmer')->where('auditable_id', $farmer->id)->where('action', 'delete')
+                ->latest('id')->first()?->update(['description' => $reason]);
+        }
 
         return response()->json(['message' => __('মুছে ফেলা হয়েছে।')]);
+    }
+
+    /** Deleted (soft) farmers with who deleted them, when and why. */
+    public function deleted(Request $request): JsonResponse
+    {
+        $q = Farmer::onlyTrashed()->with(['village:id,name_bn,name_en', 'mouza:id,name_bn,name_en'])->latest('deleted_at');
+        if ($s = $request->query('q')) {
+            $s = Bn::toEnDigits($s);
+            $q->where(fn ($w) => $w->where('name_bn', 'like', "%$s%")->orWhere('name_en', 'like', "%$s%")
+                ->orWhere('farmer_code', 'like', "%$s%")->orWhere('mobile', 'like', "%$s%")->orWhere('nid', 'like', "%$s%"));
+        }
+        $page = $q->paginate($this->perPage($request));
+        $logs = AuditLog::with('user:id,name_bn,name_en')->where('auditable_type', 'Farmer')
+            ->whereIn('auditable_id', $page->getCollection()->pluck('id'))->where('action', 'delete')->latest('id')->get()->unique('auditable_id')->keyBy('auditable_id');
+        $page->getCollection()->transform(fn (Farmer $f) => $f->only(['id', 'farmer_code', 'name_bn', 'name_en', 'father_name', 'mobile', 'nid', 'deleted_at'])
+            + ['village' => $f->village, 'mouza' => $f->mouza, 'deleted_by' => $logs[$f->id]->user ?? null, 'reason' => $logs[$f->id]->description ?? null]);
+
+        return response()->json($page);
+    }
+
+    public function restore(int $id): JsonResponse
+    {
+        $farmer = Farmer::onlyTrashed()->findOrFail($id);
+        if ($farmer->nid && Farmer::where('nid', $farmer->nid)->exists()) {
+            throw ValidationException::withMessages(['farmer' => __('এই NID দিয়ে আরেকজন সক্রিয় কৃষক আছে; আগে সেটি যাচাই করুন।')]);
+        }
+        $farmer->restore();
+
+        return response()->json(['id' => $farmer->id, 'message' => __('কৃষক পুনরুদ্ধার করা হয়েছে।')]);
     }
 
     public function photo(Farmer $farmer)

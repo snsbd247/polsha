@@ -10,6 +10,7 @@ use App\Models\MemberTransaction;
 use App\Models\Receipt;
 use App\Services\CombinedPaymentService;
 use App\Services\SettingService;
+use App\Services\SmsService;
 use App\Support\Bn;
 use App\Support\CsvExport;
 use App\Support\Tr;
@@ -72,6 +73,8 @@ class CombinedPaymentController extends Controller
             'parts.*' => ['nullable', 'numeric', 'min:0'],
         ]);
         $payment = $this->payments->create($data);
+        $farmer = $payment->farmer;
+        app(SmsService::class)->paymentConfirmation($farmer?->mobile, (string) $farmer?->name_bn, (float) $payment->amount, $payment->payment_no, $data['date'], $payment);
 
         return response()->json(['id' => $payment->id, 'payment_no' => $payment->payment_no], 201);
     }

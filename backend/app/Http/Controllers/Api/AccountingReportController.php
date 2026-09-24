@@ -8,6 +8,7 @@ use App\Models\AccountingPeriod;
 use App\Models\Journal;
 use App\Services\AccountingReportService;
 use App\Services\AuditLogger;
+use App\Services\FinancialYearService;
 use App\Services\LedgerService;
 use App\Support\CsvExport;
 use Illuminate\Http\Request;
@@ -88,6 +89,9 @@ class AccountingReportController extends Controller
         $reason = $request->validate(['reason' => ['required', 'string', 'max:300']])['reason'];
         if ($period->status !== 'closed') {
             throw ValidationException::withMessages(['period' => __('এই মাস বন্ধ নয়।')]);
+        }
+        if (app(FinancialYearService::class)->isClosed($period->fiscal_year)) {
+            throw ValidationException::withMessages(['period' => __('এই অর্থবছর চূড়ান্তভাবে বন্ধ; মাস খোলা যাবে না।')]);
         }
         $period->update(['status' => 'open', 'closed_by' => null, 'closed_at' => null]);
         AuditLogger::log('accounting', 'reopen', $period, null, null, $reason);

@@ -13,6 +13,7 @@ use App\Models\Receipt;
 use App\Services\LedgerService;
 use App\Services\LoanService;
 use App\Services\SettingService;
+use App\Services\SmsService;
 use App\Support\Bn;
 use App\Support\CsvExport;
 use App\Support\Tr;
@@ -194,6 +195,8 @@ class LoanController extends Controller
             'remarks' => ['nullable', 'string', 'max:500'],
         ]);
         $payment = $this->loans->pay($loan, $data);
+        $farmer = $loan->member?->farmer;
+        $payment->status === 'posted' && app(SmsService::class)->paymentConfirmation($farmer?->mobile, (string) $farmer?->name_bn, (float) $payment->amount, $payment->payment_no, $data['date'], $payment);
 
         return response()->json(['id' => $payment->id, 'payment_no' => $payment->payment_no, 'status' => $payment->status,
             'loan_status' => $loan->fresh()->status, 'message' => __('কিস্তি জমা হয়েছে।')], 201);

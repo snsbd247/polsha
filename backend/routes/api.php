@@ -11,15 +11,18 @@ use App\Http\Controllers\Api\BackupController;
 use App\Http\Controllers\Api\BankAccountController;
 use App\Http\Controllers\Api\BankReconciliationController;
 use App\Http\Controllers\Api\CombinedPaymentController;
+use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\DataHealthController;
 use App\Http\Controllers\Api\DayCloseController;
 use App\Http\Controllers\Api\DistributionController;
 use App\Http\Controllers\Api\DuplicateController;
 use App\Http\Controllers\Api\FarmerController;
 use App\Http\Controllers\Api\FarmerDocumentController;
+use App\Http\Controllers\Api\FinancialYearController;
 use App\Http\Controllers\Api\FundController;
 use App\Http\Controllers\Api\HouseholdController;
 use App\Http\Controllers\Api\ImportController;
+use App\Http\Controllers\Api\IntegrityScanController;
 use App\Http\Controllers\Api\InvoiceController;
 use App\Http\Controllers\Api\IrrigationRateController;
 use App\Http\Controllers\Api\IrrigationReportController;
@@ -34,23 +37,34 @@ use App\Http\Controllers\Api\MemberController;
 use App\Http\Controllers\Api\MemberFundController;
 use App\Http\Controllers\Api\MembershipApplicationController;
 use App\Http\Controllers\Api\MouzaController;
+use App\Http\Controllers\Api\PasswordResetController;
 use App\Http\Controllers\Api\PatwariController;
 use App\Http\Controllers\Api\ProfileController;
+use App\Http\Controllers\Api\PublicPaymentController;
 use App\Http\Controllers\Api\QrController;
+use App\Http\Controllers\Api\ReceiptBookController;
 use App\Http\Controllers\Api\ReceiptController;
+use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\RoleController;
 use App\Http\Controllers\Api\SeasonController;
 use App\Http\Controllers\Api\SettingController;
+use App\Http\Controllers\Api\SmsController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\VoterListController;
 use Illuminate\Support\Facades\Route;
 
 // ---- Public ----
-Route::post('auth/login', [AuthController::class, 'login'])->middleware('throttle:10,1');
+Route::post('auth/login', [AuthController::class, 'login'])->middleware('throttle:10,1,login');
 Route::get('public/settings', [AuthController::class, 'publicSettings']);
 Route::get('public/logo', [SettingController::class, 'logo']);
-Route::get('public/receipts/{token}', [ReceiptController::class, 'verify'])->middleware('throttle:30,1');
-Route::get('public/combined-receipts/{token}', [CombinedPaymentController::class, 'verify'])->middleware('throttle:30,1');
+Route::get('public/receipts/{token}', [ReceiptController::class, 'verify'])->middleware('throttle:30,1,receipt-verify');
+Route::get('public/combined-receipts/{token}', [CombinedPaymentController::class, 'verify'])->middleware('throttle:30,1,receipt-verify');
+Route::post('auth/forgot-password', [PasswordResetController::class, 'forgot'])->middleware('throttle:5,1,forgot-password');
+Route::post('auth/reset-password', [PasswordResetController::class, 'reset'])->middleware('throttle:10,1,reset-password');
+Route::get('public/payment-info', [PublicPaymentController::class, 'info'])->middleware('throttle:30,1,pay-info');
+Route::get('public/payments/farmer', [PublicPaymentController::class, 'farmer'])->middleware('throttle:20,1,pay-farmer');
+Route::post('public/payments', [PublicPaymentController::class, 'submit'])->middleware('throttle:5,1,pay-submit');
+Route::get('public/payments/status', [PublicPaymentController::class, 'status'])->middleware('throttle:20,1,pay-status');
 
 // ---- Authenticated ----
 Route::middleware(['auth:sanctum', 'usable'])->group(function () {
@@ -147,6 +161,8 @@ Route::middleware(['auth:sanctum', 'usable'])->group(function () {
         Route::delete('households/{household}/members/{farmer}', [HouseholdController::class, 'removeMember']);
     });
     Route::delete('farmers/{farmer}', [FarmerController::class, 'destroy'])->middleware('permission:farmer.delete');
+    Route::get('farmers-deleted', [FarmerController::class, 'deleted'])->middleware('permission:farmer.view');
+    Route::post('farmers/{id}/restore', [FarmerController::class, 'restore'])->whereNumber('id')->middleware('permission:farmer.delete');
 
     // ---- Phase 2: membership ----
     Route::middleware('permission:membership.view')->group(function () {
@@ -409,6 +425,52 @@ Route::middleware(['auth:sanctum', 'usable'])->group(function () {
     Route::middleware('permission:asset.admin')->group(function () {
         Route::post('asset-categories', [AssetCategoryController::class, 'store']);
         Route::put('asset-categories/{assetCategory}', [AssetCategoryController::class, 'update']);
+    });
+
+    // ---- Phase 9: dashboard, reports, integrity, SMS, public payments ----
+    Route::get('dashboard', [DashboardController::class, 'index']);
+    Route::get('reports', [ReportController::class, 'index']);
+    Route::get('reports/{key}', [ReportController::class, 'show']);
+    Route::post('reports/{key}/export-log', [ReportController::class, 'logExport']);
+    Route::middleware('permission:audit.view')->group(function () {
+        Route::get('integrity-scans', [IntegrityScanController::class, 'index']);
+        Route::get('integrity-scans/{integrityScan}', [IntegrityScanController::class, 'show'])->whereNumber('integrityScan');
+        Route::post('integrity-scans', [IntegrityScanController::class, 'store']);
+    });
+    Route::get('ledger-integrity', [IntegrityScanController::class, 'ledger'])->middleware('permission:accounting.view');
+    Route::middleware('permission:settings.admin|sms.admin')->group(function () {
+        Route::get('sms/settings', [SmsController::class, 'settings']);
+        Route::put('sms/settings', [SmsController::class, 'updateSettings']);
+        Route::post('sms/test', [SmsController::class, 'test']);
+        Route::get('sms/templates', [SmsController::class, 'templates']);
+        Route::put('sms/templates/{smsTemplate}', [SmsController::class, 'updateTemplate']);
+        Route::post('sms/templates/{smsTemplate}/preview', [SmsController::class, 'preview']);
+        Route::post('sms/process', [SmsController::class, 'process']);
+    });
+    Route::middleware('permission:settings.admin|sms.view|sms.admin')->group(function () {
+        Route::get('sms/logs', [SmsController::class, 'logs']);
+        Route::post('sms/logs/{smsLog}/retry', [SmsController::class, 'retry']);
+    });
+    Route::middleware('permission:payment.admin|settings.admin')->group(function () {
+        Route::get('public-payments/settings', [PublicPaymentController::class, 'settings']);
+        Route::put('public-payments/settings', [PublicPaymentController::class, 'updateSettings']);
+    });
+    Route::middleware('permission:payment.view')->group(function () {
+        Route::get('public-payments', [PublicPaymentController::class, 'index']);
+        Route::get('public-payments/{publicPayment}', [PublicPaymentController::class, 'show'])->whereNumber('publicPayment');
+    });
+    Route::middleware('permission:payment.create|payment.approve')->group(function () {
+        Route::post('public-payments/{publicPayment}/verify', [PublicPaymentController::class, 'verify'])->whereNumber('publicPayment');
+        Route::post('public-payments/{publicPayment}/reject', [PublicPaymentController::class, 'reject'])->whereNumber('publicPayment');
+    });
+    Route::middleware('permission:settings.admin')->group(function () {
+        Route::get('receipt-books', [ReceiptBookController::class, 'index']);
+        Route::post('receipt-books', [ReceiptBookController::class, 'store']);
+        Route::get('receipt-books/{receiptBook}', [ReceiptBookController::class, 'show']);
+        Route::put('receipt-books/{receiptBook}', [ReceiptBookController::class, 'update']);
+        Route::get('financial-years', [FinancialYearController::class, 'index']);
+        Route::get('financial-years/{fy}/preview', [FinancialYearController::class, 'preview']);
+        Route::post('financial-years/{fy}/close', [FinancialYearController::class, 'close']);
     });
 
     // Backups — Super Admin only

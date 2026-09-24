@@ -5,11 +5,11 @@ use App\Models\Account;
 use App\Models\Asset;
 use App\Models\AssetMaintenance;
 use App\Models\AssetMovement;
+use App\Models\BankAccount;
 use App\Models\BankReconciliation;
 use App\Models\CombinedPayment;
 use App\Models\DayClose;
-use App\Models\QrScan;
-use App\Models\BankAccount;
+use App\Models\ExportLog;
 use App\Models\Invoice;
 use App\Models\IrrigationRate;
 use App\Models\Journal;
@@ -17,10 +17,15 @@ use App\Models\Land;
 use App\Models\Loan;
 use App\Models\LoanPayment;
 use App\Models\LoanProduct;
+use App\Models\PublicPaymentRequest;
+use App\Models\QrScan;
 use App\Models\Receipt;
+use App\Models\ReceiptBook;
 use App\Models\Season;
+use App\Models\SmsLog;
 use App\Services\IrrigationService;
 use App\Services\LoanService;
+use App\Services\ReportService;
 use App\Support\AreaUnit;
 use Illuminate\Contracts\Console\Kernel;
 
@@ -97,6 +102,9 @@ $extra = array_merge(
     $labels(AssetMaintenance::KINDS), $labels(AssetMaintenance::STATUSES), $labels(QrScan::TYPES),
     ['বন্ধ দিন খোলা', 'সম্পদ বিক্রয়/বাতিল', 'সমন্বিত রশিদ বাতিল', 'সমন্বিত রশিদ', 'সম্পদ নম্বর', 'বিক্রয়', 'বাতিল (অকেজো)'],
     ['প্রত্যাশিত জের', 'প্রকৃত নগদ', 'গরমিল', 'সম্পদ', 'ধরন', 'ক্রয়মূল্য', 'পুঞ্জীভূত অবচয়', 'বর্তমান মূল্য', 'বিক্রয়মূল্য'],
+    // Phase 9: reports, SMS, public payments, receipt books.
+    $labels(ReportService::CATEGORIES), $labels(ExportLog::FORMATS), $labels(SmsLog::STATUSES), $labels(PublicPaymentRequest::METHODS),
+    $labels(PublicPaymentRequest::STATUSES), $labels(ReceiptBook::STATUSES),
 );
 foreach ($extra as $k) {
     $keys[$k] = true;
