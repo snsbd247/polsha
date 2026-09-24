@@ -196,7 +196,7 @@ const STYLES = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <cellXfs count="5"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/><xf numFmtId="4" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/><xf numFmtId="4" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1" applyNumberFormat="1"/><xf numFmtId="0" fontId="2" fillId="0" borderId="0" xfId="0" applyFont="1"/></cellXfs>
 </styleSheet>`
 
-type Cell = { v: unknown; kind: 'text' | 'number'; style?: number }
+export type Cell = { v: unknown; kind: 'text' | 'number'; style?: number }
 
 function sheetXml(rows: Cell[][], widths: number[]): string {
   const body = rows
@@ -246,7 +246,7 @@ export function buildXlsx(sheetName: string, rows: Cell[][], widths: number[]): 
   ])
 }
 
-function download(blob: Blob, filename: string) {
+export function download(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url

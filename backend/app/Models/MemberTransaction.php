@@ -43,7 +43,7 @@ class MemberTransaction extends Model
     protected $fillable = [
         'txn_no', 'member_account_id', 'kind', 'date', 'type', 'direction', 'amount', 'balance_after', 'status', 'method',
         'fund_account_id', 'counter_account_id', 'reference', 'remarks', 'pair_id', 'run_id', 'journal_id', 'approval_request_id',
-        'cancel_reason', 'created_by', 'posted_at', 'cancelled_at',
+        'cancel_reason', 'created_by', 'posted_at', 'cancelled_at', 'import_batch_id',
     ];
 
     protected $casts = [

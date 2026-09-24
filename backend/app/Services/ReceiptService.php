@@ -54,6 +54,7 @@ class ReceiptService
                 'remarks' => $data['remarks'] ?? null,
                 'verify_token' => Str::random(32),
                 'created_by' => auth()->id(),
+                'import_batch_id' => $data['import_batch_id'] ?? null,
             ]);
 
             $credits = [];

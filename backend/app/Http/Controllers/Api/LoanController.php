@@ -248,13 +248,11 @@ class LoanController extends Controller
         $payment->load(['loan:id,loan_no,member_id,amount,product_id,status', 'loan.product:id,name_bn,name_en', 'loan.member:id,farmer_id,member_no',
             'loan.member.farmer:id,farmer_code,name_bn,name_en,father_name,mobile', 'fund:id,code,name_bn,name_en',
             'journal:id,voucher_no,status,reversed_by_id', 'journal.reversedBy:id,voucher_no', 'creator:id,name_bn,name_en']);
-        $settings = SettingService::all();
         $latest = ! LoanPayment::where('loan_id', $payment->loan_id)->where('status', 'posted')->where('id', '>', $payment->id)->exists();
 
         return response()->json($payment->toArray() + [
             'can_cancel' => $payment->status === 'posted' && $latest,
-            'society' => ['name_bn' => $settings['society_name_bn'], 'name_en' => $settings['society_name_en'], 'address' => $settings['address'],
-                'phone' => $settings['phone'], 'registration_no' => $settings['registration_no'], 'logo' => $settings['logo']],
+            'society' => SettingService::society(),
         ]);
     }
 

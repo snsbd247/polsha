@@ -10,7 +10,8 @@ import { digits, fmtDate, fmtDateTime } from '../../lib/format'
 import type { FarmerBrief, MemberBrief } from '../../lib/funds'
 import { METHOD_LABEL, amountInWords } from '../../lib/irrigation'
 import { PAYMENT_STATUS_COLOR, useLoanMeta, type LoanPayment } from '../../lib/loans'
-import { logoUrl } from '../../lib/settings'
+import { logoUrl, type Society } from '../../lib/settings'
+import { Letterhead, ReceiptFoot, ReceiptPaper, ReceiptSign } from '../../components/PrintParts'
 import { required } from '../../lib/rules'
 import { nameOf, t as tx } from '../../lib/i18n'
 
@@ -26,7 +27,7 @@ type Detail = Omit<LoanPayment, 'loan'> & {
   }
   fund: { code: string; name_bn: string; name_en: string | null } | null
   journal: { id: number; voucher_no: string; status: string; reversed_by: { id: number; voucher_no: string } | null } | null
-  society: { name_bn: string; name_en: string | null; address: string | null; phone: string | null; registration_no: string | null; logo: string | null }
+  society: Society
 }
 
 /** Printable loan repayment receipt with the penalty / interest / principal split. */
@@ -86,12 +87,13 @@ export default function LoanPaymentDetailPage() {
         <Alert className="no-print" type="error" showIcon style={{ marginBottom: 16 }} title={tx('বাতিল হয়েছে {{p0}} — কারণ: {{p1}}', { p0: fmtDateTime(p.cancelled_at), p1: p.cancel_reason ?? '' })} />
       )}
 
-      <div className="receipt-paper">
+      <ReceiptPaper society={p.society}>
         {p.status === 'cancelled' && <div className="receipt-stamp">{tx('বাতিলকৃত')}</div>}
         <div className="receipt-head">
           {p.society.logo && <img src={logoUrl()} alt="" className="receipt-logo" />}
           <div style={{ flex: 1, textAlign: 'center' }}>
             <div className="receipt-society">{nameOf(p.society)}</div>
+            <Letterhead society={p.society} />
             {p.society.address && <div>{p.society.address}</div>}
             <div>
               {p.society.registration_no && tx('নিবন্ধন নং: {{p0}}', { p0: digits(p.society.registration_no) })}
@@ -168,16 +170,9 @@ export default function LoanPaymentDetailPage() {
           </div>
         )}
 
-        <div className="receipt-sign">
-          <div>{tx('সদস্যের স্বাক্ষর')}</div>
-          <div>
-            {nameOf(p.creator ?? null)}
-            <br />
-            {tx('দায়িত্বপ্রাপ্ত কর্মকর্তার স্বাক্ষর')}
-          </div>
-        </div>
-        <div className="receipt-foot">{tx('কম্পিউটারে তৈরি রশিদ।')}</div>
-      </div>
+        <ReceiptSign society={p.society} collector={nameOf(p.creator ?? null)} left={tx('সদস্যের স্বাক্ষর')} right={tx('দায়িত্বপ্রাপ্ত কর্মকর্তার স্বাক্ষর')} />
+        <ReceiptFoot society={p.society} fallback={tx('কম্পিউটারে তৈরি রশিদ।')} />
+      </ReceiptPaper>
 
       <Card title={tx('হিসাবের তথ্য')} className="no-print" style={{ marginTop: 16, maxWidth: 800 }}>
         <Descriptions column={{ xs: 1, md: 2 }} size="small">

@@ -5,6 +5,7 @@ use App\Approvals\CombinedPaymentCancelHandler;
 use App\Approvals\DayReopenHandler;
 use App\Approvals\DistributionRunHandler;
 use App\Approvals\FarmerMergeHandler;
+use App\Approvals\ImportRollbackHandler;
 use App\Approvals\InvoiceCancelHandler;
 use App\Approvals\IrrigationRateHandler;
 use App\Approvals\JournalHandler;
@@ -116,6 +117,7 @@ return [
         'cash.day_reopen' => DayReopenHandler::class,
         'payment.combined_cancel' => CombinedPaymentCancelHandler::class,
         'asset.disposal' => AssetDisposalHandler::class,
+        'import.rollback' => ImportRollbackHandler::class,
     ],
 
     'farmer' => [

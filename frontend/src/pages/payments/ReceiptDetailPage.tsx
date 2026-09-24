@@ -8,7 +8,8 @@ import { api, applyFormErrors, errorMessage } from '../../lib/api'
 import { accountLabel, money } from '../../lib/accounting'
 import { digits, fmtDate, fmtDateTime } from '../../lib/format'
 import { METHOD_LABEL, RECEIPT_STATUS_COLOR, RECEIPT_STATUS_LABEL, amountInWords, type Owner } from '../../lib/irrigation'
-import { logoUrl } from '../../lib/settings'
+import { logoUrl, type Society } from '../../lib/settings'
+import { Letterhead, ReceiptFoot, ReceiptPaper, ReceiptSign } from '../../components/PrintParts'
 import { required } from '../../lib/rules'
 import { nameOf, t as tx } from '../../lib/i18n'
 
@@ -54,7 +55,7 @@ type Detail = {
   journal: { id: number; voucher_no: string; status: string; reversed_by: { id: number; voucher_no: string } | null } | null
   creator: User
   canceller: User
-  society: { name_bn: string; name_en: string | null; address: string | null; phone: string | null; registration_no: string | null; logo: string | null }
+  society: Society
 }
 
 export default function ReceiptDetailPage() {
@@ -82,6 +83,7 @@ export default function ReceiptDetailPage() {
 
   const verifyUrl = `${window.location.origin}/verify/receipt/${r.verify_token}`
   const amount = Number(r.amount)
+  const showDue = r.society.show_due !== false
 
   return (
     <>
@@ -112,12 +114,13 @@ export default function ReceiptDetailPage() {
         />
       )}
 
-      <div className="receipt-paper">
+      <ReceiptPaper society={r.society}>
         {r.status === 'cancelled' && <div className="receipt-stamp">{tx('বাতিলকৃত')}</div>}
         <div className="receipt-head">
           {r.society.logo && <img src={logoUrl()} alt="" className="receipt-logo" />}
           <div style={{ flex: 1, textAlign: 'center' }}>
             <div className="receipt-society">{nameOf(r.society)}</div>
+            <Letterhead society={r.society} />
             {r.society.address && <div>{r.society.address}</div>}
             <div>
               {r.society.registration_no && tx('নিবন্ধন নং: {{p0}}', { p0: digits(r.society.registration_no) })}
@@ -126,7 +129,7 @@ export default function ReceiptDetailPage() {
             </div>
             <div className="receipt-title">{tx('টাকার রশিদ — সেচ চার্জ')}</div>
           </div>
-          <QRCode value={verifyUrl} size={96} bordered={false} />
+          {r.society.show_qr !== false && <QRCode value={verifyUrl} size={96} bordered={false} />}
         </div>
 
         <table className="receipt-meta">
@@ -164,7 +167,7 @@ export default function ReceiptDetailPage() {
               <th>{tx('রেট')}</th>
               <th>{tx('বিল')}</th>
               <th>{tx('জমা')}</th>
-              <th>{tx('অবশিষ্ট বকেয়া')}</th>
+              {showDue && <th>{tx('অবশিষ্ট বকেয়া')}</th>}
             </tr>
           </thead>
           <tbody>
@@ -193,7 +196,7 @@ export default function ReceiptDetailPage() {
                 <td className="num">{it.invoice ? money(it.invoice.rate) : ''}</td>
                 <td className="num">{it.invoice ? money(it.invoice.amount) : ''}</td>
                 <td className="num">{money(it.amount)}</td>
-                <td className="num">{it.invoice ? money(it.invoice.due_after) : ''}</td>
+                {showDue && <td className="num">{it.invoice ? money(it.invoice.due_after) : ''}</td>}
               </tr>
             ))}
           </tbody>
@@ -205,7 +208,7 @@ export default function ReceiptDetailPage() {
               <td className="num">
                 <strong>৳{money(amount)}</strong>
               </td>
-              <td />
+              {showDue && <td />}
             </tr>
           </tfoot>
         </table>
@@ -224,16 +227,9 @@ export default function ReceiptDetailPage() {
           </div>
         )}
 
-        <div className="receipt-sign">
-          <div>{tx('প্রদানকারীর স্বাক্ষর')}</div>
-          <div>
-            {nameOf(r.creator)}
-            <br />
-            {tx('আদায়কারীর স্বাক্ষর')}
-          </div>
-        </div>
-        <div className="receipt-foot">{tx('QR কোড স্ক্যান করে রশিদের সত্যতা যাচাই করুন। কম্পিউটারে তৈরি রশিদ।')}</div>
-      </div>
+        <ReceiptSign society={r.society} collector={nameOf(r.creator)} />
+        <ReceiptFoot society={r.society} fallback={tx('QR কোড স্ক্যান করে রশিদের সত্যতা যাচাই করুন। কম্পিউটারে তৈরি রশিদ।')} />
+      </ReceiptPaper>
 
       <Card title={tx('হিসাবের তথ্য')} className="no-print" style={{ marginTop: 16, maxWidth: 800 }}>
         <Descriptions column={{ xs: 1, md: 2 }} size="small">

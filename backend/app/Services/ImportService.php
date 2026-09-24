@@ -12,9 +12,11 @@ use App\Models\Union;
 use App\Models\Upazila;
 use App\Models\User;
 use App\Models\Village;
+use App\Services\Imports\FinanceImporter;
 use App\Support\AreaUnit;
 use App\Support\Bn;
-use Carbon\Carbon;
+use App\Support\ImportValue;
+use App\Support\Spreadsheet;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -23,13 +25,25 @@ use Illuminate\Validation\ValidationException;
 use Throwable;
 
 /**
- * First-cut CSV import for farmers and lands (the full mapping wizard is
- * phase 10). Preview validates every row and stores the parsed rows under a
- * token; commit re-validates against the current database and imports the
- * valid rows under one ImportBatch so a later rollback can find them.
+ * Data migration wizard. A CSV/xlsx upload is stored under an upload token;
+ * the user maps its columns to fields (auto-guessed from the header); the
+ * mapped rows are validated into a preview token; commit re-validates
+ * against the current database and imports the valid rows under one
+ * ImportBatch, so the audit page and a later rollback can find them.
  */
 class ImportService
 {
+    /** type => [label, permission needed besides import.create, money type?] */
+    public const TYPES = [
+        'farmers' => ['কৃষক', 'farmer.create', false],
+        'lands' => ['জমি', 'land.create', false],
+        'savings_opening' => ['সঞ্চয় প্রারম্ভিক জের', 'savings.create', true],
+        'share_opening' => ['শেয়ার প্রারম্ভিক জের', 'share.create', true],
+        'loan_opening' => ['চলমান ঋণ', 'loan.create', true],
+        'legacy_irrigation' => ['পুরনো সেচ বকেয়া', 'irrigation.create', true],
+        'payments' => ['পুরনো রশিদ', 'payment.create', true],
+    ];
+
     public const COLUMNS = [
         'farmers' => [
             'name_bn' => ['নাম', 'name'], 'name_en' => ['ইংরেজি নাম', 'english name'], 'father_name' => ['পিতার নাম', 'father'],
@@ -45,11 +59,42 @@ class ImportService
             'cultivator' => ['চাষি', 'cultivator'], 'cultivation_type' => ['চাষের ধরন'], 'cultivation_since' => ['চাষ শুরুর তারিখ'],
             'terms' => ['শর্ত', 'বর্গার শর্ত'],
         ],
+        'savings_opening' => [
+            'member_ref' => ['সদস্য নং', 'member no', 'সদস্য', 'nid', 'farmer id'], 'amount' => ['জের', 'টাকা', 'balance', 'amount', 'স্থিতি'],
+            'date' => ['তারিখ', 'date'], 'remarks' => ['মন্তব্য', 'remarks'],
+        ],
+        'share_opening' => [
+            'member_ref' => ['সদস্য নং', 'member no', 'সদস্য', 'nid', 'farmer id'], 'amount' => ['শেয়ার মূলধন', 'জের', 'টাকা', 'amount'],
+            'date' => ['তারিখ', 'date'], 'remarks' => ['মন্তব্য', 'remarks'],
+        ],
+        'loan_opening' => [
+            'member_ref' => ['সদস্য নং', 'member no', 'সদস্য', 'nid'], 'product' => ['ঋণের ধরন', 'product', 'ঋণ পণ্য'],
+            'amount' => ['মূল ঋণ', 'ঋণের পরিমাণ', 'loan amount'], 'disbursed_on' => ['বিতরণের তারিখ', 'disbursed on'],
+            'first_due_on' => ['প্রথম কিস্তির তারিখ', 'first due'], 'principal_outstanding' => ['বকেয়া আসল', 'outstanding principal'],
+            'interest_outstanding' => ['বকেয়া সুদ', 'outstanding interest'], 'legacy_no' => ['পুরনো ঋণ নং', 'old loan no'],
+        ],
+        'legacy_irrigation' => [
+            'land_code' => ['জমির কোড', 'land code'], 'upazila' => ['উপজেলা'], 'mouza_jl' => ['মৌজা jl', 'jl', 'জেএল'],
+            'khatian_no' => ['খতিয়ান', 'khatian'], 'dag_no' => ['দাগ', 'dag'], 'season' => ['মৌসুম', 'season'],
+            'amount' => ['বিলের টাকা', 'বিল', 'amount'], 'paid' => ['আদায়', 'আদায়কৃত', 'paid'],
+            'invoice_date' => ['বিলের তারিখ', 'তারিখ', 'date'], 'cultivator' => ['চাষি', 'cultivator'],
+        ],
+        'payments' => [
+            'legacy_no' => ['পুরনো রশিদ নং', 'রশিদ নং', 'receipt no'], 'date' => ['তারিখ', 'date'],
+            'invoice_no' => ['ইনভয়েস নং', 'invoice no'], 'land_code' => ['জমির কোড', 'land code'], 'season' => ['মৌসুম', 'season'],
+            'amount' => ['টাকা', 'পরিমাণ', 'amount'], 'method' => ['মাধ্যম', 'method'], 'payer' => ['প্রদানকারী', 'payer'],
+            'remarks' => ['মন্তব্য', 'remarks'],
+        ],
     ];
 
     public const REQUIRED = [
         'farmers' => ['name_bn', 'father_name', 'gender', 'upazila', 'union', 'village', 'mouza_jl'],
         'lands' => ['upazila', 'mouza_jl', 'khatian_no', 'dag_no', 'area', 'land_type', 'owners'],
+        'savings_opening' => ['member_ref', 'amount'],
+        'share_opening' => ['member_ref', 'amount'],
+        'loan_opening' => ['member_ref', 'product', 'amount', 'disbursed_on', 'principal_outstanding'],
+        'legacy_irrigation' => ['season', 'amount'],
+        'payments' => ['legacy_no', 'date', 'amount'],
     ];
 
     private const SAMPLE = [
@@ -57,42 +102,142 @@ class ImportService
             'সাভার', 'আশুলিয়া', 'পলাশবাড়ী', '12', 'উত্তর পাড়া', '96', '01/01/2010'],
         'lands' => ['সাভার', '12', 'RS', '145', '1023', '33', 'শতক', 'মাঝারি উঁচু জমি', 'চাষাধীন',
             'F-000001:50; F-000002:50', '01/01/2015', 'F-000003', 'বর্গা', '01/01/2024', 'ফসলের অর্ধেক'],
+        'savings_opening' => ['96', '12,500', '', 'খাতা নং ৩, পৃষ্ঠা ১২'],
+        'share_opening' => ['96', '5000', '', ''],
+        'loan_opening' => ['96', 'কৃষি ঋণ', '50000', '15/01/2026', '', '30000', '', 'পুরনো-১২'],
+        'legacy_irrigation' => ['L-000001', '', '', '', '', 'বোরো ২০২৫', '3300', '1000', '15/03/2025', ''],
+        'payments' => ['১২৩৪', '20/04/2025', 'IRR-000010', '', '', '1500', 'নগদ', 'আব্দুল করিম', ''],
     ];
 
-    public function __construct(private LandService $lands, private MembershipService $membership, private FarmerDuplicateService $duplicates) {}
+    /** How long an unfinished upload/preview is kept. */
+    private const TTL_HOURS = 24;
+
+    public function __construct(
+        private LandService $lands,
+        private MembershipService $membership,
+        private FarmerDuplicateService $duplicates,
+        private FinanceImporter $finance,
+    ) {}
+
+    public static function isMoney(string $type): bool
+    {
+        return self::TYPES[$type][2] ?? false;
+    }
+
+    public function canImport(User $user, string $type): bool
+    {
+        return $user->can('import.create') && $user->can(self::TYPES[$type][1]);
+    }
+
+    /** Field list for the mapping step. */
+    public function columns(string $type): array
+    {
+        return collect(self::COLUMNS[$type])->map(fn ($aliases, $key) => [
+            'key' => $key, 'label' => $key === 'mouza_jl' ? __('মৌজা JL') : __($aliases[0]),
+            'required' => in_array($key, self::REQUIRED[$type], true),
+        ])->values()->all();
+    }
 
     /** Template: header row (Bangla labels) + one sample row. */
     public function templateRows(string $type): array
     {
         $headers = array_map(fn ($aliases) => $aliases[0], self::COLUMNS[$type]);
-        $headers['mouza_jl'] = __('মৌজা JL');
+        $headers['mouza_jl'] = 'মৌজা JL';
 
         return [array_values($headers), self::SAMPLE[$type]];
     }
 
+    /** Step 1: read the file, keep the raw cells, and guess the column mapping. */
+    public function upload(string $type, UploadedFile $file, User $user): array
+    {
+        $this->prune();
+        $raw = Spreadsheet::read($file->getRealPath(), $file->getClientOriginalExtension());
+        $headerLine = array_key_first($raw);
+        $header = $raw[$headerLine];
+        unset($raw[$headerLine]);
+        if (! $raw) {
+            throw ValidationException::withMessages(['file' => __('শিরোনাম ছাড়া কোনো সারি নেই।')]);
+        }
+        $token = Str::uuid()->toString();
+        Storage::disk('local')->put("imports/upload-{$token}.json", json_encode([
+            'type' => $type, 'user_id' => $user->id, 'filename' => $file->getClientOriginalName(), 'header' => $header, 'rows' => $raw,
+        ], JSON_UNESCAPED_UNICODE));
+
+        $guess = [];
+        foreach ($this->mapHeader($type, $header) as $index => $key) {
+            $guess[$key] ??= $index;
+        }
+
+        return [
+            'upload_token' => $token,
+            'filename' => $file->getClientOriginalName(),
+            'total' => count($raw),
+            'headers' => array_map(fn ($h, $i) => ['index' => $i, 'label' => $h !== '' ? $h : __('কলাম :n', ['n' => $i + 1])], $header, array_keys($header)),
+            'sample' => array_map(fn ($cells) => array_values($cells), array_slice(array_values($raw), 0, 5)),
+            'columns' => $this->columns($type),
+            'mapping' => (object) $guess,
+        ];
+    }
+
+    /** Step 2: apply the chosen mapping (field => column index) and validate. */
+    public function validateMapped(string $uploadToken, array $mapping, User $user): array
+    {
+        $stored = $this->stored("imports/upload-{$uploadToken}.json", $user);
+        $type = $stored['type'];
+        $mapping = array_filter($mapping, fn ($i, $k) => $i !== null && $i !== '' && isset(self::COLUMNS[$type][$k]), ARRAY_FILTER_USE_BOTH);
+        $missing = array_diff(self::REQUIRED[$type], array_keys($mapping));
+        if ($missing) {
+            throw ValidationException::withMessages(['mapping' => __('প্রয়োজনীয় কলাম মেলানো হয়নি: ').implode(', ', array_map(fn ($k) => __(self::COLUMNS[$type][$k][0]), $missing))]);
+        }
+        $rows = [];
+        foreach ($stored['rows'] as $line => $cells) {
+            $rows[(int) $line] = array_map(fn ($i) => trim((string) ($cells[(int) $i] ?? '')), $mapping);
+        }
+        $headers = [];
+        foreach ($mapping as $key => $i) {
+            $headers[$key] = $stored['header'][(int) $i] ?? '';
+        }
+
+        return $this->previewRows($type, $rows, $stored['filename'], $headers, $user);
+    }
+
+    /** One-shot upload with the automatic mapping (kept for the farmer/land pages). */
     public function preview(string $type, UploadedFile $file, User $user): array
     {
-        $rows = $this->parse($type, $file);
+        $up = $this->upload($type, $file, $user);
+        $mapping = (array) $up['mapping'];
+        $missing = array_diff(self::REQUIRED[$type], array_keys($mapping));
+        if ($missing) {
+            $labels = array_map(fn ($k) => self::COLUMNS[$type][$k][0], $missing);
+            throw ValidationException::withMessages(['file' => __('প্রয়োজনীয় কলাম পাওয়া যায়নি: ').implode(', ', $labels).__('। Template ডাউনলোড করে ব্যবহার করুন।')]);
+        }
+
+        return $this->validateMapped($up['upload_token'], $mapping, $user);
+    }
+
+    private function previewRows(string $type, array $rows, string $filename, array $mapping, User $user): array
+    {
         [$valid, $errors, $warnings] = $this->validateRows($type, $rows, $user);
 
         $token = Str::uuid()->toString();
         Storage::disk('local')->put("imports/{$token}.json", json_encode([
-            'type' => $type, 'user_id' => $user->id, 'filename' => $file->getClientOriginalName(), 'rows' => $rows,
+            'type' => $type, 'user_id' => $user->id, 'filename' => $filename, 'rows' => $rows, 'mapping' => $mapping,
         ], JSON_UNESCAPED_UNICODE));
 
         return [
             'token' => $token,
+            'type' => $type,
             'total' => count($rows),
             'valid' => count($valid),
+            'amount' => round(array_sum(array_map(fn ($r) => (float) ($r['principal_outstanding'] ?? $r['due'] ?? $r['amount'] ?? 0), $valid)), 2),
             'errors' => $errors,
             'warnings' => $warnings,
             'sample' => array_slice(array_values($valid), 0, 20),
         ];
     }
 
-    public function commit(string $token, bool $allowSimilar, User $user): ImportBatch
+    private function stored(string $path, User $user): array
     {
-        $path = "imports/{$token}.json";
         if (! Storage::disk('local')->exists($path)) {
             throw ValidationException::withMessages(['token' => __('প্রিভিউ পাওয়া যায়নি বা মেয়াদ শেষ। আবার আপলোড করুন।')]);
         }
@@ -100,9 +245,30 @@ class ImportService
         if ($stored['user_id'] !== $user->id) {
             abort(403);
         }
+        abort_unless($this->canImport($user, $stored['type']), 403);
+
+        return $stored;
+    }
+
+    /** Uploads and previews nobody finished. */
+    private function prune(): void
+    {
+        $disk = Storage::disk('local');
+        foreach ($disk->files('imports') as $f) {
+            if ($disk->lastModified($f) < now()->subHours(self::TTL_HOURS)->getTimestamp()) {
+                $disk->delete($f);
+            }
+        }
+    }
+
+    public function commit(string $token, bool $allowSimilar, User $user): ImportBatch
+    {
+        $path = "imports/{$token}.json";
+        $stored = $this->stored($path, $user);
         $type = $stored['type'];
         [$valid, $errors, $warnings] = $this->validateRows($type, $stored['rows'], $user);
-        if (! $allowSimilar) {
+        // Duplicate-suspect warnings only exist for farmers and lands; money warnings are informational.
+        if (! $allowSimilar && ! self::isMoney($type)) {
             $warnedLines = array_column($warnings, 'line');
             foreach ($valid as $line => $row) {
                 if (in_array($line, $warnedLines, true)) {
@@ -115,12 +281,17 @@ class ImportService
         $batch = DB::transaction(function () use ($type, $stored, $valid, $errors, $user) {
             $batch = ImportBatch::create([
                 'type' => $type, 'filename' => $stored['filename'], 'total_rows' => count($stored['rows']),
-                'created_by' => $user->id,
+                'mapping' => $stored['mapping'] ?? null, 'created_by' => $user->id,
             ]);
             $imported = 0;
+            $amount = 0.0;
             foreach ($valid as $line => $row) {
                 try {
-                    DB::transaction(fn () => $type === 'farmers' ? $this->importFarmer($row, $batch, $user) : $this->importLand($row, $batch, $user));
+                    $amount += (float) DB::transaction(fn () => match ($type) {
+                        'farmers' => $this->importFarmer($row, $batch, $user),
+                        'lands' => $this->importLand($row, $batch, $user),
+                        default => $this->finance->import($type, $row, $batch),
+                    });
                     $imported++;
                 } catch (ValidationException $e) {
                     $errors[] = ['line' => $line, 'messages' => collect($e->errors())->flatten()->all()];
@@ -130,63 +301,18 @@ class ImportService
                 }
             }
             usort($errors, fn ($a, $b) => $a['line'] <=> $b['line']);
-            $batch->update(['imported_rows' => $imported, 'skipped_rows' => count($stored['rows']) - $imported, 'errors' => $errors]);
+            $batch->update(['imported_rows' => $imported, 'skipped_rows' => count($stored['rows']) - $imported, 'errors' => $errors, 'total_amount' => round($amount, 2)]);
 
             return $batch;
         });
 
         Storage::disk('local')->delete($path);
-        AuditLogger::log('import', 'import', $batch, null, ['type' => $type, 'imported' => $batch->imported_rows, 'skipped' => $batch->skipped_rows]);
+        AuditLogger::log('import', 'import', $batch, null, ['type' => $type, 'imported' => $batch->imported_rows, 'skipped' => $batch->skipped_rows, 'amount' => (float) $batch->total_amount]);
 
         return $batch;
     }
 
-    // ---------------------------------------------------------------- parsing
-
-    /** @return array<int, array<string,string>> keyed by spreadsheet line number */
-    private function parse(string $type, UploadedFile $file): array
-    {
-        $content = (string) file_get_contents($file->getRealPath());
-        $content = preg_replace('/^\xEF\xBB\xBF/', '', $content);
-        if (! mb_check_encoding($content, 'UTF-8')) {
-            throw ValidationException::withMessages(['file' => __('ফাইলটি UTF-8 নয়। Excel-এ "CSV UTF-8 (Comma delimited)" হিসেবে সেভ করুন।')]);
-        }
-
-        $handle = fopen('php://temp', 'r+');
-        fwrite($handle, $content);
-        rewind($handle);
-
-        $header = fgetcsv($handle, escape: '\\');
-        if (! $header) {
-            throw ValidationException::withMessages(['file' => __('ফাইল খালি।')]);
-        }
-        $map = $this->mapHeader($type, $header);
-        $missing = array_diff(self::REQUIRED[$type], array_values($map));
-        if ($missing) {
-            $labels = array_map(fn ($k) => self::COLUMNS[$type][$k][0], $missing);
-            throw ValidationException::withMessages(['file' => __('প্রয়োজনীয় কলাম পাওয়া যায়নি: ').implode(', ', $labels).__('। Template ডাউনলোড করে ব্যবহার করুন।')]);
-        }
-
-        $rows = [];
-        $line = 1;
-        while (($cells = fgetcsv($handle, escape: '\\')) !== false) {
-            $line++;
-            if (count(array_filter($cells, fn ($c) => trim((string) $c) !== '')) === 0) {
-                continue;
-            }
-            $row = [];
-            foreach ($map as $index => $key) {
-                $row[$key] = trim((string) ($cells[$index] ?? ''));
-            }
-            $rows[$line] = $row;
-            if (count($rows) > 5000) {
-                throw ValidationException::withMessages(['file' => __('একবারে সর্বোচ্চ ৫০০০ সারি Import করা যাবে।')]);
-            }
-        }
-        fclose($handle);
-
-        return $rows;
-    }
+    // ---------------------------------------------------------------- mapping
 
     private function mapHeader(string $type, array $header): array
     {
@@ -212,9 +338,11 @@ class ImportService
         $valid = $errors = $warnings = [];
         $seen = [];
         foreach ($rows as $line => $row) {
-            [$resolved, $errs, $warns] = $type === 'farmers'
-                ? $this->validateFarmer($row, $user, $seen, $line)
-                : $this->validateLand($row, $seen, $line);
+            [$resolved, $errs, $warns] = match ($type) {
+                'farmers' => $this->validateFarmer($row, $user, $seen, $line),
+                'lands' => $this->validateLand($row, $seen, $line),
+                default => $this->finance->validate($type, $row, $seen, $line),
+            };
             if ($errs) {
                 $errors[] = ['line' => $line, 'messages' => $errs];
             } else {
@@ -476,25 +604,9 @@ class ImportService
         return null;
     }
 
-    /** F-000123 → farmer code; 10/13/17 digits → NID; other digits → member number. */
     private function farmerRef(?string $ref): ?Farmer
     {
-        $ref = trim(Bn::toEnDigits($ref ?? '') ?? '');
-        if ($ref === '') {
-            return null;
-        }
-        $q = Farmer::query()->whereNull('merged_into_id');
-        if (str_starts_with(strtoupper($ref), 'F-')) {
-            return $q->where('farmer_code', strtoupper($ref))->first();
-        }
-        if (preg_match('/^(\d{10}|\d{13}|\d{17})$/', $ref)) {
-            return $q->where('nid', $ref)->first();
-        }
-        if (ctype_digit($ref)) {
-            return $q->whereHas('member', fn ($m) => $m->where('member_no', (int) $ref))->first();
-        }
-
-        return null;
+        return ImportValue::farmer($ref);
     }
 
     private function gender(string $v): ?string
@@ -511,18 +623,6 @@ class ImportService
 
     private function date(string $v): ?string
     {
-        $v = trim(Bn::toEnDigits($v) ?? '');
-        // j/n accept "1/1/2010" as well as "01/01/2010"; round-trip rejects 31/02 etc.
-        foreach (['j/n/Y', 'd/m/Y', 'j-n-Y', 'd-m-Y', 'Y-m-d', 'j.n.Y'] as $fmt) {
-            try {
-                $d = Carbon::createFromFormat('!'.$fmt, $v);
-                if ($d && $d->format($fmt) === $v && $d->lte(now())) {
-                    return $d->toDateString();
-                }
-            } catch (Throwable) {
-            }
-        }
-
-        return null;
+        return ImportValue::date($v);
     }
 }

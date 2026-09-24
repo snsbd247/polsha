@@ -42,6 +42,12 @@ const LandFormPage = lazy(() => import('./pages/lands/LandFormPage'))
 const LandDetailPage = lazy(() => import('./pages/lands/LandDetailPage'))
 const DataHealthPage = lazy(() => import('./pages/lands/DataHealthPage'))
 const ImportPage = lazy(() => import('./pages/lands/ImportPage'))
+const ImportTypePage = lazy(() => import('./pages/imports/ImportTypePage'))
+const ImportAuditPage = lazy(() => import('./pages/imports/ImportAuditPage'))
+const BrandingSettingsPage = lazy(() => import('./pages/settings/BrandingSettingsPage'))
+const ReceiptSettingsPage = lazy(() => import('./pages/settings/ReceiptSettingsPage'))
+const PreferencesPage = lazy(() => import('./pages/settings/PreferencesPage'))
+const LicensePage = lazy(() => import('./pages/settings/LicensePage'))
 const LandTypesPage = lazy(() => import('./pages/settings/LandTypesPage'))
 const ChartOfAccountsPage = lazy(() => import('./pages/accounting/ChartOfAccountsPage'))
 const JournalListPage = lazy(() => import('./pages/accounting/JournalListPage'))
@@ -218,6 +224,10 @@ export default function App() {
         <Route path="members/voters" element={<Perm perm="member.view"><VoterListPage /></Perm>} />
 
         <Route path="settings/general" element={<Perm perm="settings.admin"><GeneralSettingsPage /></Perm>} />
+        <Route path="settings/branding" element={<Perm perm="settings.admin"><BrandingSettingsPage /></Perm>} />
+        <Route path="settings/receipt" element={<Perm perm="settings.admin"><ReceiptSettingsPage /></Perm>} />
+        <Route path="settings/preferences" element={<Perm perm="settings.admin"><PreferencesPage /></Perm>} />
+        <Route path="settings/license" element={<Perm perm="settings.admin"><LicensePage /></Perm>} />
         <Route path="settings/sequences" element={<Perm perm="settings.admin"><SequencePage /></Perm>} />
         <Route path="settings/land-types" element={<Perm perm="settings.admin"><LandTypesPage /></Perm>} />
         <Route path="settings/irrigation-types" element={<Perm perm="settings.admin"><IrrigationTypesPage /></Perm>} />
@@ -230,6 +240,12 @@ export default function App() {
         <Route path="lands/:id/edit" element={<Perm perm="land.edit"><LandFormPage /></Perm>} />
         <Route path="data-health" element={<Perm perm="land.view"><DataHealthPage /></Perm>} />
         <Route path="imports" element={<Perm perm="import.create"><ByQuery><ImportPage /></ByQuery></Perm>} />
+        <Route path="imports/savings-opening" element={<Perm perm="import.create"><ImportTypePage key="savings_opening" type="savings_opening" /></Perm>} />
+        <Route path="imports/share-opening" element={<Perm perm="import.create"><ImportTypePage key="share_opening" type="share_opening" /></Perm>} />
+        <Route path="imports/loan-opening" element={<Perm perm="import.create"><ImportTypePage key="loan_opening" type="loan_opening" /></Perm>} />
+        <Route path="imports/payments" element={<Perm perm="import.create"><ImportTypePage key="payments" type="payments" /></Perm>} />
+        <Route path="imports/legacy-irrigation" element={<Perm perm="import.create"><ImportTypePage key="legacy_irrigation" type="legacy_irrigation" /></Perm>} />
+        <Route path="imports/audit" element={<Perm perm="import.view"><ImportAuditPage /></Perm>} />
 
         <Route path="accounting/funds" element={<Perm perm={['cash.view', 'bank.view']}><FundsPage /></Perm>} />
         <Route path="accounting/ledger" element={<Perm perm={['accounting.view', 'cash.view', 'bank.view']}><LedgerPage /></Perm>} />

@@ -9,7 +9,8 @@ import { accountLabel, money } from '../../lib/accounting'
 import { digits, fmtDate, fmtDateTime } from '../../lib/format'
 import { amountInWords } from '../../lib/irrigation'
 import { COMBINED_STATUS_COLOR, MODULE_COLOR, type CombinedModule } from '../../lib/phase8'
-import { logoUrl } from '../../lib/settings'
+import { logoUrl, type Society } from '../../lib/settings'
+import { Letterhead, ReceiptFoot, ReceiptPaper, ReceiptSign } from '../../components/PrintParts'
 import { required } from '../../lib/rules'
 import { nameOf, t as tx } from '../../lib/i18n'
 
@@ -34,7 +35,7 @@ type Detail = {
   member: { id: number; member_no: number } | null
   fund: { id: number; code: string; name_bn: string; name_en: string | null } | null
   creator: { id: number; name_bn: string; name_en: string | null } | null
-  society: { name_bn: string; name_en: string | null; address: string | null; phone: string | null; registration_no: string | null; logo: string | null }
+  society: Society
   methods: Record<string, string>
   statuses: Record<string, string>
   modules: Record<string, string>
@@ -102,12 +103,13 @@ export default function CombinedPaymentDetailPage() {
         <Alert className="no-print" type="error" showIcon style={{ marginBottom: 16 }} title={tx('বাতিল হয়েছে {{p0}} — কারণ: {{p1}}', { p0: fmtDateTime(r.cancelled_at), p1: r.cancel_reason ?? '' })} />
       )}
 
-      <div className="receipt-paper">
+      <ReceiptPaper society={r.society}>
         {r.status === 'cancelled' && <div className="receipt-stamp">{tx('বাতিলকৃত')}</div>}
         <div className="receipt-head">
           {r.society.logo && <img src={logoUrl()} alt="" className="receipt-logo" />}
           <div style={{ flex: 1, textAlign: 'center' }}>
             <div className="receipt-society">{nameOf(r.society)}</div>
+            <Letterhead society={r.society} />
             {r.society.address && <div>{r.society.address}</div>}
             <div>
               {r.society.registration_no && tx('নিবন্ধন নং: {{p0}}', { p0: digits(r.society.registration_no) })}
@@ -116,7 +118,7 @@ export default function CombinedPaymentDetailPage() {
             </div>
             <div className="receipt-title">{tx('সমন্বিত টাকার রশিদ')}</div>
           </div>
-          <QRCode value={verifyUrl} size={96} bordered={false} />
+          {r.society.show_qr !== false && <QRCode value={verifyUrl} size={96} bordered={false} />}
         </div>
         <table className="receipt-meta">
           <tbody>
@@ -188,16 +190,9 @@ export default function CombinedPaymentDetailPage() {
             {tx('মন্তব্য')}: {r.remarks}
           </div>
         )}
-        <div className="receipt-sign">
-          <div>{tx('প্রদানকারীর স্বাক্ষর')}</div>
-          <div>
-            {nameOf(r.creator)}
-            <br />
-            {tx('আদায়কারীর স্বাক্ষর')}
-          </div>
-        </div>
-        <div className="receipt-foot">{tx('QR কোড স্ক্যান করে রশিদের সত্যতা যাচাই করুন। কম্পিউটারে তৈরি রশিদ।')}</div>
-      </div>
+        <ReceiptSign society={r.society} collector={nameOf(r.creator)} />
+        <ReceiptFoot society={r.society} fallback={tx('QR কোড স্ক্যান করে রশিদের সত্যতা যাচাই করুন। কম্পিউটারে তৈরি রশিদ।')} />
+      </ReceiptPaper>
 
       <Card title={tx('খাতভিত্তিক এন্ট্রি')} className="no-print" style={{ marginTop: 16, maxWidth: 800 }}>
         <Table<Part>

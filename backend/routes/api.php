@@ -49,6 +49,7 @@ use App\Http\Controllers\Api\RoleController;
 use App\Http\Controllers\Api\SeasonController;
 use App\Http\Controllers\Api\SettingController;
 use App\Http\Controllers\Api\SmsController;
+use App\Http\Controllers\Api\SystemController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\VoterListController;
 use Illuminate\Support\Facades\Route;
@@ -74,6 +75,7 @@ Route::middleware(['auth:sanctum', 'usable'])->group(function () {
     Route::post('me/password', [ProfileController::class, 'changePassword']);
     Route::post('me/logout-all', [ProfileController::class, 'logoutAll']);
     Route::post('me/locale', [ProfileController::class, 'locale']);
+    Route::get('settings/images/{slot}', [SettingController::class, 'image'])->whereIn('slot', ['logo', 'signature', 'seal']);
 
     // Users
     Route::get('users', [UserController::class, 'index'])->middleware('permission:user.view');
@@ -125,6 +127,11 @@ Route::middleware(['auth:sanctum', 'usable'])->group(function () {
         Route::get('settings', [SettingController::class, 'index']);
         Route::put('settings', [SettingController::class, 'update']);
         Route::post('settings/logo', [SettingController::class, 'uploadLogo']);
+        Route::put('settings/{section}', [SettingController::class, 'updateSection'])->whereIn('section', ['branding', 'receipt', 'preferences']);
+        Route::post('settings/images/{slot}', [SettingController::class, 'uploadImage'])->whereIn('slot', ['logo', 'signature', 'seal']);
+        Route::delete('settings/images/{slot}', [SettingController::class, 'removeImage'])->whereIn('slot', ['logo', 'signature', 'seal']);
+        Route::get('system/license', [SystemController::class, 'license']);
+        Route::post('system/license', [SystemController::class, 'installLicense']);
         Route::get('sequences', [SettingController::class, 'sequences']);
         Route::put('sequences/{sequence}', [SettingController::class, 'updateSequence']);
     });
@@ -224,12 +231,18 @@ Route::middleware(['auth:sanctum', 'usable'])->group(function () {
     Route::put('land-types/{landType}', [LandTypeController::class, 'update'])->middleware('permission:settings.admin');
 
     // ---- Phase 3: import ----
-    Route::middleware('permission:import.create')->group(function () {
+    Route::middleware('permission:import.view')->group(function () {
         Route::get('imports', [ImportController::class, 'index']);
+        Route::get('imports/types', [ImportController::class, 'types']);
         Route::get('imports/template/{type}', [ImportController::class, 'template']);
+        Route::get('imports/{batch}', [ImportController::class, 'show'])->whereNumber('batch');
+    });
+    Route::post('imports/{batch}/rollback', [ImportController::class, 'rollback'])->whereNumber('batch')->middleware('permission:import.admin');
+    Route::middleware('permission:import.create')->group(function () {
+        Route::post('imports/validate', [ImportController::class, 'validateMapping']);
+        Route::post('imports/{type}/upload', [ImportController::class, 'upload']);
         Route::post('imports/{type}/preview', [ImportController::class, 'preview']);
         Route::post('imports/commit', [ImportController::class, 'commit']);
-        Route::get('imports/{batch}', [ImportController::class, 'show']);
     });
 
     // ---- Phase 4: accounting, cash & bank ----

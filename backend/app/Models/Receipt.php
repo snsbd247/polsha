@@ -27,7 +27,7 @@ class Receipt extends Model
     protected $fillable = [
         'receipt_no', 'module', 'farmer_id', 'payer_name', 'date', 'amount', 'method', 'fund_account_id', 'reference',
         'is_legacy', 'legacy_no', 'status', 'remarks', 'verify_token', 'journal_id', 'created_by',
-        'cancelled_at', 'cancelled_by', 'cancel_reason',
+        'cancelled_at', 'cancelled_by', 'cancel_reason', 'import_batch_id',
     ];
 
     protected $casts = ['date' => 'date:Y-m-d', 'amount' => 'decimal:2', 'is_legacy' => 'boolean', 'cancelled_at' => 'datetime'];

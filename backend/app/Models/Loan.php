@@ -23,7 +23,7 @@ class Loan extends Model
         'loan_no', 'member_id', 'product_id', 'applied_on', 'amount', 'purpose', 'interest_rate', 'interest_method', 'frequency',
         'installments', 'term_months', 'penalty_rate', 'grace_days', 'limit_amount', 'status', 'disbursed_on', 'first_due_on',
         'closed_on', 'total_interest', 'method', 'fund_account_id', 'reference', 'remarks', 'approval_request_id', 'journal_id',
-        'created_by', 'disbursed_by',
+        'created_by', 'disbursed_by', 'import_batch_id',
     ];
 
     protected $casts = [

@@ -12,6 +12,7 @@ import { api, errorMessage, type Paginated } from '../../lib/api'
 import { digits, fmtDate, fmtDateTime, fmtBytes } from '../../lib/format'
 import { APPLICATION_STATUS, MEMBER_STATUS, openProtectedFile, toOptions, useFarmerMeta, type MemberStatus } from '../../lib/phase2'
 import type { AuditLog } from '../../lib/types'
+import { usePublicSettings } from '../../lib/settings'
 import { nameOf, t as tx } from '../../lib/i18n'
 
 type HistoryRow = { id: number; action: string; from_status: string | null; to_status: string; effective_date: string; reason: string | null; resolution_no: string | null; fee: string | null; creator: { name_bn: string } | null }
@@ -185,6 +186,7 @@ export default function FarmerProfilePage() {
   const navigate = useNavigate()
   const { can } = useAuth()
   const { data: meta } = useFarmerMeta()
+  const { data: settings } = usePublicSettings()
 
   const { data: f, isLoading } = useQuery({
     queryKey: ['farmers', id],
@@ -230,7 +232,10 @@ export default function FarmerProfilePage() {
                 {tx('সদস্য করুন')}
               </Button>
             )}
-            <QrButton type="farmer" code={f.farmer_code} title={nameOf(f)} subtitle={f.member ? tx('সদস্য নং') + ' ' + digits(f.member.member_no) : undefined} />
+            <QrButton type="farmer" code={f.farmer_code} title={nameOf(f)} subtitle={f.member ? tx('সদস্য নং') + ' ' + digits(f.member.member_no) : undefined}
+              heading={f.member ? nameOf({ name_bn: settings?.society_name_bn, name_en: settings?.society_name_en }) : undefined}
+              note={f.member ? settings?.member_card_note || undefined : undefined}
+            />
             <Button icon={<PrinterOutlined />} onClick={() => window.print()}>
               {tx('প্রিন্ট')}
             </Button>

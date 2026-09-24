@@ -17,6 +17,9 @@ class SettingController extends Controller
     {
         $all = SettingService::all();
         $all['logo_url'] = $all['logo'] ? url('api/public/logo') : null;
+        $all['signature_set'] = (bool) $all['signature'];
+        $all['seal_set'] = (bool) $all['seal'];
+        unset($all['installation_id']);
         foreach (SettingService::SECRET_KEYS as $key) {
             $all[$key.'_set'] = (string) $all[$key] !== '';
             unset($all[$key]);
@@ -50,6 +53,81 @@ class SettingController extends Controller
         SettingService::setMany($data);
 
         return $this->index();
+    }
+
+    /** Branding, receipt/print and preference screens each save their own group. */
+    public function updateSection(Request $request, string $section): JsonResponse
+    {
+        $rules = match ($section) {
+            'branding' => [
+                'brand_color' => ['required', 'regex:/^#[0-9a-fA-F]{6}$/'],
+                'letterhead_text' => ['nullable', 'string', 'max:200'],
+                'document_footer' => ['nullable', 'string', 'max:300'],
+                'member_card_note' => ['nullable', 'string', 'max:300'],
+            ],
+            'receipt' => [
+                'receipt_sign_left' => ['required', 'string', 'max:60'],
+                'receipt_sign_right' => ['required', 'string', 'max:60'],
+                'receipt_footer_note' => ['nullable', 'string', 'max:300'],
+                'receipt_show_qr' => ['required', 'boolean'],
+                'receipt_show_due' => ['required', 'boolean'],
+                'receipt_copies' => ['required', 'integer', 'in:1,2'],
+                'receipt_paper' => ['required', 'in:a4,a5,thermal'],
+            ],
+            'preferences' => [
+                'default_locale' => ['required', 'in:bn,en'],
+                'page_size' => ['required', 'integer', 'in:10,25,50,100'],
+                'idle_logout_minutes' => ['required', 'integer', 'min:0', 'max:480'],
+                'go_live_date' => ['nullable', 'date'],
+            ],
+            default => abort(404),
+        };
+        $data = $request->validate($rules);
+        foreach (['letterhead_text', 'document_footer', 'member_card_note', 'receipt_footer_note'] as $k) {
+            if (array_key_exists($k, $data)) {
+                $data[$k] ??= '';
+            }
+        }
+        SettingService::setMany($data);
+
+        return $this->index();
+    }
+
+    /** Logo, authorised signature or seal image. */
+    public function uploadImage(Request $request, string $slot): JsonResponse
+    {
+        abort_unless(in_array($slot, SettingService::IMAGES, true), 404);
+        $request->validate(['image' => ['required', 'image', 'mimes:png,jpg,jpeg', 'max:500']]);
+
+        $old = SettingService::get($slot);
+        $path = $request->file('image')->store('branding', 'local');
+        SettingService::setMany([$slot => $path]);
+        if ($old) {
+            Storage::disk('local')->delete($old);
+        }
+
+        return $this->index();
+    }
+
+    public function removeImage(string $slot): JsonResponse
+    {
+        abort_unless(in_array($slot, SettingService::IMAGES, true), 404);
+        if ($old = SettingService::get($slot)) {
+            SettingService::setMany([$slot => null]);
+            Storage::disk('local')->delete($old);
+        }
+
+        return $this->index();
+    }
+
+    /** Signature/seal are only served to signed-in users (they appear on printed documents). */
+    public function image(string $slot)
+    {
+        abort_unless(in_array($slot, SettingService::IMAGES, true), 404);
+        $path = SettingService::get($slot);
+        abort_unless($path && Storage::disk('local')->exists($path), 404);
+
+        return Storage::disk('local')->response($path);
     }
 
     public function uploadLogo(Request $request): JsonResponse

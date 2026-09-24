@@ -1,7 +1,7 @@
-import { Suspense, useMemo, useState } from 'react'
+import { Suspense, useEffect, useMemo, useState } from 'react'
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Avatar, Badge, Button, Drawer, Dropdown, Grid, Layout, Menu, Spin, Typography, type MenuProps } from 'antd'
+import { Alert, Avatar, Badge, Button, Drawer, Dropdown, Grid, Layout, Menu, Spin, Typography, type MenuProps } from 'antd'
 import {
   AccountBookOutlined,
   AuditOutlined,
@@ -25,7 +25,7 @@ import {
 } from '@ant-design/icons'
 import { useAuth } from '../auth/AuthContext'
 import { api } from '../lib/api'
-import { digits } from '../lib/format'
+import { digits, fmtDate } from '../lib/format'
 import { usePublicSettings } from '../lib/settings'
 import { lang, nameOf, t as tx } from '../lib/i18n'
 import LanguageToggle from './LanguageToggle'
@@ -280,6 +280,8 @@ function bestPath(pathname: string, search: string): string | null {
   return best
 }
 
+const APP_VERSION = '1.0.0'
+
 export default function AppLayout() {
   const { user, can, logout } = useAuth()
   const { data: settings } = usePublicSettings()
@@ -288,6 +290,42 @@ export default function AppLayout() {
   const screens = Grid.useBreakpoint()
   const [drawerOpen, setDrawerOpen] = useState(false)
   const isMobile = !screens.lg
+
+  // shared office computers: sign out after the configured minutes without mouse/keyboard activity
+  const idleMinutes = settings?.idle_logout_minutes ?? 0
+  useEffect(() => {
+    if (!idleMinutes) return
+    let timer = 0
+    const reset = () => {
+      window.clearTimeout(timer)
+      timer = window.setTimeout(() => logout().then(() => navigate('/login?idle=1')), idleMinutes * 60_000)
+    }
+    const events = ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll'] as const
+    events.forEach((e) => window.addEventListener(e, reset, { passive: true }))
+    reset()
+    return () => {
+      window.clearTimeout(timer)
+      events.forEach((e) => window.removeEventListener(e, reset))
+    }
+  }, [idleMinutes, logout, navigate])
+
+  const license = user?.license
+  const banner =
+    license?.locked ? (
+      <Alert
+        type="error"
+        banner
+        title={tx('লাইসেন্সের মেয়াদ শেষ — সিস্টেম এখন শুধু দেখার জন্য। নতুন তথ্য যোগ বা পরিবর্তন করা যাবে না।')}
+        action={<Link to="/settings/license">{tx('লাইসেন্স')}</Link>}
+      />
+    ) : license?.state === 'expiring' ? (
+      <Alert
+        type="warning"
+        banner
+        closable
+        title={tx('লাইসেন্সের মেয়াদ {{p0}} তারিখে শেষ হবে (আর {{p1}} দিন)। সময়মতো নবায়ন করুন।', { p0: fmtDate(license.expires), p1: digits(license.days_left ?? 0) })}
+      />
+    ) : null
 
   const { data: pending } = useQuery({
     queryKey: ['approvals', 'pending-count'],
@@ -380,13 +418,14 @@ export default function AppLayout() {
             </Button>
           </Dropdown>
         </Header>
+        {banner && <div className="no-print">{banner}</div>}
         <Content style={{ padding: isMobile ? 16 : 24 }}>
           <Suspense fallback={<Spin style={{ display: 'block', marginTop: 48 }} />}>
             <Outlet />
           </Suspense>
         </Content>
         <Footer style={{ textAlign: 'center', padding: '12px 16px' }} className="no-print">
-          <Typography.Text type="secondary">{tx('সমবায় সমিতি ও কৃষি সেচ ERP · সংস্করণ')}{' '}{digits('0.1.0')}</Typography.Text>
+          <Typography.Text type="secondary">{tx('সমবায় সমিতি ও কৃষি সেচ ERP · সংস্করণ')}{' '}{digits(APP_VERSION)}</Typography.Text>
         </Footer>
       </Layout>
     </Layout>

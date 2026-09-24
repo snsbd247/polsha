@@ -44,12 +44,15 @@ api.interceptors.request.use((config) => {
 export const authEvents = {
   onUnauthorized: () => {},
   onPasswordChangeRequired: () => {},
+  onLicenseLocked: () => {},
 }
 
 api.interceptors.response.use(
   (r) => r,
   (error: AxiosError<{ code?: string }>) => {
     if (error.response?.status === 401) authEvents.onUnauthorized()
+    // expired license: the system is read-only until a new key is installed
+    if (error.response?.status === 423) authEvents.onLicenseLocked()
     if (error.response?.status === 403 && error.response.data?.code === 'password_change_required') {
       authEvents.onPasswordChangeRequired()
     }

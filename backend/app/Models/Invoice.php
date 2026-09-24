@@ -20,7 +20,7 @@ class Invoice extends Model implements Payable
     protected $fillable = [
         'invoice_no', 'season_id', 'land_id', 'farmer_id', 'cultivation_type', 'land_type_id', 'irrigation_type_id', 'rate_id',
         'invoice_date', 'due_date', 'area_decimal', 'rate', 'amount', 'paid_amount', 'status', 'snapshot', 'remarks',
-        'batch_id', 'journal_id', 'created_by', 'cancelled_at', 'cancelled_by', 'cancel_reason',
+        'batch_id', 'journal_id', 'created_by', 'cancelled_at', 'cancelled_by', 'cancel_reason', 'import_batch_id',
     ];
 
     protected $casts = [

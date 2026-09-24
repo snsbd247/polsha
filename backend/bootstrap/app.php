@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\EnsureLicensed;
 use App\Http\Middleware\EnsureUserIsUsable;
 use App\Http\Middleware\SetLocale;
 use Illuminate\Foundation\Application;
@@ -17,7 +18,7 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        $middleware->api(prepend: [SetLocale::class]);
+        $middleware->api(prepend: [SetLocale::class], append: [EnsureLicensed::class]);
         $middleware->alias([
             'permission' => PermissionMiddleware::class,
             'role' => RoleMiddleware::class,

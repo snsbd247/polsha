@@ -48,7 +48,6 @@ class ReceiptController extends Controller
             'journal:id,voucher_no,status,reversed_by_id', 'journal.reversedBy:id,voucher_no', 'creator:id,name_bn,name_en', 'canceller:id,name_bn,name_en']);
         $invoices = Invoice::whereIn('id', $receipt->items->where('payable_type', (new Invoice)->getMorphClass())->pluck('payable_id'))
             ->get()->keyBy('id');
-        $settings = SettingService::all();
 
         return response()->json([
             ...$receipt->toArray(),
@@ -59,8 +58,7 @@ class ReceiptController extends Controller
                 'due_after' => $it->due_after !== null ? (float) $it->due_after : $inv->dueAmount(), 'owners' => $inv->snapshot['owners'] ?? [], 'cultivation_type' => $inv->cultivation_type,
             ] : null])->values(),
             'verify_token' => $receipt->verify_token,
-            'society' => ['name_bn' => $settings['society_name_bn'], 'name_en' => $settings['society_name_en'], 'address' => $settings['address'],
-                'phone' => $settings['phone'], 'registration_no' => $settings['registration_no'], 'logo' => $settings['logo']],
+            'society' => SettingService::society(),
             'methods' => Tr::map(Receipt::METHODS),
             'statuses' => Tr::map(Receipt::STATUSES),
         ]);

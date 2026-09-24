@@ -76,19 +76,19 @@ FARMER ── LAND ──┬── OWNER
 | ৭ | ঋণ | ৬ | ✅ সম্পন্ন (লাইভ) |
 | ৮ | Combined Payment, Day Reconciliation, QR ও সম্পদ + ১৫-গ্রুপ মেন্যু | ৫, ৬, ৭ | ✅ সম্পন্ন (লাইভ) |
 | ৯ | রিপোর্ট, ড্যাশবোর্ড, Integrity Scan ও SMS | ৮ | ✅ সম্পন্ন (লাইভ) |
-| ১০ | Import/Migration, UAT ও Go-Live | সব | ⚪ বাকি |
+| ১০ | Import/Migration, UAT ও Go-Live | সব | ✅ সফটওয়্যার সম্পন্ন (লাইভ) — UAT/Parallel Run সমিতির হাতে |
 
 > ফেজ ৪ শুধু ফেজ ১-এর উপর নির্ভরশীল — দুজন ডেভেলপার থাকলে ফেজ ২–৩-এর সমান্তরালে চালানো যায়।
 
 ### চূড়ান্ত মেন্যু কাঠামো ও ফেজ-ম্যাপিং
 
 Sidebar হুবহু নিচের ১৫টি গ্রুপ ও ১১৬টি আইটেমে (১০৯টি আলাদা পাতা) সাজানো (ফেজ ৮-এ পুনর্বিন্যাস সম্পন্ন) — **কোনো আইটেম বাদ নেই**।
-- যে স্ক্রিন এখনো তৈরি হয়নি, সেটিও মেন্যুতে আছে। ক্লিক করলে **"শীঘ্রই আসছে (ফেজ …)"** পাতা খোলে: কী থাকবে তার বিবরণ, আর এখন কোন পাতায় কাজটা করা যায় তার লিংক।
+- ফেজ ১০-এ সব আইটেম তৈরি হয়েছে; "শীঘ্রই আসছে" পাতার ব্যবস্থা (`comingSoon.ts`) ভবিষ্যতে নতুন মেন্যুর জন্য রাখা আছে।
 - একই স্ক্রিন একাধিক গ্রুপে থাকতে পারে (যেমন Voter List, QR Scanner, Ledger Integrity)। সেক্ষেত্রে দুই জায়গাতেই মেন্যু হাইলাইট হয়।
 - মেন্যুতে নেই এমন পুরোনো স্ক্রিন (খানা, Duplicates, রেওয়ামিল, অনুমোদনের নিয়ম, ব্যাকআপ, সিরিয়াল নম্বর, এলাকা, ঋণ/সঞ্চয় অডিট ইত্যাদি) সংশ্লিষ্ট পাতার উপরের বোতাম থেকে খোলা যায়।
 - ইংরেজি মোডে মেন্যুর নাম হুবহু নিচের ইংরেজি নাম।
 
-চিহ্ন: ✅ তৈরি আছে · 🟤 শীঘ্রই আসছে (ফেজ ১০)
+চিহ্ন: ✅ তৈরি আছে
 
 | # | গ্রুপ | মেন্যু আইটেম → অবস্থা |
 |---|---|---|
@@ -105,10 +105,10 @@ Sidebar হুবহু নিচের ১৫টি গ্রুপ ও ১১�
 | ১১ | 📑 Reports | Collection Reports ✅ · Due Reports ✅ · Audit Reports ✅ |
 | ১২ | 🔍 Audit & Monitoring | System Audit Log ✅ · Data Integrity Scan ✅ · Day Reconciliation ✅ |
 | ১৩ | 👤 Admin | Users ✅ · Roles ✅ · Permissions ✅ · Patwari Management ✅ · Mouza Data Health ✅ · Ledger Integrity ✅ · Receipt Serial Admin ✅ |
-| ১৪ | 🛠️ Tools & Import | Farmer Import ✅ · Land Import ✅ · Savings Opening Import 🟤 · Share Opening Import 🟤 · Loan Opening Import 🟤 · Payment Import 🟤 · Legacy Irrigation Import 🟤 · Import Audit 🟤 |
-| ১৫ | ⚙️ Settings | General Settings ✅ · Branding & Logo 🟤 · Receipt Settings 🟤 · SMS Settings ✅ · SMS Templates ✅ · SMS Logs ✅ · Financial Year ✅ · System Preferences 🟤 · License & Installation 🟤 |
+| ১৪ | 🛠️ Tools & Import | Farmer Import ✅ · Land Import ✅ · Savings Opening Import ✅ · Share Opening Import ✅ · Loan Opening Import ✅ · Payment Import ✅ · Legacy Irrigation Import ✅ · Import Audit ✅ |
+| ১৫ | ⚙️ Settings | General Settings ✅ · Branding & Logo ✅ · Receipt Settings ✅ · SMS Settings ✅ · SMS Templates ✅ · SMS Logs ✅ · Financial Year ✅ · System Preferences ✅ · License & Installation ✅ |
 
-আলাদা পাতা হিসেবে: তৈরি ✅ ৯৯টি · শীঘ্রই আসছে ১০টি (ফেজ ১০)।
+আলাদা পাতা হিসেবে: তৈরি ✅ ১০৯টি — সব মেন্যু আইটেম চালু (ফেজ ১০)।
 
 <details>
 <summary><b>ফেজ ১ — ভিত্তি, প্রশাসন ও অনুমোদন ব্যবস্থা</b></summary>
@@ -615,7 +615,7 @@ app(ApprovalService::class)->submit('membership.admit', 'সদস্যপদ: 
 - [x] S-213 ভোটার তালিকা (Snapshot, প্রিন্ট, Excel) ও Voter Audit (কে বাদ পড়লেন ও কেন)
 - [x] S-214 পাতওয়ারী তালিকা, মৌজা দায়িত্ব ও দায়িত্বের ইতিহাস (বাদ দেওয়া মৌজার শেষ তারিখ থাকে)
 - [x] Feature test: নতুন ১৬টি (মোট ৩১টি পাস); ব্রাউজারে পুরো flow যাচাই
-- [ ] সদস্য কার্ড প্রিন্ট — নকশাসহ ফেজ ১০-এ
+- [x] সদস্য কার্ড প্রিন্ট — ফেজ ১০-এ সম্পন্ন (সমিতির নাম ও কার্ডের নোটসহ)
 - [x] ভর্তি ফি লেজারে তোলা — ফেজ ৪-এ সম্পন্ন
 
 > **নকশা থেকে পরিবর্তন:** আলাদা `farmer_merges` টেবিলের বদলে মার্জের পুরো রেকর্ড Approval Request (payload) ও Audit Log-এ থাকে; `patwari_mouza_history`-এর বদলে `patwari_mouza_assignments` (শুরু/শেষ তারিখসহ)।
@@ -632,7 +632,7 @@ app(ApprovalService::class)->submit('membership.admit', 'সদস্যপদ: 
 - [x] জমি ↔ পাতওয়ারী — মৌজার বর্তমান দায়িত্ব থেকে; পাতওয়ারী তালিকায় দায়িত্বাধীন জমির সংখ্যা
 - [x] কৃষক প্রোফাইলের "জমি" ট্যাব — মালিকানাধীন (অংশ অনুযায়ী মোট পরিমাণ) ও চাষ করা জমি, বর্তমান ও অতীত
 - [x] Data Health — ১৩টি যাচাই (জমি ৯, কৃষক ৩, মৌজা ১) + ডুপ্লিকেট কৃষক; মৌজাভিত্তিক জমি/পরিমাণ/কৃষক/সমস্যার হিসাব; প্রতিটি সমস্যার তালিকা থেকে সরাসরি রেকর্ডে যাওয়া
-- [x] কৃষক ও জমির প্রাথমিক CSV Import — Template, বাংলা/ইংরেজি কলাম, বাংলা অঙ্ক, "১.৫ একর"-এর মতো পরিমাণ, মালিক/চাষি Farmer ID/NID/সদস্য নং দিয়ে, পুরোনো সদস্য নম্বরসহ; প্রিভিউ → নিশ্চিত → Batch ID (Rollback ফেজ ১০-এ)
+- [x] কৃষক ও জমির প্রাথমিক CSV Import — Template, বাংলা/ইংরেজি কলাম, বাংলা অঙ্ক, "১.৫ একর"-এর মতো পরিমাণ, মালিক/চাষি Farmer ID/NID/সদস্য নং দিয়ে, পুরোনো সদস্য নম্বরসহ; প্রিভিউ → নিশ্চিত → Batch ID (Rollback ফেজ ১০-এ সম্পন্ন)
 - [x] জমির তালিকা (Filter, মোট পরিমাণ, Excel), যোগ/সম্পাদনা, বিস্তারিত (প্রিন্ট)
 - [x] Feature test: নতুন ৮টি (মোট ৩৯টি পাস); ব্রাউজারে পুরো flow যাচাই
 
@@ -750,18 +750,21 @@ app(ApprovalService::class)->submit('membership.admit', 'সদস্যপদ: 
 - [x] Financial Year বন্ধ (আয়-ব্যয় শূন্য করে পুঞ্জীভূত উদ্বৃত্তে স্থানান্তর)
 - [x] সব নতুন স্ক্রিন বাংলা/English-এ; Feature test মোট ৮৭টি পাস; ব্রাউজারে সব মেন্যু, সব রিপোর্ট, Excel ডাউনলোড, স্ক্যান, রশিদ বই, SMS, অর্থবছর, অনলাইন জমা ও পাসওয়ার্ড রিসেটের flow
 
-### ফেজ ১০ — Import/Migration, UAT ও Go-Live — ⚪ বাকি
-- [ ] Import Wizard (আপলোড → কলাম মেলানো → যাচাই → ভুলের রিপোর্ট → Preview → নিশ্চিত → Import → Audit)
-- [ ] Import: কৃষক, জমি, সঞ্চয়/শেয়ার/ঋণ Opening, পেমেন্ট, পুরোনো সেচ, অন্যান্য
-- [ ] Import Batch ও Rollback; Import Audit পাতা
-- [ ] নকশা: ইনভয়েস, রশিদ, সদস্য কার্ড, লেটারহেড, স্বাক্ষর, ফুটার
-- [ ] License, মেয়াদ, ইনস্টলেশনের তথ্য
-- [ ] Branding & Logo, Receipt Settings, System Preferences আলাদা পাতায়
-- [ ] UAT (প্রতিটি Role দিয়ে)
-- [ ] Parallel Run (২–৪ সপ্তাহ)
-- [ ] নিরাপত্তা পর্যালোচনা ও গতি বাড়ানো
-- [ ] Role-ভিত্তিক বাংলা ব্যবহার-নির্দেশিকা ও প্রশিক্ষণ
-- [ ] Go-Live
+### ফেজ ১০ — Import/Migration, UAT ও Go-Live — ✅ সফটওয়্যার সম্পন্ন (লাইভ)
+- [x] Import Wizard — আপলোড (Excel .xlsx / CSV) → কলাম মেলানো (নিজে অনুমান) → যাচাই → ভুলের রিপোর্ট (ডাউনলোড) → Preview → নিশ্চিত → Import → Audit; বাংলা অঙ্ক, "১২,৫০০", দিন/মাস/বছর
+- [x] Import: কৃষক, জমি, সঞ্চয় ও শেয়ারের প্রারম্ভিক জের, চলমান ঋণ (বকেয়া আসল/সুদসহ কিস্তিসূচি), পুরোনো সেচ বকেয়া, পুরোনো রশিদ — প্রতিটির Template; পুরোনো খাতা, Excel ও অন্য সফটওয়্যারের export তিনটিই চলে
+- [x] টাকার Import চালুর তারিখে "প্রারম্ভিক জের সমন্বয়" (Opening Balance Equity) হিসাবের বিপরীতে লেজারে পোস্ট
+- [x] Import Batch ও Rollback — অ্যাডমিনের আবেদন → অন্য অ্যাডমিনের অনুমোদন; Import-এর পরে লেনদেন হয়ে থাকলে আটকায় ও কারণ দেখায়; Import Audit পাতা (Filter, বাদ পড়া সারি, কলাম মেলানো)
+- [x] নকশা: লোগো, স্বাক্ষর, সিল, ব্র্যান্ড রং, লেটারহেড, ফুটার; রশিদের কাগজ (A4/A5/থার্মাল), ১/২ কপি, QR ও বকেয়া দেখানো; সদস্য কার্ড (সমিতির নাম ও নোট)
+- [x] License — RSA স্বাক্ষরিত কী, ইনস্টলেশন আইডিতে বাঁধা; মেয়াদের ৩০ দিন আগে সতর্কতা, শেষ হলে শুধু-দেখা (Read-only) অবস্থা; সুপার অ্যাডমিন নতুন কী বসান; সিস্টেমের তথ্য (ভার্সন, ডিস্ক, শেষ ব্যাকআপ, cron)
+- [x] Branding & Logo, Receipt Settings, System Preferences (ডিফল্ট ভাষা, পাতার সারি, নিষ্ক্রিয় লগআউট, চালুর তারিখ) আলাদা পাতায় — ১৫-গ্রুপ মেন্যুর সব ১০৯টি পাতা চালু
+- [x] নিরাপত্তা পর্যালোচনা — নতুন সব route-এ অনুমতি, ছবি/স্বাক্ষর private storage-এ, License ও SMS কী ব্রাউজারে যায় না; লাইভে OPcache, config/route cache
+- [x] Role-ভিত্তিক বাংলা ব্যবহার-নির্দেশিকা — [docs/user-guide.md](docs/user-guide.md)
+- [x] UAT, Parallel Run ও Go-Live চেকলিস্ট — [docs/go-live-checklist.md](docs/go-live-checklist.md)
+- [x] সব নতুন স্ক্রিন বাংলা/English-এ; Feature test মোট ৯৬টি পাস; ব্রাউজারে Import → Audit → Rollback আবেদন → অনুমোদন, রশিদ ২ কপি, লাইসেন্স (জাল কী আটকায়), English ও মোবাইল স্ক্যান
+- [ ] UAT (প্রতিটি Role দিয়ে) — সমিতি চেকলিস্ট ধরে করবে
+- [ ] Parallel Run (২–৪ সপ্তাহ) — সমিতি
+- [ ] প্রশিক্ষণ ও Go-Live — সমিতি
 
 > **নিয়ম:** প্রতিটি কাজ শেষ হলে এখানে `[x]` করা হবে এবং [রোডম্যাপ টেবিলের](#২-১০-ফেজের-রোডম্যাপ) অবস্থা আপডেট হবে (⚪ বাকি → 🟡 চলছে → ✅ সম্পন্ন)।
 

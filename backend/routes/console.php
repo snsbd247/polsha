@@ -5,9 +5,12 @@ use App\Services\AssetService;
 use App\Services\BackupService;
 use App\Services\IntegrityScanService;
 use App\Services\LedgerService;
+use App\Services\LicenseService;
 use App\Services\SmsService;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Schedule;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 /*
@@ -69,3 +72,49 @@ Schedule::command('sanctum:prune-expired --hours=24')->daily();
 Schedule::command('sms:process')->everyMinute()->withoutOverlapping();
 Schedule::command('sms:reminders')->dailyAt('09:00')->withoutOverlapping();
 Schedule::command('integrity:scan')->dailyAt('01:30')->withoutOverlapping();
+
+// ---- License (the private key never lives on the server or in the repo) ----
+Artisan::command('license:keygen {--out=}', function () {
+    $out = $this->option('out') ?: $this->ask('Where to save the private key (outside the repo)?');
+    if (file_exists($out)) {
+        return $this->error("{$out} already exists — refusing to overwrite.");
+    }
+    // Windows PHP needs an openssl.cnf: set OPENSSL_CONF if key generation fails.
+    $opts = array_filter(['private_key_bits' => 2048, 'private_key_type' => OPENSSL_KEYTYPE_RSA, 'config' => getenv('OPENSSL_CONF') ?: null]);
+    $key = openssl_pkey_new($opts);
+    if (! $key || ! openssl_pkey_export($key, $pem, null, $opts)) {
+        return $this->error('OpenSSL could not create a key: '.openssl_error_string());
+    }
+    file_put_contents($out, $pem);
+    $this->info("Private key saved to {$out}. Put this public key in config/license.php:");
+    $this->line(openssl_pkey_get_details($key)['key']);
+})->purpose('Create the license signing key pair (vendor machine only)');
+
+Artisan::command('license:issue {--key= : private key file} {--to= : licensee} {--expires= : YYYY-MM-DD} {--installation= : bind to one installation id}', function () {
+    $pem = @file_get_contents((string) $this->option('key'));
+    if (! $pem || ! $this->option('to') || ! strtotime((string) $this->option('expires'))) {
+        return $this->error('--key, --to and --expires (YYYY-MM-DD) are required.');
+    }
+    $this->line(LicenseService::sign([
+        'id' => (string) Str::uuid(),
+        'to' => $this->option('to'),
+        'expires' => date('Y-m-d', strtotime($this->option('expires'))),
+        'issued' => now()->toDateString(),
+        'installation' => $this->option('installation') ?: null,
+    ], $pem));
+})->purpose('Print a signed license key');
+
+Artisan::command('license:install {key}', function () {
+    if ($problem = LicenseService::problem($this->argument('key'))) {
+        return $this->error($problem);
+    }
+    $s = LicenseService::install($this->argument('key'));
+    $this->info("Installed: {$s['licensed_to']} until {$s['expires']} ({$s['state']}).");
+})->purpose('Install a license key from the command line');
+
+Artisan::command('license:status', function () {
+    $this->line(json_encode(LicenseService::status() + ['installation_id' => LicenseService::installationId()], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+})->purpose('Show the license state');
+
+// Lets the System page show whether cron is really running.
+Schedule::call(fn () => Cache::forever('scheduler.heartbeat', now()->toIso8601String()))->everyMinute()->name('scheduler-heartbeat');

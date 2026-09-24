@@ -27,7 +27,7 @@ class MemberAccount extends Model
         return $this->kind === 'share' ? 'share' : 'savings';
     }
 
-    protected $fillable = ['kind', 'member_id', 'account_no', 'opened_on', 'status', 'balance', 'remarks', 'created_by'];
+    protected $fillable = ['kind', 'member_id', 'account_no', 'opened_on', 'status', 'balance', 'remarks', 'created_by', 'import_batch_id'];
 
     protected $casts = ['opened_on' => 'date:Y-m-d', 'balance' => 'decimal:2'];
 

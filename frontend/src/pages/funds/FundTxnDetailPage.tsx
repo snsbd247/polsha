@@ -9,7 +9,8 @@ import { accountLabel, money } from '../../lib/accounting'
 import { digits, fmtDate, fmtDateTime } from '../../lib/format'
 import { KIND_LABEL, TXN_STATUS_COLOR, useFundMeta, type FundKind, type FundTxn, type MemberBrief, type Person } from '../../lib/funds'
 import { METHOD_LABEL, amountInWords } from '../../lib/irrigation'
-import { logoUrl } from '../../lib/settings'
+import { logoUrl, type Society } from '../../lib/settings'
+import { Letterhead, ReceiptFoot, ReceiptPaper, ReceiptSign } from '../../components/PrintParts'
 import { required } from '../../lib/rules'
 import { nameOf, t as tx } from '../../lib/i18n'
 
@@ -26,7 +27,7 @@ type Detail = FundTxn & {
   creator: Person
   pair: { id: number; txn_no: string; account: { id: number; account_no: string; member: MemberBrief | null } | null } | null
   run: { id: number; run_no: string; title: string } | null
-  society: { name_bn: string; name_en: string | null; address: string | null; phone: string | null; registration_no: string | null; logo: string | null }
+  society: Society
 }
 
 export default function FundTxnDetailPage({ kind }: { kind: FundKind }) {
@@ -81,13 +82,14 @@ export default function FundTxnDetailPage({ kind }: { kind: FundKind }) {
         <Alert className="no-print" type="error" showIcon style={{ marginBottom: 16 }} title={tx('বাতিল হয়েছে {{p0}} — কারণ: {{p1}}', { p0: fmtDateTime(t.cancelled_at), p1: t.cancel_reason ?? '' })} />
       )}
 
-      <div className="receipt-paper">
+      <ReceiptPaper society={t.society}>
         {t.status === 'cancelled' && <div className="receipt-stamp">{tx('বাতিলকৃত')}</div>}
         {t.status === 'pending' && <div className="receipt-stamp">{tx('অনুমোদনের অপেক্ষায়')}</div>}
         <div className="receipt-head">
           {t.society.logo && <img src={logoUrl()} alt="" className="receipt-logo" />}
           <div style={{ flex: 1, textAlign: 'center' }}>
             <div className="receipt-society">{nameOf(t.society)}</div>
+            <Letterhead society={t.society} />
             {t.society.address && <div>{t.society.address}</div>}
             <div>
               {t.society.registration_no && tx('নিবন্ধন নং: {{p0}}', { p0: digits(t.society.registration_no) })}
@@ -166,16 +168,9 @@ export default function FundTxnDetailPage({ kind }: { kind: FundKind }) {
           </div>
         )}
 
-        <div className="receipt-sign">
-          <div>{tx('সদস্যের স্বাক্ষর')}</div>
-          <div>
-            {nameOf(t.creator)}
-            <br />
-            {tx('দায়িত্বপ্রাপ্ত কর্মকর্তার স্বাক্ষর')}
-          </div>
-        </div>
-        <div className="receipt-foot">{tx('কম্পিউটারে তৈরি রশিদ।')}</div>
-      </div>
+        <ReceiptSign society={t.society} collector={nameOf(t.creator)} left={tx('সদস্যের স্বাক্ষর')} right={tx('দায়িত্বপ্রাপ্ত কর্মকর্তার স্বাক্ষর')} />
+        <ReceiptFoot society={t.society} fallback={tx('কম্পিউটারে তৈরি রশিদ।')} />
+      </ReceiptPaper>
 
       <Card title={tx('হিসাবের তথ্য')} className="no-print" style={{ marginTop: 16, maxWidth: 800 }}>
         <Descriptions column={{ xs: 1, md: 2 }} size="small">

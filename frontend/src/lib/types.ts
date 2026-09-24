@@ -13,6 +13,18 @@ export type AuthUser = {
   roles: RoleRef[]
   permissions: string[]
   is_super_admin: boolean
+  license?: LicenseStatus
+}
+
+export type LicenseState = 'valid' | 'expiring' | 'expired' | 'missing' | 'invalid'
+export type LicenseStatus = {
+  state: LicenseState
+  licensed_to: string | null
+  expires: string | null
+  issued: string | null
+  days_left: number | null
+  enforced: boolean
+  locked: boolean
 }
 
 export type UserRow = {

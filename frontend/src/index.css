@@ -156,6 +156,75 @@ body {
   text-align: center;
 }
 
+.receipt-sign-img {
+  display: block;
+  max-height: 44px;
+  max-width: 160px;
+  margin: -48px auto 4px;
+  object-fit: contain;
+}
+
+.receipt-seal {
+  position: absolute;
+  right: 220px;
+  bottom: 40px;
+  width: 84px;
+  height: 84px;
+  object-fit: contain;
+  opacity: 0.85;
+}
+
+.receipt-copy-label {
+  position: absolute;
+  top: 6px;
+  right: 10px;
+  padding: 0 8px;
+  border: 1px solid #000;
+  border-radius: 8px;
+  font-size: 11px;
+}
+
+.receipt-letterhead {
+  font-size: 12px;
+  font-style: italic;
+}
+
+.receipt-paper + .receipt-paper {
+  margin-top: 24px;
+}
+
+/* A5 and 80mm thermal paper */
+.receipt-paper.paper-a5 {
+  max-width: 560px;
+  font-size: 12px;
+}
+
+.receipt-paper.paper-a5 .receipt-society {
+  font-size: 17px;
+}
+
+.receipt-paper.paper-thermal {
+  max-width: 300px;
+  padding: 8px;
+  font-size: 11px;
+}
+
+.receipt-paper.paper-thermal .receipt-head {
+  flex-direction: column;
+}
+
+.receipt-paper.paper-thermal .receipt-society {
+  font-size: 14px;
+}
+
+.receipt-paper.paper-thermal .receipt-sign > div {
+  min-width: 110px;
+}
+
+.receipt-paper.paper-thermal .receipt-seal {
+  right: 8px;
+}
+
 .receipt-stamp {
   position: absolute;
   top: 40%;
@@ -195,6 +264,20 @@ body {
     border: none;
     padding: 0;
     max-width: none;
+  }
+
+  .receipt-paper.paper-a5 {
+    max-width: 148mm;
+  }
+
+  .receipt-paper.paper-thermal {
+    max-width: 72mm;
+  }
+
+  .receipt-paper + .receipt-paper {
+    margin-top: 12mm;
+    padding-top: 6mm;
+    border-top: 1px dashed #000;
   }
 
   .ant-drawer,

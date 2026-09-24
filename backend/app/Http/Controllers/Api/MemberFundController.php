@@ -273,13 +273,11 @@ class MemberFundController extends Controller
             'counterAccount:id,code,name_bn,name_en', 'journal:id,voucher_no,status,reversed_by_id', 'journal.reversedBy:id,voucher_no',
             'creator:id,name_bn,name_en', 'pair:id,txn_no,member_account_id', 'pair.account:id,account_no,member_id',
             'pair.account.member:id,farmer_id,member_no', 'pair.account.member.farmer:id,name_bn,name_en', 'run:id,run_no,title']);
-        $settings = SettingService::all();
 
         return response()->json($txn->toArray() + [
             'type_label' => $txn->typeLabel(),
             'can_cancel' => $txn->status === 'posted' && in_array($txn->type, MemberTransaction::CANCELLABLE, true),
-            'society' => ['name_bn' => $settings['society_name_bn'], 'name_en' => $settings['society_name_en'], 'address' => $settings['address'],
-                'phone' => $settings['phone'], 'registration_no' => $settings['registration_no'], 'logo' => $settings['logo']],
+            'society' => SettingService::society(),
         ]);
     }
 

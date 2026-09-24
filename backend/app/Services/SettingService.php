@@ -10,7 +10,7 @@ class SettingService
     private const CACHE_KEY = 'settings.all';
 
     /** Keys safe to expose before login (login page branding). */
-    public const PUBLIC_KEYS = ['society_name_bn', 'society_name_en', 'logo', 'digits', 'bigha_decimal'];
+    public const PUBLIC_KEYS = ['society_name_bn', 'society_name_en', 'logo', 'digits', 'bigha_decimal', 'brand_color', 'default_locale', 'page_size', 'idle_logout_minutes', 'member_card_note'];
 
     public const DEFAULTS = [
         'society_name_bn' => 'সমবায় সমিতি লিমিটেড',
@@ -52,10 +52,35 @@ class SettingService
         'public_payment_nagad' => '',
         'public_payment_rocket' => '',
         'public_payment_note' => '',
+        // branding + printed documents
+        'brand_color' => '#1f7a4d',
+        'letterhead_text' => '',
+        'signature' => null,
+        'seal' => null,
+        'document_footer' => '',
+        'receipt_sign_left' => 'প্রদানকারীর স্বাক্ষর',
+        'receipt_sign_right' => 'আদায়কারীর স্বাক্ষর',
+        'receipt_footer_note' => '',
+        'receipt_show_qr' => true,
+        'receipt_show_due' => true,
+        'receipt_copies' => 1,
+        'receipt_paper' => 'a4',
+        'member_card_note' => '',
+        // preferences
+        'default_locale' => 'bn',
+        'page_size' => 25,
+        'idle_logout_minutes' => 0,
+        // first day of live use; opening balances are dated this day
+        'go_live_date' => null,
+        'installation_id' => null,
+        'license_key' => '',
     ];
 
+    /** Uploadable images (logo, authorised signature, society seal). */
+    public const IMAGES = ['logo', 'signature', 'seal'];
+
     /** Never sent to the browser as is. */
-    public const SECRET_KEYS = ['sms_api_key'];
+    public const SECRET_KEYS = ['sms_api_key', 'license_key'];
 
     public static function all(): array
     {
@@ -72,6 +97,31 @@ class SettingService
     public static function public(): array
     {
         return array_intersect_key(self::all(), array_flip(self::PUBLIC_KEYS));
+    }
+
+    /** Society header + print options, as every printable document needs them. */
+    public static function society(): array
+    {
+        $s = self::all();
+
+        return [
+            'name_bn' => $s['society_name_bn'], 'name_en' => $s['society_name_en'], 'address' => $s['address'],
+            'phone' => $s['phone'], 'email' => $s['email'], 'registration_no' => $s['registration_no'], 'logo' => $s['logo'],
+            'letterhead_text' => $s['letterhead_text'], 'brand_color' => $s['brand_color'],
+            'signature' => (bool) $s['signature'], 'seal' => (bool) $s['seal'],
+            'sign_left' => $s['receipt_sign_left'], 'sign_right' => $s['receipt_sign_right'],
+            'footer_note' => $s['receipt_footer_note'], 'document_footer' => $s['document_footer'],
+            'show_qr' => (bool) $s['receipt_show_qr'], 'show_due' => (bool) $s['receipt_show_due'],
+            'copies' => (int) $s['receipt_copies'], 'paper' => $s['receipt_paper'],
+            'member_card_note' => $s['member_card_note'],
+        ];
+    }
+
+    /** Internal bookkeeping values (no audit entry). */
+    public static function putQuiet(string $key, mixed $value): void
+    {
+        Setting::updateOrCreate(['key' => $key], ['value' => $value]);
+        Cache::forget(self::CACHE_KEY);
     }
 
     public static function setMany(array $values): void

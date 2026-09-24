@@ -30,6 +30,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     authEvents.onUnauthorized = clear
     authEvents.onPasswordChangeRequired = () =>
       setUser((u) => (u && !u.must_change_password ? { ...u, must_change_password: true } : u))
+    // the license ran out while signed in: refresh so the banner switches to read-only
+    authEvents.onLicenseLocked = () =>
+      setUser((u) => (u && u.license && !u.license.locked ? { ...u, license: { ...u.license, state: 'expired', locked: true } } : u))
   }, [clear])
 
   useEffect(() => {

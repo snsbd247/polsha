@@ -83,7 +83,6 @@ class CombinedPaymentController extends Controller
     {
         $p = $combinedPayment->load(['parts.source', 'farmer:id,farmer_code,name_bn,name_en,father_name,mobile', 'member:id,member_no',
             'fund:id,code,name_bn,name_en', 'creator:id,name_bn,name_en']);
-        $settings = SettingService::all();
 
         return response()->json([
             ...$p->toArray(),
@@ -92,8 +91,7 @@ class CombinedPaymentController extends Controller
                 'source' => $this->sourceRef($part->source),
             ])->values(),
             'verify_token' => $p->verify_token,
-            'society' => ['name_bn' => $settings['society_name_bn'], 'name_en' => $settings['society_name_en'], 'address' => $settings['address'],
-                'phone' => $settings['phone'], 'registration_no' => $settings['registration_no'], 'logo' => $settings['logo']],
+            'society' => SettingService::society(),
             'methods' => Tr::map(Receipt::METHODS), 'statuses' => Tr::map(CombinedPayment::STATUSES), 'modules' => Tr::map(CombinedPayment::MODULES),
         ]);
     }

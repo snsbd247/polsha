@@ -48,6 +48,7 @@ export default function LoginPage() {
           <Typography.Text type="secondary">{tx('আপনার অ্যাকাউন্টে লগইন করুন')}</Typography.Text>
         </div>
         {error && <Alert type="error" title={error} showIcon style={{ marginBottom: 16 }} />}
+        {!error && location.search.includes('idle=1') && <Alert type="info" title={tx('দীর্ঘ সময় নিষ্ক্রিয় থাকায় লগআউট হয়েছে। আবার লগইন করুন।')} showIcon style={{ marginBottom: 16 }} />}
         <Form layout="vertical" onFinish={onFinish} initialValues={{ remember: false }} requiredMark={false}>
           <Form.Item name="username" label={tx('ইউজারনেম বা মোবাইল')} rules={[{ required: true, message: tx('ইউজারনেম বা মোবাইল দিন') }]}>
             <Input prefix={<UserOutlined />} autoFocus autoComplete="username" size="large" />
