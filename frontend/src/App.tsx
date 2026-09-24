@@ -3,6 +3,7 @@ import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { Result, Spin } from 'antd'
 import { useAuth } from './auth/AuthContext'
 import AppLayout from './components/AppLayout'
+import { FUND_KINDS } from './lib/funds'
 import { t as tx } from './lib/i18n'
 const LoginPage = lazy(() => import('./pages/LoginPage'))
 const ChangePasswordPage = lazy(() => import('./pages/ChangePasswordPage'))
@@ -63,6 +64,14 @@ const RateAuditPage = lazy(() => import('./pages/irrigation/RateAuditPage'))
 const CollectionPage = lazy(() => import('./pages/payments/CollectionPage'))
 const ReceiptListPage = lazy(() => import('./pages/payments/ReceiptListPage'))
 const ReceiptDetailPage = lazy(() => import('./pages/payments/ReceiptDetailPage'))
+const FundAccountListPage = lazy(() => import('./pages/funds/FundAccountListPage'))
+const FundAccountDetailPage = lazy(() => import('./pages/funds/FundAccountDetailPage'))
+const FundTxnListPage = lazy(() => import('./pages/funds/FundTxnListPage'))
+const FundTxnDetailPage = lazy(() => import('./pages/funds/FundTxnDetailPage'))
+const FundAuditPage = lazy(() => import('./pages/funds/FundAuditPage'))
+const DistributionListPage = lazy(() => import('./pages/funds/DistributionListPage'))
+const DistributionFormPage = lazy(() => import('./pages/funds/DistributionFormPage'))
+const DistributionDetailPage = lazy(() => import('./pages/funds/DistributionDetailPage'))
 const VerifyReceiptPage = lazy(() => import('./pages/VerifyReceiptPage'))
 
 function RequireAuth({ children }: { children: ReactNode }) {
@@ -165,6 +174,17 @@ export default function App() {
         <Route path="payments/collect" element={<Perm perm="payment.create"><CollectionPage /></Perm>} />
         <Route path="payments/receipts" element={<Perm perm="payment.view"><ReceiptListPage /></Perm>} />
         <Route path="payments/receipts/:id" element={<Perm perm="payment.view"><ReceiptDetailPage /></Perm>} />
+
+        {FUND_KINDS.map((k) => [
+          <Route key={`${k}-a`} path={`funds/${k}/accounts`} element={<Perm perm={`${k}.view`}><FundAccountListPage key={k} kind={k} /></Perm>} />,
+          <Route key={`${k}-d`} path={`funds/${k}/accounts/:id`} element={<Perm perm={`${k}.view`}><FundAccountDetailPage key={k} kind={k} /></Perm>} />,
+          <Route key={`${k}-t`} path={`funds/${k}/transactions`} element={<Perm perm={`${k}.view`}><FundTxnListPage key={k} kind={k} /></Perm>} />,
+          <Route key={`${k}-s`} path={`funds/${k}/transactions/:id`} element={<Perm perm={`${k}.view`}><FundTxnDetailPage key={k} kind={k} /></Perm>} />,
+          <Route key={`${k}-u`} path={`funds/${k}/audit`} element={<Perm perm={`${k}.view`}><FundAuditPage key={k} kind={k} /></Perm>} />,
+        ])}
+        <Route path="funds/distributions" element={<Perm perm={['savings.view', 'share.view']}><DistributionListPage /></Perm>} />
+        <Route path="funds/distributions/new/:kind" element={<Perm perm={['savings.edit', 'share.edit']}><DistributionFormPage /></Perm>} />
+        <Route path="funds/distributions/:id" element={<Perm perm={['savings.view', 'share.view']}><DistributionDetailPage /></Perm>} />
 
         <Route path="*" element={<Result status="404" title={tx('পাতা পাওয়া যায়নি')} />} />
       </Route>

@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BackupController;
 use App\Http\Controllers\Api\BankAccountController;
 use App\Http\Controllers\Api\DataHealthController;
+use App\Http\Controllers\Api\DistributionController;
 use App\Http\Controllers\Api\DuplicateController;
 use App\Http\Controllers\Api\FarmerController;
 use App\Http\Controllers\Api\FarmerDocumentController;
@@ -23,6 +24,7 @@ use App\Http\Controllers\Api\LandController;
 use App\Http\Controllers\Api\LandTypeController;
 use App\Http\Controllers\Api\LocationController;
 use App\Http\Controllers\Api\MemberController;
+use App\Http\Controllers\Api\MemberFundController;
 use App\Http\Controllers\Api\MembershipApplicationController;
 use App\Http\Controllers\Api\MouzaController;
 use App\Http\Controllers\Api\PatwariController;
@@ -283,6 +285,25 @@ Route::middleware(['auth:sanctum', 'usable'])->group(function () {
         Route::post('receipts', [ReceiptController::class, 'store']);
         Route::post('receipts/{receipt}/cancel', [ReceiptController::class, 'cancel']);
     });
+
+    // ---- Phase 6: savings & share (permission checked per kind in the controller) ----
+    Route::prefix('funds/{kind}')->whereIn('kind', ['savings', 'share'])->group(function () {
+        Route::get('meta', [MemberFundController::class, 'meta']);
+        Route::get('accounts', [MemberFundController::class, 'accounts']);
+        Route::post('accounts', [MemberFundController::class, 'open']);
+        Route::get('lookup', [MemberFundController::class, 'lookup']);
+        Route::get('accounts/{account}', [MemberFundController::class, 'show']);
+        Route::get('accounts/{account}/statement', [MemberFundController::class, 'statement']);
+        Route::post('accounts/{account}/transactions', [MemberFundController::class, 'storeTransaction']);
+        Route::get('transactions', [MemberFundController::class, 'transactions']);
+        Route::get('transactions/{txn}', [MemberFundController::class, 'showTransaction']);
+        Route::post('transactions/{txn}/cancel', [MemberFundController::class, 'cancelTransaction']);
+        Route::get('audit', [MemberFundController::class, 'audit']);
+    });
+    Route::get('distributions', [DistributionController::class, 'index']);
+    Route::get('distributions/{run}', [DistributionController::class, 'show'])->whereNumber('run');
+    Route::get('distributions/{kind}/preview', [DistributionController::class, 'preview'])->whereIn('kind', ['profit', 'dividend']);
+    Route::post('distributions/{kind}', [DistributionController::class, 'store'])->whereIn('kind', ['profit', 'dividend']);
 
     // Backups — Super Admin only
     Route::middleware('role:super_admin')->group(function () {

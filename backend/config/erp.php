@@ -1,5 +1,6 @@
 <?php
 
+use App\Approvals\DistributionRunHandler;
 use App\Approvals\FarmerMergeHandler;
 use App\Approvals\InvoiceCancelHandler;
 use App\Approvals\IrrigationRateHandler;
@@ -7,6 +8,8 @@ use App\Approvals\JournalHandler;
 use App\Approvals\JournalReversalHandler;
 use App\Approvals\MembershipAdmitHandler;
 use App\Approvals\MemberStatusHandler;
+use App\Approvals\MemberTxnCancelHandler;
+use App\Approvals\MemberTxnHandler;
 use App\Approvals\ReceiptCancelHandler;
 
 /*
@@ -93,6 +96,16 @@ return [
         'irrigation.rate' => IrrigationRateHandler::class,
         'irrigation.invoice_cancel' => InvoiceCancelHandler::class,
         'payment.receipt_cancel' => ReceiptCancelHandler::class,
+        'savings.opening' => MemberTxnHandler::class,
+        'savings.withdrawal' => MemberTxnHandler::class,
+        'savings.adjustment' => MemberTxnHandler::class,
+        'savings.txn_cancel' => MemberTxnCancelHandler::class,
+        'savings.profit' => DistributionRunHandler::class,
+        'share.opening' => MemberTxnHandler::class,
+        'share.transfer' => MemberTxnHandler::class,
+        'share.adjustment' => MemberTxnHandler::class,
+        'share.txn_cancel' => MemberTxnCancelHandler::class,
+        'share.dividend' => DistributionRunHandler::class,
     ],
 
     'farmer' => [

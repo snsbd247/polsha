@@ -17,6 +17,7 @@ import {
   SettingOutlined,
   TeamOutlined,
   UserOutlined,
+  WalletOutlined,
 } from '@ant-design/icons'
 import { useAuth } from '../auth/AuthContext'
 import { api } from '../lib/api'
@@ -78,6 +79,20 @@ const NAV: NavItem[] = [
       { key: '/irrigation/rates', label: tx('সেচের রেট'), perm: 'irrigation.view' },
       { key: '/irrigation/rate-audit', label: tx('রেট অডিট'), perm: 'irrigation.view' },
       { key: '/irrigation/mismatch', label: tx('বকেয়া মিলকরণ'), perm: 'irrigation.view' },
+    ],
+  },
+  {
+    key: 'funds-menu',
+    label: tx('সঞ্চয় ও শেয়ার'),
+    icon: <WalletOutlined />,
+    children: [
+      { key: '/funds/savings/accounts', label: tx('সঞ্চয় হিসাব'), perm: 'savings.view' },
+      { key: '/funds/savings/transactions', label: tx('সঞ্চয়ের লেনদেন'), perm: 'savings.view' },
+      { key: '/funds/savings/audit', label: tx('সঞ্চয় অডিট'), perm: 'savings.view' },
+      { key: '/funds/share/accounts', label: tx('শেয়ার মূলধন বিবরণী'), perm: 'share.view' },
+      { key: '/funds/share/transactions', label: tx('শেয়ারের লেনদেন'), perm: 'share.view' },
+      { key: '/funds/share/audit', label: tx('শেয়ার মূলধন মিলকরণ'), perm: 'share.view' },
+      { key: '/funds/distributions', label: tx('মুনাফা ও লভ্যাংশ'), perm: ['savings.view', 'share.view'] },
     ],
   },
   {

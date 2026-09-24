@@ -70,13 +70,15 @@ export function errorMessage(error: unknown, fallback = tx('কিছু এক�
 export function applyFormErrors(form: FormInstance, error: unknown): boolean {
   const errors = (error as AxiosError<ErrorBody>)?.response?.data?.errors
   if (!errors) return false
-  form.setFields(
-    Object.entries(errors).map(([name, msgs]) => ({
-      name: name.includes('.') ? name.split('.').map((p) => (/^\d+$/.test(p) ? Number(p) : p)) : name,
-      errors: msgs,
-    })),
-  )
-  return true
+  const known = new Set(form.getFieldsError().map((f) => f.name.join('.')))
+  const fields = Object.entries(errors).map(([name, msgs]) => ({
+    key: name,
+    name: name.includes('.') ? name.split('.').map((p) => (/^\d+$/.test(p) ? Number(p) : p)) : name,
+    errors: msgs,
+  }))
+  form.setFields(fields.filter((f) => known.has(f.key)).map(({ name, errors }) => ({ name, errors })))
+  // an error on a field the form doesn't show must still reach the user
+  return fields.every((f) => known.has(f.key))
 }
 
 export type Paginated<T> = {

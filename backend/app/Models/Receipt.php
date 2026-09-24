@@ -16,7 +16,7 @@ class Receipt extends Model
     /** Receipt module → the cash stream its cash lands in. */
     public const MODULES = ['irrigation' => 'সেচ'];
 
-    public const CASH_ACCOUNT = ['irrigation' => 'cash_irrigation'];
+    public const CASH_ACCOUNT = ['irrigation' => 'cash_irrigation', 'savings' => 'cash_society', 'share' => 'cash_society'];
 
     protected string $auditModule = 'payment';
 

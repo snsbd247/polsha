@@ -47,7 +47,7 @@ foreach ($it as $file) {
             }
         }
 
-return -1;
+        return -1;
     };
     $next = function ($i) use ($tokens, $n, $isWs) {
         for ($j = $i + 1; $j < $n; $j++) {
@@ -56,7 +56,7 @@ return -1;
             }
         }
 
-return $n;
+        return $n;
     };
 
     // Mark token ranges to leave alone: const/property declarations and skipped functions.

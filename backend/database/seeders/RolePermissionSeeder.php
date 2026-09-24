@@ -53,11 +53,12 @@ class RolePermissionSeeder extends Seeder
             ),
             'accountant' => array_merge(
                 $p(['accounting', 'cash', 'bank', 'payment'], ['view', 'create', 'edit', 'export']),
+                $p(['savings', 'share'], ['create']),
                 $p(['farmer', 'member', 'irrigation', 'savings', 'share', 'loan', 'report'], ['view', 'export']),
             ),
             'cashier' => array_merge(
-                $p(['payment', 'cash'], ['view', 'create']),
-                $p(['farmer', 'member', 'irrigation', 'savings', 'share', 'loan'], ['view']),
+                $p(['payment', 'cash', 'savings', 'share'], ['view', 'create']),
+                $p(['farmer', 'member', 'irrigation', 'loan'], ['view']),
             ),
             'irrigation_officer' => array_merge(
                 $p(['irrigation', 'land'], ['view', 'create', 'edit', 'export']),
