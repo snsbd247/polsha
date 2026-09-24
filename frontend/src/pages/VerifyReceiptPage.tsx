@@ -9,15 +9,23 @@ import { logoUrl, usePublicSettings } from '../lib/settings'
 import { nameOf, t as tx } from '../lib/i18n'
 import LanguageToggle from '../components/LanguageToggle'
 
-type Verified = { receipt_no: string; date: string; payer_name: string; amount: number; status: string; status_label: string }
+type Verified = {
+  receipt_no: string
+  date: string
+  payer_name: string
+  amount: number
+  status: string
+  status_label: string
+  parts?: { module: string; label: string; amount: number }[]
+}
 
-/** Public page behind the QR code on a printed receipt — no login needed. */
+/** Public page behind the QR code on a printed receipt (irrigation or combined) — no login needed. */
 export default function VerifyReceiptPage() {
-  const { token } = useParams()
+  const { kind = 'receipt', token } = useParams()
   const { data: settings } = usePublicSettings()
   const { data, isLoading, isError } = useQuery({
-    queryKey: ['verify-receipt', token],
-    queryFn: async () => (await api.get<Verified>(`/public/receipts/${token}`)).data,
+    queryKey: ['verify-receipt', kind, token],
+    queryFn: async () => (await api.get<Verified>(kind === 'combined' ? `/public/combined-receipts/${token}` : `/public/receipts/${token}`)).data,
     retry: false,
   })
 
@@ -32,7 +40,7 @@ export default function VerifyReceiptPage() {
           <Typography.Title level={4} style={{ margin: 0 }}>
             {nameOf({ name_bn: settings?.society_name_bn, name_en: settings?.society_name_en }) || tx('সমবায় ERP')}
           </Typography.Title>
-          <Typography.Text type="secondary">{tx('রশিদ যাচাই')}</Typography.Text>
+          <Typography.Text type="secondary">{kind === 'combined' ? tx('সমন্বিত রশিদ যাচাই') : tx('রশিদ যাচাই')}</Typography.Text>
         </div>
         {isLoading ? (
           <Spin style={{ display: 'block' }} />
@@ -49,6 +57,11 @@ export default function VerifyReceiptPage() {
               <Descriptions.Item label={tx('রশিদ নং')}>{digits(data.receipt_no)}</Descriptions.Item>
               <Descriptions.Item label={tx('তারিখ')}>{fmtDate(data.date)}</Descriptions.Item>
               <Descriptions.Item label={tx('প্রদানকারী')}>{data.payer_name}</Descriptions.Item>
+              {data.parts?.map((p) => (
+                <Descriptions.Item key={p.module} label={p.label}>
+                  ৳{money(p.amount)}
+                </Descriptions.Item>
+              ))}
               <Descriptions.Item label={tx('টাকা')}>৳{money(data.amount)}</Descriptions.Item>
               <Descriptions.Item label={tx('অবস্থা')}>{RECEIPT_STATUS_LABEL[data.status] ?? data.status_label}</Descriptions.Item>
             </Descriptions>

@@ -1,5 +1,8 @@
 <?php
 
+use App\Approvals\AssetDisposalHandler;
+use App\Approvals\CombinedPaymentCancelHandler;
+use App\Approvals\DayReopenHandler;
 use App\Approvals\DistributionRunHandler;
 use App\Approvals\FarmerMergeHandler;
 use App\Approvals\InvoiceCancelHandler;
@@ -110,6 +113,9 @@ return [
         'share.dividend' => DistributionRunHandler::class,
         'loan.application' => LoanApplicationHandler::class,
         'loan.payment_cancel' => LoanPaymentCancelHandler::class,
+        'cash.day_reopen' => DayReopenHandler::class,
+        'payment.combined_cancel' => CombinedPaymentCancelHandler::class,
+        'asset.disposal' => AssetDisposalHandler::class,
     ],
 
     'farmer' => [

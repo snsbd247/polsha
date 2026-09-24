@@ -39,6 +39,9 @@ class SettingController extends Controller
             'voter_min_membership_months' => ['required', 'integer', 'min:0'],
             'bigha_decimal' => ['required', 'numeric', 'min:1', 'max:200'],
             'loan_max_guarantees' => ['required', 'integer', 'min:1', 'max:20'],
+            'combined_payment_order' => ['sometimes', 'array', 'size:3'],
+            'combined_payment_order.*' => ['required', 'distinct', 'in:loan,irrigation,share'],
+            'share_min_amount' => ['sometimes', 'numeric', 'min:0'],
         ]);
         SettingService::setMany($data);
 

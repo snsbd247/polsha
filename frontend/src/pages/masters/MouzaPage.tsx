@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query'
-import { App, Button, Form, Input, Modal, Select, Switch, Table, Tag } from 'antd'
+import { App, Button, Form, Input, Modal, Select, Space, Switch, Table, Tag } from 'antd'
 import { PlusOutlined } from '@ant-design/icons'
 import { Can, useAuth } from '../../auth/AuthContext'
 import LocationCascader, { type LocationPath } from '../../components/LocationCascader'
+import RelatedLinks from '../../components/RelatedLinks'
 import { api, applyFormErrors, errorMessage, type Paginated } from '../../lib/api'
 import { digits, toEnDigits } from '../../lib/format'
 import { required } from '../../lib/rules'
@@ -70,11 +71,14 @@ export default function MouzaPage() {
     <>
       <div className="page-header">
         <h2>{tx('মৌজা')}</h2>
-        <Can perm="mouza.create">
-          <Button type="primary" icon={<PlusOutlined />} onClick={() => openForm('new')}>
-            {tx('নতুন মৌজা')}
-          </Button>
-        </Can>
+        <Space wrap>
+          <RelatedLinks links={[{ to: '/masters/locations', label: tx('এলাকা') }]} />
+          <Can perm="mouza.create">
+            <Button type="primary" icon={<PlusOutlined />} onClick={() => openForm('new')}>
+              {tx('নতুন মৌজা')}
+            </Button>
+          </Can>
+        </Space>
       </div>
       <div className="toolbar">
         <Input.Search placeholder={tx('নাম বা JL নম্বর')} allowClear style={{ width: 220 }} onSearch={(search) => setParams((p) => ({ ...p, search: toEnDigits(search), page: 1 }))} />

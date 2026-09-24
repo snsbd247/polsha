@@ -182,6 +182,7 @@ class MemberFundService
             throw ValidationException::withMessages(['transaction' => $txn->status === 'cancel_pending'
                 ? __('এই লেনদেন বাতিলের অনুরোধ অনুমোদনের অপেক্ষায় আছে।') : __('এই লেনদেন বাতিল করা যায় না।')]);
         }
+        CombinedPaymentService::guardPart($txn);
         if ($txn->direction === 'in') {
             $this->assertAvailable($txn->account, (float) $txn->amount, __('এই জমা বাতিল করলে হিসাবের জের ঋণাত্মক হবে।'));
         }

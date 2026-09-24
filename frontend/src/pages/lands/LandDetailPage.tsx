@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Alert, App, Button, Card, Col, DatePicker, Descriptions, Empty, Form, Input, Modal, Popconfirm, Radio, Row, Space, Spin, Table, Tabs, Tag, Timeline, Typography } from 'antd'
 import { EditOutlined, SwapOutlined, UserSwitchOutlined } from '@ant-design/icons'
@@ -8,6 +8,7 @@ import { Can, useAuth } from '../../auth/AuthContext'
 import AuditLogTable from '../../components/AuditLogTable'
 import FarmerPicker from '../../components/FarmerPicker'
 import OwnersEditor from '../../components/OwnersEditor'
+import { QrButton } from '../../components/QrLabel'
 import { api, applyFormErrors, errorMessage, type Paginated } from '../../lib/api'
 import { digits, fmtDate, fmtDateTime } from '../../lib/format'
 import { CULTIVATION_COLOR, fmtArea, LAND_STATUS_COLOR, useLandMeta, type LandRow } from '../../lib/land'
@@ -27,6 +28,7 @@ type LandDetail = LandRow & {
 
 export default function LandDetailPage() {
   const { id } = useParams()
+  const [search] = useSearchParams()
   const navigate = useNavigate()
   const { can } = useAuth()
   const { message } = App.useApp()
@@ -110,6 +112,7 @@ export default function LandDetailPage() {
               <Button danger>{tx('মুছুন')}</Button>
             </Popconfirm>
           </Can>
+          <QrButton type="land" code={land.land_code} title={`${land.mouza} · ${tx('দাগ')} ${digits(land.dag_no)}`} />
           <Button onClick={() => window.print()}>{tx('প্রিন্ট')}</Button>
         </Space>
       </div>
@@ -187,6 +190,7 @@ export default function LandDetailPage() {
 
       <Card style={{ marginTop: 16 }}>
         <Tabs
+          defaultActiveKey={search.get('tab') ?? undefined}
           items={[
             {
               key: 'owners',

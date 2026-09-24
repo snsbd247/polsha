@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Alert, App, Button, Card, Checkbox, Descriptions, Drawer, Space, Steps, Table, Tabs, Tag, Typography, Upload } from 'antd'
 import { DownloadOutlined, InboxOutlined } from '@ant-design/icons'
@@ -149,6 +150,7 @@ function ImportTab({ type }: { type: ImportType }) {
 }
 
 export default function ImportPage() {
+  const [search] = useSearchParams()
   const [page, setPage] = useState(1)
   const [open, setOpen] = useState<Batch | null>(null)
   const { data, isFetching } = useQuery({
@@ -163,7 +165,7 @@ export default function ImportPage() {
         <h2>Import (Excel/CSV)</h2>
       </div>
       <Card>
-        <Tabs items={(Object.keys(TYPES) as ImportType[]).map((t) => ({ key: t, label: `${TYPES[t]} Import`, children: <ImportTab type={t} /> }))} />
+        <Tabs defaultActiveKey={search.get('type') ?? undefined} items={(Object.keys(TYPES) as ImportType[]).map((t) => ({ key: t, label: `${TYPES[t]} Import`, children: <ImportTab type={t} /> }))} />
       </Card>
       <Card title={tx('Import-এর ইতিহাস')} style={{ marginTop: 16 }} styles={{ body: { padding: 0 } }}>
         <Table<Batch>

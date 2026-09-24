@@ -5,6 +5,7 @@ import { App, Button, Card, Checkbox, Col, DatePicker, Input, Row, Select, Space
 import { DownloadOutlined, PlusOutlined, ThunderboltOutlined } from '@ant-design/icons'
 import type { Dayjs } from 'dayjs'
 import { Can } from '../../auth/AuthContext'
+import RelatedLinks from '../../components/RelatedLinks'
 import { api, errorMessage, type Paginated } from '../../lib/api'
 import { money } from '../../lib/accounting'
 import { digits, fmtDate } from '../../lib/format'
@@ -60,6 +61,7 @@ export default function InvoiceListPage() {
       <div className="page-header">
         <h2>{tx('সেচ ইনভয়েস')}</h2>
         <Space wrap>
+          <RelatedLinks links={[{ to: '/irrigation/dues', label: tx('বকেয়া তালিকা') }]} />
           <Button icon={<DownloadOutlined />} onClick={() => downloadExport('/invoices', { ...params, page: undefined, export: 'csv' }, 'irrigation-invoices.csv').catch((e) => message.error(errorMessage(e)))}>
             Excel
           </Button>

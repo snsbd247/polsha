@@ -1,8 +1,9 @@
 import { useEffect } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { App, Button, Card, Col, DatePicker, Form, Input, InputNumber, Radio, Row, Select, Spin, Upload } from 'antd'
+import { App, Button, Card, Col, DatePicker, Form, Input, InputNumber, Radio, Row, Select, Space, Spin, Upload } from 'antd'
 import { UploadOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
+import RelatedLinks from '../../components/RelatedLinks'
 import { api, applyFormErrors, errorMessage } from '../../lib/api'
 import { logoUrl } from '../../lib/settings'
 import { required } from '../../lib/rules'
@@ -57,6 +58,9 @@ export default function GeneralSettingsPage() {
     <>
       <div className="page-header">
         <h2>{tx('সাধারণ সেটিংস')}</h2>
+        <Space wrap>
+          <RelatedLinks links={[{ to: '/settings/sequences', label: tx('সিরিয়াল নম্বর') }, { to: '/admin/backups', label: tx('ব্যাকআপ'), superOnly: true }]} />
+        </Space>
       </div>
       <Form form={form} layout="vertical" onFinish={save}>
         <Row gutter={[16, 16]}>
@@ -134,6 +138,26 @@ export default function GeneralSettingsPage() {
             <Card title={tx('ঋণ')} style={{ marginTop: 16 }}>
               <Form.Item name="loan_max_guarantees" label={tx('একজন সদস্য সর্বোচ্চ কতটি চলমান ঋণের জামিনদার হতে পারবেন')} rules={[required(tx('মান দিন'))]}>
                 <InputNumber min={1} max={20} style={{ width: '100%' }} />
+              </Form.Item>
+            </Card>
+            <Card title={tx('একত্রিত পেমেন্ট')} style={{ marginTop: 16 }}>
+              <Form.Item
+                name="combined_payment_order"
+                label={tx('টাকা সমন্বয়ের ক্রম')}
+                extra={tx('যে ক্রমে বাছাই করবেন, সেই ক্রমে বকেয়া পরিশোধ হবে; বাকি টাকা সঞ্চয়ে যাবে। আদায়ের সময় প্রয়োজনে বদলানো যায়।')}
+                rules={[{ validator: (_, v?: string[]) => (v?.length === 3 ? Promise.resolve() : Promise.reject(new Error(tx('তিনটিই ক্রম অনুযায়ী বাছাই করুন')))) }]}
+              >
+                <Select
+                  mode="multiple"
+                  options={[
+                    { value: 'loan', label: tx('ঋণ') },
+                    { value: 'irrigation', label: tx('সেচ') },
+                    { value: 'share', label: tx('শেয়ার') },
+                  ]}
+                />
+              </Form.Item>
+              <Form.Item name="share_min_amount" label={tx('ন্যূনতম শেয়ার মূলধন')} extra={tx('শেয়ার এই পরিমাণে না পৌঁছা পর্যন্ত একত্রিত পেমেন্টে শেয়ার বকেয়া ধরা হবে। ০ মানে শেয়ার বকেয়া নেই।')}>
+                <InputNumber min={0} prefix={tx('৳')} style={{ width: '100%' }} />
               </Form.Item>
             </Card>
           </Col>

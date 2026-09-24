@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { Card, Select, Table, Tabs, Tag } from 'antd'
 import { useAuth } from '../../auth/AuthContext'
+import RelatedLinks from '../../components/RelatedLinks'
 import { api, type Paginated } from '../../lib/api'
 import { APPROVAL_STATUS, digits, fmtDateTime } from '../../lib/format'
 import type { ApprovalRequest } from '../../lib/types'
@@ -32,6 +33,7 @@ export default function ApprovalInboxPage() {
     <>
       <div className="page-header">
         <h2>{tx('অনুমোদন')}</h2>
+        <RelatedLinks links={[{ to: '/admin/approval-rules', label: tx('অনুমোদনের নিয়ম'), perm: 'approval.admin' }]} />
       </div>
       <Card>
         <Tabs

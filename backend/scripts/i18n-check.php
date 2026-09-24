@@ -2,6 +2,13 @@
 
 use App\Http\Controllers\Api\MemberController;
 use App\Models\Account;
+use App\Models\Asset;
+use App\Models\AssetMaintenance;
+use App\Models\AssetMovement;
+use App\Models\BankReconciliation;
+use App\Models\CombinedPayment;
+use App\Models\DayClose;
+use App\Models\QrScan;
 use App\Models\BankAccount;
 use App\Models\Invoice;
 use App\Models\IrrigationRate;
@@ -84,6 +91,12 @@ $extra = array_merge(
     $labels(LoanProduct::FREQUENCIES), $labels(LoanService::BUCKETS),
     ['ঋণ আবেদন অনুমোদন', 'ঋণ পরিশোধ বাতিল', 'ঋণ নং', 'ঋণের ধরন', 'ঋণসীমা', 'টাকার পরিমাণ', 'মোট সুদ', 'জামিনদার', 'উদ্দেশ্য', 'কিস্তি', 'সুদ', 'আসল', 'জরিমানা', 'রশিদ নং', 'সদস্য'],
     ['মৌসুম', 'সেচের ধরন', 'জমির ধরন', 'নতুন রেট (প্রতি শতক)', 'কার্যকর তারিখ', 'রেট (প্রতি শতক)', 'ইনভয়েস', 'চাষি', 'রশিদ', 'প্রদানকারী', 'টাকা', 'দাগ', 'জমি'],
+    // Phase 8: combined receipt, day close, bank reconciliation, assets, QR.
+    $labels(CombinedPayment::MODULES), $labels(CombinedPayment::STATUSES), $labels(DayClose::STATUSES), $labels(BankReconciliation::STATUSES),
+    $labels(Asset::STATUSES), $labels(Asset::CONDITIONS), $labels(Asset::ACQUISITIONS), $labels(AssetMovement::TYPES),
+    $labels(AssetMaintenance::KINDS), $labels(AssetMaintenance::STATUSES), $labels(QrScan::TYPES),
+    ['বন্ধ দিন খোলা', 'সম্পদ বিক্রয়/বাতিল', 'সমন্বিত রশিদ বাতিল', 'সমন্বিত রশিদ', 'সম্পদ নম্বর', 'বিক্রয়', 'বাতিল (অকেজো)'],
+    ['প্রত্যাশিত জের', 'প্রকৃত নগদ', 'গরমিল', 'সম্পদ', 'ধরন', 'ক্রয়মূল্য', 'পুঞ্জীভূত অবচয়', 'বর্তমান মূল্য', 'বিক্রয়মূল্য'],
 );
 foreach ($extra as $k) {
     $keys[$k] = true;

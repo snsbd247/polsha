@@ -31,6 +31,10 @@ class SettingService
         'bigha_decimal' => 33,
         // how many running loans one member may stand guarantor for
         'loan_max_guarantees' => 2,
+        // combined payment: which dues are settled first; savings takes the rest
+        'combined_payment_order' => ['loan', 'irrigation', 'share'],
+        // share capital every member should hold; the gap is a "share due" in combined payment
+        'share_min_amount' => 0,
     ];
 
     public static function all(): array

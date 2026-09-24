@@ -490,6 +490,7 @@ class LoanService
             throw ValidationException::withMessages(['payment' => $payment->status === 'cancel_pending'
                 ? __('এই পরিশোধ বাতিলের অনুরোধ অনুমোদনের অপেক্ষায় আছে।') : __('এই পরিশোধ বাতিল করা যায় না।')]);
         }
+        CombinedPaymentService::guardPart($payment);
         if (LoanPayment::where('loan_id', $payment->loan_id)->where('status', 'posted')->where('id', '>', $payment->id)->exists()) {
             throw ValidationException::withMessages(['payment' => __('শুধু সর্বশেষ পরিশোধ বাতিল করা যায়; পরেরগুলো আগে বাতিল করুন।')]);
         }

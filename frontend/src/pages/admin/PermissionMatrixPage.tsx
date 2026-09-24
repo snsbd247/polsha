@@ -1,9 +1,10 @@
 import { useMemo, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Alert, App, Button, Card, Checkbox, Space, Spin, Table } from 'antd'
+import { Alert, App, Button, Card, Checkbox, Select, Space, Spin, Table } from 'antd'
 import { useAuth } from '../../auth/AuthContext'
 import { api, errorMessage } from '../../lib/api'
+import { useRoles } from '../../lib/queries'
 import type { Role } from '../../lib/types'
 import { t as tx } from '../../lib/i18n'
 
@@ -17,11 +18,32 @@ type MatrixData = {
 
 export default function PermissionMatrixPage() {
   const { id } = useParams()
+  const navigate = useNavigate()
+  const roles = useRoles(!id)
   const { data, isLoading } = useQuery({
     queryKey: ['roles', id, 'permissions'],
     queryFn: async () => (await api.get<MatrixData>(`/roles/${id}/permissions`)).data,
+    enabled: !!id,
   })
 
+  // Opened from the menu without a role: pick one first.
+  if (!id)
+    return (
+      <>
+        <div className="page-header">
+          <h2>{tx('অনুমতি')}</h2>
+        </div>
+        <Card>
+          <Select
+            placeholder={tx('রোল বাছাই করুন')}
+            style={{ width: 320 }}
+            loading={roles.isLoading}
+            options={(roles.data ?? []).map((r) => ({ value: r.id, label: r.label ?? r.name }))}
+            onChange={(v) => navigate(`/admin/roles/${v}/permissions`)}
+          />
+        </Card>
+      </>
+    )
   if (isLoading || !data) return <Spin />
   // Remount the editor whenever the saved permissions change so local edits reset to them.
   return <Matrix key={data.granted.join(',')} id={id!} data={data} />

@@ -6,14 +6,17 @@ import {
   AccountBookOutlined,
   AuditOutlined,
   BankOutlined,
+  BarChartOutlined,
+  BookOutlined,
   BorderOuterOutlined,
   CheckSquareOutlined,
   DashboardOutlined,
-  EnvironmentOutlined,
+  DollarOutlined,
   ExperimentOutlined,
+  HddOutlined,
   IdcardOutlined,
+  ImportOutlined,
   LogoutOutlined,
-  SolutionOutlined,
   MenuOutlined,
   SettingOutlined,
   TeamOutlined,
@@ -24,139 +27,258 @@ import { useAuth } from '../auth/AuthContext'
 import { api } from '../lib/api'
 import { digits } from '../lib/format'
 import { usePublicSettings } from '../lib/settings'
-import { nameOf, t as tx } from '../lib/i18n'
+import { lang, nameOf, t as tx } from '../lib/i18n'
 import LanguageToggle from './LanguageToggle'
 
 const { Header, Sider, Content, Footer } = Layout
 
-type NavItem = { key: string; label: string; icon?: React.ReactNode; perm?: string | string[]; superOnly?: boolean; children?: NavItem[] }
+/** Menu label: Bangla, or the exact English menu name in English mode. */
+const m = (bn: string, en: string) => (lang === 'en' ? en : bn)
 
-const NAV: NavItem[] = [
-  { key: '/', label: tx('ড্যাশবোর্ড'), icon: <DashboardOutlined /> },
-  { key: '/approvals', label: tx('অনুমোদন'), icon: <CheckSquareOutlined /> },
+type Leaf = { path: string; label: string; perm?: string | string[]; superOnly?: boolean }
+type Group = { key: string; label: string; icon: React.ReactNode; children: Leaf[] }
+
+const ACC = ['accounting.view', 'cash.view', 'bank.view']
+
+// The sidebar follows the society's own menu exactly. Items whose screen comes in a later phase open
+// a "coming soon" page (lib/comingSoon.ts); an item may appear in more than one group.
+const GROUPS: Group[] = [
   {
-    key: 'farmers-menu',
-    label: tx('কৃষক'),
+    key: 'g-farmers',
+    label: m('কৃষক ও সদস্য', 'Farmers & Members'),
     icon: <IdcardOutlined />,
     children: [
-      { key: '/farmers', label: tx('কৃষক তালিকা'), perm: 'farmer.view' },
-      { key: '/farmers/new', label: tx('নতুন কৃষক'), perm: 'farmer.create' },
-      { key: '/farmers/duplicates', label: tx('ডুপ্লিকেট পর্যালোচনা'), perm: 'farmer.view' },
-      { key: '/households', label: tx('খানা'), perm: 'farmer.view' },
+      { path: '/farmers', label: m('কৃষক তালিকা', 'Farmer List'), perm: 'farmer.view' },
+      { path: '/farmers/new', label: m('নতুন কৃষক', 'Add Farmer'), perm: 'farmer.create' },
+      { path: '/membership/applications', label: m('সদস্যপদ আবেদন', 'Membership Applications'), perm: 'membership.view' },
+      { path: '/members', label: m('সদস্য তালিকা', 'Member List'), perm: 'member.view' },
+      { path: '/members/voters', label: m('ভোটার তালিকা', 'Voter List'), perm: 'member.view' },
+      { path: '/farmers/merge', label: m('কৃষক একীকরণ', 'Farmer Merge'), perm: 'farmer.edit' },
+      { path: '/farmers/deleted', label: m('মুছে ফেলা কৃষক', 'Deleted Farmers'), perm: 'farmer.view' },
+      { path: '/masters/patwaris', label: m('পাটোয়ারী তালিকা', 'Patwari List'), perm: 'patwari.view' },
+      { path: '/masters/mouzas', label: m('মৌজা ব্যবস্থাপনা', 'Mouza Management') },
     ],
   },
   {
-    key: 'members-menu',
-    label: tx('সদস্য'),
-    icon: <SolutionOutlined />,
-    children: [
-      { key: '/membership/applications', label: tx('সদস্যপদ আবেদন'), perm: 'membership.view' },
-      { key: '/members', label: tx('সদস্য তালিকা'), perm: 'member.view' },
-      { key: '/members/admission-register', label: tx('ভর্তি রেজিস্টার'), perm: 'member.view' },
-      { key: '/members/voters', label: tx('ভোটার তালিকা'), perm: 'member.view' },
-    ],
-  },
-  {
-    key: 'lands-menu',
-    label: tx('জমি'),
+    key: 'g-lands',
+    label: m('জমি ব্যবস্থাপনা', 'Land Management'),
     icon: <BorderOuterOutlined />,
     children: [
-      { key: '/lands', label: tx('জমির তালিকা'), perm: 'land.view' },
-      { key: '/lands/new', label: tx('নতুন জমি'), perm: 'land.create' },
-      { key: '/data-health', label: 'Data Health', perm: 'land.view' },
-      { key: '/imports', label: 'Import (Excel/CSV)', perm: 'import.create' },
+      { path: '/lands', label: m('জমির তালিকা', 'Land List'), perm: 'land.view' },
+      { path: '/lands/new', label: m('নতুন জমি', 'Add Land'), perm: 'land.create' },
+      { path: '/lands/lookup', label: m('জমির প্রোফাইল', 'Land Profile'), perm: 'land.view' },
+      { path: '/lands/owners', label: m('মালিক ও চাষি', 'Owner & Cultivator'), perm: 'land.view' },
+      { path: '/lands/borga', label: m('বর্গা চাষ', 'Borga / Sharecropping'), perm: 'land.view' },
+      { path: '/lands/transfers', label: m('জমি হস্তান্তর', 'Land Transfer'), perm: 'land.view' },
+      { path: '/lands/lookup/history', label: m('জমির ইতিহাস', 'Land History'), perm: 'land.view' },
+      { path: '/settings/land-types', label: m('জমির ধরন', 'Land Types'), perm: 'settings.admin' },
+      { path: '/lands/reports', label: m('জমির রিপোর্ট', 'Land Reports'), perm: 'land.view' },
     ],
   },
   {
-    key: 'irrigation-menu',
-    label: tx('সেচ ও রশিদ'),
+    key: 'g-irrigation',
+    label: m('সেচ', 'Irrigation'),
     icon: <ExperimentOutlined />,
     children: [
-      { key: '/payments/collect', label: tx('টাকা আদায়'), perm: 'payment.create' },
-      { key: '/payments/receipts', label: tx('টাকার রশিদ'), perm: 'payment.view' },
-      { key: '/irrigation/invoices', label: tx('সেচ ইনভয়েস'), perm: 'irrigation.view' },
-      { key: '/irrigation/dues', label: tx('বকেয়া তালিকা'), perm: 'irrigation.view' },
-      { key: '/irrigation/seasons', label: tx('মৌসুম'), perm: 'irrigation.view' },
-      { key: '/irrigation/rates', label: tx('সেচের রেট'), perm: 'irrigation.view' },
-      { key: '/irrigation/rate-audit', label: tx('রেট অডিট'), perm: 'irrigation.view' },
-      { key: '/irrigation/mismatch', label: tx('বকেয়া মিলকরণ'), perm: 'irrigation.view' },
+      { path: '/irrigation/seasons', label: m('মৌসুম', 'Seasons'), perm: 'irrigation.view' },
+      { path: '/irrigation/invoices', label: m('সেচ ইনভয়েস', 'Irrigation Invoices'), perm: 'irrigation.view' },
+      { path: '/irrigation/rates', label: m('সেচের রেট', 'Irrigation Rates'), perm: 'irrigation.view' },
+      { path: '/payments/collect?legacy=1', label: m('পুরোনো রশিদ এন্ট্রি', 'Old Receipt Entry'), perm: 'payment.create' },
+      { path: '/irrigation/invoices/bulk', label: m('বিলিং ভাগের প্রিভিউ', 'Billing Split Preview'), perm: 'irrigation.create' },
+      { path: '/irrigation/lookup', label: m('মৌসুম / জমির ধরন অনুসন্ধান', 'Season / Land-Type Lookup'), perm: 'irrigation.view' },
+      { path: '/settings/irrigation-types', label: m('ক্যাটাগরি', 'Categories'), perm: 'settings.admin' },
+      { path: '/irrigation/category-rates', label: m('ক্যাটাগরিভিত্তিক রেট', 'Category Rates'), perm: 'irrigation.view' },
+      { path: '/irrigation/rate-audit', label: m('রেট অডিট ইতিহাস', 'Rate Audit History'), perm: 'irrigation.view' },
+      { path: '/irrigation/mismatch', label: m('বকেয়া অমিল', 'Due Mismatch'), perm: 'irrigation.view' },
     ],
   },
   {
-    key: 'funds-menu',
-    label: tx('সঞ্চয় ও শেয়ার'),
+    key: 'g-savings',
+    label: m('সঞ্চয়', 'Savings'),
     icon: <WalletOutlined />,
     children: [
-      { key: '/funds/savings/accounts', label: tx('সঞ্চয় হিসাব'), perm: 'savings.view' },
-      { key: '/funds/savings/transactions', label: tx('সঞ্চয়ের লেনদেন'), perm: 'savings.view' },
-      { key: '/funds/savings/audit', label: tx('সঞ্চয় অডিট'), perm: 'savings.view' },
-      { key: '/funds/share/accounts', label: tx('শেয়ার মূলধন বিবরণী'), perm: 'share.view' },
-      { key: '/funds/share/transactions', label: tx('শেয়ারের লেনদেন'), perm: 'share.view' },
-      { key: '/funds/share/audit', label: tx('শেয়ার মূলধন মিলকরণ'), perm: 'share.view' },
-      { key: '/funds/distributions', label: tx('মুনাফা ও লভ্যাংশ'), perm: ['savings.view', 'share.view'] },
+      { path: '/funds/savings/transactions', label: m('সঞ্চয় জমা', 'Savings Entry'), perm: 'savings.view' },
+      { path: '/funds/share/transactions', label: m('শেয়ার আদায়', 'Share Collection'), perm: 'share.view' },
+      { path: '/funds/savings/accounts', label: m('বিবরণী', 'Statements'), perm: 'savings.view' },
+      { path: '/members/voters', label: m('ভোটার তালিকা', 'Voter List'), perm: 'member.view' },
+      { path: '/members/voter-history', label: m('ভোটার ইতিহাস', 'Voter History'), perm: 'member.view' },
+      { path: '/members/voter-audit', label: m('ভোটার অডিট', 'Voter Audit'), perm: 'member.view' },
+      { path: '/members/admission-register', label: m('ভর্তি রেজিস্টার', 'Admission Register'), perm: 'member.view' },
     ],
   },
   {
-    key: 'loans-menu',
-    label: tx('ঋণ'),
+    key: 'g-loans',
+    label: m('ঋণ', 'Loans'),
     icon: <BankOutlined />,
     children: [
-      { key: '/loans', label: tx('ঋণের তালিকা'), perm: 'loan.view' },
-      { key: '/loans/new', label: tx('ঋণের আবেদন'), perm: 'loan.create' },
-      { key: '/loans/payments', label: tx('ঋণ পরিশোধ ও রশিদ'), perm: 'loan.view' },
-      { key: '/loans/dues', label: tx('ঋণের বকেয়া ও Aging'), perm: 'loan.view' },
-      { key: '/loans/products', label: tx('ঋণের ধরন'), perm: 'loan.view' },
-      { key: '/loans/audit', label: tx('ঋণ অডিট'), perm: 'loan.view' },
+      { path: '/loans', label: m('ঋণের তালিকা', 'Loan List'), perm: 'loan.view' },
+      { path: '/loans?status=pending', label: m('অপেক্ষমাণ ঋণ', 'Pending Loans'), perm: 'loan.view' },
+      { path: '/loans?status=approved', label: m('অনুমোদিত ঋণ', 'Approved Loans'), perm: 'loan.view' },
+      { path: '/loans/new', label: m('ঋণের আবেদন', 'Loan Applications'), perm: 'loan.create' },
+      { path: '/loans/products', label: m('ঋণের প্ল্যান', 'Loan Plans'), perm: 'loan.view' },
+      { path: '/loans/lookup', label: m('ঋণের বিস্তারিত', 'Loan Details'), perm: 'loan.view' },
+      { path: '/loans/lookup/schedule', label: m('ঋণের কিস্তিসূচি', 'Loan Schedule'), perm: 'loan.view' },
+      { path: '/loans/lookup/installments', label: m('ঋণের কিস্তি', 'Loan Installments'), perm: 'loan.view' },
+      { path: '/loans/payments', label: m('ঋণ পরিশোধ', 'Loan Payments'), perm: 'loan.view' },
+      { path: '/loans/guarantors', label: m('জামিনদার', 'Guarantors'), perm: 'loan.view' },
+      { path: '/loans/dues', label: m('ঋণের বকেয়া', 'Loan Due'), perm: 'loan.view' },
     ],
   },
   {
-    key: 'masters',
-    label: tx('এলাকা ও মৌজা'),
-    icon: <EnvironmentOutlined />,
+    key: 'g-cash',
+    label: m('নগদ ও পেমেন্ট', 'Cash & Payments'),
+    icon: <DollarOutlined />,
     children: [
-      { key: '/masters/locations', label: tx('এলাকা') },
-      { key: '/masters/mouzas', label: tx('মৌজা') },
-      { key: '/masters/patwaris', label: tx('পাতওয়ারী'), perm: 'patwari.view' },
+      { path: '/payments/collect', label: m('পেমেন্ট', 'Payments'), perm: 'payment.create' },
+      { path: '/payments/receipts', label: m('রশিদ তালিকা', 'Receipt List'), perm: 'payment.view' },
+      { path: '/payments/combined', label: m('একত্রিত পেমেন্ট', 'Combined Payment'), perm: 'payment.view' },
+      { path: '/qr/scan', label: m('QR স্ক্যানার', 'QR Scanner') },
+      { path: '/qr/history', label: m('QR স্ক্যান ইতিহাস', 'QR Scan History') },
+      { path: '/accounting/ledger', label: m('ক্যাশ বই', 'Cash Book'), perm: ACC },
+      { path: '/accounting/funds', label: m('হাতে নগদ', 'Hand Cash'), perm: ['cash.view', 'bank.view'] },
+      { path: '/cash/day-close?tab=register', label: m('নগদ অডিট', 'Cash Audit'), perm: 'cash.view' },
+      { path: '/approvals', label: m('অনুমোদন', 'Approvals') },
     ],
   },
   {
-    key: 'accounting-menu',
-    label: tx('হিসাব ও তহবিল'),
+    key: 'g-cashbook',
+    label: m('ক্যাশ বই ও খতিয়ান', 'Cash Book & Ledger'),
+    icon: <BookOutlined />,
+    children: [
+      { path: '/cashbook/irrigation', label: m('সেচ নগদ বিবরণী', 'Irrigation Cash Statement'), perm: ACC },
+      { path: '/cashbook/society', label: m('সমিতির নগদ বিবরণী', 'Society Cash Statement'), perm: ACC },
+      { path: '/cashbook/income-expense', label: m('আয়-ব্যয় নগদ বই', 'Income & Expense Cash Book'), perm: ACC },
+      { path: '/accounting/ledger', label: m('ক্যাশ বই (খতিয়ান)', 'Cash Book (Ledger)'), perm: ACC },
+      { path: '/audit/exports', label: m('Export অডিট', 'Export Audit'), perm: 'audit.view' },
+    ],
+  },
+  {
+    key: 'g-assets',
+    label: m('সম্পদ', 'Assets'),
+    icon: <HddOutlined />,
+    children: [
+      { path: '/assets/dashboard', label: m('সম্পদ ড্যাশবোর্ড', 'Asset Dashboard'), perm: 'asset.view' },
+      { path: '/assets', label: m('সম্পদ রেজিস্টার', 'Asset Registry'), perm: 'asset.view' },
+      { path: '/assets/stock', label: m('স্টক', 'Stock'), perm: 'asset.view' },
+      { path: '/assets/transfers', label: m('সম্পদ স্থানান্তর', 'Asset Transfer'), perm: 'asset.view' },
+      { path: '/assets/installations', label: m('স্থাপন', 'Installation'), perm: 'asset.view' },
+      { path: '/assets/repairs', label: m('মেরামত', 'Repair'), perm: 'asset.view' },
+      { path: '/assets/maintenances', label: m('মেরামত সূচি', 'Repair Schedule'), perm: 'asset.view' },
+      { path: '/assets/sales', label: m('বিক্রয়', 'Sales'), perm: 'asset.view' },
+      { path: '/qr/scan', label: m('QR স্ক্যানার', 'QR Scanner') },
+      { path: '/qr/history', label: m('QR ইতিহাস', 'QR History') },
+      { path: '/assets/reports', label: m('সম্পদের রিপোর্ট', 'Asset Reports'), perm: 'asset.view' },
+    ],
+  },
+  {
+    key: 'g-accounting',
+    label: m('হিসাব', 'Accounting'),
     icon: <AccountBookOutlined />,
     children: [
-      { key: '/accounting/funds', label: tx('নগদ ও ব্যাংক অবস্থান'), perm: ['cash.view', 'bank.view'] },
-      { key: '/accounting/ledger', label: tx('ক্যাশ বই / খতিয়ান'), perm: ['accounting.view', 'cash.view', 'bank.view'] },
-      { key: '/accounting/bank-accounts', label: tx('ব্যাংক হিসাব'), perm: 'bank.view' },
-      { key: '/accounting/journals', label: tx('ভাউচার'), perm: 'accounting.view' },
-      { key: '/accounting/accounts', label: tx('হিসাবের তালিকা'), perm: 'accounting.view' },
-      { key: '/accounting/trial-balance', label: tx('রেওয়ামিল'), perm: 'accounting.view' },
-      { key: '/accounting/periods', label: tx('হিসাবকাল'), perm: 'accounting.view' },
+      { path: '/accounting/summary', label: m('আর্থিক সারসংক্ষেপ', 'Financial Summary'), perm: 'accounting.view' },
+      { path: '/accounting/accounts', label: m('হিসাবের তালিকা', 'Chart of Accounts'), perm: 'accounting.view' },
+      { path: '/accounting/journals/new', label: m('জার্নাল এন্ট্রি', 'Journal Entries'), perm: 'accounting.create' },
+      { path: '/accounting/periods', label: m('হিসাবকাল বন্ধ', 'Period Close'), perm: 'accounting.view' },
+      { path: '/accounting/journals/new?type=opening', label: m('প্রারম্ভিক নগদ জের', 'Opening Cash Balance'), perm: 'accounting.create' },
+      { path: '/accounting/source-vs-ledger', label: m('উৎস বনাম খতিয়ান', 'Source vs Ledger'), perm: 'accounting.view' },
+      { path: '/accounting/irrigation-cash-bank', label: m('সেচের নগদ ও ব্যাংক', 'Irrigation Cash & Bank'), perm: ACC },
+      { path: '/accounting/bank-reconciliations', label: m('মাসিক ব্যাংক মিলকরণ', 'Monthly Reconciliation'), perm: 'bank.view' },
+      { path: '/funds/share/audit', label: m('শেয়ার মূলধন মিলকরণ', 'Share Capital Reconciliation'), perm: 'share.view' },
+      { path: '/accounting/ledger-integrity', label: m('লেজার সঠিকতা', 'Ledger Integrity'), perm: 'accounting.view' },
+      { path: '/accounting/bank-accounts', label: m('ব্যাংক হিসাব', 'Bank Accounts'), perm: 'bank.view' },
+      { path: '/accounting/journals', label: m('ভাউচার', 'Vouchers'), perm: 'accounting.view' },
+      { path: '/accounting/public-payments', label: m('অনলাইন পেমেন্ট অনুরোধ', 'Public Payment Requests'), perm: 'payment.view' },
+      { path: '/accounting/payment-reconciliation', label: m('পেমেন্ট মিলকরণ', 'Payment Reconciliation'), perm: 'payment.view' },
     ],
   },
-  { key: '/audit/logs', label: tx('অডিট লগ'), icon: <AuditOutlined />, perm: 'audit.view' },
   {
-    key: 'admin',
-    label: tx('প্রশাসন'),
+    key: 'g-reports',
+    label: m('রিপোর্ট', 'Reports'),
+    icon: <BarChartOutlined />,
+    children: [
+      { path: '/reports/collections', label: m('আদায়ের রিপোর্ট', 'Collection Reports'), perm: 'payment.view' },
+      { path: '/reports/dues', label: m('বকেয়ার রিপোর্ট', 'Due Reports'), perm: ['irrigation.view', 'loan.view'] },
+      { path: '/reports/audit', label: m('অডিট রিপোর্ট', 'Audit Reports'), perm: 'audit.view' },
+    ],
+  },
+  {
+    key: 'g-audit',
+    label: m('অডিট ও পর্যবেক্ষণ', 'Audit & Monitoring'),
+    icon: <AuditOutlined />,
+    children: [
+      { path: '/audit/logs', label: m('সিস্টেম অডিট লগ', 'System Audit Log'), perm: 'audit.view' },
+      { path: '/audit/integrity-scan', label: m('ডেটা সঠিকতা স্ক্যান', 'Data Integrity Scan'), perm: 'audit.view' },
+      { path: '/cash/day-close', label: m('দৈনিক মিলকরণ', 'Day Reconciliation'), perm: 'cash.view' },
+    ],
+  },
+  {
+    key: 'g-admin',
+    label: m('প্রশাসন', 'Admin'),
     icon: <TeamOutlined />,
     children: [
-      { key: '/admin/users', label: tx('ইউজার'), perm: 'user.view' },
-      { key: '/admin/roles', label: tx('রোল ও অনুমতি'), perm: 'role.view' },
-      { key: '/admin/approval-rules', label: tx('অনুমোদনের নিয়ম'), perm: 'approval.admin' },
-      { key: '/admin/backups', label: tx('ব্যাকআপ'), superOnly: true },
+      { path: '/admin/users', label: m('ইউজার', 'Users'), perm: 'user.view' },
+      { path: '/admin/roles', label: m('রোল', 'Roles'), perm: 'role.view' },
+      { path: '/admin/permissions', label: m('অনুমতি', 'Permissions'), perm: 'role.view' },
+      { path: '/masters/patwaris', label: m('পাটোয়ারী ব্যবস্থাপনা', 'Patwari Management'), perm: 'patwari.view' },
+      { path: '/data-health', label: m('মৌজা ডেটা হেলথ', 'Mouza Data Health'), perm: 'land.view' },
+      { path: '/accounting/ledger-integrity', label: m('লেজার সঠিকতা', 'Ledger Integrity'), perm: 'accounting.view' },
+      { path: '/admin/receipt-serials', label: m('রশিদ সিরিয়াল প্রশাসন', 'Receipt Serial Admin'), perm: 'settings.admin' },
     ],
   },
   {
-    key: 'settings',
-    label: tx('সেটিংস'),
+    key: 'g-tools',
+    label: m('টুলস ও ইমপোর্ট', 'Tools & Import'),
+    icon: <ImportOutlined />,
+    children: [
+      { path: '/imports?type=farmers', label: m('কৃষক ইমপোর্ট', 'Farmer Import'), perm: 'import.create' },
+      { path: '/imports?type=lands', label: m('জমি ইমপোর্ট', 'Land Import'), perm: 'import.create' },
+      { path: '/imports/savings-opening', label: m('সঞ্চয়ের প্রারম্ভিক ইমপোর্ট', 'Savings Opening Import'), perm: 'import.create' },
+      { path: '/imports/share-opening', label: m('শেয়ারের প্রারম্ভিক ইমপোর্ট', 'Share Opening Import'), perm: 'import.create' },
+      { path: '/imports/loan-opening', label: m('ঋণের প্রারম্ভিক ইমপোর্ট', 'Loan Opening Import'), perm: 'import.create' },
+      { path: '/imports/payments', label: m('পেমেন্ট ইমপোর্ট', 'Payment Import'), perm: 'import.create' },
+      { path: '/imports/legacy-irrigation', label: m('পুরোনো সেচ ডেটা ইমপোর্ট', 'Legacy Irrigation Import'), perm: 'import.create' },
+      { path: '/imports/audit', label: m('ইমপোর্ট অডিট', 'Import Audit'), perm: 'import.create' },
+    ],
+  },
+  {
+    key: 'g-settings',
+    label: m('সেটিংস', 'Settings'),
     icon: <SettingOutlined />,
     children: [
-      { key: '/settings/general', label: tx('সাধারণ'), perm: 'settings.admin' },
-      { key: '/settings/sequences', label: tx('সিরিয়াল নম্বর'), perm: 'settings.admin' },
-      { key: '/settings/land-types', label: tx('জমির ধরন'), perm: 'settings.admin' },
-      { key: '/settings/irrigation-types', label: tx('সেচের ধরন'), perm: 'settings.admin' },
+      { path: '/settings/general', label: m('সাধারণ সেটিংস', 'General Settings'), perm: 'settings.admin' },
+      { path: '/settings/branding', label: m('ব্র্যান্ডিং ও লোগো', 'Branding & Logo'), perm: 'settings.admin' },
+      { path: '/settings/receipt', label: m('রশিদ সেটিংস', 'Receipt Settings'), perm: 'settings.admin' },
+      { path: '/settings/sms', label: m('SMS সেটিংস', 'SMS Settings'), perm: 'settings.admin' },
+      { path: '/settings/sms-templates', label: m('SMS টেমপ্লেট', 'SMS Templates'), perm: 'settings.admin' },
+      { path: '/settings/sms-logs', label: m('SMS লগ', 'SMS Logs'), perm: 'settings.admin' },
+      { path: '/settings/financial-year', label: m('অর্থবছর', 'Financial Year'), perm: 'settings.admin' },
+      { path: '/settings/preferences', label: m('সিস্টেম পছন্দসমূহ', 'System Preferences'), perm: 'settings.admin' },
+      { path: '/settings/license', label: m('লাইসেন্স ও ইনস্টলেশন', 'License & Installation'), perm: 'settings.admin' },
     ],
   },
 ]
+
+const HOME = '/'
+const leafKey = (g: Group, l: Leaf) => `${g.key}|${l.path}`
+
+/** The menu path that best matches the current URL: exact path+query, then exact path, then the longest parent path. */
+function bestPath(pathname: string, search: string): string | null {
+  let best: string | null = null
+  let score = 0
+  for (const g of GROUPS)
+    for (const l of g.children) {
+      const [p, q] = l.path.split('?')
+      let s = 0
+      if (q !== undefined) s = pathname === p && search === `?${q}` ? 3000 : 0
+      else if (pathname === p) s = 2000
+      else if (pathname.startsWith(p + '/')) s = 1000 + p.length
+      if (s > score) {
+        score = s
+        best = l.path
+      }
+    }
+  return best
+}
 
 export default function AppLayout() {
   const { user, can, logout } = useAuth()
@@ -174,41 +296,37 @@ export default function AppLayout() {
   })
 
   const items = useMemo(() => {
-    const allowed = (n: NavItem) => (n.superOnly ? !!user?.is_super_admin : !n.perm || can(n.perm))
-    const build = (list: NavItem[]): MenuProps['items'] =>
-      list
-        .filter(allowed)
-        .map((n) => {
-          if (n.children) {
-            const children = build(n.children)
-            return children && children.length ? { key: n.key, label: n.label, icon: n.icon, children } : null
-          }
-          const label =
-            n.key === '/approvals' && pending ? (
-              <span>
-                {n.label} <Badge count={digits(pending)} size="small" style={{ marginInlineStart: 6 }} />
-              </span>
-            ) : (
-              n.label
-            )
-          return { key: n.key, label, icon: n.icon }
-        })
-        .filter(Boolean)
-    return build(NAV)
+    const allowed = (n: Leaf) => (n.superOnly ? !!user?.is_super_admin : !n.perm || can(n.perm))
+    const groups: MenuProps['items'] = GROUPS.map((g) => {
+      const children = g.children.filter(allowed).map((l) => ({
+        key: leafKey(g, l),
+        label:
+          l.path === '/approvals' && pending ? (
+            <span>
+              {l.label} <Badge count={digits(pending)} size="small" style={{ marginInlineStart: 6 }} />
+            </span>
+          ) : (
+            l.label
+          ),
+      }))
+      return children.length ? { key: g.key, label: g.label, icon: g.icon, children } : null
+    }).filter(Boolean)
+    return [{ key: HOME, label: m('ড্যাশবোর্ড', 'Dashboard'), icon: <DashboardOutlined /> }, ...(groups ?? [])]
   }, [can, user, pending])
 
-  const selected = '/' + location.pathname.split('/').filter(Boolean).slice(0, 2).join('/')
-  const openKeys = NAV.filter((n) => n.children?.some((c) => selected.startsWith(c.key))).map((n) => n.key)
+  const best = location.pathname === HOME ? null : bestPath(location.pathname, location.search)
+  const selectedKeys = best ? GROUPS.flatMap((g) => g.children.filter((l) => l.path === best).map((l) => leafKey(g, l))) : location.pathname === HOME ? [HOME] : []
+  const openKeys = GROUPS.filter((g) => g.children.some((l) => l.path === best)).map((g) => g.key)
 
   const menu = (
     <Menu
       mode="inline"
       theme="dark"
-      selectedKeys={[selected === '/' ? '/' : selected]}
+      selectedKeys={selectedKeys}
       defaultOpenKeys={openKeys}
       items={items}
       onClick={({ key }) => {
-        navigate(key)
+        navigate(key === HOME ? HOME : key.slice(key.indexOf('|') + 1))
         setDrawerOpen(false)
       }}
     />
@@ -223,13 +341,13 @@ export default function AppLayout() {
   return (
     <Layout style={{ minHeight: '100vh' }}>
       {!isMobile && (
-        <Sider width={240} style={{ position: 'sticky', top: 0, height: '100vh', overflow: 'auto' }}>
+        <Sider width={250} style={{ position: 'sticky', top: 0, height: '100vh', overflow: 'auto' }}>
           {brand}
           {menu}
         </Sider>
       )}
       {isMobile && (
-        <Drawer open={drawerOpen} onClose={() => setDrawerOpen(false)} placement="left" size={260} styles={{ body: { padding: 0, background: '#001529' } }} closable={false}>
+        <Drawer open={drawerOpen} onClose={() => setDrawerOpen(false)} placement="left" size={270} styles={{ body: { padding: 0, background: '#001529' } }} closable={false}>
           {brand}
           {menu}
         </Drawer>

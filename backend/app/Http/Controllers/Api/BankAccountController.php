@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Account;
 use App\Models\BankAccount;
+use App\Models\BankStatementLine;
 use App\Models\JournalLine;
 use App\Services\AccountingReportService;
 use App\Services\LedgerService;
@@ -13,6 +14,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class BankAccountController extends Controller
 {
@@ -78,6 +80,9 @@ class BankAccountController extends Controller
     {
         abort_unless($line->account_id === $bankAccount->account_id, 404);
         $data = $request->validate(['reconciled' => ['required', 'boolean']]);
+        if (BankStatementLine::where('journal_line_id', $line->id)->exists()) {
+            throw ValidationException::withMessages(['reconciled' => __('এই লাইন ব্যাংক মিলকরণে মেলানো আছে; সেখান থেকে পরিবর্তন করুন।')]);
+        }
         $line->update($data['reconciled']
             ? ['reconciled_at' => now(), 'reconciled_by' => $request->user()->id]
             : ['reconciled_at' => null, 'reconciled_by' => null]);

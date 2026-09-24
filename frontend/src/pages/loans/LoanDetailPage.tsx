@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Alert, App, Button, Card, Col, Descriptions, Form, Input, Modal, Row, Space, Spin, Statistic, Table, Tabs, Tag } from 'antd'
 import { DollarOutlined, DownloadOutlined, PrinterOutlined, SendOutlined, StopOutlined } from '@ant-design/icons'
@@ -37,6 +37,7 @@ type Statement = { rows: StRow[]; totals: { paid: number; penalty: number; inter
 
 export default function LoanDetailPage() {
   const { id } = useParams()
+  const [search] = useSearchParams()
   const navigate = useNavigate()
   const { message } = App.useApp()
   const { can } = useAuth()
@@ -238,6 +239,7 @@ export default function LoanDetailPage() {
         )
       ) : (
         <Tabs
+          defaultActiveKey={search.get('tab') ?? undefined}
           items={[
             {
               key: 'schedule',

@@ -7,6 +7,7 @@ import { Can, useAuth } from '../../auth/AuthContext'
 import AuditLogTable from '../../components/AuditLogTable'
 import FarmerLandsTab from '../../components/FarmerLandsTab'
 import ProtectedImage from '../../components/ProtectedImage'
+import { QrButton } from '../../components/QrLabel'
 import { api, errorMessage, type Paginated } from '../../lib/api'
 import { digits, fmtDate, fmtDateTime, fmtBytes } from '../../lib/format'
 import { APPLICATION_STATUS, MEMBER_STATUS, openProtectedFile, toOptions, useFarmerMeta, type MemberStatus } from '../../lib/phase2'
@@ -229,6 +230,7 @@ export default function FarmerProfilePage() {
                 {tx('সদস্য করুন')}
               </Button>
             )}
+            <QrButton type="farmer" code={f.farmer_code} title={nameOf(f)} subtitle={f.member ? tx('সদস্য নং') + ' ' + digits(f.member.member_no) : undefined} />
             <Button icon={<PrinterOutlined />} onClick={() => window.print()}>
               {tx('প্রিন্ট')}
             </Button>

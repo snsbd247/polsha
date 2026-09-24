@@ -74,11 +74,41 @@ FARMER ── LAND ──┬── OWNER
 | ৫ | সেচ ও রশিদ ব্যবস্থা | ৩, ৪ | ✅ সম্পন্ন (লাইভ) |
 | ৬ | সঞ্চয় ও শেয়ার | ২, ৫ | ✅ সম্পন্ন (লাইভ) |
 | ৭ | ঋণ | ৬ | ✅ সম্পন্ন (লাইভ) |
-| ৮ | Combined Payment, Day Reconciliation, QR ও সম্পদ | ৫, ৬, ৭ | ⚪ বাকি |
+| ৮ | Combined Payment, Day Reconciliation, QR ও সম্পদ + ১৫-গ্রুপ মেন্যু | ৫, ৬, ৭ | ✅ সম্পন্ন (লাইভ) |
 | ৯ | রিপোর্ট, ড্যাশবোর্ড, Integrity Scan ও SMS | ৮ | ⚪ বাকি |
 | ১০ | Import/Migration, UAT ও Go-Live | সব | ⚪ বাকি |
 
 > ফেজ ৪ শুধু ফেজ ১-এর উপর নির্ভরশীল — দুজন ডেভেলপার থাকলে ফেজ ২–৩-এর সমান্তরালে চালানো যায়।
+
+### চূড়ান্ত মেন্যু কাঠামো ও ফেজ-ম্যাপিং
+
+Sidebar হুবহু নিচের ১৫টি গ্রুপ ও ১১৬টি আইটেমে (১০৯টি আলাদা পাতা) সাজানো (ফেজ ৮-এ পুনর্বিন্যাস সম্পন্ন) — **কোনো আইটেম বাদ নেই**।
+- যে স্ক্রিন এখনো তৈরি হয়নি, সেটিও মেন্যুতে আছে। ক্লিক করলে **"শীঘ্রই আসছে (ফেজ …)"** পাতা খোলে: কী থাকবে তার বিবরণ, আর এখন কোন পাতায় কাজটা করা যায় তার লিংক।
+- একই স্ক্রিন একাধিক গ্রুপে থাকতে পারে (যেমন Voter List, QR Scanner, Ledger Integrity)। সেক্ষেত্রে দুই জায়গাতেই মেন্যু হাইলাইট হয়।
+- মেন্যুতে নেই এমন পুরোনো স্ক্রিন (খানা, Duplicates, রেওয়ামিল, অনুমোদনের নিয়ম, ব্যাকআপ, সিরিয়াল নম্বর, এলাকা, ঋণ/সঞ্চয় অডিট ইত্যাদি) সংশ্লিষ্ট পাতার উপরের বোতাম থেকে খোলা যায়।
+- ইংরেজি মোডে মেন্যুর নাম হুবহু নিচের ইংরেজি নাম।
+
+চিহ্ন: ✅ তৈরি আছে · 🟣 শীঘ্রই আসছে (ফেজ ৯) · 🟤 শীঘ্রই আসছে (ফেজ ১০)
+
+| # | গ্রুপ | মেন্যু আইটেম → অবস্থা |
+|---|---|---|
+| ১ | 🏠 Dashboard | Dashboard ✅ (পূর্ণ KPI ফেজ ৯-এ) |
+| ২ | 👨‍🌾 Farmers & Members | Farmer List ✅ · Add Farmer ✅ · Membership Applications ✅ · Member List ✅ · Voter List ✅ · Farmer Merge ✅ · Deleted Farmers 🟣 · Patwari List ✅ · Mouza Management ✅ |
+| ৩ | 🌾 Land Management | Land List ✅ · Add Land ✅ · Land Profile ✅ · Owner & Cultivator 🟣 · Borga / Sharecropping 🟣 · Land Transfer 🟣 · Land History ✅ · Land Types ✅ · Land Reports 🟣 |
+| ৪ | 💧 Irrigation | Seasons ✅ · Irrigation Invoices ✅ · Irrigation Rates ✅ · Old Receipt Entry ✅ · Billing Split Preview ✅ · Season / Land-Type Lookup 🟣 · Categories ✅ · Category Rates 🟣 · Rate Audit History ✅ · Due Mismatch ✅ |
+| ৫ | 💰 Savings | Savings Entry ✅ · Share Collection ✅ · Statements ✅ · Voter List ✅ · Voter History 🟣 · Voter Audit 🟣 · Admission Register ✅ |
+| ৬ | 🏦 Loans | Loan List ✅ · Pending Loans ✅ · Approved Loans ✅ · Loan Applications ✅ · Loan Plans ✅ · Loan Details ✅ · Loan Schedule ✅ · Loan Installments ✅ · Loan Payments ✅ · Guarantors 🟣 · Loan Due ✅ |
+| ৭ | 💳 Cash & Payments | Payments ✅ · Receipt List ✅ · Combined Payment ✅ · QR Scanner ✅ · QR Scan History ✅ · Cash Book ✅ · Hand Cash ✅ · Cash Audit ✅ · Approvals ✅ |
+| ৮ | 📒 Cash Book & Ledger | Irrigation Cash Statement 🟣 · Society Cash Statement 🟣 · Income & Expense Cash Book 🟣 · Cash Book (Ledger) ✅ · Export Audit 🟣 |
+| ৯ | 🏢 Assets | Asset Dashboard ✅ · Asset Registry ✅ · Stock ✅ · Asset Transfer ✅ · Installation ✅ · Repair ✅ · Repair Schedule ✅ · Sales ✅ · QR Scanner ✅ · QR History ✅ · Asset Reports 🟣 |
+| ১০ | 📊 Accounting | Financial Summary 🟣 · Chart of Accounts ✅ · Journal Entries ✅ · Period Close ✅ · Opening Cash Balance ✅ · Source vs Ledger 🟣 · Irrigation Cash & Bank 🟣 · Monthly Reconciliation ✅ · Share Capital Reconciliation ✅ · Ledger Integrity 🟣 · Bank Accounts ✅ · Vouchers ✅ · Public Payment Requests 🟣 · Payment Reconciliation 🟣 |
+| ১১ | 📑 Reports | Collection Reports 🟣 · Due Reports 🟣 · Audit Reports 🟣 |
+| ১২ | 🔍 Audit & Monitoring | System Audit Log ✅ · Data Integrity Scan 🟣 · Day Reconciliation ✅ |
+| ১৩ | 👤 Admin | Users ✅ · Roles ✅ · Permissions ✅ · Patwari Management ✅ · Mouza Data Health ✅ · Ledger Integrity 🟣 · Receipt Serial Admin 🟣 |
+| ১৪ | 🛠️ Tools & Import | Farmer Import ✅ · Land Import ✅ · Savings Opening Import 🟤 · Share Opening Import 🟤 · Loan Opening Import 🟤 · Payment Import 🟤 · Legacy Irrigation Import 🟤 · Import Audit 🟤 |
+| ১৫ | ⚙️ Settings | General Settings ✅ · Branding & Logo 🟤 · Receipt Settings 🟤 · SMS Settings 🟣 · SMS Templates 🟣 · SMS Logs 🟣 · Financial Year 🟣 · System Preferences 🟤 · License & Installation 🟤 |
+
+আলাদা পাতা হিসেবে: তৈরি ✅ ৬৯টি · শীঘ্রই আসছে ৪০টি (ফেজ ৯ — ৩০টি, ফেজ ১০ — ১০টি)।
 
 <details>
 <summary><b>ফেজ ১ — ভিত্তি, প্রশাসন ও অনুমোদন ব্যবস্থা</b></summary>
@@ -204,6 +234,14 @@ FARMER ── LAND ──┬── OWNER
   - রক্ষণাবেক্ষণের সময়সূচি ও মেরামত
   - মাসিক অবচয় (স্বয়ংক্রিয় Posting)
   - বিক্রয়/বাতিলে অনুমোদন
+  - Asset Dashboard (মোট ক্রয়মূল্য, বর্তমান মূল্য, অবস্থা/ধরনভিত্তিক গণনা, আসন্ন রক্ষণাবেক্ষণ)
+  - Stock / Installation / Repair / Sales — Registry-র অবস্থাভিত্তিক আলাদা মেন্যু-ভিউ
+- **মেন্যু তালিকা থেকে যোগ:**
+  - Sidebar হুবহু উপরের ১৫-গ্রুপ কাঠামোয় (সব আইটেম; বাকিগুলো "শীঘ্রই আসছে" পাতায়)
+  - Hand Cash (খাতভিত্তিক হাতে নগদ), Cash Audit (দিন বন্ধের রেজিস্টার)
+  - Pending / Approved Loans মেন্যু লিংক, Opening Cash Balance স্ক্রিন
+  - Land Profile / Land History / Loan Details / Schedule / Installments — খুঁজে সরাসরি খোলার পাতা
+  - Permissions (Role বাছাই করে অনুমতির ম্যাট্রিক্স)
 
 **সম্পন্ন হওয়ার শর্ত:** এক পেমেন্ট ৪ মডিউলে সঠিক ভাগ হবে; দিনশেষে ক্যাশ মিলিয়ে দিন বন্ধ করা যাবে।
 </details>
@@ -229,6 +267,14 @@ FARMER ── LAND ──┬── OWNER
   - OTP, পেমেন্ট নিশ্চিতকরণ
   - বকেয়া/ঋণ/সেচের রিমাইন্ডার
   - cron-নির্ভর queue
+- **মেন্যু তালিকা থেকে যোগ:**
+  - Cash Book & Ledger: সেচ ও সমিতির নগদ বিবরণী, আয়-ব্যয় ক্যাশ বই, Export Audit
+  - Accounting: Financial Summary, Source vs Ledger, Irrigation Cash & Bank, Payment Reconciliation, Financial Year
+  - Public Payment Requests (লগইন ছাড়া অনলাইনে পেমেন্টের অনুরোধ → ক্যাশিয়ার যাচাই → রশিদ)
+  - Reports: Collection / Due / Audit; Land ও Asset Reports
+  - Deleted Farmers (পুনরুদ্ধারসহ), Owner & Cultivator / Borga / Land Transfer তালিকা
+  - Season / Land-Type Lookup, Category Rates ম্যাট্রিক্স, Guarantors তালিকা, Voter History ও Voter Audit
+  - Receipt Serial Admin (রশিদ বই/সিরিয়াল বরাদ্দ, ফাঁক ও ডুপ্লিকেট পর্যবেক্ষণ)
 
 **সম্পন্ন হওয়ার শর্ত:** ম্যানেজার শুধু ড্যাশবোর্ড দেখেই অবস্থা বুঝবেন; প্রতিদিন সকালে Integrity রিপোর্ট তৈরি থাকবে।
 </details>
@@ -239,10 +285,12 @@ FARMER ── LAND ──┬── OWNER
 - **Import Wizard:** Excel আপলোড → কলাম মেলানো → যাচাই → ভুলের রিপোর্ট → Preview → নিশ্চিত → Import → Audit
   - কৃষক, জমি, সঞ্চয়/শেয়ার/ঋণের প্রারম্ভিক ব্যালেন্স, পুরোনো সেচ, পেমেন্ট
   - প্রতিটি Import-এর Batch ID; দরকারে পুরো Batch Rollback
+  - Import Audit পাতা (কোন Batch, কে, কত সারি, ভুল, Rollback)
 - **বাকি Settings:**
   - ইনভয়েস, রশিদ ও সদস্য কার্ডের নকশা
   - লেটারহেড, স্বাক্ষর, ফুটার
   - License, মেয়াদ, ইনস্টলেশনের তথ্য
+  - Branding & Logo, Receipt Settings ও System Preferences আলাদা পাতায়
 - **UAT:** প্রতিটি Role দিয়ে আসল কাজের পরিস্থিতি
 - **Parallel Run:** ২–৪ সপ্তাহ পুরোনো খাতা ও নতুন সিস্টেম পাশাপাশি
 - **নিরাপত্তা ও গতি:**
@@ -667,16 +715,19 @@ app(ApprovalService::class)->submit('membership.admit', 'সদস্যপদ: 
 - [x] ঋণ অডিট — কিস্তির তালিকার আসল বাকি ↔ লেজার (১৩৩০), পরিশোধ ↔ কিস্তি, ভাউচার যাচাই; চলমান ঋণ থাকলে সদস্যপদ বাতিল করা যায় না
 - [x] সব নতুন স্ক্রিন বাংলা/English-এ; Feature test: নতুন ৪টি (মোট ৭১টি পাস); ব্রাউজারে ধরন → আবেদন → অনুমোদন → বিতরণ → কিস্তি → রশিদ পুরো flow — Statement-এর সমাপনী = আসল বাকি, অডিটে লেজারের সাথে পার্থক্য ০
 
-### ফেজ ৮ — Combined Payment, Day Reconciliation, QR ও সম্পদ — ⚪ বাকি
-- [ ] Combined Payment (সেচ + সঞ্চয় + ঋণ + শেয়ার, স্বয়ংক্রিয় ভাগ, অগ্রাধিকার Settings)
-- [ ] Day Reconciliation (প্রত্যাশিত বনাম আসল নগদ, অমিল লেখা, দিন বন্ধ)
-- [ ] Bank Reconciliation (মাসিক, স্টেটমেন্টের সাথে)
-- [ ] QR: কৃষক, সদস্য, জমি, রশিদ, সম্পদ; QR Scanner; Scan History
-- [ ] Asset Registry (ID, নাম, ক্যাটাগরি, ক্রয়ের তারিখ ও মূল্য, অবস্থান, বর্তমান মূল্য, অবস্থা)
-- [ ] সম্পদ ক্রয়, Stock, স্থানান্তর, স্থাপন
-- [ ] রক্ষণাবেক্ষণের সময়সূচি, মেরামত
-- [ ] অবচয় (মাসিক, স্বয়ংক্রিয় Posting)
-- [ ] বিক্রয় ও বাতিল (অনুমোদনসহ)
+### ফেজ ৮ — Combined Payment, Day Reconciliation, QR ও সম্পদ — ✅ সম্পন্ন
+- [x] Combined Payment — এক রশিদে ঋণ → সেচ → শেয়ার (ক্রম Settings-এ), বাকি টাকা সঞ্চয়ে; আদায়ের সময় হাতে ভাগ বদলানো যায়; ন্যূনতম শেয়ার মূলধন Settings-এ; বাতিল = অনুমোদন + সব খাত একসাথে রিভার্স; সমন্বিত রশিদ প্রিন্ট ও QR যাচাই
+- [x] Day Reconciliation — খাতভিত্তিক প্রারম্ভিক + আদায় − প্রদান = প্রত্যাশিত, নোট গণনা, গরমিলে কারণ বাধ্যতামূলক; বন্ধ দিনে নগদ লেনদেন নিষিদ্ধ; পুনরায় খুলতে অনুমোদন; বন্ধ দিনের রেজিস্টার (Cash Audit)
+- [x] Bank Reconciliation — মাসিক; স্টেটমেন্ট লাইন পেস্ট, স্বয়ংক্রিয়/হাতে মিল, ব্যাংকের লেনদেন থেকে ভাউচার, মিলকরণ বিবরণী, চূড়ান্ত করলে লক
+- [x] QR — কৃষক, সদস্য, জমি, রশিদ, সমন্বিত রশিদ, সম্পদ; রশিদের QR লগইন ছাড়া যাচাই, বাকিগুলো লগইনসহ; ক্যামেরা স্ক্যানার ও কোড লিখে খোঁজা; প্রতিটি স্ক্যানের ইতিহাস
+- [x] Asset Registry — কোড, নাম, শ্রেণি (আয়ুষ্কাল ও অবশিষ্ট মূল্যের ডিফল্টসহ), ক্রয়ের তারিখ ও মূল্য, অবস্থান, দায়িত্বপ্রাপ্ত, বর্তমান মূল্য, অবস্থা; CSV
+- [x] সম্পদ ক্রয় (নগদ/ব্যাংক/বাকি ভাউচার), পূর্বের সম্পদ ও অনুদান, Stock, স্থানান্তর, স্থাপন — সব চলাচলের ইতিহাস
+- [x] রক্ষণাবেক্ষণের সময়সূচি (পুনরাবৃত্তিসহ), মেরামতে পাঠানো ও শেষ করা, মেরামত খরচের ভাউচার
+- [x] অবচয় — সরল রেখা পদ্ধতি, মাসিক; বাদ পড়া মাস ক্রমানুসারে; বন্ধ হিসাবকালে বাদ
+- [x] বিক্রয় ও বাতিল — অনুমোদনের পর লাভ/ক্ষতির ভাউচার
+- [x] Asset Dashboard; Stock / Installation / Repair / Sales মেন্যু-ভিউ
+- [x] Sidebar হুবহু ১৫-গ্রুপ মেন্যু (সব আইটেম; অতৈরি আইটেম "শীঘ্রই আসছে" পাতায় ফেজ ও বিকল্প লিংকসহ); Hand Cash, Cash Audit, Pending/Approved Loans, Opening Cash Balance, Land/Loan Lookup, Permissions
+- [x] সব নতুন স্ক্রিন বাংলা/English-এ; Feature test মোট ৭৭টি পাস; ব্রাউজারে সব মেন্যু আইটেম, সম্পদ, সমন্বিত আদায়, QR ও দিন বন্ধের flow
 
 ### ফেজ ৯ — রিপোর্ট, ড্যাশবোর্ড, Integrity Scan ও SMS — ⚪ বাকি
 - [ ] কৃষক/সদস্য রিপোর্ট: Farmer, Member, Non-member, Member History, Household, Voter
@@ -691,13 +742,20 @@ app(ApprovalService::class)->submit('membership.admit', 'সদস্যপদ: 
 - [ ] Ledger Integrity (মডিউল বনাম লেজার)
 - [ ] SMS: Settings, Template, Log, OTP, পেমেন্ট নিশ্চিতকরণ, বকেয়া/ঋণ/সেচ রিমাইন্ডার, সঞ্চয় নিশ্চিতকরণ
 - [ ] SMS দিয়ে পাসওয়ার্ড রিসেট (S-102)
+- [ ] Cash Book & Ledger: সেচ ও সমিতির নগদ বিবরণী, আয়-ব্যয় ক্যাশ বই, Export Audit
+- [ ] Accounting: Financial Summary, Source vs Ledger, Irrigation Cash & Bank, Payment Reconciliation, Financial Year
+- [ ] Public Payment Requests (লগইন ছাড়া অনলাইন অনুরোধ → যাচাই → রশিদ)
+- [ ] Deleted Farmers (পুনরুদ্ধার), Owner & Cultivator / Borga / Land Transfer তালিকা, Asset Reports
+- [ ] Season / Land-Type Lookup, Category Rates ম্যাট্রিক্স, Guarantors তালিকা, Voter History ও Voter Audit
+- [ ] Receipt Serial Admin (রশিদ বই/সিরিয়াল বরাদ্দ, ফাঁক ও ডুপ্লিকেট)
 
 ### ফেজ ১০ — Import/Migration, UAT ও Go-Live — ⚪ বাকি
 - [ ] Import Wizard (আপলোড → কলাম মেলানো → যাচাই → ভুলের রিপোর্ট → Preview → নিশ্চিত → Import → Audit)
 - [ ] Import: কৃষক, জমি, সঞ্চয়/শেয়ার/ঋণ Opening, পেমেন্ট, পুরোনো সেচ, অন্যান্য
-- [ ] Import Batch ও Rollback
+- [ ] Import Batch ও Rollback; Import Audit পাতা
 - [ ] নকশা: ইনভয়েস, রশিদ, সদস্য কার্ড, লেটারহেড, স্বাক্ষর, ফুটার
 - [ ] License, মেয়াদ, ইনস্টলেশনের তথ্য
+- [ ] Branding & Logo, Receipt Settings, System Preferences আলাদা পাতায়
 - [ ] UAT (প্রতিটি Role দিয়ে)
 - [ ] Parallel Run (২–৪ সপ্তাহ)
 - [ ] নিরাপত্তা পর্যালোচনা ও গতি বাড়ানো

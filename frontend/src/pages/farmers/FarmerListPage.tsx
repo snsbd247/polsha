@@ -5,6 +5,7 @@ import { App, Button, Dropdown, Input, Select, Space, Table, Tag } from 'antd'
 import { DownloadOutlined, MoreOutlined, PlusOutlined, UsergroupDeleteOutlined } from '@ant-design/icons'
 import { Can, useAuth } from '../../auth/AuthContext'
 import LocationCascader, { type LocationPath } from '../../components/LocationCascader'
+import RelatedLinks from '../../components/RelatedLinks'
 import { api, errorMessage, type Paginated } from '../../lib/api'
 import { digits } from '../../lib/format'
 import { downloadExport, MEMBER_STATUS, type FarmerRow } from '../../lib/phase2'
@@ -39,6 +40,7 @@ export default function FarmerListPage() {
       <div className="page-header">
         <h2>{tx('কৃষক')}</h2>
         <Space wrap>
+          <RelatedLinks links={[{ to: '/households', label: tx('খানা'), perm: 'farmer.view' }]} />
           <Can perm="farmer.view">
             <Button icon={<UsergroupDeleteOutlined />} onClick={() => navigate('/farmers/duplicates')}>
               {tx('ডুপ্লিকেট পর্যালোচনা')}

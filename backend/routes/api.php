@@ -3,11 +3,16 @@
 use App\Http\Controllers\Api\AccountController;
 use App\Http\Controllers\Api\AccountingReportController;
 use App\Http\Controllers\Api\ApprovalController;
+use App\Http\Controllers\Api\AssetCategoryController;
+use App\Http\Controllers\Api\AssetController;
 use App\Http\Controllers\Api\AuditLogController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BackupController;
 use App\Http\Controllers\Api\BankAccountController;
+use App\Http\Controllers\Api\BankReconciliationController;
+use App\Http\Controllers\Api\CombinedPaymentController;
 use App\Http\Controllers\Api\DataHealthController;
+use App\Http\Controllers\Api\DayCloseController;
 use App\Http\Controllers\Api\DistributionController;
 use App\Http\Controllers\Api\DuplicateController;
 use App\Http\Controllers\Api\FarmerController;
@@ -31,6 +36,7 @@ use App\Http\Controllers\Api\MembershipApplicationController;
 use App\Http\Controllers\Api\MouzaController;
 use App\Http\Controllers\Api\PatwariController;
 use App\Http\Controllers\Api\ProfileController;
+use App\Http\Controllers\Api\QrController;
 use App\Http\Controllers\Api\ReceiptController;
 use App\Http\Controllers\Api\RoleController;
 use App\Http\Controllers\Api\SeasonController;
@@ -44,6 +50,7 @@ Route::post('auth/login', [AuthController::class, 'login'])->middleware('throttl
 Route::get('public/settings', [AuthController::class, 'publicSettings']);
 Route::get('public/logo', [SettingController::class, 'logo']);
 Route::get('public/receipts/{token}', [ReceiptController::class, 'verify'])->middleware('throttle:30,1');
+Route::get('public/combined-receipts/{token}', [CombinedPaymentController::class, 'verify'])->middleware('throttle:30,1');
 
 // ---- Authenticated ----
 Route::middleware(['auth:sanctum', 'usable'])->group(function () {
@@ -335,6 +342,73 @@ Route::middleware(['auth:sanctum', 'usable'])->group(function () {
     Route::middleware('permission:loan.edit')->group(function () {
         Route::post('loan-products', [LoanProductController::class, 'store']);
         Route::put('loan-products/{product}', [LoanProductController::class, 'update']);
+    });
+
+    // ---- Phase 8: combined payment, day close, bank reconciliation, QR, assets ----
+    Route::middleware('permission:payment.view')->group(function () {
+        Route::get('combined-payments', [CombinedPaymentController::class, 'index']);
+        Route::get('combined-payments/quote', [CombinedPaymentController::class, 'quote']);
+        Route::get('combined-payments/{combinedPayment}', [CombinedPaymentController::class, 'show'])->whereNumber('combinedPayment');
+    });
+    Route::middleware('permission:payment.create')->group(function () {
+        Route::post('combined-payments', [CombinedPaymentController::class, 'store']);
+        Route::post('combined-payments/{combinedPayment}/cancel', [CombinedPaymentController::class, 'cancel']);
+    });
+    Route::middleware('permission:cash.view')->group(function () {
+        Route::get('day-closes', [DayCloseController::class, 'index']);
+        Route::get('day-closes/summary', [DayCloseController::class, 'summary']);
+    });
+    // the cashier who counts the drawer closes the day; reopening goes through approval
+    Route::middleware('permission:cash.create|cash.edit')->group(function () {
+        Route::post('day-closes', [DayCloseController::class, 'close']);
+        Route::post('day-closes/{dayClose}/reopen', [DayCloseController::class, 'reopen']);
+    });
+    Route::middleware('permission:bank.view')->group(function () {
+        Route::get('bank-reconciliations', [BankReconciliationController::class, 'index']);
+        Route::get('bank-reconciliations/{bankReconciliation}', [BankReconciliationController::class, 'show']);
+    });
+    Route::middleware('permission:bank.edit')->group(function () {
+        Route::post('bank-reconciliations', [BankReconciliationController::class, 'store']);
+        Route::put('bank-reconciliations/{bankReconciliation}', [BankReconciliationController::class, 'update']);
+        Route::delete('bank-reconciliations/{bankReconciliation}', [BankReconciliationController::class, 'destroy']);
+        Route::post('bank-reconciliations/{bankReconciliation}/lines', [BankReconciliationController::class, 'addLines']);
+        Route::delete('bank-reconciliations/{bankReconciliation}/lines/{line}', [BankReconciliationController::class, 'deleteLine']);
+        Route::post('bank-reconciliations/{bankReconciliation}/auto-match', [BankReconciliationController::class, 'autoMatch']);
+        Route::post('bank-reconciliations/{bankReconciliation}/lines/{line}/match', [BankReconciliationController::class, 'match']);
+        Route::post('bank-reconciliations/{bankReconciliation}/lines/{line}/unmatch', [BankReconciliationController::class, 'unmatch']);
+        Route::post('bank-reconciliations/{bankReconciliation}/lines/{line}/book', [BankReconciliationController::class, 'book']);
+        Route::post('bank-reconciliations/{bankReconciliation}/finalize', [BankReconciliationController::class, 'finalize']);
+    });
+    // QR: any signed-in user may scan; the target screen checks its own permission.
+    Route::post('qr/resolve', [QrController::class, 'resolve'])->middleware('throttle:60,1');
+    Route::get('qr/history', [QrController::class, 'history']);
+    Route::middleware('permission:asset.view')->group(function () {
+        Route::get('assets/meta', [AssetController::class, 'meta']);
+        Route::get('assets/maintenances', [AssetController::class, 'maintenances']);
+        Route::get('assets/dashboard', [AssetController::class, 'dashboard']);
+        Route::get('assets/movements', [AssetController::class, 'movements']);
+        Route::get('assets/depreciation/preview', [AssetController::class, 'depreciationPreview']);
+        Route::get('assets/depreciation', [AssetController::class, 'depreciationHistory']);
+        Route::get('assets/funds', [ReceiptController::class, 'funds']);
+        Route::get('asset-categories', [AssetCategoryController::class, 'index']);
+        Route::get('assets', [AssetController::class, 'index']);
+        Route::get('assets/{asset}', [AssetController::class, 'show'])->whereNumber('asset');
+    });
+    Route::middleware('permission:asset.create')->group(function () {
+        Route::post('assets', [AssetController::class, 'store']);
+    });
+    Route::middleware('permission:asset.edit')->group(function () {
+        Route::put('assets/{asset}', [AssetController::class, 'update'])->whereNumber('asset');
+        Route::post('assets/{asset}/movements', [AssetController::class, 'movement'])->whereNumber('asset');
+        Route::post('assets/{asset}/maintenances', [AssetController::class, 'schedule'])->whereNumber('asset');
+        Route::post('assets/maintenances/{maintenance}/complete', [AssetController::class, 'complete']);
+        Route::post('assets/maintenances/{maintenance}/cancel', [AssetController::class, 'cancelMaintenance']);
+        Route::post('assets/{asset}/dispose', [AssetController::class, 'dispose'])->whereNumber('asset');
+        Route::post('assets/depreciation', [AssetController::class, 'depreciate']);
+    });
+    Route::middleware('permission:asset.admin')->group(function () {
+        Route::post('asset-categories', [AssetCategoryController::class, 'store']);
+        Route::put('asset-categories/{assetCategory}', [AssetCategoryController::class, 'update']);
     });
 
     // Backups — Super Admin only

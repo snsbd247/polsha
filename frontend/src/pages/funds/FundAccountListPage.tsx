@@ -6,6 +6,7 @@ import { DownloadOutlined, PlusOutlined } from '@ant-design/icons'
 import dayjs, { type Dayjs } from 'dayjs'
 import { Can } from '../../auth/AuthContext'
 import FundMemberPicker from '../../components/FundMemberPicker'
+import RelatedLinks from '../../components/RelatedLinks'
 import { api, applyFormErrors, errorMessage, type Paginated } from '../../lib/api'
 import { money } from '../../lib/accounting'
 import { digits, fmtDate } from '../../lib/format'
@@ -61,6 +62,7 @@ export default function FundAccountListPage({ kind }: { kind: FundKind }) {
       <div className="page-header">
         <h2>{ACCOUNTS_TITLE[kind]}</h2>
         <Space wrap>
+          <RelatedLinks links={[{ to: `/funds/${kind}/transactions`, label: tx('লেনদেন') }, { to: `/funds/${kind}/audit`, label: kind === 'share' ? tx('শেয়ার মূলধন মিলকরণ') : tx('সঞ্চয় অডিট') }, { to: '/funds/distributions', label: tx('মুনাফা ও লভ্যাংশ') }]} />
           <Button icon={<DownloadOutlined />} onClick={() => downloadExport(`/funds/${kind}/accounts`, { ...params, page: undefined, export: 'csv' }, `${kind}-accounts.csv`).catch((e) => message.error(errorMessage(e)))}>
             Excel
           </Button>

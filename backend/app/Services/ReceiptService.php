@@ -90,6 +90,7 @@ class ReceiptService
             throw ValidationException::withMessages(['receipt' => $receipt->status === 'cancelled'
                 ? __('রশিদটি আগেই বাতিল হয়েছে।') : __('এই রশিদ বাতিলের অনুরোধ অনুমোদনের অপেক্ষায় আছে।')]);
         }
+        CombinedPaymentService::guardPart($receipt);
 
         return DB::transaction(function () use ($receipt, $reason) {
             $receipt->update(['status' => 'cancel_pending', 'cancel_reason' => $reason]);

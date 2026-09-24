@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Account;
 use App\Models\AccountingPeriod;
 use App\Models\ApprovalRequest;
+use App\Models\DayClose;
 use App\Models\Journal;
 use App\Models\MembershipApplication;
 use Illuminate\Database\Eloquent\Model;
@@ -79,6 +80,7 @@ class LedgerService
             return;
         }
         $this->openPeriodFor($journal->date->toDateString());
+        $this->guardClosedDay($journal->date->toDateString(), $journal->lines()->pluck('account_id')->all());
         $journal->update(['status' => 'posted', 'posted_by' => auth()->id(), 'posted_at' => now()]);
     }
 
@@ -197,6 +199,7 @@ class LedgerService
         }
         $clean = $this->validateLines($lines);
         $period = $this->openPeriodFor($date);
+        $this->guardClosedDay($date, array_column($clean, 'account_id'));
 
         $journal = Journal::create([
             'voucher_no' => SequenceService::next(Journal::SEQUENCES[$type]),
@@ -218,6 +221,17 @@ class LedgerService
         }
 
         return $journal;
+    }
+
+    /** Once a day's cash is counted and closed, no cash voucher may land on it (or before it). */
+    public function guardClosedDay(string $date, array $accountIds): void
+    {
+        $touchesCash = Account::whereIn('id', array_unique($accountIds))->whereIn('key', Account::CASH_STREAMS)->exists();
+        if ($touchesCash && ($closed = DayClose::lockedOn($date))) {
+            throw ValidationException::withMessages(['date' => __(':date তারিখ পর্যন্ত দিন বন্ধ (ক্যাশ মিলানো) করা হয়েছে; এই তারিখে নগদ লেনদেন করা যাবে না।', [
+                'date' => $closed->date->format('d/m/Y'),
+            ])]);
+        }
     }
 
     /** Cash in hand and bank balances may not go below zero. */

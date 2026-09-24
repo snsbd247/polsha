@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
-import { App, Button, DatePicker, Input, Select, Table, Tag } from 'antd'
+import { App, Button, DatePicker, Input, Select, Space, Table, Tag } from 'antd'
 import { DownloadOutlined } from '@ant-design/icons'
 import type { Dayjs } from 'dayjs'
+import RelatedLinks from '../../components/RelatedLinks'
 import { api, errorMessage, type Paginated } from '../../lib/api'
 import { money } from '../../lib/accounting'
 import { digits, fmtDate } from '../../lib/format'
@@ -30,9 +31,12 @@ export default function FundTxnListPage({ kind }: { kind: FundKind }) {
     <>
       <div className="page-header">
         <h2>{HISTORY_TITLE[kind]}</h2>
-        <Button icon={<DownloadOutlined />} onClick={() => downloadExport(`/funds/${kind}/transactions`, { ...params, page: undefined, export: 'csv' }, `${kind}-transactions.csv`).catch((e) => message.error(errorMessage(e)))}>
-          Excel
-        </Button>
+        <Space wrap>
+          <RelatedLinks links={[{ to: `/funds/${kind}/accounts`, label: kind === 'share' ? tx('শেয়ার মূলধন বিবরণী') : tx('সঞ্চয় হিসাব') }, { to: `/funds/${kind}/audit`, label: kind === 'share' ? tx('শেয়ার মূলধন মিলকরণ') : tx('সঞ্চয় অডিট') }]} />
+          <Button icon={<DownloadOutlined />} onClick={() => downloadExport(`/funds/${kind}/transactions`, { ...params, page: undefined, export: 'csv' }, `${kind}-transactions.csv`).catch((e) => message.error(errorMessage(e)))}>
+            Excel
+          </Button>
+        </Space>
       </div>
       <div className="toolbar">
         <Input.Search placeholder={tx('লেনদেন নং, হিসাব নং, নাম বা রেফারেন্স')} allowClear style={{ width: 260 }} onSearch={(search) => set({ search })} />

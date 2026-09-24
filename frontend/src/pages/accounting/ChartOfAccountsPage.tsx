@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Alert, App, Button, Form, Input, Modal, Popconfirm, Select, Space, Switch, Table, Tag } from 'antd'
 import { PlusOutlined } from '@ant-design/icons'
 import { Can, useAuth } from '../../auth/AuthContext'
+import RelatedLinks from '../../components/RelatedLinks'
 import { api, applyFormErrors, errorMessage } from '../../lib/api'
 import { ACCOUNT_TYPE_LABEL, accountLabel, money } from '../../lib/accounting'
 import { digits } from '../../lib/format'
@@ -106,11 +107,14 @@ export default function ChartOfAccountsPage() {
     <>
       <div className="page-header">
         <h2>{tx('হিসাবের তালিকা (Chart of Accounts)')}</h2>
-        <Can perm="accounting.edit">
-          <Button type="primary" icon={<PlusOutlined />} onClick={() => open('new')}>
-            {tx('নতুন হিসাব')}
-          </Button>
-        </Can>
+        <Space wrap>
+          <RelatedLinks links={[{ to: '/accounting/trial-balance', label: tx('রেওয়ামিল') }]} />
+          <Can perm="accounting.edit">
+            <Button type="primary" icon={<PlusOutlined />} onClick={() => open('new')}>
+              {tx('নতুন হিসাব')}
+            </Button>
+          </Can>
+        </Space>
       </div>
       <div className="toolbar">
         <Input.Search placeholder={tx('কোড বা নাম')} allowClear style={{ width: 260 }} onChange={(e) => setSearch(e.target.value)} />

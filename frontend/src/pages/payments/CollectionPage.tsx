@@ -186,7 +186,7 @@ export default function CollectionPage() {
           </Col>
           <Col xs={24} xl={9}>
             <Card title={tx('রশিদ')}>
-              <Form form={form} layout="vertical" initialValues={{ date: dayjs(), method: 'cash', is_legacy: false }} onFinish={save}>
+              <Form form={form} layout="vertical" initialValues={{ date: dayjs(), method: 'cash', is_legacy: search.get('legacy') === '1' }} onFinish={save}>
                 <Form.Item name="date" label={tx('তারিখ')} rules={[required(tx('তারিখ দিন'))]}>
                   <DatePicker format="DD/MM/YYYY" style={{ width: '100%' }} disabledDate={(d) => d.isAfter(dayjs())} />
                 </Form.Item>

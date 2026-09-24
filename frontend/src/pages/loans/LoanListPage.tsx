@@ -1,10 +1,11 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { App, Button, DatePicker, Input, Select, Space, Table, Tag } from 'antd'
 import { DownloadOutlined, PlusOutlined } from '@ant-design/icons'
 import type { Dayjs } from 'dayjs'
 import { useAuth } from '../../auth/AuthContext'
+import RelatedLinks from '../../components/RelatedLinks'
 import { api, errorMessage, type Paginated } from '../../lib/api'
 import { money } from '../../lib/accounting'
 import { digits, fmtDate } from '../../lib/format'
@@ -23,7 +24,8 @@ export default function LoanListPage() {
   const navigate = useNavigate()
   const meta = useLoanMeta()
   const products = useLoanProducts()
-  const [params, setParams] = useState<Params>({ page: 1, per_page: 25 })
+  const [search] = useSearchParams()
+  const [params, setParams] = useState<Params>({ page: 1, per_page: 25, status: search.get('status') ?? undefined })
   const set = (patch: Partial<Params>) => setParams((p) => ({ ...p, ...patch, page: 1 }))
 
   const { data, isFetching } = useQuery({
@@ -37,6 +39,7 @@ export default function LoanListPage() {
       <div className="page-header">
         <h2>{tx('ঋণের তালিকা')}</h2>
         <Space wrap>
+          <RelatedLinks links={[{ to: '/loans/audit', label: tx('ঋণ অডিট') }]} />
           <Button icon={<DownloadOutlined />} onClick={() => downloadExport('/loans', { ...params, page: undefined, export: 'csv' }, 'loans.csv').catch((e) => message.error(errorMessage(e)))}>
             Excel
           </Button>
@@ -49,7 +52,7 @@ export default function LoanListPage() {
       </div>
       <div className="toolbar">
         <Input.Search placeholder={tx('ঋণ নং, নাম, সদস্য নং বা মোবাইল')} allowClear style={{ width: 260 }} onSearch={(search) => set({ search })} />
-        <Select placeholder={tx('অবস্থা')} allowClear style={{ width: 190 }} options={toOptions(meta.data?.statuses)} onChange={(status) => set({ status })} />
+        <Select placeholder={tx('অবস্থা')} allowClear style={{ width: 190 }} value={params.status} options={toOptions(meta.data?.statuses)} onChange={(status) => set({ status })} />
         <Select
           placeholder={tx('ঋণের ধরন')}
           allowClear
