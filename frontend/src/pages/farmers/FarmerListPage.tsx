@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { App, Button, Dropdown, Input, Select, Space, Table, Tag } from 'antd'
 import { DownloadOutlined, MoreOutlined, PlusOutlined, UsergroupDeleteOutlined } from '@ant-design/icons'
@@ -17,7 +17,12 @@ export default function FarmerListPage() {
   const navigate = useNavigate()
   const { can } = useAuth()
   const { message } = App.useApp()
-  const [params, setParams] = useState<Params>({ page: 1, per_page: 25 })
+  // the top-bar search and dashboard cards open this list with ?search= / ?type=
+  const [sp] = useSearchParams()
+  const urlSearch = sp.get('search') || undefined
+  const urlType = sp.get('type') || undefined
+  const [params, setParams] = useState<Params>({ page: 1, per_page: 25, search: urlSearch, type: urlType })
+  useEffect(() => setParams((p) => ({ ...p, search: urlSearch, type: urlType, page: 1 })), [urlSearch, urlType])
   const [path, setPath] = useState<LocationPath>([])
   const set = (patch: Partial<Params>) => setParams((p) => ({ ...p, ...patch, page: 1 }))
 
@@ -60,10 +65,11 @@ export default function FarmerListPage() {
       </div>
 
       <div className="toolbar">
-        <Input.Search placeholder={tx('নাম, পিতা, Farmer ID, NID, মোবাইল বা সদস্য নং')} allowClear style={{ width: 320 }} onSearch={(search) => set({ search })} />
+        <Input.Search placeholder={tx('নাম, পিতা, Farmer ID, NID, মোবাইল বা সদস্য নং')} allowClear style={{ width: 320 }} key={urlSearch} defaultValue={urlSearch} onSearch={(search) => set({ search })} />
         <Select
           placeholder={tx('ধরন')}
           allowClear
+          value={params.type}
           style={{ width: 150 }}
           options={[
             { value: 'member', label: tx('সদস্য') },

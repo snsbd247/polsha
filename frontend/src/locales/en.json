@@ -1925,5 +1925,20 @@
   "লেখা দিন": "Enter the text",
   "ডান পাশের স্বাক্ষরের লেখা": "Right signature label",
   "রশিদের পাদটীকা": "Receipt footer note",
-  "ফাঁকা রাখলে প্রতিটি রশিদের নিজস্ব লেখা থাকবে।": "Leave empty to keep each receipt's own text."
+  "ফাঁকা রাখলে প্রতিটি রশিদের নিজস্ব লেখা থাকবে।": "Leave empty to keep each receipt's own text.",
+  "সেচ ও সঞ্চয় সমবায় সমিতি": "Irrigation & Savings Society",
+  "কৃষকের নাম, মোবাইল, NID, সদস্য নং, জমির নং দিয়ে খুঁজুন...": "Search by farmer name, mobile, NID, member no, land no...",
+  "মোট ইনভয়েস": "Total Invoice",
+  "সব দেখুন": "View All",
+  "স্বাগতম, {{p0}}। আপনার সমবায় সমিতির সার্বিক চিত্র নিচে দেওয়া হলো।": "Welcome back, {{p0}}. Here is an overview of your cooperative society.",
+  "দৈনিক আদায় - গত ৪০ দিন": "Daily Collection - Last 40 Days",
+  "আদায় বনাম বকেয়া (এই মৌসুম)": "Collection vs Due (This Season)",
+  "সাম্প্রতিক লেনদেন": "Recent Transactions",
+  "সদস্য/কৃষক": "Member/Farmer",
+  "কোনো লেনদেন নেই": "No transactions yet",
+  "অপেক্ষমাণ অনুমোদন": "Pending Approvals",
+  "অপেক্ষমাণ কোনো অনুমোদন নেই": "No pending approvals",
+  "গুরুত্বপূর্ণ সতর্কতা": "Important Alerts",
+  "কম দেখুন": "Show less",
+  "কোনো সতর্কতা নেই": "No alerts"
 }

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { App, Button, Input, Select, Space, Table, Tag, Typography } from 'antd'
@@ -18,7 +18,10 @@ export default function LandListPage() {
   const { message } = App.useApp()
   const { data: meta } = useLandMeta()
   const [sp] = useSearchParams()
-  const [params, setParams] = useState<Params>(() => ({ page: 1, per_page: 25, mouza_id: sp.get('mouza_id') ? Number(sp.get('mouza_id')) : undefined }))
+  const urlSearch = sp.get('search') || undefined
+  const [params, setParams] = useState<Params>(() => ({ page: 1, per_page: 25, search: urlSearch, mouza_id: sp.get('mouza_id') ? Number(sp.get('mouza_id')) : undefined }))
+  // the top-bar search opens this list with ?search=
+  useEffect(() => setParams((p) => ({ ...p, search: urlSearch, page: 1 })), [urlSearch])
   const set = (patch: Partial<Params>) => setParams((p) => ({ ...p, ...patch, page: 1 }))
 
   const { data, isFetching } = useQuery({
@@ -46,7 +49,7 @@ export default function LandListPage() {
         </Space>
       </div>
       <div className="toolbar">
-        <Input.Search placeholder={tx('Land ID, দাগ, খতিয়ান, মালিক বা চাষি')} allowClear style={{ width: 300 }} onSearch={(search) => set({ search })} />
+        <Input.Search placeholder={tx('Land ID, দাগ, খতিয়ান, মালিক বা চাষি')} allowClear style={{ width: 300 }} key={urlSearch} defaultValue={urlSearch} onSearch={(search) => set({ search })} />
         <Select
           placeholder={tx('মৌজা')}
           allowClear

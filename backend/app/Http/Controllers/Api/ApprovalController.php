@@ -51,7 +51,11 @@ class ApprovalController extends Controller
         $q = ApprovalRequest::where('requested_by', '!=', $user->id);
         $q = $user->isSuperAdmin() ? $q->where('status', ApprovalRequest::PENDING) : $q->awaitingRoles($user->getRoleNames()->all());
 
-        return response()->json(['count' => $q->count()]);
+        return response()->json([
+            'count' => $q->count(),
+            // sidebar badge on "Membership Applications"
+            'applications' => $user->can('membership.view') ? \Illuminate\Support\Facades\DB::table('membership_applications')->where('status', 'pending')->count() : 0,
+        ]);
     }
 
     public function show(Request $request, ApprovalRequest $approval): JsonResponse

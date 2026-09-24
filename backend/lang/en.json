@@ -1061,5 +1061,20 @@
     "শেয়ার হিসাব নম্বর": "Share account number",
     "মুনাফা/লভ্যাংশ বণ্টন": "Profit/dividend distribution",
     "ঋণ নম্বর": "Loan number",
-    "অনলাইন পেমেন্ট অনুরোধ": "Online payment request"
+    "অনলাইন পেমেন্ট অনুরোধ": "Online payment request",
+    "অ-সদস্য কৃষক": "Non-Member Farmers",
+    "ঋণের কিস্তি মেয়াদোত্তীর্ণ": "Loan installment overdue",
+    "এই মৌসুম": "This Season",
+    "গত মাসের তুলনায়": "vs last month",
+    "ব্যাংক জমা": "Bank Balance",
+    "ব্যাংক মিলকরণ বাকি": "Bank reconciliation pending",
+    "মোট ঋণ": "Total Loans",
+    "মোট কৃষক": "Total Farmers",
+    "মোট জমি": "Total Land",
+    "সঞ্চয় উত্তোলনের অনুরোধ অপেক্ষমাণ": "Savings withdrawal request pending",
+    "সদস্য কৃষক": "Member Farmers",
+    "সদস্যপদ আবেদন অপেক্ষমাণ": "Membership applications pending",
+    "সব সদস্য": "All Members",
+    "সম্পদ রক্ষণাবেক্ষণ বাকি": "Asset maintenance due",
+    "৩০ দিনের বেশি সেচের বকেয়া": "Irrigation due more than 30 days"
 }

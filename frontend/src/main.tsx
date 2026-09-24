@@ -30,7 +30,7 @@ function Themed({ children }: { children: ReactNode }) {
       theme={{
         token: {
           colorPrimary: data?.brand_color || DEFAULT_BRAND,
-          fontFamily: "'Hind Siliguri', system-ui, sans-serif",
+          fontFamily: "'Inter', 'Hind Siliguri', system-ui, sans-serif",
           borderRadius: 6,
         },
       }}
