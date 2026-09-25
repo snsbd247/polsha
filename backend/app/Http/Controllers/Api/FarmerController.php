@@ -6,10 +6,15 @@ use App\Http\Controllers\Controller;
 use App\Models\AuditLog;
 use App\Models\Farmer;
 use App\Models\Household;
+use App\Models\Land;
+use App\Models\Loan;
+use App\Models\MemberAccount;
 use App\Models\Mouza;
 use App\Services\FarmerDuplicateService;
 use App\Services\ImageService;
+use App\Services\MembershipService;
 use App\Services\SequenceService;
+use App\Services\SettingService;
 use App\Support\Bn;
 use App\Support\CsvExport;
 use App\Support\Tr;
@@ -23,7 +28,7 @@ use Illuminate\Validation\ValidationException;
 
 class FarmerController extends Controller
 {
-    public function __construct(private FarmerDuplicateService $duplicates) {}
+    public function __construct(private FarmerDuplicateService $duplicates, private MembershipService $membership) {}
 
     public function meta(): JsonResponse
     {
@@ -57,6 +62,88 @@ class FarmerController extends Controller
             'pending' => DB::table('membership_applications')->where('status', 'pending')->count(),
             'land_acre' => round((float) DB::table('lands')->whereNull('deleted_at')->sum('area_decimal') / 100, 2),
         ]);
+    }
+
+    /**
+     * Everything the profile page shows beside the personal data: current
+     * lands, irrigation, savings, share and loan figures. A block the user
+     * may not see comes back as null.
+     */
+    public function overview(Request $request, Farmer $farmer): JsonResponse
+    {
+        $user = $request->user();
+        $member = $farmer->member()->with('application:id,admission_fee,initial_shares')->first();
+        $unit = (float) SettingService::get('share_unit_price', 10) ?: 10.0;
+        $out = ['share_unit_price' => $unit];
+
+        $landIds = DB::table('land_owners')->where('farmer_id', $farmer->id)->whereNull('end_date')->pluck('land_id')
+            ->merge(DB::table('land_cultivations')->where('farmer_id', $farmer->id)->whereNull('end_date')->pluck('land_id'))->unique();
+        $owned = (float) DB::table('land_owners')->join('lands', 'lands.id', '=', 'land_owners.land_id')
+            ->where('land_owners.farmer_id', $farmer->id)->whereNull('land_owners.end_date')->whereNull('lands.deleted_at')
+            ->sum(DB::raw('lands.area_decimal * land_owners.share_percent / 100'));
+        $out['land'] = $user->can('land.view') ? [
+            'acre' => round($owned / 100, 2),
+            'records' => Land::with(['mouza:id,name_bn', 'landType:id,name_bn', 'owners.farmer:id,name_bn', 'cultivation.farmer:id,name_bn'])
+                ->whereIn('id', $landIds)->orderBy('land_code')->get()
+                ->map(fn (Land $l) => [
+                    'id' => $l->id, 'land_code' => $l->land_code, 'mouza' => $l->mouza?->name_bn, 'dag_no' => $l->dag_no, 'khatian_no' => $l->khatian_no,
+                    'area_acre' => round((float) $l->area_decimal / 100, 2), 'land_type' => $l->landType?->name_bn,
+                    'owner' => $l->owners->map(fn ($o) => $o->farmer?->name_bn)->filter()->join(', '),
+                    'cultivator' => $l->cultivation?->farmer?->name_bn, 'cultivation' => $l->cultivation?->type,
+                ]),
+        ] : null;
+
+        if ($user->can('irrigation.view')) {
+            $live = DB::table('invoices')->where('farmer_id', $farmer->id)->where('status', '!=', 'cancelled');
+            $season = DB::table('seasons')->where('status', 'open')->orderByDesc('start_date')->first()
+                ?? DB::table('seasons')->orderByDesc('start_date')->first();
+            $s = $season ? (clone $live)->where('season_id', $season->id)->selectRaw('COALESCE(SUM(amount),0) a, COALESCE(SUM(paid_amount),0) p')->first() : null;
+            $out['irrigation'] = [
+                'due' => round((float) (clone $live)->sum(DB::raw('amount - paid_amount')), 2),
+                'season' => $season?->name_bn,
+                'amount' => round((float) ($s->a ?? 0), 2), 'paid' => round((float) ($s->p ?? 0), 2), 'season_due' => round((float) ($s->a ?? 0) - (float) ($s->p ?? 0), 2),
+            ];
+        } else {
+            $out['irrigation'] = null;
+        }
+
+        foreach (['savings', 'share'] as $kind) {
+            if (! $user->can($kind.'.view')) {
+                $out[$kind] = null;
+
+                continue;
+            }
+            $acc = $member ? MemberAccount::where('member_id', $member->id)->where('kind', $kind)->first() : null;
+            $sums = $acc ? $acc->transactions()->whereIn('status', ['posted', 'cancel_pending'])
+                ->selectRaw("COALESCE(SUM(CASE WHEN direction = 'in' THEN amount END),0) i, COALESCE(SUM(CASE WHEN direction = 'out' THEN amount END),0) o")->first() : null;
+            $balance = round((float) ($acc->balance ?? 0), 2);
+            $out[$kind] = ['account_id' => $acc?->id, 'account_no' => $acc?->account_no, 'deposit' => round((float) ($sums->i ?? 0), 2),
+                'withdrawal' => round((float) ($sums->o ?? 0), 2), 'balance' => $balance]
+                + ($kind === 'share' ? ['shares' => (int) floor($balance / $unit + 1e-9)] : []);
+        }
+
+        if ($user->can('loan.view') && $member) {
+            $loans = Loan::where('member_id', $member->id);
+            $active = (clone $loans)->where('status', 'active');
+            $out['loan'] = [
+                'active' => (clone $active)->count(),
+                'active_id' => (clone $active)->value('id'),
+                'disbursed' => round((float) (clone $loans)->whereNotNull('disbursed_on')->sum('amount'), 2),
+                'balance' => round((float) DB::table('loan_installments')->whereIn('loan_id', (clone $active)->select('id'))
+                    ->sum(DB::raw('(principal + interest) - (principal_paid + interest_paid)')), 2),
+            ];
+        } else {
+            $out['loan'] = $user->can('loan.view') ? ['active' => 0, 'active_id' => null, 'disbursed' => 0, 'balance' => 0] : null;
+        }
+
+        $minMonths = (int) SettingService::get('voter_min_membership_months', 0);
+        $out['membership'] = $member ? [
+            'admission_fee' => $member->application ? (float) $member->application->admission_fee : null,
+            'initial_shares' => $member->application?->initial_shares,
+            'voter' => $member->status === 'active' && $member->admitted_on->copy()->addMonths($minMonths)->lte(today()),
+        ] : null;
+
+        return response()->json($out);
     }
 
     /** Current owned area (শতক) of the outer farmer row, weighted by ownership share. */
@@ -98,8 +185,15 @@ class FarmerController extends Controller
             'date_of_birth' => $farmer->date_of_birth?->toDateString(),
             'birth_reg_no' => $farmer->birth_reg_no,
             'alt_mobile' => $farmer->alt_mobile,
+            'email' => $farmer->email,
             'para' => $farmer->para,
             'post_office' => $farmer->post_office,
+            'post_code' => $farmer->post_code,
+            'blood_group' => $farmer->blood_group,
+            'education_level' => $farmer->education_level,
+            'farmer_type' => $farmer->farmer_type,
+            'family' => $farmer->family()->get(['id', 'name', 'relation', 'occupation', 'mobile']),
+            'mouza_jl_no' => $farmer->mouza?->jl_no,
             'household_id' => $farmer->household_id,
             'household' => $farmer->household ? ['id' => $farmer->household->id, 'code' => $farmer->household->code, 'head' => $farmer->household->head] : null,
             'household_relation' => $farmer->household_relation,
@@ -125,9 +219,10 @@ class FarmerController extends Controller
     public function store(Request $request): JsonResponse
     {
         $data = $this->validated($request);
+        $extras = $this->validatedExtras($request, true);
         $this->guardDuplicates($request, $data);
 
-        $farmer = DB::transaction(function () use ($request, $data) {
+        $farmer = DB::transaction(function () use ($request, $data, $extras) {
             $data['farmer_code'] = SequenceService::next('farmer');
             $data['created_by'] = $request->user()->id;
             if ($request->hasFile('photo')) {
@@ -135,6 +230,11 @@ class FarmerController extends Controller
             }
             $farmer = Farmer::create($data);
             $this->attachNewHousehold($request, $farmer);
+            $this->saveExtras($request, $farmer, $extras);
+            // "existing member" on the form: record the member number from the old books
+            if (! empty($extras['legacy_member_no'])) {
+                $this->membership->createLegacy($farmer, (int) $extras['legacy_member_no'], $extras['legacy_admitted_on'], null, $request->user()->id);
+            }
 
             return $farmer;
         });
@@ -146,9 +246,10 @@ class FarmerController extends Controller
     {
         abort_if($farmer->merged_into_id, 422, __('মার্জ হয়ে যাওয়া রেকর্ড সম্পাদনা করা যায় না।'));
         $data = $this->validated($request, $farmer);
+        $extras = $this->validatedExtras($request, false);
         $this->guardDuplicates($request, $data, $farmer->id);
 
-        DB::transaction(function () use ($request, $farmer, $data) {
+        DB::transaction(function () use ($request, $farmer, $data, $extras) {
             if ($request->hasFile('photo')) {
                 $old = $farmer->photo;
                 $data['photo'] = ImageService::storeCompressed($request->file('photo'), 'farmers');
@@ -158,6 +259,7 @@ class FarmerController extends Controller
             }
             $farmer->update($data);
             $this->attachNewHousehold($request, $farmer);
+            $this->saveExtras($request, $farmer, $extras);
         });
 
         return response()->json(['id' => $farmer->id]);
@@ -316,7 +418,7 @@ class FarmerController extends Controller
 
     private function normalise(Request $request): array
     {
-        $digits = ['nid', 'birth_reg_no', 'mobile', 'alt_mobile'];
+        $digits = ['nid', 'birth_reg_no', 'mobile', 'alt_mobile', 'post_code'];
         $request->merge(collect($digits)->mapWithKeys(fn ($k) => [$k => Bn::toEnDigits($request->input($k)) ?: null])->all());
 
         return $request->only(['nid', 'mobile', 'name_bn', 'father_name', 'village_id']);
@@ -339,10 +441,15 @@ class FarmerController extends Controller
             'birth_reg_no' => ['nullable', 'regex:/^\d{17}$/'],
             'mobile' => ['nullable', 'regex:/^01[3-9]\d{8}$/'],
             'alt_mobile' => ['nullable', 'regex:/^01[3-9]\d{8}$/'],
+            'email' => ['nullable', 'email', 'max:150'],
             'village_id' => ['required', 'exists:villages,id'],
             'mouza_id' => ['required', 'exists:mouzas,id'],
-            'para' => ['nullable', 'string', 'max:150'],
+            'para' => ['nullable', 'string', 'max:255'],
             'post_office' => ['nullable', 'string', 'max:100'],
+            'post_code' => ['nullable', 'regex:/^\d{4}$/'],
+            'blood_group' => ['nullable', Rule::in(array_keys(config('erp.farmer.blood_groups')))],
+            'education_level' => ['nullable', Rule::in(array_keys(config('erp.farmer.education_levels')))],
+            'farmer_type' => ['nullable', Rule::in(array_keys(config('erp.farmer.farmer_types')))],
             'household_id' => ['nullable', 'exists:households,id'],
             'household_relation' => ['nullable', 'required_with:household_id', Rule::in(array_keys(config('erp.farmer.relations')))],
             'occupation' => ['nullable', Rule::in(array_keys(config('erp.farmer.occupations')))],
@@ -355,6 +462,7 @@ class FarmerController extends Controller
             'birth_reg_no.regex' => __('জন্ম নিবন্ধন নম্বর ১৭ অঙ্কের হতে হবে।'),
             'mobile.regex' => __('সঠিক মোবাইল নম্বর দিন (01XXXXXXXXX)।'),
             'alt_mobile.regex' => __('সঠিক মোবাইল নম্বর দিন (01XXXXXXXXX)।'),
+            'post_code.regex' => __('পোস্ট কোড ৪ অঙ্কের হতে হবে।'),
         ]);
 
         $linked = Mouza::whereKey($data['mouza_id'])->whereHas('villages', fn ($v) => $v->where('villages.id', $data['village_id']))->exists();
@@ -364,6 +472,67 @@ class FarmerController extends Controller
         unset($data['photo']);
 
         return $data;
+    }
+
+    /**
+     * Family rows, supporting documents and (new farmers only) an existing
+     * member number. The form posts multipart data, so family comes as JSON.
+     */
+    private function validatedExtras(Request $request, bool $creating): array
+    {
+        if (is_string($request->input('family'))) {
+            $request->merge(['family' => json_decode($request->input('family'), true) ?: []]);
+        }
+        $request->merge([
+            'family' => collect($request->input('family', []))
+                ->map(fn ($r) => is_array($r) ? ['mobile' => Bn::toEnDigits((string) ($r['mobile'] ?? '')) ?: null] + $r : $r)->all(),
+        ]);
+        if ($request->filled('legacy_member_no')) {
+            $request->merge(['legacy_member_no' => Bn::toEnDigits((string) $request->input('legacy_member_no'))]);
+        }
+        $data = $request->validate([
+            'family' => ['nullable', 'array', 'max:20'],
+            'family.*.name' => ['required', 'string', 'max:150'],
+            'family.*.relation' => ['nullable', Rule::in(array_keys(config('erp.farmer.relations')))],
+            'family.*.occupation' => ['nullable', 'string', 'max:100'],
+            'family.*.mobile' => ['nullable', 'regex:/^01[3-9]\d{8}$/'],
+            'doc_nid_front' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
+            'doc_nid_back' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
+            'doc_other' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
+            'legacy_member_no' => $creating ? ['nullable', 'integer', 'min:1', 'unique:members,member_no'] : ['prohibited'],
+            'legacy_admitted_on' => ['nullable', 'required_with:legacy_member_no', 'date', 'before_or_equal:today'],
+        ], [
+            'family.*.name.required' => __('পরিবারের সদস্যের নাম দিন।'),
+            'family.*.mobile.regex' => __('সঠিক মোবাইল নম্বর দিন (01XXXXXXXXX)।'),
+            'legacy_member_no.unique' => __('এই সদস্য নম্বর ইতিমধ্যে ব্যবহৃত।'),
+        ]);
+        abort_if(! empty($data['legacy_member_no']) && ! $request->user()->can('member.admin'), 403, __('পুরোনো সদস্য নম্বর দেওয়ার অনুমতি নেই।'));
+
+        return $data;
+    }
+
+    private function saveExtras(Request $request, Farmer $farmer, array $extras): void
+    {
+        if ($request->has('family')) {
+            $farmer->family()->delete();
+            foreach (array_values($extras['family'] ?? []) as $i => $row) {
+                $farmer->family()->create(['name' => $row['name'], 'relation' => $row['relation'] ?? null,
+                    'occupation' => $row['occupation'] ?? null, 'mobile' => $row['mobile'] ?? null, 'sort' => $i]);
+            }
+        }
+        foreach (['nid_front', 'nid_back', 'other'] as $type) {
+            if ($file = $request->file('doc_'.$type)) {
+                $farmer->documents()->create([
+                    'type' => $type,
+                    // private disk: only reachable through the authenticated download route
+                    'path' => $file->store("farmer-docs/{$farmer->id}", 'local'),
+                    'original_name' => mb_substr($file->getClientOriginalName(), 0, 250),
+                    'mime' => $file->getMimeType(),
+                    'size' => $file->getSize(),
+                    'uploaded_by' => $request->user()->id,
+                ]);
+            }
+        }
     }
 
     /** NID match blocks; other matches need `confirm_duplicate=1` from the user. */

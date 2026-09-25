@@ -27,11 +27,12 @@ type Inv = {
 type Rec = { id: number; receipt_no: string; date: string; amount: string; method: string; status: string; is_legacy: boolean; legacy_no: string | null }
 type Statement = { farmer: Person; invoices: Inv[]; receipts: Rec[]; totals: { amount: number; paid: number; due: number } }
 
+export type { Statement }
+
 export default function FarmerStatementPage() {
   const { id } = useParams()
   const navigate = useNavigate()
   const { can } = useAuth()
-  const { data: meta } = useInvoiceMeta()
   const { data, isLoading } = useQuery({
     queryKey: ['irrigation-statement', id],
     queryFn: async () => (await api.get<Statement>(`/irrigation/farmers/${id}/statement`)).data,
@@ -62,6 +63,16 @@ export default function FarmerStatementPage() {
           <Descriptions.Item label={tx('মোবাইল')}>{f.mobile ? digits(f.mobile) : '—'}</Descriptions.Item>
         </Descriptions>
       </Card>
+      <StatementTables data={data} />
+    </>
+  )
+}
+
+/** Totals, invoices and receipts of one farmer — also shown inside the farmer profile. */
+export function StatementTables({ data }: { data: Statement }) {
+  const { data: meta } = useInvoiceMeta()
+  return (
+    <>
       <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
         <Col xs={24} sm={8}>
           <Card size="small">

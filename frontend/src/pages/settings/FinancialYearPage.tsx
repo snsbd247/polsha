@@ -6,6 +6,7 @@ import { api, errorMessage } from '../../lib/api'
 import { ACCOUNT_TYPE_LABEL, money } from '../../lib/accounting'
 import { digits, fmtDate, fmtDateTime } from '../../lib/format'
 import { nameOf, t as tx } from '../../lib/i18n'
+import SettingsShell from './SettingsShell'
 
 type Year = {
   fiscal_year: string
@@ -132,12 +133,9 @@ export default function FinancialYearPage() {
   })
 
   return (
-    <>
-      <div className="page-header">
-        <h2>{tx('অর্থবছর')}</h2>
-      </div>
+    <SettingsShell title={tx('অর্থবছর')} subtitle={tx('অর্থবছর বন্ধ করে আয়-ব্যয় জমা উদ্বৃত্তে নেওয়া এবং আগের বছরের অবস্থা দেখা।')}>
       <p style={{ color: '#888' }}>
-        {tx('অর্থবছর শুরুর মাস সাধারণ সেটিংসে ঠিক করা হয়। মাসিক বন্ধের জন্য:')} <Link to="/accounting/periods">{tx('হিসাবকাল বন্ধ')}</Link>
+        {tx('অর্থবছর শুরুর মাস সিস্টেম পছন্দসমূহে ঠিক করা হয়। মাসিক বন্ধের জন্য:')} <Link to="/accounting/periods">{tx('হিসাবকাল বন্ধ')}</Link>
       </p>
       <Table<Year>
         rowKey="fiscal_year"
@@ -175,6 +173,6 @@ export default function FinancialYearPage() {
         ]}
       />
       <CloseModal fy={closing} onClose={() => setClosing(null)} />
-    </>
+    </SettingsShell>
   )
 }

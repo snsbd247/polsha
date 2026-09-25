@@ -20,12 +20,20 @@ export function toEnDigits(value: string): string {
   return value.replace(/[০-৯]/g, (d) => String(BN.indexOf(d)))
 }
 
+// date layout chosen in General Settings
+export const DATE_FORMATS = ['DD/MM/YYYY', 'DD-MM-YYYY', 'YYYY-MM-DD'] as const
+let dateFormat: string = 'DD/MM/YYYY'
+
+export function setDateFormat(format?: string) {
+  if (format && (DATE_FORMATS as readonly string[]).includes(format)) dateFormat = format
+}
+
 export function fmtDate(value?: string | null): string {
-  return value ? digits(dayjs(value).format('DD/MM/YYYY')) : '—'
+  return value ? digits(dayjs(value).format(dateFormat)) : '—'
 }
 
 export function fmtDateTime(value?: string | null): string {
-  return value ? digits(dayjs(value).format('DD/MM/YYYY hh:mm A')) : '—'
+  return value ? digits(dayjs(value).format(dateFormat + ' hh:mm A')) : '—'
 }
 
 export function fmtBytes(bytes: number): string {

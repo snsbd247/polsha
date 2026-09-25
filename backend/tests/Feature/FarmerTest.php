@@ -7,6 +7,7 @@ use App\Models\Farmer;
 use App\Models\FarmerDocument;
 use App\Models\LandType;
 use App\Models\MembershipApplication;
+use App\Models\User;
 use App\Services\FarmerDuplicateService;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -144,5 +145,71 @@ class FarmerTest extends Phase2TestCase
         $row = collect($this->actingAs($admin)->getJson('/api/farmers?search=সদস্য')->json('data'))->firstWhere('name_bn', 'সদস্য');
         $this->assertSame(0.33, $row['land_acre']);
         $this->assertFalse($row['pending_application']);
+
+        // profile overview: land, membership and share figures; blocks follow permissions
+        $overview = $this->actingAs($admin)->getJson("/api/farmers/{$member->id}/overview")->assertOk();
+        $this->assertSame(0.33, $overview->json('land.acre'));
+        $this->assertCount(1, $overview->json('land.records'));
+        $this->assertNull($overview->json('land.records.0.cultivation')); // created without a cultivator
+        $this->assertTrue($overview->json('membership.voter'));
+        $this->assertSame(0, $overview->json('share.shares'));
+        $this->assertNull($this->actingAs($admin)->getJson("/api/farmers/{$pending->id}/overview")->json('membership'));
+
+        $viewer = User::factory()->create();
+        $viewer->givePermissionTo('farmer.view');
+        $limited = $this->actingAs($viewer)->getJson("/api/farmers/{$member->id}/overview")->assertOk();
+        foreach (['land', 'irrigation', 'savings', 'share', 'loan'] as $block) {
+            $this->assertNull($limited->json($block), $block);
+        }
+    }
+
+    public function test_new_farmer_form_saves_family_documents_and_extras(): void
+    {
+        Storage::fake('local');
+        $res = $this->actingAs($this->officer)->post('/api/farmers', $this->farmerPayload([
+            'post_code' => '১৩৪০', 'blood_group' => 'B+', 'education_level' => 'secondary', 'farmer_type' => 'owner_cultivator',
+            'family' => json_encode([['name' => 'রহিমা', 'relation' => 'spouse', 'occupation' => 'গৃহিণী', 'mobile' => '০১৭১১০০০২২২'], ['name' => 'করিম']]),
+            'doc_nid_front' => UploadedFile::fake()->image('nid.jpg'),
+        ]), ['Accept' => 'application/json'])->assertCreated();
+
+        $farmer = $this->actingAs($this->officer)->getJson('/api/farmers/'.$res->json('id'))->assertOk();
+        $farmer->assertJson(['post_code' => '1340', 'blood_group' => 'B+', 'education_level' => 'secondary', 'farmer_type' => 'owner_cultivator']);
+        $this->assertSame(['রহিমা', 'করিম'], collect($farmer->json('family'))->pluck('name')->all());
+        $this->assertSame('01711000222', $farmer->json('family.0.mobile'));
+        $this->assertSame(['nid_front'], FarmerDocument::where('farmer_id', $res->json('id'))->pluck('type')->all());
+
+        // editing replaces the family list
+        $this->actingAs($this->officer)->post('/api/farmers/'.$res->json('id'), $this->farmerPayload(['family' => json_encode([['name' => 'নতুন']])]), ['Accept' => 'application/json'])->assertOk();
+        $this->assertSame(['নতুন'], collect($this->actingAs($this->officer)->getJson('/api/farmers/'.$res->json('id'))->json('family'))->pluck('name')->all());
+
+        $this->actingAs($this->officer)->post('/api/farmers', $this->farmerPayload(['name_bn' => 'অন্য', 'post_code' => '12']), ['Accept' => 'application/json'])
+            ->assertStatus(422)->assertJsonValidationErrors('post_code');
+        $this->actingAs($this->officer)->post('/api/farmers', $this->farmerPayload(['name_bn' => 'অন্য', 'family' => json_encode([['name' => '', 'mobile' => '123']])]), ['Accept' => 'application/json'])
+            ->assertStatus(422)->assertJsonValidationErrors(['family.0.name', 'family.0.mobile']);
+    }
+
+    public function test_existing_member_number_needs_member_admin(): void
+    {
+        $payload = $this->farmerPayload(['legacy_member_no' => '৯৬', 'legacy_admitted_on' => '2010-01-01']);
+        $this->actingAs($this->officer)->postJson('/api/farmers', $payload)->assertForbidden();
+        $this->assertSame(0, Farmer::count());
+
+        $admin = $this->userWithRole('super_admin');
+        $id = $this->actingAs($admin)->postJson('/api/farmers', $payload)->assertCreated()->json('id');
+        $member = Farmer::find($id)->member;
+        $this->assertSame(96, $member->member_no);
+        $this->assertTrue((bool) $member->is_legacy);
+
+        // the same number cannot be used twice
+        $this->actingAs($admin)->postJson('/api/farmers', $this->farmerPayload(['name_bn' => 'অন্য', 'legacy_member_no' => '96', 'legacy_admitted_on' => '2010-01-01']))
+            ->assertStatus(422)->assertJsonValidationErrors('legacy_member_no');
+    }
+
+    public function test_email_is_optional_and_validated(): void
+    {
+        $this->actingAs($this->officer)->postJson('/api/farmers', $this->farmerPayload(['email' => 'not-an-email']))
+            ->assertStatus(422)->assertJsonValidationErrors('email');
+        $res = $this->actingAs($this->officer)->postJson('/api/farmers', $this->farmerPayload(['email' => 'karim@example.com']))->assertCreated();
+        $this->actingAs($this->officer)->getJson('/api/farmers/'.$res->json('id'))->assertJsonPath('email', 'karim@example.com');
     }
 }

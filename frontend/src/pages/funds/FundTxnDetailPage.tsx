@@ -90,7 +90,7 @@ export default function FundTxnDetailPage({ kind }: { kind: FundKind }) {
           <div style={{ flex: 1, textAlign: 'center' }}>
             <div className="receipt-society">{nameOf(t.society)}</div>
             <Letterhead society={t.society} />
-            {t.society.address && <div>{t.society.address}</div>}
+            {t.society.address && <div style={{ whiteSpace: 'pre-line' }}>{t.society.address}</div>}
             <div>
               {t.society.registration_no && tx('নিবন্ধন নং: {{p0}}', { p0: digits(t.society.registration_no) })}
               {t.society.registration_no && t.society.phone && ' · '}

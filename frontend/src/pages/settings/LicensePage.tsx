@@ -8,6 +8,7 @@ import { digits, fmtBytes, fmtDate, fmtDateTime } from '../../lib/format'
 import { required } from '../../lib/rules'
 import { t as tx } from '../../lib/i18n'
 import type { AuthUser, LicenseState, LicenseStatus } from '../../lib/types'
+import SettingsShell from './SettingsShell'
 
 type SystemInfo = {
   license: LicenseStatus
@@ -65,10 +66,7 @@ export default function LicensePage() {
   const st = LICENSE_STATE[l.state]
 
   return (
-    <>
-      <div className="page-header">
-        <h2>{tx('লাইসেন্স ও ইনস্টলেশন')}</h2>
-      </div>
+    <SettingsShell title={tx('লাইসেন্স ও ইনস্টলেশন')} subtitle={tx('এই ইনস্টলেশনের আইডি, লাইসেন্সের মেয়াদ ও নতুন লাইসেন্স কী বসানো।')}>
       {l.locked && (
         <Alert
           type="error"
@@ -140,6 +138,6 @@ export default function LicensePage() {
           </Card>
         </Col>
       </Row>
-    </>
+    </SettingsShell>
   )
 }

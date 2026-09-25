@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Alert, App, Button, Card, Checkbox, Form, Input, InputNumber, Radio, Space, Switch, Tag } from 'antd'
 import { api, applyFormErrors, errorMessage } from '../../lib/api'
 import { t as tx } from '../../lib/i18n'
+import SettingsShell from './SettingsShell'
 
 type SmsSettings = {
   sms_enabled: boolean
@@ -62,14 +63,14 @@ export default function SmsSettingsPage() {
   }
 
   return (
-    <>
-      <div className="page-header">
-        <h2>{tx('SMS সেটিংস')}</h2>
-        <Space>
-          <Link to="/settings/sms-templates">{tx('SMS টেমপ্লেট')}</Link>
-          <Link to="/settings/sms-logs">{tx('SMS লগ')}</Link>
-        </Space>
-      </div>
+    <SettingsShell title={tx('SMS সেটিংস')} subtitle={tx('SMS গেটওয়ে, প্রেরকের নাম এবং স্বয়ংক্রিয় SMS কখন যাবে।')} extra={
+        <>
+          <Space>
+            <Link to="/settings/sms-templates">{tx('SMS টেমপ্লেট')}</Link>
+            <Link to="/settings/sms-logs">{tx('SMS লগ')}</Link>
+          </Space>
+        </>
+      }>
       {data && !data.configured && (
         <Alert type="warning" showIcon style={{ marginBottom: 16 }} title={tx('এসএমএস এখনো চালু/কনফিগার করা হয়নি। বার্তাগুলো শুধু লগে জমা থাকবে।')} />
       )}
@@ -138,6 +139,6 @@ export default function SmsSettingsPage() {
           </Button>
         </Space.Compact>
       </Card>
-    </>
+    </SettingsShell>
   )
 }

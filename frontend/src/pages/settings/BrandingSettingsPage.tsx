@@ -2,10 +2,10 @@ import { useEffect, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { App, Button, Card, Col, ColorPicker, Form, Input, Popconfirm, Row, Space, Spin, Typography, Upload } from 'antd'
 import { DeleteOutlined, UploadOutlined } from '@ant-design/icons'
-import RelatedLinks from '../../components/RelatedLinks'
 import { api, applyFormErrors, errorMessage } from '../../lib/api'
 import { DEFAULT_BRAND, logoUrl, settingImagePath } from '../../lib/settings'
 import { t as tx } from '../../lib/i18n'
+import SettingsShell from './SettingsShell'
 
 type Slot = 'logo' | 'signature' | 'seal'
 type Settings = Record<string, unknown> & { logo: string | null; signature_set?: boolean; seal_set?: boolean }
@@ -106,13 +106,7 @@ export default function BrandingSettingsPage() {
   ]
 
   return (
-    <>
-      <div className="page-header">
-        <h2>{tx('ব্র্যান্ডিং ও লোগো')}</h2>
-        <Space wrap>
-          <RelatedLinks links={[{ to: '/settings/general', label: tx('সাধারণ সেটিংস') }, { to: '/settings/receipt', label: tx('রশিদ সেটিংস') }]} />
-        </Space>
-      </div>
+    <SettingsShell title={tx('ব্র্যান্ডিং ও লোগো')} subtitle={tx('রং, প্যাডের লেখা, লোগো, স্বাক্ষর ও সিল — সব ছাপা কাগজে ব্যবহার হয়।')}>
       <Row gutter={[16, 16]}>
         <Col xs={24} lg={12}>
           <Form form={form} layout="vertical" onFinish={save}>
@@ -158,6 +152,6 @@ export default function BrandingSettingsPage() {
           </Space>
         </Col>
       </Row>
-    </>
+    </SettingsShell>
   )
 }

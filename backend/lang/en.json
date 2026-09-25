@@ -1076,5 +1076,19 @@
     "সদস্যপদ আবেদন অপেক্ষমাণ": "Membership applications pending",
     "সব সদস্য": "All Members",
     "সম্পদ রক্ষণাবেক্ষণ বাকি": "Asset maintenance due",
-    "৩০ দিনের বেশি সেচের বকেয়া": "Irrigation due more than 30 days"
+    "৩০ দিনের বেশি সেচের বকেয়া": "Irrigation due more than 30 days",
+    "নিরক্ষর": "No formal education",
+    "প্রাথমিক": "Primary",
+    "মাধ্যমিক (SSC)": "Secondary (SSC)",
+    "উচ্চ মাধ্যমিক (HSC)": "Higher Secondary (HSC)",
+    "স্নাতক": "Graduate",
+    "স্নাতকোত্তর": "Postgraduate",
+    "জমির মালিক": "Land Owner",
+    "মালিক ও নিজ চাষি": "Owner-Cultivator",
+    "বর্গাচাষি": "Sharecropper",
+    "লিজ/ইজারা চাষি": "Tenant (Lease)",
+    "কৃষি শ্রমিক": "Farm Labourer",
+    "পোস্ট কোড ৪ অঙ্কের হতে হবে।": "Post code must be 4 digits.",
+    "পরিবারের সদস্যের নাম দিন।": "Enter the family member’s name.",
+    "পুরোনো সদস্য নম্বর দেওয়ার অনুমতি নেই।": "You are not allowed to enter an existing member number."
 }

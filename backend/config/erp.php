@@ -131,6 +131,15 @@ return [
             'father' => 'পিতা', 'mother' => 'মাতা', 'brother' => 'ভাই', 'sister' => 'বোন', 'other' => 'অন্যান্য',
         ],
         'occupations' => ['farmer' => 'কৃষক', 'business' => 'ব্যবসায়ী', 'service' => 'চাকরিজীবী', 'labour' => 'শ্রমিক', 'housewife' => 'গৃহিণী', 'other' => 'অন্যান্য'],
+        'blood_groups' => ['A+' => 'A+', 'A-' => 'A-', 'B+' => 'B+', 'B-' => 'B-', 'AB+' => 'AB+', 'AB-' => 'AB-', 'O+' => 'O+', 'O-' => 'O-'],
+        'education_levels' => [
+            'none' => 'নিরক্ষর', 'primary' => 'প্রাথমিক', 'secondary' => 'মাধ্যমিক (SSC)', 'higher_secondary' => 'উচ্চ মাধ্যমিক (HSC)',
+            'graduate' => 'স্নাতক', 'postgraduate' => 'স্নাতকোত্তর',
+        ],
+        'farmer_types' => [
+            'owner' => 'জমির মালিক', 'owner_cultivator' => 'মালিক ও নিজ চাষি', 'sharecropper' => 'বর্গাচাষি',
+            'tenant' => 'লিজ/ইজারা চাষি', 'labourer' => 'কৃষি শ্রমিক',
+        ],
     ],
 
     'member' => [

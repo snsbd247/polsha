@@ -4,7 +4,7 @@ import { api } from '../lib/api'
 import type { LocationItem } from '../lib/types'
 import { t as tx } from '../lib/i18n'
 
-const LEVELS = [
+export const LEVELS = [
   { key: 'divisions', label: tx('বিভাগ') },
   { key: 'districts', label: tx('জেলা') },
   { key: 'upazilas', label: tx('উপজেলা') },
@@ -14,7 +14,8 @@ const LEVELS = [
 
 export type LocationPath = (number | undefined)[]
 
-function LevelSelect({ index, parentId, value, onChange }: { index: number; parentId?: number; value?: number; onChange: (v?: number) => void }) {
+/** One level of the cascade (0 = division … 4 = village); pages that lay the levels out themselves use it directly. */
+export function LevelSelect({ index, parentId, value, onChange, placeholder }: { index: number; parentId?: number; value?: number; onChange: (v?: number) => void; placeholder?: string }) {
   const level = LEVELS[index]
   const enabled = index === 0 || !!parentId
   const { data, isLoading } = useQuery({
@@ -24,13 +25,14 @@ function LevelSelect({ index, parentId, value, onChange }: { index: number; pare
   })
   return (
     <Select
-      placeholder={level.label}
+      placeholder={placeholder ?? level.label}
       style={{ minWidth: 150 }}
       allowClear
       showSearch={{ optionFilterProp: 'label' }}
       disabled={!enabled}
       loading={isLoading}
-      value={value}
+      // until the names arrive the raw id would show, so hold the value back
+      value={data ? value : undefined}
       onChange={onChange}
       options={data?.map((d) => ({ value: d.id, label: d.name_bn }))}
     />

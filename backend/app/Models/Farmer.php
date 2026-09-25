@@ -15,8 +15,8 @@ class Farmer extends Model
 
     protected $fillable = [
         'farmer_code', 'name_bn', 'name_en', 'father_name', 'mother_name', 'spouse_name', 'gender',
-        'date_of_birth', 'nid', 'birth_reg_no', 'mobile', 'alt_mobile', 'photo', 'village_id', 'mouza_id',
-        'para', 'post_office', 'household_id', 'household_relation', 'occupation', 'remarks', 'is_active',
+        'date_of_birth', 'nid', 'birth_reg_no', 'mobile', 'alt_mobile', 'email', 'photo', 'village_id', 'mouza_id',
+        'para', 'post_office', 'post_code', 'household_id', 'household_relation', 'occupation', 'blood_group', 'education_level', 'farmer_type', 'remarks', 'is_active',
         'merged_into_id', 'created_by', 'import_batch_id',
     ];
 
@@ -40,6 +40,11 @@ class Farmer extends Model
     public function member()
     {
         return $this->hasOne(Member::class);
+    }
+
+    public function family()
+    {
+        return $this->hasMany(FarmerFamilyMember::class)->orderBy('sort')->orderBy('id');
     }
 
     public function documents()

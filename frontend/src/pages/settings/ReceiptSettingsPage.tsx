@@ -5,6 +5,7 @@ import RelatedLinks from '../../components/RelatedLinks'
 import { api, applyFormErrors, errorMessage } from '../../lib/api'
 import { required } from '../../lib/rules'
 import { t as tx } from '../../lib/i18n'
+import SettingsShell from './SettingsShell'
 
 export default function ReceiptSettingsPage() {
   const [form] = Form.useForm()
@@ -38,13 +39,13 @@ export default function ReceiptSettingsPage() {
   if (isLoading) return <Spin />
 
   return (
-    <>
-      <div className="page-header">
-        <h2>{tx('রশিদ সেটিংস')}</h2>
-        <Space wrap>
-          <RelatedLinks links={[{ to: '/settings/branding', label: tx('ব্র্যান্ডিং ও লোগো') }, { to: '/payments/receipts', label: tx('রশিদ তালিকা') }]} />
-        </Space>
-      </div>
+    <SettingsShell title={tx('রশিদ সেটিংস')} subtitle={tx('রশিদের স্বাক্ষরের ঘর, কপি, কাগজের মাপ ও কী কী ছাপা হবে।')} extra={
+        <>
+          <Space wrap>
+            <RelatedLinks links={[{ to: '/payments/receipts', label: tx('রশিদ তালিকা') }]} />
+          </Space>
+        </>
+      }>
       <Form form={form} layout="vertical" onFinish={save}>
         <Row gutter={[16, 16]}>
           <Col xs={24} lg={12}>
@@ -92,6 +93,6 @@ export default function ReceiptSettingsPage() {
           {tx('সংরক্ষণ')}
         </Button>
       </Form>
-    </>
+    </SettingsShell>
   )
 }

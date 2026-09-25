@@ -10,7 +10,7 @@ class SettingService
     private const CACHE_KEY = 'settings.all';
 
     /** Keys safe to expose before login (login page branding). */
-    public const PUBLIC_KEYS = ['society_name_bn', 'society_name_en', 'logo', 'digits', 'bigha_decimal', 'brand_color', 'default_locale', 'page_size', 'idle_logout_minutes', 'member_card_note'];
+    public const PUBLIC_KEYS = ['society_name_bn', 'society_name_en', 'logo', 'digits', 'bigha_decimal', 'brand_color', 'default_locale', 'page_size', 'idle_logout_minutes', 'member_card_note', 'date_format', 'default_location', 'default_mouza_id'];
 
     public const DEFAULTS = [
         'society_name_bn' => 'সমবায় সমিতি লিমিটেড',
@@ -20,6 +20,23 @@ class SettingService
         'address' => '',
         'phone' => '',
         'email' => '',
+        // society profile shown on General Settings
+        'society_type' => 'agricultural',
+        'contact_person' => '',
+        'contact_designation' => '',
+        'contact_mobile' => '',
+        'contact_mobile_alt' => '',
+        'contact_email' => '',
+        'phone_alt' => '',
+        'website' => '',
+        // address block printed on receipts and reports; falls back to the address
+        'print_address' => '',
+        'society_remarks' => '',
+        // new farmers start in this place: [division, district, upazila, union, village]
+        'default_location' => [],
+        'default_mouza_id' => null,
+        'timezone' => 'Asia/Dhaka',
+        'date_format' => 'DD/MM/YYYY',
         'logo' => null,
         'fiscal_year_start_month' => 7,
         'current_fiscal_year' => null,
@@ -35,6 +52,8 @@ class SettingService
         'combined_payment_order' => ['loan', 'irrigation', 'share'],
         // share capital every member should hold; the gap is a "share due" in combined payment
         'share_min_amount' => 0,
+        // face value of one share; share capital ÷ this = number of shares on profiles and cards
+        'share_unit_price' => 10,
         // SMS gateway (any HTTP API); without it messages are only logged
         'sms_enabled' => false,
         'sms_gateway_url' => '',
@@ -105,7 +124,7 @@ class SettingService
         $s = self::all();
 
         return [
-            'name_bn' => $s['society_name_bn'], 'name_en' => $s['society_name_en'], 'address' => $s['address'],
+            'name_bn' => $s['society_name_bn'], 'name_en' => $s['society_name_en'], 'address' => $s['print_address'] ?: $s['address'],
             'phone' => $s['phone'], 'email' => $s['email'], 'registration_no' => $s['registration_no'], 'logo' => $s['logo'],
             'letterhead_text' => $s['letterhead_text'], 'brand_color' => $s['brand_color'],
             'signature' => (bool) $s['signature'], 'seal' => (bool) $s['seal'],

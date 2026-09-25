@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { api } from './api'
-import { setDigitPreference } from './format'
+import { setDateFormat, setDigitPreference } from './format'
 import { hasStoredLang, lang, setLang } from './i18n'
 
 export type PublicSettings = {
@@ -13,6 +13,9 @@ export type PublicSettings = {
   page_size?: number
   idle_logout_minutes?: number
   member_card_note?: string
+  date_format?: string
+  default_location?: number[]
+  default_mouza_id?: number | null
 }
 
 export const DEFAULT_BRAND = '#1f7a4d'
@@ -23,6 +26,7 @@ export function usePublicSettings() {
     queryFn: async () => {
       const r = await api.get<PublicSettings>('/public/settings')
       setDigitPreference(r.data.digits)
+      setDateFormat(r.data.date_format)
       // a device with no language chosen yet starts in the society's default language
       if (!hasStoredLang() && r.data.default_locale && r.data.default_locale !== lang) setLang(r.data.default_locale)
       return r.data

@@ -94,7 +94,7 @@ export default function LoanPaymentDetailPage() {
           <div style={{ flex: 1, textAlign: 'center' }}>
             <div className="receipt-society">{nameOf(p.society)}</div>
             <Letterhead society={p.society} />
-            {p.society.address && <div>{p.society.address}</div>}
+            {p.society.address && <div style={{ whiteSpace: 'pre-line' }}>{p.society.address}</div>}
             <div>
               {p.society.registration_no && tx('নিবন্ধন নং: {{p0}}', { p0: digits(p.society.registration_no) })}
               {p.society.registration_no && p.society.phone && ' · '}

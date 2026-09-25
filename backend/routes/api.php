@@ -149,6 +149,7 @@ Route::middleware(['auth:sanctum', 'usable'])->group(function () {
         Route::get('farmers/{farmer}', [FarmerController::class, 'show']);
         Route::get('farmers/{farmer}/photo', [FarmerController::class, 'photo']);
         Route::get('farmers/{farmer}/history', [FarmerController::class, 'history']);
+        Route::get('farmers/{farmer}/overview', [FarmerController::class, 'overview']);
         Route::get('farmers/{farmer}/documents', [FarmerDocumentController::class, 'index']);
         Route::get('farmers/{farmer}/documents/{document}', [FarmerDocumentController::class, 'download']);
         Route::get('households', [HouseholdController::class, 'index']);

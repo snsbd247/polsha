@@ -110,7 +110,7 @@ export default function CombinedPaymentDetailPage() {
           <div style={{ flex: 1, textAlign: 'center' }}>
             <div className="receipt-society">{nameOf(r.society)}</div>
             <Letterhead society={r.society} />
-            {r.society.address && <div>{r.society.address}</div>}
+            {r.society.address && <div style={{ whiteSpace: 'pre-line' }}>{r.society.address}</div>}
             <div>
               {r.society.registration_no && tx('নিবন্ধন নং: {{p0}}', { p0: digits(r.society.registration_no) })}
               {r.society.registration_no && r.society.phone && ' · '}

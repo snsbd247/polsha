@@ -9,6 +9,7 @@ use App\Services\SettingService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 class SettingController extends Controller
@@ -35,25 +36,55 @@ class SettingController extends Controller
             'society_name_en' => ['nullable', 'string', 'max:200'],
             'registration_no' => ['nullable', 'string', 'max:50'],
             'registration_date' => ['nullable', 'date'],
-            'address' => ['nullable', 'string', 'max:500'],
+            'address' => ['nullable', 'string', 'max:300'],
             'phone' => ['nullable', 'string', 'max:50'],
             'email' => ['nullable', 'email'],
-            'fiscal_year_start_month' => ['required', 'integer', 'between:1,12'],
-            'current_fiscal_year' => ['nullable', 'regex:/^\d{4}-\d{2}$/'],
-            'digits' => ['required', 'in:bn,en'],
+            'society_type' => ['required', Rule::in(self::SOCIETY_TYPES)],
+            'contact_person' => ['nullable', 'string', 'max:150'],
+            'contact_designation' => ['nullable', 'string', 'max:100'],
+            'contact_mobile' => ['nullable', 'string', 'max:50'],
+            'contact_mobile_alt' => ['nullable', 'string', 'max:50'],
+            'contact_email' => ['nullable', 'email', 'max:150'],
+            'phone_alt' => ['nullable', 'string', 'max:50'],
+            'website' => ['nullable', 'url', 'max:200'],
+            'print_address' => ['nullable', 'string', 'max:300'],
+            'society_remarks' => ['nullable', 'string', 'max:300'],
+            'default_location' => ['nullable', 'array', 'max:5'],
+            'default_location.*' => ['nullable', 'integer'],
+            'default_mouza_id' => ['nullable', 'exists:mouzas,id'],
+            'timezone' => ['required', Rule::in(['Asia/Dhaka'])],
+            'date_format' => ['required', Rule::in(['DD/MM/YYYY', 'DD-MM-YYYY', 'YYYY-MM-DD'])],
+            'default_locale' => ['required', 'in:bn,en'],
             'currency_symbol' => ['required', 'string', 'max:5'],
-            'admission_fee' => ['required', 'numeric', 'min:0'],
-            'voter_min_membership_months' => ['required', 'integer', 'min:0'],
-            'bigha_decimal' => ['required', 'numeric', 'min:1', 'max:200'],
-            'loan_max_guarantees' => ['required', 'integer', 'min:1', 'max:20'],
-            'combined_payment_order' => ['sometimes', 'array', 'size:3'],
-            'combined_payment_order.*' => ['required', 'distinct', 'in:loan,irrigation,share'],
-            'share_min_amount' => ['sometimes', 'numeric', 'min:0'],
         ]);
+        foreach (['society_name_en', 'registration_no', 'address', 'phone', 'email', 'contact_person', 'contact_designation', 'contact_mobile', 'contact_mobile_alt', 'contact_email', 'phone_alt', 'website', 'print_address', 'society_remarks'] as $k) {
+            if (array_key_exists($k, $data)) {
+                $data[$k] ??= '';
+            }
+        }
+        // keep the chosen levels only (a path may stop above village)
+        $data['default_location'] = array_values(array_filter($data['default_location'] ?? [], fn ($v) => $v !== null));
         SettingService::setMany($data);
 
         return $this->index();
     }
+
+    public const SOCIETY_TYPES = ['agricultural', 'irrigation', 'multipurpose', 'savings_credit', 'other'];
+
+    /** Business rules, edited on the System Preferences screen. */
+    private const RULES = [
+        'fiscal_year_start_month' => ['required', 'integer', 'between:1,12'],
+        'current_fiscal_year' => ['nullable', 'regex:/^\d{4}-\d{2}$/'],
+        'digits' => ['required', 'in:bn,en'],
+        'admission_fee' => ['required', 'numeric', 'min:0'],
+        'voter_min_membership_months' => ['required', 'integer', 'min:0'],
+        'bigha_decimal' => ['required', 'numeric', 'min:1', 'max:200'],
+        'loan_max_guarantees' => ['required', 'integer', 'min:1', 'max:20'],
+        'combined_payment_order' => ['required', 'array', 'size:3'],
+        'combined_payment_order.*' => ['required', 'distinct', 'in:loan,irrigation,share'],
+        'share_min_amount' => ['required', 'numeric', 'min:0'],
+        'share_unit_price' => ['required', 'numeric', 'gt:0'],
+    ];
 
     /** Branding, receipt/print and preference screens each save their own group. */
     public function updateSection(Request $request, string $section): JsonResponse
@@ -79,7 +110,7 @@ class SettingController extends Controller
                 'page_size' => ['required', 'integer', 'in:10,25,50,100'],
                 'idle_logout_minutes' => ['required', 'integer', 'min:0', 'max:480'],
                 'go_live_date' => ['nullable', 'date'],
-            ],
+            ] + array_map(fn (array $r) => ['sometimes', ...$r], self::RULES),
             default => abort(404),
         };
         $data = $request->validate($rules);
