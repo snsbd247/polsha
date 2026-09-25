@@ -58,7 +58,10 @@ class MembershipApplicationController extends Controller
     /** Defaults for a new form. */
     public function defaults(): JsonResponse
     {
-        return response()->json(['admission_fee' => (float) SettingService::get('admission_fee', 0)]);
+        return response()->json([
+            'admission_fee' => (float) SettingService::get('admission_fee', 0),
+            'share_unit_price' => (float) SettingService::get('share_unit_price', 10) ?: 10.0,
+        ]);
     }
 
     public function store(Request $request): JsonResponse
@@ -73,6 +76,7 @@ class MembershipApplicationController extends Controller
                 'created_by' => $request->user()->id,
             ]);
             $app->nominees()->createMany($data['nominees']);
+            $this->updateFarmer($request, $data, $app->farmer);
 
             return $app;
         });
@@ -96,6 +100,7 @@ class MembershipApplicationController extends Controller
             $application->update($this->columns($request, $data, $application));
             $application->nominees()->delete();
             $application->nominees()->createMany($data['nominees']);
+            $this->updateFarmer($request, $data, $application->fresh()->farmer);
         });
 
         if ($request->boolean('submit')) {
@@ -159,6 +164,14 @@ class MembershipApplicationController extends Controller
             'resolution_date' => ['nullable', 'date'],
             'form_scan' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
             'signature' => ['nullable', 'image', 'max:2048'],
+            'remarks' => ['nullable', 'string', 'max:300'],
+            // farmer's own papers and details, kept on the farmer record
+            'nid_front' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
+            'nid_back' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
+            'photo' => ['nullable', 'image', 'max:2048'],
+            'occupation' => ['nullable', Rule::in(array_keys(config('erp.farmer.occupations')))],
+            'education_level' => ['nullable', Rule::in(array_keys(config('erp.farmer.education_levels')))],
+            'blood_group' => ['nullable', Rule::in(array_keys(config('erp.farmer.blood_groups')))],
             'nominees' => ['required', 'array', 'min:1'],
             'nominees.*.name' => ['required', 'string', 'max:150'],
             'nominees.*.relation' => ['required', 'string', 'max:30'],
@@ -186,9 +199,42 @@ class MembershipApplicationController extends Controller
         return $data;
     }
 
+    private const FARMER_FIELDS = ['nid_front', 'nid_back', 'photo', 'occupation', 'education_level', 'blood_group'];
+
+    /**
+     * The application form also collects the farmer's NID copies, photo and a
+     * few profile fields; they belong to the farmer, not to the application.
+     */
+    private function updateFarmer(Request $request, array $data, Farmer $farmer): void
+    {
+        $fields = collect($data)->only(['occupation', 'education_level', 'blood_group'])->filter(fn ($v) => $v !== null)->all();
+        if ($request->hasFile('photo')) {
+            $old = $farmer->photo;
+            $fields['photo'] = ImageService::storeCompressed($request->file('photo'), 'farmers');
+            if ($old) {
+                Storage::disk('local')->delete($old);
+            }
+        }
+        if ($fields) {
+            $farmer->update($fields);
+        }
+        foreach (['nid_front', 'nid_back'] as $type) {
+            if ($file = $request->file($type)) {
+                $farmer->documents()->create([
+                    'type' => $type,
+                    'path' => $file->store("farmer-docs/{$farmer->id}", 'local'),
+                    'original_name' => mb_substr($file->getClientOriginalName(), 0, 250),
+                    'mime' => $file->getMimeType(),
+                    'size' => $file->getSize(),
+                    'uploaded_by' => $request->user()->id,
+                ]);
+            }
+        }
+    }
+
     private function columns(Request $request, array $data, ?MembershipApplication $app = null): array
     {
-        $cols = collect($data)->except(['nominees', 'form_scan', 'signature'])->all();
+        $cols = collect($data)->except(['nominees', 'form_scan', 'signature', ...self::FARMER_FIELDS])->all();
         if ($request->hasFile('form_scan')) {
             $cols['form_scan'] = $request->file('form_scan')->store('membership', 'local');
         }

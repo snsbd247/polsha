@@ -9,6 +9,8 @@ use App\Models\Patwari;
 use App\Models\Sequence;
 use App\Models\VoterListItem;
 use App\Services\SettingService;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 
 class MembershipTest extends Phase2TestCase
 {
@@ -162,5 +164,30 @@ class MembershipTest extends Phase2TestCase
         $this->assertSame(2, $p->assignments()->count());
         $this->assertSame([$other->id], $p->currentAssignments()->pluck('mouza_id')->all());
         $this->assertSame('2026-07-01', $p->assignments()->whereNotNull('end_date')->first()->end_date->toDateString());
+    }
+
+    public function test_application_form_updates_farmer_papers_and_profile(): void
+    {
+        Storage::fake('local');
+        $farmer = $this->makeFarmer(['occupation' => 'farmer']);
+        $payload = $this->applicationPayload($farmer, [
+            'nominees' => json_encode([['name' => 'সেলিনা', 'relation' => 'স্ত্রী', 'share_percent' => 100]]),
+            'initial_shares' => 10, 'remarks' => 'প্রথম আবেদন', 'education_level' => 'primary', 'blood_group' => 'O+',
+            'nid_front' => UploadedFile::fake()->image('nid.jpg'), 'photo' => UploadedFile::fake()->image('me.jpg'),
+            'form_scan' => UploadedFile::fake()->create('form.pdf', 50, 'application/pdf'),
+        ]);
+        $res = $this->actingAs($this->officer)->post('/api/membership-applications', $payload, ['Accept' => 'application/json'])->assertCreated();
+
+        $app = MembershipApplication::find($res->json('id'));
+        $this->assertSame('প্রথম আবেদন', $app->remarks);
+        $this->assertSame(10, $app->initial_shares);
+        $this->assertNotNull($app->form_scan);
+        // NID, photo and profile fields belong to the farmer
+        $farmer->refresh();
+        $this->assertSame(['primary', 'O+', 'farmer'], [$farmer->education_level, $farmer->blood_group, $farmer->occupation]);
+        $this->assertNotNull($farmer->photo);
+        $this->assertSame(['nid_front'], $farmer->documents()->pluck('type')->all());
+
+        $this->actingAs($this->officer)->getJson('/api/membership-applications/defaults')->assertOk()->assertJsonStructure(['admission_fee', 'share_unit_price']);
     }
 }

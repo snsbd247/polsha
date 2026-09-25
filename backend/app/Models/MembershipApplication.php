@@ -17,7 +17,7 @@ class MembershipApplication extends Model
     protected $fillable = [
         'application_no', 'farmer_id', 'applied_on', 'proposer_member_id', 'seconder_member_id',
         'admission_fee', 'default_fee', 'fee_override_reason', 'fee_status', 'initial_shares',
-        'form_scan', 'signature', 'resolution_no', 'resolution_date', 'status', 'approval_request_id',
+        'form_scan', 'signature', 'resolution_no', 'resolution_date', 'remarks', 'status', 'approval_request_id',
         'member_id', 'created_by',
     ];
 
