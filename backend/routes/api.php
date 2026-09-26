@@ -177,6 +177,7 @@ Route::middleware(['auth:sanctum', 'usable'])->group(function () {
     Route::middleware('permission:membership.view')->group(function () {
         Route::get('membership-applications', [MembershipApplicationController::class, 'index']);
         Route::get('membership-applications/defaults', [MembershipApplicationController::class, 'defaults']);
+        Route::get('membership-applications/summary', [MembershipApplicationController::class, 'summary']);
         Route::get('membership-applications/{application}', [MembershipApplicationController::class, 'show']);
         Route::get('membership-applications/{application}/file/{kind}', [MembershipApplicationController::class, 'file']);
     });

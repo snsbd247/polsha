@@ -9,7 +9,10 @@ use App\Services\ImageService;
 use App\Services\MembershipService;
 use App\Services\SequenceService;
 use App\Services\SettingService;
+use App\Services\ApprovalService;
 use App\Support\Bn;
+use App\Support\CsvExport;
+use App\Support\Tr;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -19,19 +22,26 @@ use Illuminate\Validation\ValidationException;
 
 class MembershipApplicationController extends Controller
 {
-    public function __construct(private MembershipService $membership) {}
+    public function __construct(private MembershipService $membership, private ApprovalService $approvals) {}
 
-    public function index(Request $request): JsonResponse
+    public function index(Request $request)
     {
-        $q = MembershipApplication::query()->with(['farmer:id,farmer_code,name_bn,father_name,mouza_id,village_id', 'farmer.village:id,name_bn', 'member:id,member_no']);
+        $q = MembershipApplication::query()->with([
+            'farmer:id,farmer_code,name_bn,name_en,father_name,mobile,nid,photo,mouza_id,village_id', 'farmer.village:id,name_bn', 'farmer.mouza:id,name_bn',
+            'member:id,member_no', 'approvalRequest:id,status,current_step,total_steps',
+        ]);
 
         if ($search = trim((string) $request->query('search'))) {
             $en = Bn::toEnDigits($search);
             $q->where(fn ($w) => $w->where('application_no', 'like', "%$en%")
-                ->orWhereHas('farmer', fn ($f) => $f->where('name_bn', 'like', "%$search%")->orWhere('farmer_code', 'like', "%$en%")));
+                ->orWhereHas('farmer', fn ($f) => $f->where('name_bn', 'like', "%$search%")->orWhere('name_en', 'like', "%$search%")
+                    ->orWhere('farmer_code', 'like', "%$en%")->orWhere('mobile', 'like', "%$en%")->orWhere('nid', $en)));
         }
         if ($request->filled('status')) {
             $q->where('status', $request->query('status'));
+        }
+        if (in_array($request->query('fee_status'), ['paid', 'due'], true)) {
+            $q->where('fee_status', $request->query('fee_status'));
         }
         if ($request->filled('mouza_id')) {
             $q->whereHas('farmer', fn ($f) => $f->where('mouza_id', $request->query('mouza_id')));
@@ -43,16 +53,60 @@ class MembershipApplicationController extends Controller
             $q->where('applied_on', '<=', $request->date('to')->toDateString());
         }
 
-        return response()->json($q->latest('id')->paginate($this->perPage($request)));
+        if ($request->query('export') === 'csv') {
+            $statuses = Tr::map(self::STATUS_LABELS);
+
+            return CsvExport::download('membership-applications-'.now()->format('Ymd').'.csv',
+                [__('আবেদন নং'), __('তারিখ'), 'Farmer ID', __('নাম'), __('পিতা'), __('মোবাইল'), 'NID', __('মৌজা'), __('ভর্তি ফি'), __('ফি পরিশোধ'), __('প্রাথমিক শেয়ার'), __('অবস্থা'), __('সদস্য নং')],
+                $q->latest('id')->lazy()->map(fn (MembershipApplication $a) => [
+                    $a->application_no, $a->applied_on?->toDateString(), $a->farmer?->farmer_code, $a->farmer?->name_bn, $a->farmer?->father_name,
+                    $a->farmer?->mobile, $a->farmer?->nid, $a->farmer?->mouza?->name_bn, $a->admission_fee,
+                    $a->fee_status === 'paid' ? __('পরিশোধিত') : __('বাকি'), $a->initial_shares, $statuses[$a->status] ?? $a->status, $a->member?->member_no,
+                ]));
+        }
+
+        return response()->json($q->latest('id')->paginate($this->perPage($request))->through(fn (MembershipApplication $a) => $a->toArray() + [
+            'photo_url' => $a->farmer?->photo ? url("api/farmers/{$a->farmer_id}/photo") : null,
+        ]));
     }
 
-    public function show(MembershipApplication $application): JsonResponse
+    private const STATUS_LABELS = [
+        'draft' => 'খসড়া', 'pending' => 'অনুমোদনের অপেক্ষায়', 'approved' => 'অনুমোদিত',
+        'rejected' => 'প্রত্যাখ্যাত', 'returned' => 'সংশোধনের জন্য ফেরত', 'cancelled' => 'বাতিলকৃত',
+    ];
+
+    /** Header cards of the application list. */
+    public function summary(): JsonResponse
     {
-        return response()->json($application->load([
-            'farmer:id,farmer_code,name_bn,father_name,village_id', 'farmer.village:id,name_bn',
+        $by = MembershipApplication::query()->selectRaw('status, COUNT(*) c')->groupBy('status')->pluck('c', 'status');
+
+        return response()->json([
+            'total' => (int) $by->sum(),
+            'pending' => (int) ($by['pending'] ?? 0),
+            'approved' => (int) ($by['approved'] ?? 0),
+            'rejected' => (int) ($by['rejected'] ?? 0),
+            // fee still to collect on applications that are still alive
+            'fee_due' => MembershipApplication::where('fee_status', 'due')->whereIn('status', ['draft', 'pending', 'returned', 'approved'])->count(),
+        ]);
+    }
+
+    public function show(Request $request, MembershipApplication $application): JsonResponse
+    {
+        $application->load([
+            'farmer:id,farmer_code,name_bn,name_en,father_name,mobile,nid,photo,para,post_office,mouza_id,village_id',
+            'farmer.village.union.upazila.district', 'farmer.mouza:id,name_bn',
             'nominees', 'proposer.farmer:id,name_bn', 'seconder.farmer:id,name_bn',
-            'member:id,member_no', 'creator:id,name_bn', 'approvalRequest:id,status,current_step,total_steps',
-        ]));
+            'member:id,member_no', 'creator:id,name_bn,name_en', 'approvalRequest:id,status,current_step,total_steps,requested_by',
+        ]);
+        $f = $application->farmer;
+        $v = $f?->village;
+
+        return response()->json($application->toArray() + [
+            'photo_url' => $f?->photo ? url("api/farmers/{$f->id}/photo") : null,
+            'farmer_address' => $v ? implode(', ', array_filter([$f->para, $f->post_office, $v->name_bn, $v->union?->name_bn, $v->union?->upazila?->name_bn, $v->union?->upazila?->district?->name_bn])) : null,
+            'share_unit_price' => (float) SettingService::get('share_unit_price', 10) ?: 10.0,
+            'can_act' => $application->approvalRequest ? $this->approvals->canAct($request->user(), $application->approvalRequest) : false,
+        ]);
     }
 
     /** Defaults for a new form. */

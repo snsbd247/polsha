@@ -190,4 +190,32 @@ class MembershipTest extends Phase2TestCase
 
         $this->actingAs($this->officer)->getJson('/api/membership-applications/defaults')->assertOk()->assertJsonStructure(['admission_fee', 'share_unit_price']);
     }
+
+    public function test_application_list_summary_filters_and_details(): void
+    {
+        $paid = $this->makeFarmer(['name_bn' => 'ক', 'mobile' => '01711000001']);
+        $due = $this->makeFarmer(['name_bn' => 'খ']);
+        $this->actingAs($this->officer)->postJson('/api/membership-applications', $this->applicationPayload($paid, ['submit' => true]))->assertCreated();
+        $id = $this->actingAs($this->officer)->postJson('/api/membership-applications', $this->applicationPayload($due, ['fee_status' => 'due']))->assertCreated()->json('id');
+
+        $this->actingAs($this->officer)->getJson('/api/membership-applications/summary')->assertOk()
+            ->assertJson(['total' => 2, 'pending' => 1, 'approved' => 0, 'rejected' => 0, 'fee_due' => 1]);
+
+        $this->actingAs($this->officer)->getJson('/api/membership-applications?fee_status=due')->assertJsonPath('total', 1)->assertJsonPath('data.0.id', $id);
+        // search reaches the farmer's mobile too
+        $this->actingAs($this->officer)->getJson('/api/membership-applications?search=01711000001')->assertJsonPath('total', 1)
+            ->assertJsonPath('data.0.farmer.mobile', '01711000001');
+
+        $detail = $this->actingAs($this->manager)->getJson("/api/membership-applications/{$id}")->assertOk();
+        $this->assertFalse($detail->json('can_act')); // a draft has no approval request yet
+        $this->assertSame('পলাশবাড়ী, আশুলিয়া, সাভার, ঢাকা', $detail->json('farmer_address'));
+
+        // the manager may act on the submitted one; the officer who sent it may not
+        $pending = MembershipApplication::where('status', 'pending')->first();
+        $this->assertTrue($this->actingAs($this->manager)->getJson("/api/membership-applications/{$pending->id}")->json('can_act'));
+        $this->assertFalse($this->actingAs($this->officer)->getJson("/api/membership-applications/{$pending->id}")->json('can_act'));
+
+        $csv = $this->actingAs($this->officer)->get('/api/membership-applications?export=csv')->assertOk()->streamedContent();
+        $this->assertStringContainsString($pending->application_no, $csv);
+    }
 }

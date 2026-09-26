@@ -1,0 +1,455 @@
+/* Membership application list — builds on farmer-list.css (fl-*) for cards, filters, table and pager. */
+.al .fl-crumb {
+  margin-bottom: 8px;
+}
+
+.al .fl-head {
+  margin-bottom: 12px;
+}
+
+.al .fl-head h1,
+.al .fl-head-btns .ant-btn,
+.al .fl-table-head h3,
+.al .fl-field > span,
+.al-detail-head h3 {
+  text-transform: capitalize;
+}
+
+.al .fl-head-btns {
+  margin-top: 0;
+}
+
+.al-stats {
+  grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+  gap: 14px !important;
+}
+
+.al-stats .fl-stat {
+  min-height: 86px;
+  padding: 10px 12px;
+  gap: 12px;
+}
+
+.al-stats .fl-stat-icon {
+  width: 52px;
+  height: 52px;
+}
+
+.al-stats .fl-stat-label {
+  font-size: 13px;
+}
+
+.al-tone-orange {
+  color: #e8890c;
+}
+
+.al-tone-green {
+  color: #1f9d55;
+}
+
+.al-tone-red {
+  color: #d63031;
+}
+
+.al-tone-purple {
+  color: #6d4ae6;
+}
+
+.al-filters {
+  padding: 8px 15px 12px;
+}
+
+.al-filters .fl-filter-row {
+  gap: 14px;
+}
+
+.al-hidden-label {
+  visibility: hidden;
+}
+
+.al-range {
+  flex-grow: 190;
+}
+
+.al-range .ant-picker {
+  width: 100%;
+  height: 36px;
+  border-color: #d5dce7;
+}
+
+.al .fl-table-head {
+  min-height: 44px;
+}
+
+.al .fl-table-head h3 {
+  font-size: 17px;
+}
+
+.al-export.ant-btn {
+  height: 29px !important;
+  padding: 0 11px !important;
+  font-size: 12.5px !important;
+}
+
+.al-table .ant-table-tbody > tr > td {
+  height: 38px;
+}
+
+.al-table .fl-link {
+  white-space: nowrap;
+}
+
+.al-table .ant-table-tbody > tr.al-row-on > td {
+  background: #f3f7fe;
+}
+
+.al-tag-gold.ant-tag {
+  color: #b07000;
+  background: #fdefc8;
+}
+
+.al-tag-green.ant-tag {
+  color: #1c8a45;
+  background: #e2f5e8;
+}
+
+.al-tag-red.ant-tag {
+  color: #d63031;
+  background: #fde4e4;
+}
+
+.al-tag-blue.ant-tag {
+  color: #1d5fd6;
+  background: #e3edfd;
+}
+
+.al-tag-orange.ant-tag {
+  color: #d9480f;
+  background: #ffe8d6;
+}
+
+.al-tag-gray.ant-tag {
+  color: #4b5563;
+  background: #eef1f5;
+}
+
+.al .fl-act.al-on {
+  border-color: #1769e0;
+  background: #eef5fe;
+}
+
+/* details panel */
+.al-detail {
+  margin-top: 12px;
+}
+
+.al-detail-loading {
+  min-height: 260px;
+}
+
+.al-detail-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 14px;
+  background: linear-gradient(180deg, #f3f7fe, #eef4fd);
+  border-bottom: 1px solid #e3e8f0;
+}
+
+.al-detail-head h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 17px;
+  font-weight: 600;
+  color: #1769e0;
+}
+
+.al-close {
+  border: 0;
+  background: none;
+  font-size: 18px;
+  color: #1f2937;
+  cursor: pointer;
+}
+
+.al-detail-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 0.95fr) minmax(0, 1.2fr);
+  gap: 16px;
+  padding: 14px 14px 6px;
+}
+
+.al-farmer {
+  display: flex;
+  gap: 14px;
+  min-width: 0;
+}
+
+.al-photo {
+  flex: none;
+  width: 133px;
+  height: 138px;
+  border-radius: 5px;
+  overflow: hidden;
+  background: #eef2f7;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.al-photo .ant-avatar {
+  width: 133px !important;
+  height: 138px !important;
+  border-radius: 5px;
+}
+
+.al-farmer-info {
+  min-width: 0;
+}
+
+.al-name {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+
+.al-name h4 {
+  margin: 0;
+  font-size: 19px;
+  font-weight: 700;
+}
+
+.al-dl {
+  display: grid;
+  grid-template-columns: 106px 1fr;
+  margin: 0;
+  font-size: 13px;
+  line-height: 21.5px;
+}
+
+.al-dl dt {
+  color: #374151;
+  white-space: nowrap;
+  text-transform: capitalize;
+}
+
+.al-dl dt::after {
+  content: ':';
+  float: right;
+  padding-right: 12px;
+}
+
+.al-dl dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.al-info {
+  min-width: 0;
+}
+
+.al-info-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+  padding: 3px 6px;
+  background: #f3f7fe;
+  border-radius: 4px;
+}
+
+.al-info-head h4 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: #1d4fc4;
+  text-transform: capitalize;
+}
+
+.al-dl-info {
+  grid-template-columns: 140px 1fr;
+  line-height: 20.5px;
+}
+
+.al-mini.ant-btn {
+  height: 26px;
+  padding: 0 9px;
+  font-size: 12.5px;
+  color: #1769e0;
+  border-color: #bcd3f5;
+  border-radius: 4px;
+}
+
+.al-side {
+  min-width: 0;
+  border: 1px solid #eef1f5;
+  border-radius: 6px;
+  padding: 8px 10px;
+}
+
+.al-tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+
+.al-tabs button {
+  height: 28px;
+  padding: 0 12px;
+  font: inherit;
+  font-size: 12.5px;
+  background: #fff;
+  border: 1px solid #e3e8f0;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.al-tabs button.active {
+  color: #1769e0;
+  border-color: #1769e0;
+  font-weight: 500;
+}
+
+.al-docs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px 14px;
+}
+
+.al-doc {
+  margin: 0;
+  min-width: 0;
+}
+
+.al-doc-open {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: zoom-in;
+}
+
+.al-doc .fp-thumb {
+  height: 78px;
+}
+
+.al-doc figcaption {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-top: 4px;
+  font-size: 12px;
+}
+
+.al-doc figcaption span {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.al-upload {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+  font-size: 12px;
+  color: #4b5563;
+}
+
+.al-empty {
+  grid-column: 1 / -1;
+  margin: 8px 0;
+  color: #6b7280;
+  font-size: 13px;
+}
+
+.al-mini-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+}
+
+.al-mini-table th,
+.al-mini-table td {
+  padding: 5px 8px;
+  text-align: left;
+  border-bottom: 1px solid #eef1f5;
+}
+
+.al-mini-table th {
+  background: #f5f7fa;
+  font-weight: 600;
+}
+
+.al-remarks {
+  font-size: 13px;
+}
+
+.al-remarks p {
+  margin: 0 0 8px;
+}
+
+.al-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 14px;
+  padding: 8px 14px 12px;
+}
+
+.al-actions .ant-btn {
+  height: 36px;
+  min-width: 36px;
+  padding: 0 18px;
+  font-size: 14px;
+  border-radius: 5px;
+}
+
+.al-actions .ant-btn-primary {
+  min-width: 110px;
+}
+
+.al-reject.ant-btn {
+  color: #d63031;
+  border-color: #e3e8f0;
+}
+
+.al-actions .ant-btn-icon-only {
+  padding: 0;
+  width: 42px;
+}
+
+@media (max-width: 1280px) {
+  .al-stats {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+  .al-detail-body {
+    grid-template-columns: 1fr 1fr;
+  }
+  .al-side {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 768px) {
+  .al-stats {
+    grid-template-columns: 1fr 1fr !important;
+  }
+  .al-detail-body {
+    grid-template-columns: 1fr;
+  }
+  .al-farmer {
+    flex-direction: column;
+  }
+  .al-docs {
+    grid-template-columns: 1fr 1fr;
+  }
+}

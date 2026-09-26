@@ -1090,5 +1090,7 @@
     "কৃষি শ্রমিক": "Farm Labourer",
     "পোস্ট কোড ৪ অঙ্কের হতে হবে।": "Post code must be 4 digits.",
     "পরিবারের সদস্যের নাম দিন।": "Enter the family member’s name.",
-    "পুরোনো সদস্য নম্বর দেওয়ার অনুমতি নেই।": "You are not allowed to enter an existing member number."
+    "পুরোনো সদস্য নম্বর দেওয়ার অনুমতি নেই।": "You are not allowed to enter an existing member number.",
+    "ফি পরিশোধ": "Fee payment",
+    "আবেদন নং": "Application No"
 }
