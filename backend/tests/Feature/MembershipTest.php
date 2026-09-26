@@ -135,6 +135,14 @@ class MembershipTest extends Phase2TestCase
         $this->assertSame('সদস্য দুই', $out->name);
         $this->assertSame('সদস্যপদ বাতিল', $out->reason);
 
+        // The voter list screen: latest list, header figures, and the excluded filter.
+        $this->actingAs($admin)->getJson('/api/voters')->assertOk()
+            ->assertJsonPath('list.id', $list->json('id'))->assertJsonPath('previous', null)
+            ->assertJsonPath('summary.total', 2)->assertJsonPath('summary.eligible', 1)->assertJsonPath('summary.excluded', 1)->assertJsonPath('summary.new', 1)
+            ->assertJsonPath('items.total', 2);
+        $this->actingAs($admin)->getJson('/api/voters?eligible=0')->assertJsonPath('items.total', 1)
+            ->assertJsonPath('items.data.0.member_status', Member::CANCELLED)->assertJsonPath('items.data.0.reason', 'সদস্যপদ বাতিল');
+
         // Reactivation returns the same member number.
         $no = $member->member_no;
         $res = $this->actingAs($this->officer)->postJson("/api/members/{$member->id}/status", [
@@ -164,6 +172,23 @@ class MembershipTest extends Phase2TestCase
         $this->assertSame(2, $p->assignments()->count());
         $this->assertSame([$other->id], $p->currentAssignments()->pluck('mouza_id')->all());
         $this->assertSame('2026-07-01', $p->assignments()->whereNotNull('end_date')->first()->end_date->toDateString());
+
+        // the list shows where they work now and since when; summary feeds the cards and filters
+        $upazila = $this->mouza->upazila;
+        $this->actingAs($admin)->getJson('/api/patwaris?search=01712')->assertOk()->assertJsonPath('total', 1)
+            ->assertJsonPath('data.0.mouza_count', 1)->assertJsonPath('data.0.joined_on', '2024-01-01')
+            ->assertJsonPath('data.0.upazila', $upazila->name_bn)->assertJsonPath('data.0.district', $upazila->district->name_bn);
+        $this->actingAs($admin)->getJson("/api/patwaris?district_id={$upazila->district_id}")->assertJsonPath('total', 1);
+        $this->actingAs($admin)->getJson('/api/patwaris?district_id=999999')->assertJsonPath('total', 0);
+        $this->actingAs($admin)->getJson('/api/patwaris/summary')->assertOk()
+            ->assertJson(['total' => 1, 'active' => 1, 'inactive' => 0, 'mouzas' => 1])->assertJsonPath('upazilas.0.id', $upazila->id);
+
+        // Mouza management: each mouza with its patwari and farmer count, filtered by patwari
+        $this->makeFarmer();
+        $this->actingAs($admin)->getJson("/api/mouzas?patwari_id={$p->id}")->assertOk()->assertJsonPath('total', 1)
+            ->assertJsonPath('data.0.id', $other->id)->assertJsonPath('data.0.patwari', 'জলিল')->assertJsonPath('data.0.district', $upazila->district->name_bn);
+        $this->actingAs($admin)->getJson("/api/mouzas?search={$this->mouza->jl_no}")->assertJsonPath('data.0.farmers_count', 1)->assertJsonPath('data.0.patwari', null);
+        $this->actingAs($admin)->getJson('/api/mouzas-summary')->assertOk()->assertJson(['mouzas' => 2, 'farmers' => 1, 'lands' => 0])->assertJsonPath('patwaris.0.id', $p->id);
     }
 
     public function test_application_form_updates_farmer_papers_and_profile(): void
@@ -217,5 +242,28 @@ class MembershipTest extends Phase2TestCase
 
         $csv = $this->actingAs($this->officer)->get('/api/membership-applications?export=csv')->assertOk()->streamedContent();
         $this->assertStringContainsString($pending->application_no, $csv);
+    }
+
+    public function test_member_list_summary_and_filters(): void
+    {
+        $viewer = $this->userWithRole('manager');
+        $old = Member::create(['farmer_id' => $this->makeFarmer(['name_bn' => 'পুরোনো', 'education_level' => 'primary', 'occupation' => 'farmer'])->id,
+            'member_no' => 1, 'admitted_on' => now()->subYear()->toDateString(), 'status' => Member::ACTIVE]);
+        Member::create(['farmer_id' => $this->makeFarmer(['name_bn' => 'নতুন', 'education_level' => 'graduate', 'occupation' => 'business', 'nid' => '1234567890'])->id,
+            'member_no' => 2, 'admitted_on' => now()->toDateString(), 'status' => Member::ACTIVE]);
+        Member::create(['farmer_id' => $this->makeFarmer(['name_bn' => 'বসা'])->id,
+            'member_no' => 3, 'admitted_on' => now()->subYear()->toDateString(), 'status' => Member::INACTIVE]);
+        // became inactive this month: at the end of last month it still counted as active
+        \App\Models\MembershipStatusHistory::create(['member_id' => 3, 'action' => 'deactivate', 'from_status' => 'active', 'to_status' => 'inactive', 'effective_date' => now()->toDateString()]);
+
+        $this->actingAs($viewer)->getJson('/api/members/summary')->assertOk()
+            ->assertJson(['total' => 3, 'active' => 2, 'inactive' => 1, 'new' => 1, 'change' => ['total' => 50, 'active' => 0, 'inactive' => null]]);
+
+        $names = fn (array $q) => collect($this->actingAs($viewer)->getJson('/api/members?'.http_build_query($q))->assertOk()->json('data'))->pluck('farmer.name_bn')->all();
+        $this->assertSame(['পুরোনো'], $names(['education_level' => 'primary']));
+        $this->assertSame(['নতুন'], $names(['occupation' => 'business']));
+        $this->assertSame(['নতুন'], $names(['search' => '1234567890']));
+        $this->assertSame(['নতুন'], $names(['from' => now()->startOfMonth()->toDateString()]));
+        $this->assertSame($old->id, $this->actingAs($viewer)->getJson('/api/members?per_page=5')->json('data.0.id'));
     }
 }

@@ -140,6 +140,10 @@ return [
             'owner' => 'জমির মালিক', 'owner_cultivator' => 'মালিক ও নিজ চাষি', 'sharecropper' => 'বর্গাচাষি',
             'tenant' => 'লিজ/ইজারা চাষি', 'labourer' => 'কৃষি শ্রমিক',
         ],
+        // why a farmer record left the list; 'merged' is set by the merge itself, not chosen
+        'delete_reasons' => [
+            'duplicate' => 'ডুপ্লিকেট', 'wrong_data' => 'ভুল তথ্য', 'not_farmer' => 'কৃষক নন', 'other' => 'অন্যান্য', 'merged' => 'মার্জ হয়েছে',
+        ],
     ],
 
     'member' => [

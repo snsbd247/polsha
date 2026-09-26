@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Farmer;
 use App\Models\Member;
+use App\Models\MembershipStatusHistory;
 use App\Services\MembershipService;
 use App\Support\Bn;
 use App\Support\CsvExport;
@@ -19,11 +20,48 @@ class MemberController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        $q = $this->filtered($request)->with(['farmer:id,farmer_code,name_bn,father_name,mobile,village_id,mouza_id', 'farmer.village:id,name_bn', 'farmer.mouza:id,name_bn']);
+        $q = $this->filtered($request)->with([
+            'farmer:id,farmer_code,name_bn,name_en,father_name,mobile,nid,photo,occupation,education_level,village_id,mouza_id',
+            'farmer.village:id,name_bn', 'farmer.mouza:id,name_bn',
+        ]);
         $sort = in_array($request->query('sort'), ['member_no', 'admitted_on'], true) ? $request->query('sort') : 'member_no';
         $q->orderBy($sort, $request->query('order') === 'desc' ? 'desc' : 'asc');
 
-        return response()->json($q->paginate($this->perPage($request)));
+        return response()->json($q->paginate($this->perPage($request))->through(fn (Member $m) => $m->toArray() + [
+            'photo_url' => $m->farmer?->photo ? url("api/farmers/{$m->farmer_id}/photo") : null,
+        ]));
+    }
+
+    /**
+     * Header cards: members by status now, new this month, and the change
+     * against the end of last month (status then = the last status change
+     * effective on or before that day).
+     */
+    public function summary(): JsonResponse
+    {
+        $prevEnd = now()->startOfMonth()->subDay()->toDateString();
+        $monthStart = now()->startOfMonth()->toDateString();
+        $members = Member::get(['id', 'status', 'admitted_on']);
+        $history = MembershipStatusHistory::where('effective_date', '<=', $prevEnd)->orderBy('effective_date')->orderBy('id')
+            ->get(['member_id', 'to_status'])->groupBy('member_id')->map(fn ($h) => $h->last()->to_status);
+        $then = $members->filter(fn ($m) => $m->admitted_on->toDateString() <= $prevEnd)
+            ->map(fn ($m) => $history[$m->id] ?? Member::ACTIVE);
+        $pct = fn (float $now, float $before) => $before > 0 ? round(($now - $before) / $before * 100, 1) : null;
+
+        $now = ['total' => $members->count(), 'active' => $members->where('status', Member::ACTIVE)->count(), 'inactive' => $members->where('status', Member::INACTIVE)->count()];
+        $newNow = $members->filter(fn ($m) => $m->admitted_on->toDateString() >= $monthStart)->count();
+        $newBefore = $members->filter(fn ($m) => $m->admitted_on->toDateString() > now()->startOfMonth()->subMonth()->subDay()->toDateString() && $m->admitted_on->toDateString() <= $prevEnd)->count();
+
+        return response()->json($now + [
+            'cancelled' => $members->where('status', Member::CANCELLED)->count(),
+            'new' => $newNow,
+            'change' => [
+                'total' => $pct($now['total'], $then->count()),
+                'active' => $pct($now['active'], $then->filter(fn ($s) => $s === Member::ACTIVE)->count()),
+                'inactive' => $pct($now['inactive'], $then->filter(fn ($s) => $s === Member::INACTIVE)->count()),
+                'new' => $pct($newNow, $newBefore),
+            ],
+        ]);
     }
 
     public function export(Request $request)
@@ -107,18 +145,26 @@ class MemberController extends Controller
                     $w->orWhere('member_no', (int) $en);
                 }
                 $w->orWhereHas('farmer', fn ($f) => $f->where('name_bn', 'like', "%$search%")
+                    ->orWhere('name_en', 'like', "%$search%")
                     ->orWhere('father_name', 'like', "%$search%")
                     ->orWhere('farmer_code', 'like', "%$en%")
-                    ->orWhere('mobile', 'like', "%$en%"));
+                    ->orWhere('mobile', 'like', "%$en%")
+                    ->orWhere('nid', $en));
             });
         }
         if ($request->filled('status')) {
             $q->where('status', $request->query('status'));
         }
-        foreach (['mouza_id', 'village_id'] as $f) {
+        foreach (['mouza_id', 'village_id', 'occupation', 'education_level'] as $f) {
             if ($request->filled($f)) {
                 $q->whereHas('farmer', fn ($w) => $w->where($f, $request->query($f)));
             }
+        }
+        if ($request->filled('from')) {
+            $q->where('admitted_on', '>=', $request->date('from')->toDateString());
+        }
+        if ($request->filled('to')) {
+            $q->where('admitted_on', '<=', $request->date('to')->toDateString());
         }
 
         return $q;

@@ -118,6 +118,7 @@ Route::middleware(['auth:sanctum', 'usable'])->group(function () {
     Route::post('locations/{level}', [LocationController::class, 'store'])->middleware('permission:location.create');
     Route::put('locations/{level}/{id}', [LocationController::class, 'update'])->middleware('permission:location.edit');
     Route::get('mouzas', [MouzaController::class, 'index']);
+    Route::get('mouzas-summary', [MouzaController::class, 'summary']);
     Route::get('mouzas/{mouza}', [MouzaController::class, 'show']);
     Route::post('mouzas', [MouzaController::class, 'store'])->middleware('permission:mouza.create');
     Route::put('mouzas/{mouza}', [MouzaController::class, 'update'])->middleware('permission:mouza.edit');
@@ -164,6 +165,7 @@ Route::middleware(['auth:sanctum', 'usable'])->group(function () {
         Route::delete('farmers/{farmer}/documents/{document}', [FarmerDocumentController::class, 'destroy']);
         Route::post('farmers-duplicates/dismiss', [DuplicateController::class, 'dismiss']);
         Route::post('farmers-merge', [DuplicateController::class, 'requestMerge']);
+        Route::get('farmers-merge/history', [DuplicateController::class, 'history']);
         Route::post('households', [HouseholdController::class, 'store']);
         Route::post('households/{household}/head', [HouseholdController::class, 'changeHead']);
         Route::post('households/{household}/members', [HouseholdController::class, 'addMember']);
@@ -171,7 +173,9 @@ Route::middleware(['auth:sanctum', 'usable'])->group(function () {
     });
     Route::delete('farmers/{farmer}', [FarmerController::class, 'destroy'])->middleware('permission:farmer.delete');
     Route::get('farmers-deleted', [FarmerController::class, 'deleted'])->middleware('permission:farmer.view');
+    Route::get('farmers-deleted/summary', [FarmerController::class, 'deletedSummary'])->middleware('permission:farmer.view');
     Route::post('farmers/{id}/restore', [FarmerController::class, 'restore'])->whereNumber('id')->middleware('permission:farmer.delete');
+    Route::delete('farmers-deleted/{id}', [FarmerController::class, 'purge'])->whereNumber('id')->middleware('permission:farmer.delete');
 
     // ---- Phase 2: membership ----
     Route::middleware('permission:membership.view')->group(function () {
@@ -190,10 +194,12 @@ Route::middleware(['auth:sanctum', 'usable'])->group(function () {
 
     Route::middleware('permission:member.view')->group(function () {
         Route::get('members', [MemberController::class, 'index']);
+        Route::get('members/summary', [MemberController::class, 'summary']);
         Route::get('members/export', [MemberController::class, 'export'])->middleware('permission:member.export');
         Route::get('members/admission-register', [MemberController::class, 'admissionRegister']);
         Route::get('members/admission-register/export', [MemberController::class, 'admissionRegisterExport'])->middleware('permission:member.export');
         Route::get('voter-lists', [VoterListController::class, 'index']);
+        Route::get('voters', [VoterListController::class, 'voters']);
         Route::get('voter-lists/{voterList}', [VoterListController::class, 'show']);
         Route::get('voter-lists/{voterList}/export', [VoterListController::class, 'export'])->middleware('permission:member.export');
     });
@@ -204,6 +210,7 @@ Route::middleware(['auth:sanctum', 'usable'])->group(function () {
     // ---- Phase 2: patwari ----
     Route::get('patwaris', [PatwariController::class, 'index'])->middleware('permission:patwari.view');
     Route::get('patwaris/export', [PatwariController::class, 'export'])->middleware('permission:patwari.export');
+    Route::get('patwaris/summary', [PatwariController::class, 'summary'])->middleware('permission:patwari.view');
     Route::get('patwaris/{patwari}', [PatwariController::class, 'show'])->middleware('permission:patwari.view');
     Route::post('patwaris', [PatwariController::class, 'store'])->middleware('permission:patwari.create');
     Route::put('patwaris/{patwari}', [PatwariController::class, 'update'])->middleware('permission:patwari.edit');
@@ -216,6 +223,7 @@ Route::middleware(['auth:sanctum', 'usable'])->group(function () {
         Route::post('lands/check-duplicate', [LandController::class, 'checkDuplicate']);
         Route::get('lands/{land}', [LandController::class, 'show']);
         Route::get('lands/{land}/history', [LandController::class, 'history']);
+        Route::get('lands/{land}/documents/{document}', [LandController::class, 'downloadDocument']);
         Route::get('farmers/{farmer}/lands', [LandController::class, 'forFarmer']);
         Route::get('data-health/summary', [DataHealthController::class, 'summary']);
         Route::get('data-health/mouzas', [DataHealthController::class, 'mouzas']);
@@ -227,6 +235,10 @@ Route::middleware(['auth:sanctum', 'usable'])->group(function () {
         Route::post('lands/{land}/transfer', [LandController::class, 'transfer']);
         Route::post('lands/{land}/cultivation', [LandController::class, 'changeCultivation']);
         Route::post('lands/{land}/cultivation/end', [LandController::class, 'endCultivation']);
+        Route::post('lands/{land}/documents', [LandController::class, 'storeDocument']);
+        Route::delete('lands/{land}/documents/{document}', [LandController::class, 'destroyDocument']);
+        Route::post('lands/{land}/notes', [LandController::class, 'storeNote']);
+        Route::delete('lands/{land}/notes/{note}', [LandController::class, 'destroyNote']);
     });
     Route::delete('lands/{land}', [LandController::class, 'destroy'])->middleware('permission:land.delete');
     Route::get('land-types', [LandTypeController::class, 'index']);

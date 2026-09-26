@@ -7,6 +7,7 @@ export type LandMeta = {
   surveys: Record<string, string>
   statuses: Record<string, string>
   cultivation_types: Record<string, string>
+  document_types: Record<string, string>
   units: Record<string, string>
   unit_factors: Record<string, number>
   land_types: { id: number; name_bn: string; category: string | null }[]

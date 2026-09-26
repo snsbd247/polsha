@@ -17,10 +17,10 @@ class Farmer extends Model
         'farmer_code', 'name_bn', 'name_en', 'father_name', 'mother_name', 'spouse_name', 'gender',
         'date_of_birth', 'nid', 'birth_reg_no', 'mobile', 'alt_mobile', 'email', 'photo', 'village_id', 'mouza_id',
         'para', 'post_office', 'post_code', 'household_id', 'household_relation', 'occupation', 'blood_group', 'education_level', 'farmer_type', 'remarks', 'is_active',
-        'merged_into_id', 'created_by', 'import_batch_id',
+        'merged_into_id', 'created_by', 'import_batch_id', 'delete_reason', 'delete_note', 'deleted_by', 'removed_at',
     ];
 
-    protected $casts = ['date_of_birth' => 'date:Y-m-d', 'is_active' => 'boolean'];
+    protected $casts = ['date_of_birth' => 'date:Y-m-d', 'is_active' => 'boolean', 'removed_at' => 'datetime'];
 
     public function village()
     {
@@ -70,6 +70,12 @@ class Farmer extends Model
     public function mergedInto()
     {
         return $this->belongsTo(Farmer::class, 'merged_into_id');
+    }
+
+    /** Who deleted or merged this record away. */
+    public function deleter()
+    {
+        return $this->belongsTo(User::class, 'deleted_by')->withTrashed();
     }
 
     /** Farmers that still count as real people (not merged away). */

@@ -10,6 +10,7 @@ export type FarmerMeta = {
   blood_groups: Record<string, string>
   education_levels: Record<string, string>
   farmer_types: Record<string, string>
+  delete_reasons: Record<string, string>
   cancel_reasons: Record<string, string>
 }
 

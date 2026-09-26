@@ -1,0 +1,520 @@
+/* Farmer merge — builds on farmer-list.css (fl-*); sizes follow the approved design. */
+.fm .fl-head h1,
+.fm .fm-step h3,
+.fm .fm-box-title strong,
+.fm .fm-compare .ant-table-thead > tr > th,
+.fm .fm-rel strong,
+.fm .fm-compare .ant-table-tbody > tr > td:first-child,
+.fm .fm-farmer-grid dt {
+  text-transform: capitalize;
+}
+
+.fm .fl-head {
+  margin-bottom: 14px;
+}
+
+.fm-history-btn.ant-btn {
+  height: 38px !important;
+  padding: 0 15px !important;
+}
+
+.fm-alert {
+  margin: 10px 0;
+}
+
+.fm-section {
+  background: #fff;
+  border: 1px solid var(--fl-border);
+  border-radius: 8px;
+  padding: 10px 10px 10px;
+  margin-bottom: 11px;
+}
+
+.fm-step {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 0 0 12px;
+}
+
+.fm-step-no {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  margin-top: 1px;
+  border-radius: 50%;
+  background: var(--fl-blue);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.fm-step h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 22px;
+  color: var(--fl-blue);
+}
+
+.fm-step p {
+  margin: 1px 0 0;
+  font-size: 13px;
+  color: #4b5563;
+}
+
+.fm-auto.ant-btn {
+  margin-left: auto;
+  height: 30px;
+  padding: 0 11px;
+  font-size: 12px;
+  color: var(--fl-blue);
+  border-color: #cfdcef;
+}
+
+/* step 1 */
+.fm-boxes {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.fm-box {
+  border-radius: 6px;
+  padding: 9px 10px 10px;
+  min-width: 0;
+}
+
+.fm-box-source {
+  background: #fff4f4;
+  border: 1px solid #f6c9c9;
+}
+
+.fm-box-target {
+  background: #f2fbf4;
+  border: 1px solid #d4eedc;
+}
+
+.fm-box-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  margin-bottom: 10px;
+}
+
+.fm-box-title strong {
+  font-weight: 600;
+  color: #111827;
+}
+
+.fm-box-title em {
+  font-style: normal;
+}
+
+.fm-box-source .fm-box-title .anticon,
+.fm-box-source .fm-box-title em {
+  color: #e0383e;
+}
+
+.fm-box-target .fm-box-title .anticon,
+.fm-box-target .fm-box-title em {
+  color: #1f9d55;
+}
+
+.fm-picker {
+  position: relative;
+}
+
+.fm-search {
+  display: flex;
+  gap: 8px;
+}
+
+.fm-search .ant-input-affix-wrapper {
+  height: 35px;
+  border-color: #d5dce7;
+}
+
+.fm-search .ant-input-prefix {
+  color: #6b7280;
+  margin-right: 8px;
+}
+
+.fm-search .ant-btn {
+  height: 35px;
+  min-width: 96px;
+}
+
+.fm-results {
+  position: absolute;
+  z-index: 20;
+  top: 39px;
+  left: 0;
+  right: 104px;
+  max-height: 290px;
+  overflow: auto;
+  background: #fff;
+  border: 1px solid #d5dce7;
+  border-radius: 6px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+}
+
+.fm-result {
+  display: block;
+  width: 100%;
+  padding: 7px 12px;
+  border: 0;
+  border-bottom: 1px solid #eef1f5;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+}
+
+.fm-result:hover {
+  background: #f1f6fe;
+}
+
+.fm-result strong {
+  display: block;
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.fm-result span,
+.fm-noresult {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.fm-noresult {
+  padding: 10px 12px;
+}
+
+.fm-farmer {
+  position: relative;
+  display: flex;
+  gap: 12px;
+  margin-top: 10px;
+  padding: 10px 12px;
+  min-height: 116px;
+  background: #fff;
+  border: 1px solid #e5e9f0;
+  border-radius: 6px;
+}
+
+.fm-farmer-empty {
+  align-items: center;
+  justify-content: center;
+  color: #9aa3b2;
+  font-size: 13px;
+}
+
+.fm-farmer > .ant-image,
+.fm-farmer > img,
+.fm-farmer > .ant-avatar {
+  flex: none;
+  margin-top: 4px;
+}
+
+.fm-initials {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 72px;
+  height: 72px;
+  margin-top: 4px;
+  border-radius: 4px;
+  background: #e6effd;
+  color: #1d5fd6;
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.fm-farmer-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.fm-farmer-name {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 4px;
+}
+
+.fm-farmer-name a {
+  font-size: 16.5px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.fm-side-tag.ant-tag {
+  margin: 0;
+  border: 0;
+  font-size: 12px;
+  line-height: 20px;
+  padding: 0 8px;
+}
+
+.fm-side-source.ant-tag {
+  background: #fde6e7;
+  color: #e0383e;
+}
+
+.fm-side-target.ant-tag {
+  background: #e3f5ea;
+  color: #1f9d55;
+}
+
+.fm-farmer-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.fm-farmer-grid dl {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: 12px;
+  row-gap: 1px;
+  margin: 0;
+  font-size: 13px;
+  line-height: 19px;
+}
+
+.fm-farmer-grid dt {
+  color: #374151;
+  white-space: nowrap;
+}
+
+.fm-farmer-grid dd {
+  margin: 0;
+  color: #111827;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.fm-farmer-grid dd > span {
+  color: #374151;
+  margin-right: 6px;
+}
+
+.fm-clear.ant-btn {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 26px;
+  height: 26px;
+  color: #4b5563;
+}
+
+/* step 2 */
+.fm-compare .ant-table {
+  font-size: 13px;
+  border: 1px solid var(--fl-border);
+  border-radius: 0;
+}
+
+.fm-compare .ant-table-container {
+  border-radius: 0 !important;
+}
+
+.fm-compare .ant-table-thead > tr > th {
+  background: #f6f8fb !important;
+  font-weight: 600;
+  color: #111827;
+  padding: 6px 10px !important;
+  border-radius: 0 !important;
+}
+
+.fm-compare .ant-table-thead > tr > th::before {
+  display: none;
+}
+
+.fm-compare .ant-table-tbody > tr > td {
+  padding: 3px 10px !important;
+  height: 26px;
+  color: #111827;
+  vertical-align: middle;
+}
+
+.fm-compare .ant-table-tbody > tr > td:first-child {
+  color: #374151;
+}
+
+.fm-cell {
+  cursor: pointer;
+}
+
+.fm-final {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.fm-final .ant-radio-wrapper {
+  margin: 0 0 0 -4px;
+}
+
+.fm-final-value {
+  flex: 1;
+  min-height: 20px;
+  padding: 1px 10px;
+  line-height: 18px;
+  background: #f1faf3;
+  border: 1px solid #c7e9d1;
+  border-radius: 3px;
+}
+
+/* step 3 */
+.fm-related {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.fm-rel {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 11px 12px;
+  border: 1px solid #e5e9f0;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.fm-rel .ant-checkbox-wrapper,
+.fm-rel .ant-checkbox {
+  margin-top: 2px;
+}
+
+.fm-rel .ant-checkbox-inner {
+  width: 18px;
+  height: 18px;
+}
+
+.fm-rel-icon {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  margin-top: 6px;
+  border-radius: 50%;
+}
+
+.fm-rel-text {
+  min-width: 0;
+  margin-top: 2px;
+}
+
+.fm-rel-text strong {
+  display: block;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #111827;
+  line-height: 20px;
+}
+
+.fm-rel-text small {
+  display: block;
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.fm-placeholder {
+  padding: 16px;
+  text-align: center;
+  color: #9aa3b2;
+  font-size: 13px;
+  border: 1px dashed #d5dce7;
+  border-radius: 6px;
+}
+
+.fm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 4px 0 8px;
+}
+
+.fm-actions .ant-btn {
+  height: 38px;
+  min-width: 90px;
+  font-size: 14px;
+}
+
+.fm-actions .ant-btn-primary {
+  min-width: 150px;
+}
+
+/* preview */
+.fm-preview table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 8px 0 12px;
+  font-size: 13px;
+}
+
+.fm-preview th,
+.fm-preview td {
+  padding: 5px 8px;
+  border-bottom: 1px solid #eef1f5;
+  text-align: left;
+}
+
+.fm-preview th {
+  width: 34%;
+  font-weight: 500;
+  color: #4b5563;
+}
+
+.fm-from-source.ant-tag {
+  margin-left: 8px;
+  font-size: 11px;
+  color: #e0383e;
+  background: #fde6e7;
+  border: 0;
+}
+
+.fm-preview-moves {
+  font-size: 13px;
+  color: #374151;
+}
+
+@media (max-width: 1400px) {
+  .fm-related {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 1100px) {
+  .fm-boxes {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .fm-related {
+    grid-template-columns: 1fr;
+  }
+  .fm-farmer-grid {
+    grid-template-columns: 1fr;
+    gap: 1px;
+  }
+  .fm-step {
+    flex-wrap: wrap;
+  }
+  .fm-auto.ant-btn {
+    margin-left: 40px;
+  }
+  .fm-results {
+    right: 0;
+  }
+}

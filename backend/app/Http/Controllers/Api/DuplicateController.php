@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\ApprovalRequest;
 use App\Models\Farmer;
 use App\Services\FarmerDuplicateService;
 use App\Services\FarmerMergeService;
@@ -35,18 +36,45 @@ class DuplicateController extends Controller
         return response()->json(['message' => __('এই জোড়া আর ডুপ্লিকেট হিসেবে দেখাবে না।')]);
     }
 
-    /** Side-by-side data for the merge screen. */
+    /** Side-by-side data for the merge screen; either side may still be empty. */
     public function compare(Request $request): JsonResponse
     {
-        $ids = $request->validate(['a' => ['required', 'integer'], 'b' => ['required', 'integer']]);
-        $load = fn ($id) => Farmer::with(['village:id,name_bn', 'mouza:id,name_bn', 'member:id,farmer_id,member_no,status', 'household:id,code'])
-            ->withCount('documents')->findOrFail($id);
+        $ids = $request->validate(['a' => ['nullable', 'integer'], 'b' => ['nullable', 'integer']]);
+        $load = function ($id) {
+            if (! $id) {
+                return null;
+            }
+            $f = Farmer::with(['village:id,name_bn', 'mouza:id,name_bn', 'member:id,farmer_id,member_no,status', 'household:id,code'])
+                ->withCount('documents')->findOrFail($id);
+
+            return $f->toArray() + [
+                'photo_url' => $f->photo ? url("api/farmers/{$f->id}/photo") : null,
+                'related' => FarmerMergeService::related($f),
+            ];
+        };
 
         return response()->json([
-            'a' => $load($ids['a']),
-            'b' => $load($ids['b']),
+            'a' => $load($ids['a'] ?? null),
+            'b' => $load($ids['b'] ?? null),
             'fields' => FarmerMergeService::MERGEABLE,
         ]);
+    }
+
+    /** Merge requests, newest first, with their outcome. */
+    public function history(Request $request): JsonResponse
+    {
+        $page = ApprovalRequest::where('action_key', 'farmer.merge')->with('requester:id,name_bn')->latest('id')
+            ->paginate($this->perPage($request))
+            ->through(fn (ApprovalRequest $r) => [
+                'id' => $r->id,
+                'status' => $r->status,
+                'created_at' => $r->created_at,
+                'requested_by' => $r->requester?->name_bn,
+                'keep' => Farmer::select('id', 'farmer_code', 'name_bn')->find($r->payload['keep_id'] ?? 0),
+                'remove' => Farmer::select('id', 'farmer_code', 'name_bn')->find($r->payload['remove_id'] ?? 0),
+            ]);
+
+        return response()->json($page);
     }
 
     public function requestMerge(Request $request): JsonResponse
@@ -57,10 +85,13 @@ class DuplicateController extends Controller
             'remove_id' => ['required', 'exists:farmers,id', 'different:keep_id'],
             'choices' => ['array'],
             'choices.*' => [Rule::in(['keep', 'remove'])],
+            'transfer' => ['nullable', 'array'],
+            'transfer.*' => [Rule::in(FarmerMergeService::TRANSFERABLE)],
         ]);
         $choices = array_intersect_key($data['choices'] ?? [], array_flip($fields));
 
-        $req = $this->merge->request(Farmer::findOrFail($data['keep_id']), Farmer::findOrFail($data['remove_id']), $choices);
+        $req = $this->merge->request(Farmer::findOrFail($data['keep_id']), Farmer::findOrFail($data['remove_id']), $choices,
+            $request->has('transfer') ? ($data['transfer'] ?? []) : null);
 
         return response()->json([
             'approval_id' => $req->id,

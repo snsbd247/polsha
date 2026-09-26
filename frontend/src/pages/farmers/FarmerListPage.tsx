@@ -35,6 +35,7 @@ import { nameOf, t as tx } from '../../lib/i18n'
 import { usePublicSettings } from '../../lib/settings'
 import type { Mouza } from '../../lib/types'
 import { DashIcon } from '../dashboard/DashIcons'
+import DeleteFarmerModal from './DeleteFarmerModal'
 import './farmer-list.css'
 
 type Filters = { search?: string; mouza_id?: number; member_status?: string; occupation?: string; land_owner?: string; is_active?: string; union_id?: number; village_id?: number }
@@ -73,6 +74,7 @@ export default function FarmerListPage() {
   const [selected, setSelected] = useState<number[]>([])
   const [hidden, setHidden] = useState<string[]>([])
   const [cardsOpen, setCardsOpen] = useState(false)
+  const [deleting, setDeleting] = useState<FarmerRow | null>(null)
 
   const apply = (patch: Partial<Filters> = {}) => {
     const next = { ...draft, ...patch }
@@ -137,6 +139,7 @@ export default function FarmerListPage() {
         const items = [
           can('membership.create') && !f.member && !f.pending_application && f.is_active && { key: 'apply', icon: <UserAddOutlined />, label: tx('সদস্য করুন'), onClick: () => navigate(`/membership/applications/new?farmer=${f.id}`) },
           { key: 'profile', icon: <IdcardOutlined />, label: tx('প্রোফাইল'), onClick: () => navigate(`/farmers/${f.id}`) },
+          can('farmer.delete') && !f.member && !f.pending_application && { key: 'delete', danger: true, icon: <DeleteOutlined />, label: tx('মুছুন'), onClick: () => setDeleting(f) },
         ].filter(Boolean) as { key: string; label: string; onClick: () => void }[]
         return (
           <div className="fl-actions">
@@ -432,6 +435,7 @@ export default function FarmerListPage() {
           ))}
         </div>
       </Modal>
+      <DeleteFarmerModal farmer={deleting} onClose={() => setDeleting(null)} />
     </div>
     </ConfigProvider>
   )

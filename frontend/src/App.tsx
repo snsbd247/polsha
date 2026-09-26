@@ -234,7 +234,7 @@ export default function App() {
 
         <Route path="lands" element={<Perm perm="land.view"><LandListPage /></Perm>} />
         <Route path="lands/new" element={<Perm perm="land.create"><LandFormPage /></Perm>} />
-        <Route path="lands/lookup" element={<Perm perm="land.view"><RecordLookupPage key="land" kind="land" title={tx('জমির প্রোফাইল')} /></Perm>} />
+        <Route path="lands/lookup" element={<Perm perm="land.view"><LandDetailPage /></Perm>} />
         <Route path="lands/lookup/history" element={<Perm perm="land.view"><RecordLookupPage key="land-h" kind="land" tab="audit" title={tx('জমির ইতিহাস')} /></Perm>} />
         <Route path="lands/:id" element={<Perm perm="land.view"><LandDetailPage /></Perm>} />
         <Route path="lands/:id/edit" element={<Perm perm="land.edit"><LandFormPage /></Perm>} />

@@ -10,6 +10,8 @@ use App\Models\Land;
 use App\Models\Loan;
 use App\Models\MemberAccount;
 use App\Models\Mouza;
+use App\Models\User;
+use App\Services\AuditLogger;
 use App\Services\FarmerDuplicateService;
 use App\Services\ImageService;
 use App\Services\MembershipService;
@@ -275,35 +277,87 @@ class FarmerController extends Controller
 
     public function destroy(Request $request, Farmer $farmer): JsonResponse
     {
-        $reason = $request->validate(['reason' => ['nullable', 'string', 'max:300']])['reason'] ?? null;
+        $data = $request->validate([
+            'reason_code' => ['nullable', Rule::in(array_diff(array_keys(config('erp.farmer.delete_reasons')), ['merged']))],
+            'reason' => ['nullable', 'string', 'max:300'],
+        ]);
         if ($farmer->member()->exists() || $farmer->applications()->exists()) {
             throw ValidationException::withMessages(['farmer' => __('সদস্যপদ বা আবেদন আছে এমন কৃষক মুছা যাবে না; নিষ্ক্রিয় করুন।')]);
         }
-        $farmer->delete();
-        if ($reason) {
-            AuditLog::where('auditable_type', 'Farmer')->where('auditable_id', $farmer->id)->where('action', 'delete')
-                ->latest('id')->first()?->update(['description' => $reason]);
-        }
+        DB::transaction(function () use ($farmer, $data, $request) {
+            $farmer->forceFill(['delete_reason' => $data['reason_code'] ?? 'other', 'delete_note' => $data['reason'] ?? null,
+                'deleted_by' => $request->user()->id, 'removed_at' => now()])->saveQuietly();
+            $farmer->delete();
+            if (! empty($data['reason'])) {
+                AuditLog::where('auditable_type', 'Farmer')->where('auditable_id', $farmer->id)->where('action', 'delete')
+                    ->latest('id')->first()?->update(['description' => $data['reason']]);
+            }
+        });
 
         return response()->json(['message' => __('মুছে ফেলা হয়েছে।')]);
     }
 
-    /** Deleted (soft) farmers with who deleted them, when and why. */
-    public function deleted(Request $request): JsonResponse
+    /** Deleted and merged-away farmers: one list, since both are gone from the farmer list. */
+    private function removedQuery(Request $request)
     {
-        $q = Farmer::onlyTrashed()->with(['village:id,name_bn,name_en', 'mouza:id,name_bn,name_en'])->latest('deleted_at');
-        if ($s = $request->query('q')) {
+        $q = Farmer::withTrashed()->where(fn ($w) => $w->whereNotNull('farmers.deleted_at')->orWhereNotNull('farmers.merged_into_id'));
+        if ($s = trim((string) ($request->query('search') ?? $request->query('q')))) {
             $s = Bn::toEnDigits($s);
-            $q->where(fn ($w) => $w->where('name_bn', 'like', "%$s%")->orWhere('name_en', 'like', "%$s%")
+            $q->where(fn ($w) => $w->where('name_bn', 'like', "%$s%")->orWhere('name_en', 'like', "%$s%")->orWhere('father_name', 'like', "%$s%")
                 ->orWhere('farmer_code', 'like', "%$s%")->orWhere('mobile', 'like', "%$s%")->orWhere('nid', 'like', "%$s%"));
         }
-        $page = $q->paginate($this->perPage($request));
-        $logs = AuditLog::with('user:id,name_bn,name_en')->where('auditable_type', 'Farmer')
-            ->whereIn('auditable_id', $page->getCollection()->pluck('id'))->where('action', 'delete')->latest('id')->get()->unique('auditable_id')->keyBy('auditable_id');
-        $page->getCollection()->transform(fn (Farmer $f) => $f->only(['id', 'farmer_code', 'name_bn', 'name_en', 'father_name', 'mobile', 'nid', 'deleted_at'])
-            + ['village' => $f->village, 'mouza' => $f->mouza, 'deleted_by' => $logs[$f->id]->user ?? null, 'reason' => $logs[$f->id]->description ?? null]);
+        foreach (['deleted_by', 'mouza_id'] as $f) {
+            if ($request->filled($f)) {
+                $q->where($f, $request->integer($f));
+            }
+        }
+        if ($request->filled('reason')) {
+            $q->where('delete_reason', $request->query('reason'));
+        }
+        if ($request->filled('from')) {
+            $q->where('removed_at', '>=', $request->date('from')->startOfDay());
+        }
+        if ($request->filled('to')) {
+            $q->where('removed_at', '<=', $request->date('to')->endOfDay());
+        }
+
+        return $q;
+    }
+
+    /** Deleted farmers with who removed them, when and why. */
+    public function deleted(Request $request)
+    {
+        $q = $this->removedQuery($request)->with(['village:id,name_bn,name_en', 'mouza:id,name_bn,name_en', 'deleter:id,name_bn,name_en', 'mergedInto:id,farmer_code,name_bn'])
+            ->orderByDesc('removed_at')->orderByDesc('id');
+        $reasons = config('erp.farmer.delete_reasons');
+
+        if ($request->query('export') === 'csv') {
+            return CsvExport::download('deleted-farmers.csv',
+                [__('কৃষক নং'), __('নাম'), __('পিতার নাম'), __('মোবাইল'), 'NID', __('মৌজা'), __('মুছার তারিখ'), __('মুছেছেন'), __('কারণ'), __('মন্তব্য')],
+                $q->lazy()->map(fn (Farmer $f) => [$f->farmer_code, $f->name_bn, $f->father_name, $f->mobile, $f->nid, $f->mouza?->name_bn,
+                    $f->removed_at?->format('Y-m-d'), $f->deleter?->name_bn, __($reasons[$f->delete_reason] ?? ''), $f->delete_note]));
+        }
+
+        $page = $q->paginate($this->perPage($request))->through(fn (Farmer $f) => $f->only(['id', 'farmer_code', 'name_bn', 'name_en', 'father_name', 'mobile', 'nid', 'deleted_at'])
+            + ['village' => $f->village, 'mouza' => $f->mouza, 'deleted_by' => $f->deleter, 'removed_at' => $f->removed_at ?? $f->deleted_at,
+                'reason_code' => $f->delete_reason, 'reason' => $f->delete_note, 'merged_into' => $f->mergedInto,
+                'photo_url' => $f->photo ? url("api/farmers/{$f->id}/photo") : null]);
 
         return response()->json($page);
+    }
+
+    public function deletedSummary(): JsonResponse
+    {
+        $removed = Farmer::withTrashed()->where(fn ($w) => $w->whereNotNull('deleted_at')->orWhereNotNull('merged_into_id'));
+
+        return response()->json([
+            'total' => (clone $removed)->count(),
+            'restored' => AuditLog::where('auditable_type', 'Farmer')->where('action', 'restore')->count(),
+            'purged' => AuditLog::where('auditable_type', 'Farmer')->where('action', 'purge')->count(),
+            'this_month' => (clone $removed)->where('removed_at', '>=', now()->startOfMonth())->count(),
+            // people who removed farmers, for the "Deleted by" filter
+            'users' => User::withTrashed()->whereIn('id', (clone $removed)->whereNotNull('deleted_by')->distinct()->pluck('deleted_by'))->get(['id', 'name_bn', 'name_en']),
+        ]);
     }
 
     public function restore(int $id): JsonResponse
@@ -313,8 +367,38 @@ class FarmerController extends Controller
             throw ValidationException::withMessages(['farmer' => __('এই NID দিয়ে আরেকজন সক্রিয় কৃষক আছে; আগে সেটি যাচাই করুন।')]);
         }
         $farmer->restore();
+        $farmer->forceFill(['delete_reason' => null, 'delete_note' => null, 'deleted_by' => null, 'removed_at' => null])->saveQuietly();
 
         return response()->json(['id' => $farmer->id, 'message' => __('কৃষক পুনরুদ্ধার করা হয়েছে।')]);
+    }
+
+    /**
+     * Remove a deleted farmer for good. Only a record nothing else points to
+     * may go; anything with land, bills, payments or history stays restorable.
+     */
+    public function purge(int $id): JsonResponse
+    {
+        $farmer = Farmer::onlyTrashed()->findOrFail($id);
+        $uses = [
+            'land_owners' => 'farmer_id', 'land_cultivations' => 'farmer_id', 'invoices' => 'farmer_id', 'receipts' => 'farmer_id',
+            'combined_payments' => 'farmer_id', 'public_payment_requests' => 'farmer_id', 'members' => 'farmer_id',
+            'membership_applications' => 'farmer_id', 'patwaris' => 'farmer_id', 'households' => 'head_farmer_id', 'farmers' => 'merged_into_id',
+        ];
+        foreach ($uses as $table => $col) {
+            if (DB::table($table)->where($col, $farmer->id)->exists()) {
+                throw ValidationException::withMessages(['farmer' => __('এই কৃষকের সাথে অন্য রেকর্ড যুক্ত আছে; স্থায়ীভাবে মুছা যাবে না।')]);
+            }
+        }
+
+        DB::transaction(function () use ($farmer) {
+            $files = $farmer->documents()->pluck('path')->push($farmer->photo)->filter()->all();
+            AuditLogger::log('farmer', 'purge', $farmer, ['farmer_code' => $farmer->farmer_code, 'name_bn' => $farmer->name_bn]);
+            $farmer->documents()->delete();
+            $farmer->forceDelete();
+            DB::afterCommit(fn () => Storage::disk('local')->delete($files));
+        });
+
+        return response()->json(['message' => __('কৃষক স্থায়ীভাবে মুছে ফেলা হয়েছে।')]);
     }
 
     public function photo(Farmer $farmer)

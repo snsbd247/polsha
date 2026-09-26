@@ -29,4 +29,14 @@ class Mouza extends Model
     {
         return $this->belongsToMany(Village::class);
     }
+
+    public function farmers()
+    {
+        return $this->hasMany(Farmer::class);
+    }
+
+    public function lands()
+    {
+        return $this->hasMany(Land::class);
+    }
 }

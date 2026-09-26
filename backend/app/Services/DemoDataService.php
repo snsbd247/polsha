@@ -16,6 +16,7 @@ use App\Models\Loan;
 use App\Models\Member;
 use App\Models\MemberAccount;
 use App\Models\MemberTransaction;
+use App\Models\Sequence;
 use App\Models\User;
 use App\Support\Bn;
 use Closure;
@@ -60,6 +61,9 @@ class DemoDataService
     private array $tokens = [];
 
     private SplPriorityQueue $queue;
+
+    /** @var list<Sequence> yearly counters as they stood before the demo */
+    private array $counters = [];
 
     private int $seq = 0;
 
@@ -124,6 +128,10 @@ class DemoDataService
         try {
             $this->makeUsers();
             SettingService::putQuiet(self::SETTING, ['snapshot' => $snapshot, 'seeded_at' => $seededAt, 'users' => collect($this->users)->pluck('id')->all()]);
+            // the system clock follows the simulated day, so join dates, audit times etc. land on it
+            $this->counters = Sequence::where('reset_yearly', true)->get(['key', 'current_year', 'next_value'])->all();
+            Carbon::setTestNow($this->start->copy()->setTime(10, 0));
+            $this->resumeCounters($this->start->year);
             $this->setup($farmers);
             $this->run();
         } catch (\Throwable $e) {
@@ -133,6 +141,7 @@ class DemoDataService
             Cache::flush();
             throw $e;
         } finally {
+            Carbon::setTestNow();
             foreach ($this->users as $u) {
                 $u->tokens()->delete();
             }
@@ -154,7 +163,9 @@ class DemoDataService
             throw new RuntimeException('স্ন্যাপশট ফাইল পাওয়া যায়নি: '.$info['snapshot']);
         }
         $real = AuditLog::where('created_at', '>', $info['seeded_at'])->whereNotNull('user_id')
-            ->whereNotIn('user_id', $info['users'] ?? [])->count();
+            ->whereNotIn('user_id', $info['users'] ?? [])
+            // signing in to look at the demo is not work that would be lost
+            ->whereNotIn('action', ['login', 'logout', 'login_failed'])->count();
         if ($real > 0 && ! $force) {
             throw new RuntimeException("ডেমোর পর অন্য ব্যবহারকারীরা {$real}টি কাজ করেছেন; সেগুলোও মুছে যাবে। নিশ্চিত হলে --force দিয়ে চালান।");
         }
@@ -179,7 +190,7 @@ class DemoDataService
             $this->tokens[$u->id] = $u->createToken('demo')->plainTextToken;
         }
         // the admin also enters old-book members and the demo area
-        $this->users['admin']->givePermissionTo(['member.admin', 'member.view', 'location.create', 'mouza.create', 'farmer.view']);
+        $this->users['admin']->givePermissionTo(['member.admin', 'member.view', 'location.create', 'mouza.create', 'farmer.view', 'farmer.delete']);
     }
 
     /** Call the API as a demo user; any error stops the run. */
@@ -239,10 +250,28 @@ class DemoDataService
         while (! $this->queue->isEmpty()) {
             [$date, $fn] = $this->queue->extract();
             if (substr($date, 0, 7) !== $month) {
+                if (substr($date, 0, 4) !== substr($month, 0, 4)) {
+                    $this->resumeCounters((int) substr($date, 0, 4));
+                }
                 $month = substr($date, 0, 7);
                 ($this->log)("  মাস $month");
             }
+            Carbon::setTestNow(Carbon::parse($date)->setTime(mt_rand(9, 16), mt_rand(0, 59)));
             $fn($date);
+        }
+    }
+
+    /**
+     * Yearly counters only expect time to move forward. The demo clock starts
+     * a year back, so on reaching the year the counters were already in, carry
+     * on from where the real numbers stood instead of restarting at 1.
+     */
+    private function resumeCounters(int $year): void
+    {
+        foreach ($this->counters as $c) {
+            if ((int) $c->current_year === $year) {
+                Sequence::where('key', $c->key)->update(['current_year' => $year, 'next_value' => $c->next_value]);
+            }
         }
     }
 
@@ -288,12 +317,16 @@ class DemoDataService
         ])['account_id'];
         $this->loanProducts();
         $this->makeFarmers($count);
+        $this->patwaris();
         $this->makeLands();
         $this->legacyMembers($d0);
         $this->applications();
         $this->seasons();
         $this->assets();
         $this->monthly();
+        $this->statusChanges();
+        $this->voterLists();
+        $this->deletions();
         $this->loans();
     }
 
@@ -385,6 +418,31 @@ class DemoDataService
         ($this->log)('  '.count($this->farmers).' জন কৃষক');
     }
 
+    /** Land-record keepers for the demo mouzas; long-serving ones joined years before the demo year. */
+    private function patwaris(): void
+    {
+        $mouzas = array_column($this->villages, 'mouza_id');
+        $farmerIds = array_keys($this->farmers);
+        for ($i = 0; $i < 8; $i++) {
+            [$bn] = DemoNames::person(true);
+            $picked = array_values(array_unique([$mouzas[$i % count($mouzas)], $mouzas[mt_rand(0, count($mouzas) - 1)]]));
+            $data = [
+                'name' => $bn, 'father_name' => DemoNames::person(true)[0],
+                'mobile' => '01'.mt_rand(3, 9).str_pad((string) mt_rand(0, 99999999), 8, '0', STR_PAD_LEFT),
+                'nid' => (string) mt_rand(1000000000, 9999999999),
+                // two of them are local farmers too
+                'farmer_id' => $i < 2 ? $farmerIds[$i * 7] : null,
+                'mouza_ids' => $picked, 'start_date' => Carbon::create(mt_rand(2018, 2024), mt_rand(1, 12), mt_rand(1, 28))->toDateString(),
+                'is_active' => true,
+            ];
+            $p = $this->api('member', 'POST', 'patwaris', $data);
+            if ($i === 7) {
+                // retired later in the year: set inactive, mouzas stay on record
+                $this->at($this->day($this->start, 120, 250), fn (string $d) => $this->api('member', 'PUT', "patwaris/{$p['id']}", ['is_active' => false, 'start_date' => $d] + $data));
+            }
+        }
+    }
+
     private function makeLands(): void
     {
         $byVillage = [];
@@ -452,7 +510,7 @@ class DemoDataService
         $candidates = array_values(array_diff(array_keys($this->farmers), array_keys($this->members)));
         shuffle($candidates);
         $fee = (float) SettingService::get('admission_fee', 0);
-        $span = $this->start->diffInDays(now()) - 8;
+        $span = $this->start->diffInDays(Carbon::parse($this->today)) - 8;
         foreach (array_slice($candidates, 0, 42) as $i => $fid) {
             $on = $this->day($this->start, 12, (int) $span);
             $outcome = match (true) {
@@ -499,7 +557,7 @@ class DemoDataService
     private function moneyIn(int $memberId, string $kind, string $date, int $amount): void
     {
         $acc = $this->accounts[$memberId][$kind] ?? null;
-        if (! $acc || $amount <= 0) {
+        if (! $acc || $amount <= 0 || Member::whereKey($memberId)->value('status') !== Member::ACTIVE) {
             return;
         }
         $this->api('cashier', 'POST', "funds/$kind/accounts/$acc/transactions", [
@@ -693,7 +751,8 @@ class DemoDataService
 
     private function withdrawal(string $date): void
     {
-        $acc = MemberAccount::where('kind', 'savings')->whereIn('id', array_column($this->accounts, 'savings'))->where('balance', '>', 3000)->inRandomOrder()->first();
+        $acc = MemberAccount::where('kind', 'savings')->whereIn('id', array_column($this->accounts, 'savings'))->where('balance', '>', 3000)
+            ->whereHas('member', fn ($m) => $m->where('status', Member::ACTIVE))->inRandomOrder()->first();
         if (! $acc) {
             return;
         }
@@ -711,15 +770,94 @@ class DemoDataService
     /** A member pays a round sum at the counter; the system splits it over dues. */
     private function combined(string $date): void
     {
-        $fid = $this->pick(array_keys($this->members));
+        $fid = Member::whereIn('id', array_values($this->members))->where('status', Member::ACTIVE)->inRandomOrder()->value('farmer_id');
+        if (! $fid) {
+            return;
+        }
         $this->api('cashier', 'POST', 'combined-payments', [
             'farmer_id' => $fid, 'date' => $date, 'amount' => $this->money(500, 3000, 100), 'method' => 'cash',
         ]);
     }
 
+    /** A few members go quiet during the year (and one comes back), so inactive members and excluded voters exist. */
+    private function statusChanges(): void
+    {
+        $span = $this->start->diffInDays(Carbon::parse($this->today)) - 30;
+        for ($i = 0; $i < 9; $i++) {
+            $this->at($this->day($this->start, 40, (int) $span), function (string $d) use ($i) {
+                $memberId = Member::whereIn('id', array_values($this->members))->where('status', Member::ACTIVE)
+                    ->whereNotIn('id', Loan::whereIn('status', Loan::OPEN)->pluck('member_id'))->inRandomOrder()->value('id');
+                if (! $memberId) {
+                    return;
+                }
+                $r = $this->api('member', 'POST', "members/$memberId/status", [
+                    'action' => 'deactivate', 'effective_date' => $d,
+                    'reason' => $this->pick(['টানা ছয় মাস সঞ্চয় জমা দেননি', 'এলাকার বাইরে চলে গেছেন', 'সভায় অনুপস্থিত ও যোগাযোগ নেই']),
+                ]);
+                $this->approve($r['approval_id'] ?? null);
+                if ($i === 0) {
+                    $this->at(Carbon::parse($d)->addDays(60), function (string $x) use ($memberId) {
+                        $r = $this->api('member', 'POST', "members/$memberId/status", ['action' => 'activate', 'effective_date' => $x, 'reason' => 'বকেয়া সঞ্চয় জমা দিয়ে আবার সক্রিয়']);
+                        $this->approve($r['approval_id'] ?? null);
+                    });
+                }
+            });
+        }
+    }
+
+    /**
+     * Records entered by mistake over the year: deleted with a reason, a couple
+     * restored, one removed for good, and two duplicates merged into the real farmer.
+     */
+    private function deletions(): void
+    {
+        $span = $this->start->diffInDays(Carbon::parse($this->today)) - 5;
+        $plan = ['duplicate', 'duplicate', 'duplicate', 'wrong_data', 'wrong_data', 'wrong_data', 'not_farmer', 'not_farmer',
+            'duplicate', 'wrong_data', 'merge', 'merge', 'restore', 'restore', 'purge'];
+        foreach ($plan as $i => $what) {
+            // the last few land in the current month so "deleted this month" is not empty
+            $date = $i >= 12 ? Carbon::parse($this->today)->subDays(mt_rand(0, 8)) : $this->day($this->start, 30, (int) $span);
+            $this->at($date, function (string $d) use ($what) {
+                $real = array_rand($this->farmers);
+                $copy = $this->farmers[$real];
+                $v = $this->villages[$copy['village']];
+                // a duplicate re-enters an existing farmer; other mistakes are someone new
+                [$bn, $en] = in_array($what, ['duplicate', 'merge'], true) ? [$copy['name'], null] : DemoNames::person(true);
+                $f = $this->api('member', 'POST', 'farmers', [
+                    'name_bn' => $bn, 'name_en' => $en, 'father_name' => DemoNames::person(true)[0], 'gender' => 'male',
+                    'mobile' => '01'.mt_rand(3, 9).str_pad((string) mt_rand(0, 99999999), 8, '0', STR_PAD_LEFT),
+                    'village_id' => $v['id'], 'mouza_id' => $v['mouza_id'], 'occupation' => 'farmer', 'confirm_duplicate' => true,
+                ]);
+                if ($what === 'merge') {
+                    $r = $this->api('member', 'POST', 'farmers-merge', ['keep_id' => $real, 'remove_id' => $f['id'], 'choices' => []]);
+                    $this->approve($r['approval_id'] ?? null);
+
+                    return;
+                }
+                $reason = ['duplicate' => 'একই কৃষক দুবার এন্ট্রি হয়েছে', 'wrong_data' => 'নাম ও মোবাইল ভুল লেখা হয়েছিল', 'not_farmer' => 'চাষাবাদ করেন না, ভুলে যুক্ত হয়েছিল'];
+                $code = in_array($what, ['restore', 'purge'], true) ? 'wrong_data' : $what;
+                $this->api('admin', 'DELETE', "farmers/{$f['id']}", ['reason_code' => $code, 'reason' => $reason[$code]]);
+                if ($what === 'restore') {
+                    $this->api('admin', 'POST', "farmers/{$f['id']}/restore");
+                } elseif ($what === 'purge') {
+                    $this->api('admin', 'DELETE', "farmers-deleted/{$f['id']}");
+                }
+            });
+        }
+    }
+
+    /** The annual general meeting list, and a fresh list for the coming election. */
+    private function voterLists(): void
+    {
+        $agm = $this->start->copy()->addDays(95);
+        $this->at($agm, fn (string $d) => $this->api('admin', 'POST', 'voter-lists', ['title' => 'বার্ষিক সাধারণ সভা '.Bn::toBnDigits($agm->year).' — ভোটার তালিকা (ডেমো)', 'cutoff_date' => $d]));
+        $recent = Carbon::parse($this->today)->subDays(12);
+        $this->at($recent, fn (string $d) => $this->api('admin', 'POST', 'voter-lists', ['title' => 'ব্যবস্থাপনা কমিটি নির্বাচন '.Bn::toBnDigits($recent->year).' — ভোটার তালিকা (ডেমো)', 'cutoff_date' => $d]));
+    }
+
     private function loans(): void
     {
-        $span = $this->start->diffInDays(now()) - 20;
+        $span = $this->start->diffInDays(Carbon::parse($this->today)) - 20;
         // about one loan for every four farmers over the year
         for ($i = 0, $n = max(3, (int) round(count($this->farmers) / 3.6)); $i < $n; $i++) {
             $on = $this->day($this->start, 20, (int) $span);
@@ -734,14 +872,15 @@ class DemoDataService
         $members = array_values($this->members);
         shuffle($members);
         foreach (array_slice($members, 0, 12) as $memberId) {
-            if (Loan::where('member_id', $memberId)->whereIn('status', Loan::OPEN)->exists()) {
+            if (Loan::where('member_id', $memberId)->whereIn('status', Loan::OPEN)->exists() || Member::whereKey($memberId)->value('status') !== Member::ACTIVE) {
                 continue;
             }
             $limit = (float) $this->api('loan', 'GET', 'loans/eligibility', ['member_id' => $memberId, 'product_id' => $product])['limit'];
             if ($limit < 5000) {
                 continue;
             }
-            $guarantor = collect($members)->first(fn ($g) => $g !== $memberId && app(LoanService::class)->guaranteeCount($g) < (int) SettingService::get('loan_max_guarantees', 2));
+            $active = Member::whereIn('id', $members)->where('status', Member::ACTIVE)->pluck('id')->all();
+            $guarantor = collect($active)->first(fn ($g) => $g !== $memberId && app(LoanService::class)->guaranteeCount($g) < (int) SettingService::get('loan_max_guarantees', 2));
             if (! $guarantor) {
                 return;
             }

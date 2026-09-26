@@ -22,10 +22,43 @@ class PatwariController extends Controller
             ->whereIn('lands.mouza_id', DB::table('patwari_mouza_assignments')->whereColumn('patwari_id', 'patwaris.id')->whereNull('end_date')->select('mouza_id'))
             ->selectRaw('count(*)');
 
-        return response()->json($this->filtered($request)
-            ->with(['currentAssignments.mouza:id,name_bn,jl_no', 'farmer:id,farmer_code,name_bn'])
+        $page = $this->filtered($request)
+            ->with(['currentAssignments.mouza:id,name_bn,jl_no,upazila_id', 'currentAssignments.mouza.upazila:id,name_bn,district_id', 'currentAssignments.mouza.upazila.district:id,name_bn',
+                'farmer:id,farmer_code,name_bn,photo'])
             ->select('patwaris.*')->selectSub($landsCount, 'lands_count')
-            ->orderBy('name')->paginate($this->perPage($request)));
+            // joined = the first day they held any mouza
+            ->selectSub(PatwariMouzaAssignment::whereColumn('patwari_id', 'patwaris.id')->selectRaw('min(start_date)'), 'joined_on')
+            ->orderBy('name')->paginate($this->perPage($request))
+            ->through(function (Patwari $p) {
+                $upazilas = $p->currentAssignments->pluck('mouza.upazila')->filter()->unique('id');
+
+                return $p->toArray() + [
+                    'upazila' => $upazilas->pluck('name_bn')->implode(', ') ?: null,
+                    'district' => $upazilas->pluck('district.name_bn')->filter()->unique()->implode(', ') ?: null,
+                    'mouza_count' => $p->currentAssignments->count(),
+                    // a patwari has no photo of their own; one who is also a farmer shows that photo
+                    'photo_url' => $p->farmer?->photo ? url("api/farmers/{$p->farmer_id}/photo") : null,
+                ];
+            });
+
+        return response()->json($page);
+    }
+
+    /** Header figures, and the districts/upazilas patwaris currently work in (for the filters). */
+    public function summary(): JsonResponse
+    {
+        $current = PatwariMouzaAssignment::whereNull('end_date');
+        $upazilaIds = DB::table('mouzas')->whereIn('id', (clone $current)->select('mouza_id'))->distinct()->pluck('upazila_id');
+        $upazilas = DB::table('upazilas')->whereIn('id', $upazilaIds)->orderBy('name_bn')->get(['id', 'name_bn', 'district_id']);
+
+        return response()->json([
+            'total' => Patwari::count(),
+            'active' => Patwari::where('is_active', true)->count(),
+            'inactive' => Patwari::where('is_active', false)->count(),
+            'mouzas' => (clone $current)->distinct()->count('mouza_id'),
+            'districts' => DB::table('districts')->whereIn('id', $upazilas->pluck('district_id'))->orderBy('name_bn')->get(['id', 'name_bn']),
+            'upazilas' => $upazilas,
+        ]);
     }
 
     public function export(Request $request)
@@ -91,10 +124,17 @@ class PatwariController extends Controller
         $q = Patwari::query();
         if ($search = trim((string) $request->query('search'))) {
             $en = Bn::toEnDigits($search);
-            $q->where(fn ($w) => $w->where('name', 'like', "%$search%")->orWhere('mobile', 'like', "%$en%"));
+            $q->where(fn ($w) => $w->where('name', 'like', "%$search%")->orWhere('father_name', 'like', "%$search%")
+                ->orWhere('mobile', 'like', "%$en%")->orWhere('nid', 'like', "%$en%"));
         }
         if ($request->filled('mouza_id')) {
             $q->whereHas('currentAssignments', fn ($a) => $a->where('mouza_id', $request->query('mouza_id')));
+        }
+        if ($request->filled('upazila_id')) {
+            $q->whereHas('currentAssignments.mouza', fn ($m) => $m->where('upazila_id', $request->integer('upazila_id')));
+        }
+        if ($request->filled('district_id')) {
+            $q->whereHas('currentAssignments.mouza.upazila', fn ($u) => $u->where('district_id', $request->integer('district_id')));
         }
         if ($request->filled('is_active')) {
             $q->where('is_active', $request->boolean('is_active'));

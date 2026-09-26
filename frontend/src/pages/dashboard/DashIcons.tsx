@@ -24,6 +24,33 @@ const PATHS: Record<string, ReactNode> = {
       <path d="m17 8 5 5M22 8l-5 5" />
     </>
   ),
+  userPlus: (
+    <>
+      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+      <circle cx="9" cy="7" r="4" />
+      <path d="M19 8v6M22 11h-6" />
+    </>
+  ),
+  trash: (
+    <>
+      <path d="M3 6h18M8 6V4h8v2M5 6l1 15h12l1-15" />
+      <path d="M10 10v7M14 10v7" />
+    </>
+  ),
+  restore: (
+    <>
+      <path d="M20 11a8 8 0 0 0-14.5-4.5L4 8" />
+      <path d="M4 3v5h5" />
+      <path d="M4 13a8 8 0 0 0 14.5 4.5L20 16" />
+      <path d="M20 21v-5h-5" />
+    </>
+  ),
+  mapPin: (
+    <>
+      <path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z" />
+      <circle cx="12" cy="9.5" r="2.5" />
+    </>
+  ),
   userClock: (
     <>
       <path d="M12 15H6a4 4 0 0 0-4 4v2" />

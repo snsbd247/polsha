@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\ApprovalRequest;
 use App\Models\Farmer;
 use App\Models\FarmerDocument;
+use App\Models\FarmerFamilyMember;
 use App\Models\LandType;
 use App\Models\MembershipApplication;
 use App\Models\User;
@@ -97,6 +98,61 @@ class FarmerTest extends Phase2TestCase
 
         // Merged record disappears from the list.
         $this->actingAs($this->officer)->getJson('/api/farmers')->assertJsonPath('total', 1);
+    }
+
+    public function test_merge_screen_data_transfer_choice_and_history(): void
+    {
+        $keep = $this->makeFarmer(['nid' => null]);
+        $remove = $this->makeFarmer(['nid' => '9876543210', 'mobile' => '01899999999']);
+        FarmerFamilyMember::create(['farmer_id' => $remove->id, 'name' => 'ছেলে', 'relation' => 'son']);
+
+        // one side may be picked before the other
+        $this->actingAs($this->officer)->getJson("/api/farmers/compare?b={$remove->id}")->assertOk()
+            ->assertJsonPath('a', null)->assertJsonPath('b.related.land', 0)->assertJsonPath('b.related.membership', false);
+
+        $res = $this->actingAs($this->officer)->postJson('/api/farmers-merge', [
+            'keep_id' => $keep->id, 'remove_id' => $remove->id, 'choices' => [], 'transfer' => ['irrigation'],
+        ])->assertCreated();
+        $this->assertSame(['irrigation'], ApprovalRequest::find($res->json('approval_id'))->payload['transfer']);
+        $this->actingAs($this->officer)->postJson('/api/farmers-merge', ['keep_id' => $keep->id, 'remove_id' => $remove->id, 'transfer' => ['bank']])
+            ->assertStatus(422)->assertJsonValidationErrors('transfer.0');
+
+        $this->actingAs($this->manager)->postJson("/api/approvals/{$res->json('approval_id')}/decide", ['decision' => 'approve'])->assertOk();
+        $this->assertSame(1, FarmerFamilyMember::where('farmer_id', $keep->id)->count());
+        $this->assertSame('merged', $remove->fresh()->delete_reason);
+
+        $this->actingAs($this->officer)->getJson('/api/farmers-merge/history')->assertOk()
+            ->assertJsonPath('data.0.status', 'approved')->assertJsonPath('data.0.keep.id', $keep->id)->assertJsonPath('data.0.remove.id', $remove->id);
+        // the merged-away record shows on the deleted list, and cannot be restored
+        $this->actingAs($this->officer)->getJson('/api/farmers-deleted')->assertJsonPath('total', 1)
+            ->assertJsonPath('data.0.reason_code', 'merged')->assertJsonPath('data.0.merged_into.id', $keep->id);
+    }
+
+    public function test_delete_with_reason_restore_and_purge(): void
+    {
+        $admin = $this->userWithRole('super_admin');
+        $f = $this->makeFarmer();
+
+        $this->actingAs($admin)->deleteJson("/api/farmers/{$f->id}", ['reason_code' => 'merged'])->assertStatus(422);
+        $this->actingAs($admin)->deleteJson("/api/farmers/{$f->id}", ['reason_code' => 'wrong_data', 'reason' => 'ভুল নাম'])->assertOk();
+
+        $this->actingAs($admin)->getJson('/api/farmers-deleted?reason=wrong_data')->assertJsonPath('total', 1)
+            ->assertJsonPath('data.0.reason_code', 'wrong_data')->assertJsonPath('data.0.reason', 'ভুল নাম')->assertJsonPath('data.0.deleted_by.id', $admin->id);
+        $this->actingAs($admin)->getJson('/api/farmers-deleted?reason=duplicate')->assertJsonPath('total', 0);
+        $this->actingAs($admin)->getJson('/api/farmers-deleted/summary')
+            ->assertJson(['total' => 1, 'restored' => 0, 'purged' => 0, 'this_month' => 1])->assertJsonPath('users.0.id', $admin->id);
+
+        $this->actingAs($admin)->postJson("/api/farmers/{$f->id}/restore")->assertOk();
+        $this->assertNull($f->fresh()->delete_reason);
+        $this->actingAs($admin)->getJson('/api/farmers-deleted/summary')->assertJson(['total' => 0, 'restored' => 1]);
+
+        // a live record cannot be purged; a deleted one with nothing attached can
+        $this->actingAs($admin)->deleteJson("/api/farmers-deleted/{$f->id}")->assertNotFound();
+        $this->actingAs($admin)->deleteJson("/api/farmers/{$f->id}", ['reason_code' => 'duplicate'])->assertOk();
+        $this->actingAs($this->officer)->deleteJson("/api/farmers-deleted/{$f->id}")->assertForbidden();
+        $this->actingAs($admin)->deleteJson("/api/farmers-deleted/{$f->id}")->assertOk();
+        $this->assertNull(Farmer::withTrashed()->find($f->id));
+        $this->actingAs($admin)->getJson('/api/farmers-deleted/summary')->assertJson(['total' => 0, 'purged' => 1]);
     }
 
     public function test_data_entry_cannot_delete_farmer(): void

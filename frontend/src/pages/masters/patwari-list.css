@@ -1,0 +1,59 @@
+/* Patwari list — builds on farmer-list.css (fl-*), member-list.css (ml-*) and the deleted-farmers filter row (dl-*). */
+.pl-stats .fl-stat {
+  min-height: 102px;
+}
+
+.pl .fl-table-head h3 {
+  color: var(--fl-blue);
+}
+
+.pl-columns.ant-btn {
+  height: 34px;
+  padding: 0 12px;
+  font-size: 13.5px;
+  background: #fff;
+  border-color: #d5dce7;
+}
+
+.pl-table .ant-table-tbody > tr > td {
+  height: 43px;
+}
+
+.pl-initials {
+  width: 38px;
+  height: 38px;
+  font-size: 15px;
+}
+
+.pl-actions {
+  justify-content: center;
+  gap: 10px;
+}
+
+.pl-act.ant-btn {
+  width: 38px;
+  height: 30px;
+  color: var(--fl-blue);
+  border-color: #dfe5ee;
+}
+
+.mz-stat {
+  cursor: default !important;
+}
+
+.mz-unit {
+  margin-left: 16px;
+  font-size: 13px;
+  font-weight: 400;
+  color: #4b5563;
+}
+
+.pl-desc {
+  margin-bottom: 18px;
+}
+
+.pl-history-title {
+  margin: 0 0 12px;
+  font-size: 14px;
+  font-weight: 600;
+}

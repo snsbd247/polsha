@@ -8,6 +8,8 @@ use App\Models\Farmer;
 use App\Models\IrrigationType;
 use App\Models\Land;
 use App\Models\LandCultivation;
+use App\Models\LandDocument;
+use App\Models\LandNote;
 use App\Models\LandOwner;
 use App\Models\LandType;
 use App\Services\LandService;
@@ -18,6 +20,7 @@ use App\Support\Tr;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 
 class LandController extends Controller
@@ -30,6 +33,7 @@ class LandController extends Controller
             'surveys' => Tr::map(Land::SURVEYS),
             'statuses' => Tr::map(Land::STATUSES),
             'cultivation_types' => Tr::map(Land::CULTIVATION_TYPES),
+            'document_types' => Tr::map(Land::DOCUMENT_TYPES),
             'units' => Tr::map(AreaUnit::LABELS),
             'unit_factors' => AreaUnit::factors(),
             'irrigation_types' => IrrigationType::where('is_active', true)->orderBy('sort_order')->get(['id', 'name_bn'])->map(fn ($t) => ['id' => $t->id, 'name_bn' => __($t->name_bn)]),
@@ -68,25 +72,117 @@ class LandController extends Controller
     public function show(Land $land): JsonResponse
     {
         $land->load([
-            'mouza.union.upazila', 'landType:id,name_bn', 'irrigationType:id,name_bn',
+            'mouza.union.upazila.district', 'mouza.villages:id,name_bn', 'landType:id,name_bn', 'irrigationType:id,name_bn',
             'ownerHistory.farmer:id,farmer_code,name_bn,father_name',
             'cultivationHistory.farmer:id,farmer_code,name_bn,father_name',
+            'documents.uploader:id,name_bn,name_en', 'notes.creator:id,name_bn,name_en',
         ]);
         $patwari = LandOwner::query()->getConnection()->table('patwari_mouza_assignments as a')
             ->join('patwaris as p', 'p.id', '=', 'a.patwari_id')
             ->where('a.mouza_id', $land->mouza_id)->whereNull('a.end_date')
             ->get(['p.id', 'p.name', 'p.mobile']);
 
+        // irrigation: bills raised on this plot; "irrigated" = area billed in the latest season with a bill
+        $invoices = $land->invoices()->with('season:id,name_bn')->where('status', '!=', 'cancelled')
+            ->latest('invoice_date')->latest('id')->limit(50)
+            ->get(['id', 'invoice_no', 'season_id', 'farmer_id', 'cultivation_type', 'invoice_date', 'area_decimal', 'amount', 'paid_amount', 'status']);
+        $irrigated = $invoices->isEmpty() ? 0.0 : (float) $invoices->where('season_id', $invoices->first()->season_id)->sum('area_decimal');
+
+        // everyone who has owned or farmed it, with the details the owner/cultivator cards show
+        $people = Farmer::withTrashed()->with(['member:id,farmer_id,member_no,status', 'village:id,name_bn'])
+            ->whereIn('id', $land->ownerHistory->pluck('farmer_id')->merge($land->cultivationHistory->pluck('farmer_id'))->unique())
+            ->get()->keyBy('id');
+        $card = fn (?Farmer $f) => $f ? [
+            'id' => $f->id, 'farmer_code' => $f->farmer_code, 'name_bn' => $f->name_bn, 'name_en' => $f->name_en, 'father_name' => $f->father_name,
+            'mobile' => $f->mobile, 'nid' => $f->nid, 'member_no' => $f->member?->member_no,
+            'address' => implode(', ', array_filter([$f->village?->name_bn, $f->para, $f->post_office])),
+            'photo_url' => $f->photo ? url("api/farmers/{$f->id}/photo") : null,
+        ] : null;
+        $current = $land->owners->pluck('farmer_id')->all();
+        $related = $people->map(fn (Farmer $f) => $card($f) + [
+            'roles' => array_values(array_filter([
+                in_array($f->id, $current, true) ? 'owner' : ($land->ownerHistory->contains('farmer_id', $f->id) ? 'former_owner' : null),
+                $land->cultivation?->farmer_id === $f->id ? 'cultivator' : ($land->cultivationHistory->contains('farmer_id', $f->id) ? 'former_cultivator' : null),
+            ])),
+        ])->values();
+
+        $upazila = $land->mouza->union?->upazila;
+
         return response()->json($this->row($land) + [
             'mouza_id' => $land->mouza_id,
             'land_type_id' => $land->land_type_id,
             'remarks' => $land->remarks,
-            'location' => implode(', ', array_filter([$land->mouza->union?->name_bn, $land->mouza->union?->upazila?->name_bn])),
+            'location' => implode(', ', array_filter([$land->mouza->union?->name_bn, $upazila?->name_bn])),
+            'district' => $upazila?->district?->name_bn,
+            'upazila' => $upazila?->name_bn,
+            'union' => $land->mouza->union?->name_bn,
+            'villages' => $land->mouza->villages->pluck('name_bn')->implode(', '),
             'owner_history' => $land->ownerHistory,
             'cultivation_history' => $land->cultivationHistory,
             'patwaris' => $patwari,
+            'owner_cards' => $land->owners->map(fn ($o) => $card($people[$o->farmer_id] ?? null) + ['share_percent' => (float) $o->share_percent])->values(),
+            'cultivator_card' => $land->cultivation ? $card($people[$land->cultivation->farmer_id] ?? null) : null,
+            'related_farmers' => $related,
+            'irrigation' => [
+                'irrigated_decimal' => $irrigated,
+                'season' => $invoices->first()?->season?->name_bn,
+                'invoices' => $invoices->map(fn ($i) => $i->only(['id', 'invoice_no', 'invoice_date', 'area_decimal', 'amount', 'paid_amount', 'status', 'cultivation_type'])
+                    + ['season' => $i->season?->name_bn, 'payer' => $people[$i->farmer_id]->name_bn ?? null]),
+            ],
+            'documents' => $land->documents,
+            'notes' => $land->notes,
             'created_at' => $land->created_at,
         ]);
+    }
+
+    public function storeDocument(Request $request, Land $land): JsonResponse
+    {
+        $data = $request->validate([
+            'type' => ['required', Rule::in(array_keys(Land::DOCUMENT_TYPES))],
+            'title' => ['nullable', 'string', 'max:150'],
+            'file' => ['required', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
+        ]);
+        $file = $request->file('file');
+        $doc = $land->documents()->create([
+            'type' => $data['type'], 'title' => $data['title'] ?? null,
+            // private disk: only reachable through the authenticated download route
+            'path' => $file->store("land-docs/{$land->id}", 'local'),
+            'original_name' => mb_substr($file->getClientOriginalName(), 0, 250),
+            'mime' => $file->getMimeType(), 'size' => $file->getSize(), 'uploaded_by' => $request->user()->id,
+        ]);
+
+        return response()->json($doc->load('uploader:id,name_bn,name_en'), 201);
+    }
+
+    public function downloadDocument(Land $land, LandDocument $document)
+    {
+        abort_unless($document->land_id === $land->id && Storage::disk('local')->exists($document->path), 404);
+
+        return Storage::disk('local')->response($document->path, $document->original_name);
+    }
+
+    public function destroyDocument(Land $land, LandDocument $document): JsonResponse
+    {
+        abort_unless($document->land_id === $land->id, 404);
+        Storage::disk('local')->delete($document->path);
+        $document->delete();
+
+        return response()->json(['message' => __('ডকুমেন্ট মুছে ফেলা হয়েছে।')]);
+    }
+
+    public function storeNote(Request $request, Land $land): JsonResponse
+    {
+        $data = $request->validate(['note' => ['required', 'string', 'max:500']]);
+
+        return response()->json($land->notes()->create(['note' => $data['note'], 'created_by' => $request->user()->id])->load('creator:id,name_bn,name_en'), 201);
+    }
+
+    public function destroyNote(Land $land, LandNote $note): JsonResponse
+    {
+        abort_unless($note->land_id === $land->id, 404);
+        $note->delete();
+
+        return response()->json(['message' => __('মুছে ফেলা হয়েছে।')]);
     }
 
     public function checkDuplicate(Request $request): JsonResponse

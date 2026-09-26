@@ -1,0 +1,219 @@
+/* Member list — builds on farmer-list.css (fl-*); sizes follow the approved design. */
+.ml .fl-head h1,
+.ml .fl-head-btns .ant-btn,
+.ml .fl-table-head h3,
+.ml .fl-field > span {
+  text-transform: capitalize;
+}
+
+.ml .fl-crumb {
+  margin-bottom: 8px;
+}
+
+.ml .fl-head {
+  margin-bottom: 12px;
+}
+
+.ml .fl-head-btns {
+  margin-top: 4px;
+}
+
+.ml-stats {
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  gap: 14px !important;
+}
+
+.ml-stats .fl-stat {
+  position: relative;
+  min-height: 96px;
+  padding: 12px 16px;
+  gap: 18px;
+}
+
+.ml-stats .fl-stat-icon {
+  width: 60px;
+  height: 60px;
+}
+
+.ml-stats .fl-stat-value {
+  font-size: 28px;
+  margin-top: 4px;
+}
+
+.ml-change {
+  margin-left: auto;
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-end;
+  gap: 2px;
+  padding-top: 18px;
+}
+
+.ml-change strong {
+  font-size: 17px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.ml-change strong.good {
+  color: #1f9d55;
+}
+
+.ml-change strong.bad {
+  color: #e0383e;
+}
+
+.ml-change small {
+  font-size: 12px;
+  color: #6b7280;
+  white-space: nowrap;
+}
+
+.ml-filters {
+  padding: 8px 15px 12px;
+}
+
+.ml-filters .fl-filter-row {
+  gap: 14px;
+}
+
+.ml-hidden {
+  visibility: hidden;
+}
+
+.ml-range {
+  flex-grow: 175;
+}
+
+.ml-range .ant-picker {
+  width: 100%;
+  height: 36px;
+  border-color: #d5dce7;
+}
+
+.ml .fl-table-head {
+  min-height: 46px;
+}
+
+.ml .fl-table-head h3 {
+  font-size: 18px;
+}
+
+.ml-columns.ant-btn {
+  height: 30px;
+  padding: 0 11px;
+  font-size: 12.5px;
+  color: #1769e0;
+  border-color: #bcd3f5;
+  background: #eef5fe;
+}
+
+.ml-table .ant-table-tbody > tr > td {
+  height: 41px;
+}
+
+.ml-initials {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 4px;
+  background: #e6effd;
+  color: #1d5fd6;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.ml-tag-gray.ant-tag {
+  color: #4b5563;
+  background: #eef1f5;
+}
+
+.ml-legacy {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-left: 6px;
+  border-radius: 50%;
+  background: #9aa7ba;
+  vertical-align: middle;
+}
+
+.ml-pager {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.ml-edge.ant-btn {
+  width: 32px;
+  height: 32px;
+  border-color: #d5dce7;
+  border-radius: 4px;
+}
+
+/* Voter list — same frame as the member list, plus a search row on top of the filters. */
+.vl-filters {
+  padding: 14px 15px 12px;
+}
+
+.vl-filters .fl-filter-row {
+  gap: 14px;
+}
+
+.vl-search-row {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.vl-search-row .ant-input-affix-wrapper {
+  flex: 1;
+  height: 38px;
+  border-color: #d5dce7;
+}
+
+.vl-search-row .ant-input-prefix {
+  color: #6b7280;
+  margin-right: 8px;
+}
+
+.vl-list-pick.ant-select {
+  width: 300px;
+  height: 38px;
+}
+
+.vl-tools {
+  display: flex;
+  gap: 8px;
+}
+
+.vl-note {
+  color: #6b7280;
+  font-size: 13px;
+}
+
+@media (max-width: 1280px) {
+  .ml-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .ml-stats {
+    grid-template-columns: 1fr !important;
+  }
+  .vl-search-row {
+    flex-direction: column;
+  }
+  .vl-list-pick.ant-select {
+    width: 100%;
+  }
+  .ml-pager {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+}

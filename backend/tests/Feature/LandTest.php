@@ -9,6 +9,7 @@ use App\Models\LandType;
 use App\Models\Member;
 use App\Models\Mouza;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 
 class LandTest extends Phase2TestCase
 {
@@ -38,6 +39,37 @@ class LandTest extends Phase2TestCase
         $land = Land::find($res->json('id'));
         $this->assertSame('33.0000', $land->area_decimal); // 1 bigha = 33 decimals by default
         $this->assertSame(['145', '1023'], [$land->khatian_no, $land->dag_no]);
+    }
+
+    public function test_land_profile_cards_documents_and_notes(): void
+    {
+        Storage::fake('local');
+        $owner = $this->makeFarmer(['name_bn' => 'মালিক']);
+        $tenant = $this->makeFarmer(['name_bn' => 'বর্গাচাষি']);
+        $officer = $this->officer();
+        $id = $this->actingAs($officer)->postJson('/api/lands', $this->landPayload([['farmer_id' => $owner->id, 'share_percent' => 100]], [
+            'cultivation' => ['farmer_id' => $tenant->id, 'type' => 'borga', 'start_date' => '2020-01-01'],
+        ]))->assertCreated()->json('id');
+
+        $this->actingAs($officer)->getJson("/api/lands/$id")->assertOk()
+            ->assertJsonPath('owner_cards.0.id', $owner->id)->assertJsonPath('cultivator_card.id', $tenant->id)
+            ->assertJsonPath('district', $this->mouza->upazila->district->name_bn)->assertJsonPath('irrigation.irrigated_decimal', 0)
+            ->assertJsonCount(2, 'related_farmers');
+
+        $doc = $this->actingAs($officer)->post("/api/lands/$id/documents", ['type' => 'khatian', 'file' => UploadedFile::fake()->create('k.pdf', 20, 'application/pdf')])
+            ->assertCreated()->assertJsonMissingPath('path');
+        $this->actingAs($officer)->post("/api/lands/$id/documents", ['type' => 'bad', 'file' => UploadedFile::fake()->create('k.pdf', 20, 'application/pdf')])
+            ->assertStatus(422);
+        $this->actingAs($officer)->get("/api/lands/$id/documents/{$doc->json('id')}")->assertOk();
+        $note = $this->actingAs($officer)->postJson("/api/lands/$id/notes", ['note' => 'মাঠে যাচাই করা হয়েছে'])->assertCreated();
+        $this->actingAs($officer)->getJson("/api/lands/$id")->assertJsonPath('documents.0.type', 'khatian')->assertJsonPath('notes.0.note', 'মাঠে যাচাই করা হয়েছে');
+
+        // viewers may read but not change
+        $viewer = $this->userWithRole('president');
+        $this->actingAs($viewer)->postJson("/api/lands/$id/notes", ['note' => 'x'])->assertForbidden();
+        $this->actingAs($officer)->deleteJson("/api/lands/$id/notes/{$note->json('id')}")->assertOk();
+        $this->actingAs($officer)->deleteJson("/api/lands/$id/documents/{$doc->json('id')}")->assertOk();
+        $this->actingAs($officer)->getJson("/api/lands/$id")->assertJsonCount(0, 'documents')->assertJsonCount(0, 'notes');
     }
 
     public function test_owner_shares_must_total_100(): void

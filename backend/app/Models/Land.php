@@ -16,6 +16,8 @@ class Land extends Model
 
     public const CULTIVATION_TYPES = ['own' => 'নিজ চাষ', 'borga' => 'বর্গা', 'lease' => 'লিজ/ইজারা'];
 
+    public const DOCUMENT_TYPES = ['khatian' => 'খতিয়ানের কপি', 'map' => 'দাগের নকশা', 'mutation' => 'নামজারির কাগজ', 'deed' => 'দলিল', 'other' => 'অন্যান্য ডকুমেন্ট'];
+
     protected string $auditModule = 'land';
 
     protected $fillable = [
@@ -63,5 +65,15 @@ class Land extends Model
     public function cultivationHistory()
     {
         return $this->hasMany(LandCultivation::class)->orderByDesc('start_date')->orderByDesc('id');
+    }
+
+    public function documents()
+    {
+        return $this->hasMany(LandDocument::class)->latest('id');
+    }
+
+    public function notes()
+    {
+        return $this->hasMany(LandNote::class)->latest('id');
     }
 }
