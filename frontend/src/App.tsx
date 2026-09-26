@@ -40,6 +40,11 @@ const PatwariPage = lazy(() => import('./pages/masters/PatwariPage'))
 const LandListPage = lazy(() => import('./pages/lands/LandListPage'))
 const LandFormPage = lazy(() => import('./pages/lands/LandFormPage'))
 const LandDetailPage = lazy(() => import('./pages/lands/LandDetailPage'))
+const OwnerCultivatorPage = lazy(() => import('./pages/lands/OwnerCultivatorPage'))
+const BorgaPage = lazy(() => import('./pages/lands/BorgaPage'))
+const LandTransferPage = lazy(() => import('./pages/lands/LandTransferPage'))
+const LandHistoryPage = lazy(() => import('./pages/lands/LandHistoryPage'))
+const LandReportsPage = lazy(() => import('./pages/lands/LandReportsPage'))
 const DataHealthPage = lazy(() => import('./pages/lands/DataHealthPage'))
 const ImportPage = lazy(() => import('./pages/lands/ImportPage'))
 const ImportTypePage = lazy(() => import('./pages/imports/ImportTypePage'))
@@ -123,10 +128,6 @@ const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage'))
 
 /** Menu items that are simply one or more server reports (the page shows only those the user may open). */
 const REPORT_ROUTES: { path: string; title: string; keys: string[] }[] = [
-  { path: 'lands/owners', title: tx('মালিক ও চাষি'), keys: ['land_owners', 'land_cultivators'] },
-  { path: 'lands/borga', title: tx('বর্গা চাষ'), keys: ['borga'] },
-  { path: 'lands/transfers', title: tx('জমি হস্তান্তর'), keys: ['land_history'] },
-  { path: 'lands/reports', title: tx('জমির রিপোর্ট'), keys: ['lands', 'land_by_mouza', 'land_by_type'] },
   { path: 'irrigation/lookup', title: tx('মৌসুম / জমির ধরন অনুসন্ধান'), keys: ['irrigation_rates'] },
   { path: 'irrigation/category-rates', title: tx('ক্যাটাগরিভিত্তিক রেট'), keys: ['rate_matrix'] },
   { path: 'members/voter-history', title: tx('ভোটার ইতিহাস'), keys: ['voter_lists', 'voters'] },
@@ -235,7 +236,11 @@ export default function App() {
         <Route path="lands" element={<Perm perm="land.view"><LandListPage /></Perm>} />
         <Route path="lands/new" element={<Perm perm="land.create"><LandFormPage /></Perm>} />
         <Route path="lands/lookup" element={<Perm perm="land.view"><LandDetailPage /></Perm>} />
-        <Route path="lands/lookup/history" element={<Perm perm="land.view"><RecordLookupPage key="land-h" kind="land" tab="audit" title={tx('জমির ইতিহাস')} /></Perm>} />
+        <Route path="lands/lookup/history" element={<Perm perm="land.view"><LandHistoryPage /></Perm>} />
+        <Route path="lands/owners" element={<Perm perm="land.view"><OwnerCultivatorPage /></Perm>} />
+        <Route path="lands/borga" element={<Perm perm="land.view"><BorgaPage /></Perm>} />
+        <Route path="lands/transfers" element={<Perm perm="land.view"><LandTransferPage /></Perm>} />
+        <Route path="lands/reports" element={<Perm perm="land.view"><LandReportsPage /></Perm>} />
         <Route path="lands/:id" element={<Perm perm="land.view"><LandDetailPage /></Perm>} />
         <Route path="lands/:id/edit" element={<Perm perm="land.edit"><LandFormPage /></Perm>} />
         <Route path="data-health" element={<Perm perm="land.view"><DataHealthPage /></Perm>} />

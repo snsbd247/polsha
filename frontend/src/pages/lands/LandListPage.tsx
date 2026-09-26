@@ -19,7 +19,7 @@ export default function LandListPage() {
   const { data: meta } = useLandMeta()
   const [sp] = useSearchParams()
   const urlSearch = sp.get('search') || undefined
-  const [params, setParams] = useState<Params>(() => ({ page: 1, per_page: 25, search: urlSearch, mouza_id: sp.get('mouza_id') ? Number(sp.get('mouza_id')) : undefined }))
+  const [params, setParams] = useState<Params>(() => ({ page: 1, per_page: 25, search: urlSearch, mouza_id: sp.get('mouza_id') ? Number(sp.get('mouza_id')) : undefined, land_type_id: sp.get('land_type_id') ? Number(sp.get('land_type_id')) : undefined }))
   // the top-bar search opens this list with ?search=
   useEffect(() => setParams((p) => ({ ...p, search: urlSearch, page: 1 })), [urlSearch])
   const set = (patch: Partial<Params>) => setParams((p) => ({ ...p, ...patch, page: 1 }))

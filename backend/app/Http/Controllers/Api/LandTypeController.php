@@ -13,8 +13,9 @@ class LandTypeController extends Controller
     public function index(): JsonResponse
     {
         // Seeded names are Bangla keys; user-added names simply fall back to themselves.
-        return response()->json(LandType::withCount('lands')->orderBy('sort_order')->orderBy('id')->get()
-            ->map(fn ($t) => array_merge($t->toArray(), ['display_name' => __($t->name_bn), 'display_category' => $t->category ? __($t->category) : null])));
+        return response()->json(LandType::withCount('lands')->withSum('lands as land_decimal', 'area_decimal')->orderBy('sort_order')->orderBy('id')->get()
+            ->map(fn ($t) => array_merge($t->toArray(), ['display_name' => __($t->name_bn), 'display_category' => $t->category ? __($t->category) : null,
+                'land_decimal' => round((float) $t->land_decimal, 2)])));
     }
 
     public function store(Request $request): JsonResponse

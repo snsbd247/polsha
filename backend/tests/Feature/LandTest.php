@@ -72,6 +72,40 @@ class LandTest extends Phase2TestCase
         $this->actingAs($officer)->getJson("/api/lands/$id")->assertJsonCount(0, 'documents')->assertJsonCount(0, 'notes');
     }
 
+    public function test_land_register_pages(): void
+    {
+        $owner = $this->makeFarmer(['name_bn' => 'মালিক']);
+        $tenant = $this->makeFarmer(['name_bn' => 'বর্গাচাষি']);
+        $buyer = $this->makeFarmer(['name_bn' => 'ক্রেতা']);
+        $officer = $this->officer();
+        $id = $this->actingAs($officer)->postJson('/api/lands', $this->landPayload([['farmer_id' => $owner->id, 'share_percent' => 100]], [
+            'cultivation' => ['farmer_id' => $tenant->id, 'type' => 'borga', 'start_date' => '2020-01-01', 'terms' => 'অর্ধেক'],
+        ]))->assertCreated()->json('id');
+
+        // owners and cultivators, one row per farmer
+        $this->actingAs($officer)->getJson('/api/land-register/parties?role=owner')->assertOk()
+            ->assertJsonPath('total', 1)->assertJsonPath('data.0.id', $owner->id)->assertJsonPath('data.0.lands', 1)->assertJsonPath('data.0.also', false);
+        $this->actingAs($officer)->getJson('/api/land-register/parties?role=cultivator&type=borga')->assertJsonPath('data.0.id', $tenant->id)->assertJsonPath('data.0.tenancy_count', 1);
+        $this->actingAs($officer)->getJson('/api/land-register/parties/summary')->assertJson(['owners' => 1, 'cultivators' => 1, 'owner_cultivators' => 0, 'tenants' => 1, 'lands' => 1]);
+
+        // borga list
+        $this->actingAs($officer)->getJson('/api/land-register/cultivations?status=current')->assertJsonPath('total', 1)
+            ->assertJsonPath('data.0.cultivator.id', $tenant->id)->assertJsonPath('data.0.owners.0.id', $owner->id)->assertJsonPath('data.0.terms', 'অর্ধেক');
+        $this->actingAs($officer)->getJson('/api/land-register/cultivations/summary')->assertJson(['borga' => 1, 'lease' => 0]);
+
+        // a sale shows as one transfer with who handed over and who received
+        $this->actingAs($officer)->postJson("/api/lands/$id/transfer", ['owners' => [['farmer_id' => $buyer->id, 'share_percent' => 100]], 'effective_date' => now()->toDateString(), 'remarks' => 'দলিল ১২'])->assertOk();
+        $this->actingAs($officer)->getJson('/api/land-register/transfers')->assertJsonPath('total', 1)
+            ->assertJsonPath('data.0.from.0.id', $owner->id)->assertJsonPath('data.0.to.0.id', $buyer->id)->assertJsonPath('data.0.remarks', 'দলিল ১২');
+        $this->actingAs($officer)->getJson('/api/land-register/transfers/summary')->assertJson(['total' => 1, 'this_year' => 1]);
+
+        // change log across plots, and the overview figures
+        $this->actingAs($officer)->getJson('/api/land-register/history?action=ownership_transfer')->assertJsonPath('total', 1)->assertJsonPath('data.0.land_id', $id);
+        $this->actingAs($officer)->getJson('/api/land-register/history/summary')->assertJson(['transfers' => 1]);
+        $this->actingAs($officer)->getJson('/api/land-register/overview')->assertOk()->assertJson(['lands' => 1])->assertJsonPath('by_mouza.0.id', $this->mouza->id);
+        $this->actingAs($this->userWithRole('loan_officer'))->getJson('/api/land-register/history')->assertForbidden();
+    }
+
     public function test_owner_shares_must_total_100(): void
     {
         $a = $this->makeFarmer(['name_bn' => 'ক']);

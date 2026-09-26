@@ -1,0 +1,282 @@
+/* Land reports and the shared land list pages — builds on the fl-/ml-/pl- list styles. */
+.lr-panels {
+  display: grid;
+  grid-template-columns: 1fr 1fr 0.9fr;
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.lr-panel {
+  padding: 14px 18px 12px;
+}
+
+.lr-panel h3,
+.lr-section {
+  margin: 0 0 10px;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--fl-blue);
+}
+
+.lr-section {
+  margin: 4px 0 10px 2px;
+}
+
+.lr-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.lr-bar-row {
+  display: grid;
+  grid-template-columns: minmax(80px, 30%) 1fr auto 44px;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: #1f2937;
+}
+
+.lr-bar-row:hover .lr-bar-name {
+  color: var(--fl-blue);
+}
+
+.lr-bar-name {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.lr-bar-track {
+  height: 10px;
+  border-radius: 5px;
+  background: #eef2f8;
+  overflow: hidden;
+}
+
+.lr-bar-fill {
+  display: block;
+  height: 100%;
+  border-radius: 5px;
+  background: linear-gradient(90deg, #5b9bf0, #1769e0);
+}
+
+.lr-bar-val {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.lr-bar-val small,
+.lr-bar-count {
+  font-weight: 400;
+  color: #6b7280;
+  font-size: 12px;
+}
+
+.lr-bar-count {
+  text-align: right;
+}
+
+.lr-empty {
+  color: #9aa3b2;
+  font-size: 13px;
+}
+
+.lr-status {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.lr-status-row {
+  display: grid;
+  grid-template-columns: 12px 1fr auto auto 48px;
+  align-items: center;
+  gap: 10px;
+  font-size: 13.5px;
+}
+
+.lr-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #9aa3b2;
+}
+
+.lr-st-cultivated .lr-dot {
+  background: #1f9d55;
+}
+
+.lr-st-fallow .lr-dot {
+  background: #f08c00;
+}
+
+.lr-st-disputed .lr-dot {
+  background: #e0383e;
+}
+
+.lr-pct {
+  text-align: right;
+  color: #6b7280;
+}
+
+.lr-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.lr-tile {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 14px;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  background: #fff;
+  border: 1px solid var(--fl-border);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.lr-tile:hover {
+  border-color: #bcd3f5;
+}
+
+.lr-tile-on {
+  border-color: var(--fl-blue);
+  box-shadow: 0 0 0 1px var(--fl-blue) inset;
+  background: #f5f9ff;
+}
+
+.lr-tile-icon {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+}
+
+.lr-tile strong {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.lr-tile small {
+  display: block;
+  margin-top: 2px;
+  font-size: 12px;
+  color: #6b7280;
+  line-height: 1.4;
+}
+
+.lr-report {
+  padding: 14px 16px;
+}
+
+/* bits used by the owner/borga/transfer/history lists */
+.oc-switch {
+  margin: 0 0 12px;
+  padding: 3px;
+}
+
+.oc-switch .ant-segmented-item-label {
+  min-height: 32px;
+  line-height: 32px;
+  padding: 0 18px;
+  font-size: 14px;
+}
+
+.oc-types {
+  display: inline-flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.bg-person {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.bg-person small {
+  display: block;
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.bg-initials {
+  width: 30px !important;
+  height: 30px !important;
+  font-size: 11px !important;
+}
+
+.bg-terms {
+  display: inline-block;
+  max-width: 160px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  vertical-align: bottom;
+}
+
+.fl-tag.bg-blue.ant-tag {
+  color: #1769e0;
+  background: #e6effd;
+}
+
+.tr-people {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.tr-people small {
+  color: #6b7280;
+}
+
+.tr-arrow {
+  color: #1769e0;
+}
+
+.hs-changes {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+.hs-changes b {
+  font-weight: 500;
+  color: #4b5563;
+}
+
+.hs-muted {
+  color: #6b7280;
+}
+
+.hs-table .ant-table-tbody > tr > td {
+  height: auto !important;
+  padding-top: 7px !important;
+  padding-bottom: 7px !important;
+  vertical-align: top;
+}
+
+@media (max-width: 1280px) {
+  .lr-panels {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .lr-panels {
+    grid-template-columns: 1fr;
+  }
+}
