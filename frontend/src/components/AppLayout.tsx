@@ -64,11 +64,6 @@ const GROUPS: Group[] = [
         perm: 'farmer.view',
       },
       {
-        path: '/farmers/new',
-        label: m('নতুন কৃষক', 'Add Farmer'),
-        perm: 'farmer.create',
-      },
-      {
         path: '/membership/applications',
         label: m('সদস্যপদ আবেদন', 'Membership Applications'),
         perm: 'membership.view',

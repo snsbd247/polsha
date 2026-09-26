@@ -93,7 +93,7 @@ Sidebar হুবহু নিচের ১৫টি গ্রুপ ও ১১�
 | # | গ্রুপ | মেন্যু আইটেম → অবস্থা |
 |---|---|---|
 | ১ | 🏠 Dashboard | Dashboard ✅ |
-| ২ | 👨‍🌾 Farmers & Members | Farmer List ✅ · Add Farmer ✅ · Membership Applications ✅ · Member List ✅ · Voter List ✅ · Farmer Merge ✅ · Deleted Farmers ✅ · Patwari List ✅ · Mouza Management ✅ |
+| ২ | 👨‍🌾 Farmers & Members | Farmer List ✅ (Add Farmer বোতাম এখানে; মেন্যু থেকে সরানো) · Membership Applications ✅ · Member List ✅ · Voter List ✅ · Farmer Merge ✅ · Deleted Farmers ✅ · Patwari List ✅ · Mouza Management ✅ |
 | ৩ | 🌾 Land Management | Land List ✅ · Add Land ✅ · Land Profile ✅ · Owner & Cultivator ✅ · Borga / Sharecropping ✅ · Land Transfer ✅ · Land History ✅ · Land Types ✅ · Land Reports ✅ |
 | ৪ | 💧 Irrigation | Seasons ✅ · Irrigation Invoices ✅ · Irrigation Rates ✅ · Old Receipt Entry ✅ · Billing Split Preview ✅ · Season / Land-Type Lookup ✅ · Categories ✅ · Category Rates ✅ · Rate Audit History ✅ · Due Mismatch ✅ |
 | ৫ | 💰 Savings | Savings Entry ✅ · Share Collection ✅ · Statements ✅ · Voter List ✅ · Voter History ✅ · Voter Audit ✅ · Admission Register ✅ |
