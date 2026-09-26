@@ -64,6 +64,8 @@ class LedgerIntegrityService
             'member_txn_no_journal' => [
                 'label' => __('ভাউচার নেই এমন সঞ্চয়/শেয়ার লেনদেন'), 'severity' => 'error',
                 'rows' => fn () => DB::table('member_transactions')->where('status', 'posted')->whereNull('journal_id')->whereNull('run_id')
+                    // a share transfer between two members stays inside share capital, so it has no voucher
+                    ->whereNotIn('type', ['transfer_in', 'transfer_out'])
                     ->get(['id', 'txn_no', 'amount', 'kind'])->map(fn ($r) => ['no' => $r->txn_no, 'detail' => number_format((float) $r->amount, 2), 'link' => '/funds/'.$r->kind.'/transactions/'.$r->id]),
             ],
             'combined_parts_mismatch' => [

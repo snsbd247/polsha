@@ -11,6 +11,6 @@ abstract class Controller
     {
         $n = (int) $request->query('per_page', SettingService::get('page_size', 25));
 
-        return in_array($n, [10, 25, 50, 100], true) ? $n : 25;
+        return in_array($n, [5, 10, 25, 50, 100], true) ? $n : 25;
     }
 }

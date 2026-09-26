@@ -51,7 +51,7 @@ class CombinedPaymentService
         $loan = $member ? Loan::where('member_id', $member->id)->where('status', 'active')->first() : null;
         $position = $loan && $date >= $loan->disbursed_on->toDateString() ? $this->loans->position($loan, $date) : null;
         $invoices = Invoice::where('farmer_id', $farmer->id)->whereIn('status', ['unpaid', 'partial'])
-            ->with('season:id,name_bn,name_en')->orderBy('invoice_date')->orderBy('id')->get();
+            ->with('season:id,name_bn')->orderBy('invoice_date')->orderBy('id')->get();
         $accounts = $member ? MemberAccount::where('member_id', $member->id)->get()->keyBy('kind') : collect();
         $shareMin = (float) SettingService::get('share_min_amount', 0);
         $shareBalance = (float) ($accounts['share']->balance ?? 0);

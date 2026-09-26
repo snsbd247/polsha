@@ -118,3 +118,15 @@ Artisan::command('license:status', function () {
 
 // Lets the System page show whether cron is really running.
 Schedule::call(fn () => Cache::forever('scheduler.heartbeat', now()->toIso8601String()))->everyMinute()->name('scheduler-heartbeat');
+
+// Demo data: one year of activity in every module, removable in one step.
+Artisan::command('demo:seed {--farmers=200}', function (App\Services\DemoDataService $demo) {
+    $started = microtime(true);
+    $r = $demo->seed((int) $this->option('farmers'), fn (string $m) => $this->line($m));
+    $this->info(sprintf('ডেমো ডাটা বসানো শেষ: %d কৃষক, %d সদস্য, %d টি কাজ, %.1f মিনিট। মুছতে: php artisan demo:purge',
+        $r['farmers'], $r['members'], $r['calls'], (microtime(true) - $started) / 60));
+})->purpose('Load one year of demo data (snapshot first; demo:purge removes it)');
+
+Artisan::command('demo:purge {--force}', function (App\Services\DemoDataService $demo) {
+    $demo->purge((bool) $this->option('force'), fn (string $m) => $this->line($m));
+})->purpose('Remove the demo data by loading back the pre-demo snapshot');

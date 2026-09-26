@@ -149,5 +149,7 @@ return [
     'backup' => [
         'keep_days' => 30,
         'mysqldump' => env('MYSQLDUMP_PATH', 'mysqldump'),
+        // the mysql client that loads a dump back (demo:purge); defaults to the one next to mysqldump
+        'mysql' => env('MYSQL_PATH', preg_replace('/mysqldump(\.exe)?$/i', 'mysql$1', env('MYSQLDUMP_PATH', 'mysqldump'))),
     ],
 ];
