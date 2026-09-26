@@ -23,8 +23,10 @@ use Closure;
 use Illuminate\Contracts\Http\Kernel;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use RuntimeException;
@@ -171,8 +173,29 @@ class DemoDataService
         }
         $log('ডেমোর আগের স্ন্যাপশট ফেরানো হচ্ছে…');
         $this->backups->restore($path);
+        $this->catchUpSchema($path, $log);
         Cache::flush();
         $log('ডেমো ডাটা মুছে ফেলা হয়েছে।');
+    }
+
+    /**
+     * The snapshot predates any release deployed while the demo was loaded, so
+     * restoring it rolls the schema back too. Tables it does not know about
+     * are dropped and the newer migrations run again.
+     */
+    private function catchUpSchema(string $snapshot, Closure $log): void
+    {
+        preg_match_all('/CREATE TABLE `([^`]+)`/', implode('', gzfile($snapshot) ?: []), $m);
+        $known = array_flip($m[1]);
+        // only this app's own database — the server may host other databases
+        $db = DB::connection()->getDatabaseName();
+        $own = array_filter(Schema::getTables(), fn ($t) => ($t['schema'] ?? $db) === $db);
+        $extra = array_filter(array_column($own, 'name'), fn ($t) => ! isset($known[$t]));
+        if ($extra) {
+            Schema::withoutForeignKeyConstraints(fn () => array_map(fn ($t) => Schema::drop($t), $extra));
+        }
+        Artisan::call('migrate', ['--force' => true]);
+        $log('ডাটাবেসের কাঠামো হালনাগাদ করা হয়েছে।');
     }
 
     // ------------------------------------------------------------------ plumbing
