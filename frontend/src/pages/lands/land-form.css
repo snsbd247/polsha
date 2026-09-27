@@ -1,0 +1,416 @@
+/* Add / edit land — sizes follow the approved design. */
+.lf {
+  --lf-border: #e3e8f0;
+  --lf-blue: #1769e0;
+  color: #111827;
+}
+
+.lf-crumb {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: -2px 0 10px 2px;
+  font-size: 14px;
+  text-transform: capitalize;
+}
+
+.lf-crumb a {
+  color: var(--lf-blue);
+}
+
+.lf-crumb-sep {
+  font-size: 10px;
+  color: #6b7280;
+}
+
+.lf-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.lf-head h1 {
+  margin: 0;
+  font-size: 27px;
+  font-weight: 700;
+  line-height: 1.25;
+  color: #0f172a;
+  text-transform: capitalize;
+}
+
+.lf-head p {
+  margin: 2px 0 0;
+  font-size: 14.5px;
+  color: #4b5563;
+}
+
+.lf-head > .ant-btn {
+  height: 38px;
+  margin-top: 4px;
+  border-color: #d5dce7;
+}
+
+.lf-row {
+  display: grid;
+  gap: 16px;
+  margin-bottom: 14px;
+  align-items: stretch;
+}
+
+.lf-row-1 {
+  grid-template-columns: 0.98fr 1.02fr;
+}
+
+.lf-row-2 {
+  grid-template-columns: 1.28fr 1fr 1fr;
+}
+
+.lf-row-3 {
+  grid-template-columns: 0.92fr 1.16fr;
+}
+
+.lf-card {
+  min-width: 0;
+  background: #fff;
+  border: 1px solid var(--lf-border);
+  border-radius: 8px;
+}
+
+.lf-card-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  min-height: 44px;
+  background: #f6f9fe;
+  border-bottom: 1px solid #edf1f7;
+  border-radius: 8px 8px 0 0;
+}
+
+.lf-card-head h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.lf-card-body {
+  padding: 14px 16px 6px;
+}
+
+.lf-grid {
+  display: grid;
+  column-gap: 20px;
+}
+
+.lf-grid-3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.lf-grid-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.lf-span-2 {
+  grid-column: span 2;
+}
+
+.lf-form .ant-form-item {
+  margin-bottom: 14px;
+}
+
+.lf-form .ant-form-item-label {
+  padding-bottom: 5px;
+}
+
+.lf-form .ant-form-item-label > label {
+  font-size: 13.5px;
+  font-weight: 500;
+  color: #1f2937;
+  text-transform: capitalize;
+}
+
+.lf-form .ant-input,
+.lf-form .ant-input-number,
+.lf-form .ant-select,
+.lf-form .ant-picker {
+  min-height: 36px;
+  border-color: #d5dce7;
+}
+
+.lf-form .ant-input-number .ant-input-number-input {
+  height: 34px;
+}
+
+.lf-khatian {
+  display: grid;
+  grid-template-columns: 80px 1fr;
+  gap: 6px;
+}
+
+.lf-coords {
+  display: grid;
+  grid-template-columns: 1fr 30px;
+  column-gap: 4px;
+  align-items: end;
+  grid-row: span 2;
+}
+
+.lf-coords .ant-form-item {
+  margin-bottom: 8px;
+}
+
+.lf-locate.ant-btn {
+  margin-bottom: 10px;
+  color: var(--lf-blue);
+  font-size: 18px;
+}
+
+.lf-pick {
+  display: flex;
+  gap: 10px;
+}
+
+.lf-pick > .ant-select {
+  flex: 1;
+  min-width: 0;
+}
+
+.lf-pick > .ant-btn {
+  width: 42px;
+  height: 36px;
+  flex: none;
+}
+
+.lf-person {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  min-height: 92px;
+  margin-bottom: 12px;
+  padding: 12px 16px;
+  border-radius: 6px;
+}
+
+.lf-person-blue {
+  background: #eef4fd;
+}
+
+.lf-person-green {
+  background: #eef8f1;
+}
+
+.lf-person-empty {
+  justify-content: center;
+  color: #9aa3b2;
+  font-size: 13px;
+}
+
+.lf-person-name {
+  display: block;
+  margin-bottom: 2px;
+  font-size: 15.5px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.lf-person dl {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: 20px;
+  margin: 0;
+  font-size: 13px;
+  line-height: 18px;
+}
+
+.lf-person dd {
+  margin: 0;
+}
+
+.lf-since {
+  margin-top: 2px;
+}
+
+.lf-joint {
+  display: grid;
+  grid-template-columns: 1fr 110px 18px;
+  gap: 8px;
+  align-items: start;
+}
+
+.lf-joint .ant-form-item {
+  margin-bottom: 10px;
+}
+
+.lf-joint-del {
+  margin-top: 10px;
+  color: #e0383e;
+  cursor: pointer;
+}
+
+.lf-joint-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  font-size: 13px;
+}
+
+.lf-ok {
+  color: #1f9d55;
+  font-weight: 600;
+}
+
+.lf-bad {
+  color: #e0383e;
+  font-weight: 600;
+}
+
+.lf-readonly {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-bottom: 12px;
+}
+
+.lf-muted {
+  color: #6b7280;
+}
+
+.lf-warn {
+  margin-bottom: 12px;
+}
+
+.lf-borga-top {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.lf-docs {
+  display: grid;
+  grid-template-columns: 0.85fr 1.15fr;
+  gap: 10px;
+  padding-bottom: 10px;
+}
+
+.lf-drop.ant-upload-wrapper .ant-upload-drag {
+  height: 100%;
+  min-height: 112px;
+  border-color: #c9d3e2;
+  background: #fff;
+}
+
+.lf-drop-icon {
+  font-size: 34px;
+  color: var(--lf-blue);
+}
+
+.lf-drop p {
+  margin: 6px 0 2px;
+  font-size: 13.5px;
+}
+
+.lf-drop small {
+  font-size: 11.5px;
+  color: #6b7280;
+}
+
+.lf-doc-table .ant-table {
+  font-size: 13px;
+}
+
+.lf-doc-table .ant-table-thead > tr > th {
+  background: #fff !important;
+  font-weight: 600;
+}
+
+.lf-doc-table .ant-table-thead > tr > th::before {
+  display: none;
+}
+
+.lf-doc-type {
+  width: 100%;
+}
+
+.lf-pdf {
+  color: #e0383e;
+  font-size: 16px;
+}
+
+.lf-img {
+  color: var(--lf-blue);
+  font-size: 16px;
+}
+
+.lf-doc-actions {
+  display: inline-flex;
+}
+
+.lf-doc-actions .ant-btn:not(.ant-btn-dangerous) {
+  color: var(--lf-blue);
+}
+
+.lf-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 14px;
+  padding: 2px 0 10px;
+}
+
+.lf-actions .ant-btn {
+  height: 38px;
+  min-width: 70px;
+  font-size: 14.5px;
+}
+
+.lf-actions .ant-btn-primary {
+  min-width: 124px;
+}
+
+@media (max-width: 1280px) {
+  .lf-row-1,
+  .lf-row-3 {
+    grid-template-columns: 1fr;
+  }
+  .lf-row-2 {
+    grid-template-columns: 1fr 1fr;
+  }
+  .lf-row-2 > :first-child {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 768px) {
+  .lf-row-2 {
+    grid-template-columns: 1fr;
+  }
+  .lf-grid-3,
+  .lf-grid-2 {
+    grid-template-columns: 1fr 1fr;
+  }
+  .lf-docs {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 575px) {
+  .lf-grid-3,
+  .lf-grid-2 {
+    grid-template-columns: 1fr;
+  }
+  .lf-span-2 {
+    grid-column: auto;
+  }
+  .lf-head h1 {
+    font-size: 23px;
+  }
+}
+
+.lf-req {
+  margin-left: 3px;
+  color: #e0383e;
+}

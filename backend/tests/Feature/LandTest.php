@@ -126,6 +126,31 @@ class LandTest extends Phase2TestCase
         $this->actingAs($officer)->getJson('/api/lands?district_id=999999')->assertJsonPath('total', 0);
     }
 
+    public function test_land_location_details_and_irrigable_area(): void
+    {
+        $owner = $this->makeFarmer();
+        $officer = $this->officer();
+        $village = $this->mouza->villages()->first();
+        $payload = $this->landPayload([['farmer_id' => $owner->id, 'share_percent' => 100]], [
+            'area' => 2.5, 'area_unit' => 'acre', 'irrigable_area' => 3, 'village_id' => $village->id,
+            'latitude' => 24.0023, 'longitude' => 90.4267, 'location_note' => 'রাস্তার পূর্ব পাশে',
+        ]);
+        $id = $this->actingAs($officer)->postJson('/api/lands', $payload)->assertCreated()->json('id');
+
+        // irrigable area never exceeds the plot
+        $this->actingAs($officer)->getJson("/api/lands/$id")->assertOk()
+            ->assertJsonPath('village_id', $village->id)->assertJsonPath('latitude', 24.0023)->assertJsonPath('longitude', 90.4267)
+            ->assertJsonPath('location_note', 'রাস্তার পূর্ব পাশে')->assertJsonPath('irrigable_decimal', 250);
+
+        // a village outside the mouza, or impossible coordinates, are refused
+        $other = \App\Models\Village::create(['union_id' => $this->mouza->union_id, 'name_bn' => 'অন্য গ্রাম']);
+        $this->actingAs($officer)->putJson("/api/lands/$id", ['village_id' => $other->id, 'latitude' => 120] + $payload)
+            ->assertStatus(422)->assertJsonValidationErrors(['village_id', 'latitude']);
+
+        $this->actingAs($officer)->getJson('/api/lands/summary')->assertJsonPath('next_code', 'L-000002');
+        $this->actingAs($officer)->getJson("/api/mouzas/{$this->mouza->id}")->assertOk()->assertJsonPath('patwaris', []);
+    }
+
     public function test_owner_shares_must_total_100(): void
     {
         $a = $this->makeFarmer(['name_bn' => 'ক']);

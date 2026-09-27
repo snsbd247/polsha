@@ -98,7 +98,11 @@ class MouzaController extends Controller
 
     public function show(Mouza $mouza): JsonResponse
     {
-        return response()->json($mouza->load(['union.upazila.district.division', 'villages:id,name_bn']));
+        return response()->json($mouza->load(['union.upazila.district.division', 'villages:id,name_bn'])->toArray() + [
+            // who currently keeps this mouza's land records
+            'patwaris' => Patwari::whereIn('id', PatwariMouzaAssignment::where('mouza_id', $mouza->id)->whereNull('end_date')->select('patwari_id'))
+                ->orderBy('name')->get(['id', 'name', 'mobile']),
+        ]);
     }
 
     public function store(Request $request): JsonResponse

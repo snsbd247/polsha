@@ -42,6 +42,8 @@ type Doc = { id: number; type: string; title: string | null; original_name: stri
 type Note = { id: number; note: string; created_at: string; creator: Named }
 type Invoice = { id: number; invoice_no: string; invoice_date: string; area_decimal: string; amount: string; paid_amount: string; status: string; cultivation_type: string; season: string | null; payer: string | null }
 type LandDetail = LandRow & {
+  latitude: number | null
+  longitude: number | null
   location: string
   remarks: string | null
   district: string | null
@@ -183,6 +185,14 @@ function PlotSketch({ land }: { land: LandDetail }) {
           {tx('মৌজা')}: {land.mouza}
           <br />
           {tx('দাগ নং')}: {digits(land.dag_no)}
+          {land.latitude != null && land.longitude != null && (
+            <>
+              <br />
+              <a href={`https://www.google.com/maps?q=${land.latitude},${land.longitude}`} target="_blank" rel="noreferrer">
+                {tx('গুগল ম্যাপে দেখুন')}
+              </a>
+            </>
+          )}
         </div>
       </div>
     </div>

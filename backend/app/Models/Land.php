@@ -22,10 +22,10 @@ class Land extends Model
 
     protected $fillable = [
         'land_code', 'mouza_id', 'survey', 'khatian_no', 'dag_no', 'area_decimal', 'land_type_id', 'irrigation_type_id',
-        'status', 'remarks', 'created_by', 'import_batch_id',
+        'status', 'remarks', 'created_by', 'import_batch_id', 'village_id', 'latitude', 'longitude', 'location_note', 'irrigable_decimal',
     ];
 
-    protected $casts = ['area_decimal' => 'decimal:4'];
+    protected $casts = ['area_decimal' => 'decimal:4', 'irrigable_decimal' => 'decimal:4', 'latitude' => 'float', 'longitude' => 'float'];
 
     public function mouza()
     {

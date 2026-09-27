@@ -12,7 +12,9 @@ use App\Models\LandDocument;
 use App\Models\LandNote;
 use App\Models\LandOwner;
 use App\Models\LandType;
+use App\Models\Sequence;
 use App\Services\LandService;
+use App\Services\SequenceService;
 use App\Support\AreaUnit;
 use App\Support\Bn;
 use App\Support\CsvExport;
@@ -112,6 +114,11 @@ class LandController extends Controller
             'mouza_id' => $land->mouza_id,
             'land_type_id' => $land->land_type_id,
             'remarks' => $land->remarks,
+            'village_id' => $land->village_id,
+            'latitude' => $land->latitude,
+            'longitude' => $land->longitude,
+            'location_note' => $land->location_note,
+            'irrigable_decimal' => $land->irrigable_decimal !== null ? (float) $land->irrigable_decimal : null,
             'location' => implode(', ', array_filter([$land->mouza->union?->name_bn, $upazila?->name_bn])),
             'district' => $upazila?->district?->name_bn,
             'upazila' => $upazila?->name_bn,
@@ -302,6 +309,8 @@ class LandController extends Controller
             'owners' => (clone $current)->distinct()->count('farmer_id'),
             'area_decimal' => round((float) Land::sum('area_decimal'), 2),
             'mouzas' => Land::distinct()->count('mouza_id'),
+            // shown (greyed) on the new-land form; the real number is taken when the land is saved
+            'next_code' => ($seq = Sequence::where('key', 'land')->first()) ? SequenceService::preview($seq) : null,
         ]);
     }
 
@@ -376,10 +385,22 @@ class LandController extends Controller
             'irrigation_type_id' => ['nullable', Rule::exists('irrigation_types', 'id')],
             'status' => ['required', Rule::in(array_keys(Land::STATUSES))],
             'remarks' => ['nullable', 'string', 'max:2000'],
-        ], ['area.gt' => __('জমির পরিমাণ শূন্যের বেশি হতে হবে।')]);
+            // the village must be one the chosen mouza covers
+            'village_id' => ['nullable', Rule::exists('mouza_village', 'village_id')->where('mouza_id', $request->integer('mouza_id'))],
+            'latitude' => ['nullable', 'numeric', 'between:-90,90'],
+            'longitude' => ['nullable', 'numeric', 'between:-180,180'],
+            'location_note' => ['nullable', 'string', 'max:300'],
+            'irrigable_area' => ['nullable', 'numeric', 'min:0'],
+        ], ['area.gt' => __('জমির পরিমাণ শূন্যের বেশি হতে হবে।'), 'village_id.exists' => __('গ্রামটি এই মৌজার মধ্যে নেই।')]);
 
         $data['area_decimal'] = AreaUnit::toDecimal((float) $data['area'], $data['area_unit']);
-        unset($data['area'], $data['area_unit']);
+        // irrigable area is entered in the same unit as the total and cannot exceed it
+        if (isset($data['irrigable_area'])) {
+            $data['irrigable_decimal'] = min($data['area_decimal'], AreaUnit::toDecimal((float) $data['irrigable_area'], $data['area_unit']));
+        } elseif ($request->has('irrigable_area')) {
+            $data['irrigable_decimal'] = null;
+        }
+        unset($data['area'], $data['area_unit'], $data['irrigable_area']);
 
         return $data;
     }
