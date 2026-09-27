@@ -18,7 +18,7 @@ class ApprovalService
      * (agreed with the society, 2026-09-27). Anyone else still goes through
      * the rule's steps.
      */
-    public const SUPER_ADMIN_DIRECT = ['farmer.merge'];
+    public const SUPER_ADMIN_DIRECT = ['farmer.merge', 'land.transfer'];
 
     /**
      * Open an approval request. When the action has no enabled rule (or the

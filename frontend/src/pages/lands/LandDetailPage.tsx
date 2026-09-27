@@ -134,7 +134,7 @@ function PersonCard({ title, p, tag, tagClass, extra }: { title: string; p: Pers
  * Plots carry no GPS outline yet, so this draws a to-scale-free sketch of the
  * plot with its area, mouza and dag — the same place the design shows a map.
  */
-function PlotSketch({ land }: { land: LandDetail }) {
+export function PlotSketch({ land }: { land: Pick<LandDetail, 'area_decimal' | 'mouza' | 'dag_no' | 'latitude' | 'longitude'> }) {
   const [zoom, setZoom] = useState(1)
   return (
     <div className="lp-map">
@@ -410,7 +410,7 @@ export default function LandDetailPage() {
             menu={{
               items: [
                 can('irrigation.create') && { key: 'invoice', label: tx('সেচ ইনভয়েস'), onClick: () => navigate(`/irrigation/invoices/new?land_id=${id}`) },
-                can('land.edit') && { key: 'transfer', label: tx('মালিকানা হস্তান্তর'), onClick: () => open('transfer') },
+                can('land.edit') && { key: 'transfer', label: tx('মালিকানা হস্তান্তর'), onClick: () => navigate(`/lands/transfers/new?land_id=${id}`) },
                 can('land.edit') && { key: 'cultivation', label: land.cultivation ? tx('চাষি পরিবর্তন') : tx('চাষি দিন'), onClick: () => open('cultivation') },
                 can('land.edit') && land.cultivation && { key: 'end', label: tx('চাষ শেষ'), onClick: () => open('end') },
                 can('land.delete') && { type: 'divider' as const },
@@ -588,7 +588,7 @@ export default function LandDetailPage() {
       label: tx('মালিকানার বিবরণ'),
       children: (
         <div className="lp-card lp-block">
-          <SectionTitle icon={<span className="lp-ico lp-ico-doc" />} extra={can('land.edit') && <Button size="small" icon={<SwapOutlined />} onClick={() => open('transfer')}>{tx('মালিকানা হস্তান্তর')}</Button>}>
+          <SectionTitle icon={<span className="lp-ico lp-ico-doc" />} extra={can('land.edit') && <Button size="small" icon={<SwapOutlined />} onClick={() => navigate(`/lands/transfers/new?land_id=${id}`)}>{tx('মালিকানা হস্তান্তর')}</Button>}>
             {tx('মালিকানা ও হস্তান্তরের ইতিহাস')}
           </SectionTitle>
           <Table

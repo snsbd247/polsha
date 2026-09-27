@@ -280,3 +280,15 @@
     grid-template-columns: 1fr;
   }
 }
+
+.lt-open {
+  margin-bottom: 14px;
+  padding: 12px 14px;
+}
+
+.lt-open h3 {
+  margin: 0 0 8px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #c07c00;
+}

@@ -43,6 +43,7 @@ const LandDetailPage = lazy(() => import('./pages/lands/LandDetailPage'))
 const OwnerCultivatorPage = lazy(() => import('./pages/lands/OwnerCultivatorPage'))
 const BorgaPage = lazy(() => import('./pages/lands/BorgaPage'))
 const LandTransferPage = lazy(() => import('./pages/lands/LandTransferPage'))
+const LandTransferFormPage = lazy(() => import('./pages/lands/LandTransferFormPage'))
 const LandHistoryPage = lazy(() => import('./pages/lands/LandHistoryPage'))
 const LandReportsPage = lazy(() => import('./pages/lands/LandReportsPage'))
 const DataHealthPage = lazy(() => import('./pages/lands/DataHealthPage'))
@@ -240,6 +241,8 @@ export default function App() {
         <Route path="lands/owners" element={<Perm perm="land.view"><OwnerCultivatorPage /></Perm>} />
         <Route path="lands/borga" element={<Perm perm="land.view"><BorgaPage /></Perm>} />
         <Route path="lands/transfers" element={<Perm perm="land.view"><LandTransferPage /></Perm>} />
+        <Route path="lands/transfers/new" element={<Perm perm="land.edit"><LandTransferFormPage key="new" /></Perm>} />
+        <Route path="lands/transfers/:id" element={<Perm perm="land.view"><LandTransferFormPage /></Perm>} />
         <Route path="lands/reports" element={<Perm perm="land.view"><LandReportsPage /></Perm>} />
         <Route path="lands/:id" element={<Perm perm="land.view"><LandDetailPage /></Perm>} />
         <Route path="lands/:id/edit" element={<Perm perm="land.edit"><LandFormPage /></Perm>} />

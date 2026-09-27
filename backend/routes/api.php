@@ -30,6 +30,7 @@ use App\Http\Controllers\Api\IrrigationTypeController;
 use App\Http\Controllers\Api\JournalController;
 use App\Http\Controllers\Api\LandController;
 use App\Http\Controllers\Api\LandRegisterController;
+use App\Http\Controllers\Api\LandTransferController;
 use App\Http\Controllers\Api\LandTypeController;
 use App\Http\Controllers\Api\LoanController;
 use App\Http\Controllers\Api\LoanProductController;
@@ -235,6 +236,10 @@ Route::middleware(['auth:sanctum', 'usable'])->group(function () {
         Route::get('land-register/history', [LandRegisterController::class, 'history']);
         Route::get('land-register/history/summary', [LandRegisterController::class, 'historySummary']);
         Route::get('land-register/overview', [LandRegisterController::class, 'overview']);
+        Route::get('land-transfers/meta', [LandTransferController::class, 'meta']);
+        Route::get('land-transfers', [LandTransferController::class, 'index']);
+        Route::get('land-transfers-summary', [LandTransferController::class, 'summary']);
+        Route::get('land-transfers/{landTransfer}', [LandTransferController::class, 'show']);
         Route::get('farmers/{farmer}/lands', [LandController::class, 'forFarmer']);
         Route::get('data-health/summary', [DataHealthController::class, 'summary']);
         Route::get('data-health/mouzas', [DataHealthController::class, 'mouzas']);
@@ -249,6 +254,9 @@ Route::middleware(['auth:sanctum', 'usable'])->group(function () {
         Route::post('lands/{land}/documents', [LandController::class, 'storeDocument']);
         Route::delete('lands/{land}/documents/{document}', [LandController::class, 'destroyDocument']);
         Route::post('lands/{land}/notes', [LandController::class, 'storeNote']);
+        Route::post('land-transfers', [LandTransferController::class, 'store']);
+        Route::put('land-transfers/{landTransfer}', [LandTransferController::class, 'update']);
+        Route::delete('land-transfers/{landTransfer}', [LandTransferController::class, 'destroy']);
         Route::delete('lands/{land}/notes/{note}', [LandController::class, 'destroyNote']);
     });
     Route::delete('lands/{land}', [LandController::class, 'destroy'])->middleware('permission:land.delete');

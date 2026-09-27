@@ -384,6 +384,9 @@ class FarmerController extends Controller
             'combined_payments' => 'farmer_id', 'public_payment_requests' => 'farmer_id', 'members' => 'farmer_id',
             'membership_applications' => 'farmer_id', 'patwaris' => 'farmer_id', 'households' => 'head_farmer_id', 'farmers' => 'merged_into_id',
         ];
+        // a transfer names the farmer on either side
+        $uses['land_transfers as lt_from'] = 'from_farmer_id';
+        $uses['land_transfers as lt_to'] = 'to_farmer_id';
         foreach ($uses as $table => $col) {
             if (DB::table($table)->where($col, $farmer->id)->exists()) {
                 throw ValidationException::withMessages(['farmer' => __('এই কৃষকের সাথে অন্য রেকর্ড যুক্ত আছে; স্থায়ীভাবে মুছা যাবে না।')]);

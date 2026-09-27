@@ -174,6 +174,54 @@ class LandTest extends Phase2TestCase
         $this->actingAs($officer)->getJson('/api/lands?search=01999999999')->assertJsonPath('total', 0);
     }
 
+    public function test_land_transfer_draft_approval_and_partial_share(): void
+    {
+        $seller = $this->makeFarmer(['name_bn' => 'বিক্রেতা']);
+        $buyer = $this->makeFarmer(['name_bn' => 'ক্রেতা']);
+        $officer = $this->officer();
+        $landId = $this->actingAs($officer)->postJson('/api/lands', $this->landPayload([['farmer_id' => $seller->id, 'share_percent' => 100]]))->json('id');
+        $base = ['land_id' => $landId, 'from_farmer_id' => $seller->id, 'to_farmer_id' => $buyer->id, 'reason' => 'sale', 'transfer_date' => now()->toDateString(), 'amount' => 500000];
+
+        // a partial transfer of 40%: saved as a draft first, nothing changes yet
+        $draft = $this->actingAs($officer)->postJson('/api/land-transfers', $base + ['type' => 'partial', 'share_percent' => 40])
+            ->assertCreated()->assertJsonPath('status', 'draft')->assertJsonPath('share_percent', 40);
+        $this->assertStringStartsWith('LT-'.date('Y').'-', $draft->json('transfer_no'));
+        $this->actingAs($officer)->getJson('/api/land-transfers')->assertJsonPath('total', 1);
+
+        // more than the seller owns is refused when sent
+        $this->actingAs($officer)->putJson("/api/land-transfers/{$draft->json('id')}", $base + ['type' => 'partial', 'share_percent' => 120, 'submit' => true])
+            ->assertStatus(422)->assertJsonValidationErrors('share_percent');
+
+        $sent = $this->actingAs($officer)->putJson("/api/land-transfers/{$draft->json('id')}", $base + ['type' => 'partial', 'share_percent' => 40, 'submit' => true])
+            ->assertOk()->assertJsonPath('status', 'pending');
+        $this->assertSame([100.0], Land::find($landId)->owners()->pluck('share_percent')->map(fn ($s) => (float) $s)->all());
+        // a sent transfer can no longer be edited
+        $this->actingAs($officer)->putJson("/api/land-transfers/{$draft->json('id')}", $base + ['type' => 'full'])->assertStatus(422);
+
+        $this->actingAs($this->manager)->postJson("/api/approvals/{$sent->json('approval_id')}/decide", ['decision' => 'approve'])->assertOk();
+        $owners = Land::find($landId)->owners()->get()->mapWithKeys(fn ($o) => [$o->farmer_id => (float) $o->share_percent])->all();
+        $this->assertSame([$seller->id => 60.0, $buyer->id => 40.0], $owners);
+        $this->assertSame('approved', \App\Models\LandTransfer::find($draft->json('id'))->status);
+        $this->actingAs($officer)->getJson('/api/land-register/transfers')->assertJsonPath('total', 1);
+
+        // a Super Admin's full transfer (the seller's remaining 60%) applies at once
+        $admin = $this->userWithRole('super_admin');
+        $this->actingAs($admin)->postJson('/api/land-transfers', $base + ['type' => 'full', 'reason' => 'inheritance', 'submit' => true])
+            ->assertCreated()->assertJsonPath('status', 'approved')->assertJsonPath('share_percent', 60);
+        $this->assertSame([$buyer->id => 100.0], Land::find($landId)->owners()->get()->mapWithKeys(fn ($o) => [$o->farmer_id => (float) $o->share_percent])->all());
+
+        // the transfer list: both, newest first, filterable; summary by status
+        $this->actingAs($officer)->getJson('/api/land-transfers')->assertJsonPath('total', 2)->assertJsonPath('data.0.type', 'full')
+            ->assertJsonPath('data.0.from_farmer.id', $seller->id)->assertJsonPath('data.0.to_photo_url', null);
+        $this->actingAs($officer)->getJson('/api/land-transfers?type=partial&search=ক্রেতা')->assertJsonPath('total', 1)->assertJsonPath('data.0.reason', 'sale');
+        $this->actingAs($officer)->getJson('/api/land-transfers?status=pending')->assertJsonPath('total', 0);
+        $this->actingAs($officer)->getJson('/api/land-transfers-summary')->assertJson(['total' => 2, 'approved' => 2, 'pending' => 0, 'rejected' => 0]);
+
+        // someone who no longer owns the plot cannot give it away
+        $this->actingAs($officer)->postJson('/api/land-transfers', $base + ['type' => 'full'])->assertStatus(422)->assertJsonValidationErrors('from_farmer_id');
+        $this->actingAs($officer)->postJson('/api/land-transfers', array_merge($base, ['type' => 'full', 'from_farmer_id' => $buyer->id]))->assertStatus(422)->assertJsonValidationErrors('to_farmer_id');
+    }
+
     public function test_owner_shares_must_total_100(): void
     {
         $a = $this->makeFarmer(['name_bn' => 'ক']);

@@ -1,151 +1,256 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
-import { Button, DatePicker, Input, Select, Table, Tag } from 'antd'
+import { App, Button, Checkbox, DatePicker, Dropdown, Grid, Input, Select, Table, Tag } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
-import { ArrowRightOutlined, EyeFilled, SearchOutlined, SwapOutlined } from '@ant-design/icons'
+import { AppstoreFilled, DownOutlined, EditOutlined, EyeFilled, MoreOutlined, PlusOutlined, PrinterOutlined, SearchOutlined } from '@ant-design/icons'
 import type { Dayjs } from 'dayjs'
 import { useAuth } from '../../auth/AuthContext'
-import { api, type Paginated } from '../../lib/api'
+import ProtectedImage from '../../components/ProtectedImage'
+import { api, errorMessage, type Paginated } from '../../lib/api'
 import { digits, fmtDate } from '../../lib/format'
+import { downloadExport } from '../../lib/phase2'
 import type { Mouza } from '../../lib/types'
 import { nameOf, t as tx } from '../../lib/i18n'
-import ListFrame, { acres, ExportMenu, Field, n0 } from './ListFrame'
+import ListFrame, { Field, initials, n0 } from './ListFrame'
+import './land-list.css'
 
-type Party = { id: number; name_bn: string; farmer_code: string; share_percent: number }
-type Row = { key: string; land_id: number; date: string; land_code: string; dag_no: string; mouza: string | null; area_decimal: number; from: Party[]; to: Party[]; remarks: string | null }
-type Summary = { total: number; this_year: number; this_month: number; area_this_year: number }
-type Filters = { search?: string; mouza_id?: number; from?: string; to?: string }
+type Party = { id: number; farmer_code: string; name_bn: string; name_en: string | null }
+type Row = {
+  id: number
+  transfer_no: string
+  land_id: number
+  land: { land_code: string; dag_no: string; mouza: { name_bn: string } | null } | null
+  from_farmer: Party
+  to_farmer: Party
+  from_photo_url: string | null
+  to_photo_url: string | null
+  type: 'full' | 'partial'
+  share_percent: number
+  reason: string
+  transfer_date: string
+  amount: number | null
+  status: 'draft' | 'pending' | 'approved' | 'rejected'
+  approval_request_id: number | null
+}
+type Place = { id: number; name_bn: string; district_id?: number }
+type Summary = { total: number; approved: number; pending: number; rejected: number; draft: number }
+type Filters = { search?: string; mouza_id?: number; upazila_id?: number; district_id?: number; type?: string; status?: string; from?: string; to?: string }
 
-const people = (list: Party[]) => (
-  <span className="tr-people">
-    {list.map((p, i) => (
-      <span key={`${p.id}-${i}`}>
-        <Link to={`/farmers/${p.id}`}>{p.name_bn}</Link>
-        {p.share_percent < 100 && <small> ({digits(p.share_percent)}%)</small>}
-      </span>
-    ))}
-  </span>
-)
+export const TRANSFER_STATUS: Record<Row['status'], [string, string]> = {
+  draft: [tx('খসড়া'), 'ml-tag-gray'],
+  pending: [tx('অপেক্ষমাণ'), 'fl-tag-gold'],
+  approved: [tx('অনুমোদিত'), 'fl-tag-green'],
+  rejected: [tx('প্রত্যাখ্যাত'), 'fl-tag-red'],
+}
+// reasons that read as their own kind of transfer get their own colour, as in the design
+const REASON_TONE: Record<string, string> = { inheritance: 'll-green', gift: 'll-gold', exchange: 'll-orange', court: 'll-gray' }
 
-/** Every change of a plot's owners (sale, inheritance, gift) — who handed over to whom and when. */
+function Person({ p, photo }: { p: Party; photo: string | null }) {
+  return (
+    <span className="ll-owner bg-who">
+      {photo ? <ProtectedImage url={photo} size={30} shape="square" /> : <span className="ml-initials ll-initials">{initials(nameOf(p))}</span>}
+      <Link to={`/farmers/${p.id}`} className="fl-name">
+        {nameOf(p)}
+      </Link>
+    </span>
+  )
+}
+
+/** Every land transfer — waiting, approved, rejected and drafts — with search, filters and exports. */
 export default function LandTransferPage() {
   const navigate = useNavigate()
   const { can } = useAuth()
+  const { message } = App.useApp()
+  const wide = Grid.useBreakpoint().lg
   const [page, setPage] = useState(1)
   const [perPage, setPerPage] = useState(10)
   const [draft, setDraft] = useState<Filters>({})
   const [filters, setFilters] = useState<Filters>({})
-  const [range, setRange] = useState<[Dayjs | null, Dayjs | null] | null>(null)
+  const [range, setRange] = useState<{ from?: Dayjs | null; to?: Dayjs | null }>({})
+  const [selected, setSelected] = useState<number[]>([])
+  const [hidden, setHidden] = useState<string[]>([])
   const params = { page, per_page: perPage, ...filters }
 
   const { data, isFetching } = useQuery({
-    queryKey: ['land-transfers', params],
-    queryFn: async () => (await api.get<Paginated<Row>>('/land-register/transfers', { params })).data,
+    queryKey: ['land-transfers', 'list', params],
+    queryFn: async () => (await api.get<Paginated<Row>>('/land-transfers', { params })).data,
     placeholderData: keepPreviousData,
   })
-  const summary = useQuery({ queryKey: ['land-transfers', 'summary'], queryFn: async () => (await api.get<Summary>('/land-register/transfers/summary')).data })
+  const summary = useQuery({ queryKey: ['land-transfers', 'summary'], queryFn: async () => (await api.get<Summary>('/land-transfers-summary')).data })
+  const tMeta = useQuery({ queryKey: ['land-transfer-meta'], queryFn: async () => (await api.get<{ types: Record<string, string>; reasons: Record<string, string> }>('/land-transfers/meta')).data })
   const mouzas = useQuery({ queryKey: ['mouzas', 'all'], queryFn: async () => (await api.get<Mouza[]>('/mouzas', { params: { all: 1 } })).data })
+  const places = useQuery({ queryKey: ['mouzas', 'summary'], queryFn: async () => (await api.get<{ districts: Place[]; upazilas: Place[] }>('/mouzas-summary')).data })
 
   const s = summary.data
   const total = data?.total ?? 0
   const from = total ? (page - 1) * perPage + 1 : 0
-  const apply = () => {
-    setFilters({ ...draft, from: range?.[0]?.format('YYYY-MM-DD'), to: range?.[1]?.format('YYYY-MM-DD') })
+  const set = (patch: Partial<Filters>) => setDraft((d) => ({ ...d, ...patch }))
+  const show = (f: Filters) => {
+    setDraft(f)
+    setFilters(f)
+    setRange({})
     setPage(1)
   }
-  const year = new Date().getFullYear()
+  const apply = () => {
+    setFilters({ ...draft, from: range.from?.format('YYYY-MM-DD'), to: range.to?.format('YYYY-MM-DD') })
+    setPage(1)
+  }
+  const exportCsv = () => downloadExport('/land-transfers', { ...filters, export: 'csv' }, 'land-transfers.csv').catch((e) => message.error(errorMessage(e)))
+  const upazilaOptions = (places.data?.upazilas ?? []).filter((u) => !draft.district_id || u.district_id === draft.district_id)
+  const all = [{ value: '', label: tx('সকল') }]
+  const editable = (r: Row) => can('land.edit') && (r.status === 'draft' || r.status === 'rejected')
 
   const cards = [
-    { key: 'total', label: tx('মোট হস্তান্তর'), value: s?.total, icon: 'share', color: '#2563eb', tint: '#e4edfd' },
-    { key: 'year', label: tx('এ বছরের হস্তান্তর'), value: s?.this_year, icon: 'calendar', color: '#1f9d55', tint: '#e3f5ea', onClick: () => { setRange(null); setFilters({ from: `${year}-01-01` }); setPage(1) } },
-    { key: 'month', label: tx('এ মাসের হস্তান্তর'), value: s?.this_month, icon: 'bars', color: '#f08c00', tint: '#fdf0dc' },
-    { key: 'area', label: tx('এ বছরে হস্তান্তরিত জমি'), value: s ? acres(s.area_this_year) : undefined, unit: tx('একর'), icon: 'layers', color: '#6d4ae6', tint: '#ece7fc' },
+    { key: 'total', label: tx('মোট হস্তান্তর রেকর্ড'), value: s?.total, icon: 'share', color: '#2563eb', tint: '#e4edfd', onClick: () => show({}) },
+    { key: 'approved', label: tx('সম্পন্ন হস্তান্তর'), value: s?.approved, icon: 'userCheck', color: '#1f9d55', tint: '#e3f5ea', onClick: () => show({ status: 'approved' }) },
+    { key: 'pending', label: tx('অনুমোদনের অপেক্ষায়'), value: s?.pending, icon: 'userClock', color: '#f08c00', tint: '#fdf0dc', onClick: () => show({ status: 'pending' }) },
+    { key: 'rejected', label: tx('প্রত্যাখ্যাত হস্তান্তর'), value: s?.rejected, icon: 'userX', color: '#e0383e', tint: '#fde6e7', onClick: () => show({ status: 'rejected' }) },
   ]
 
-  const columns: ColumnsType<Row> = [
-    { title: '#', width: 44, align: 'center', render: (_, __, i) => digits(from + i) },
-    { title: tx('তারিখ'), dataIndex: 'date', width: 100, render: fmtDate },
-    { title: tx('জমির নং'), dataIndex: 'land_code', width: 100, render: (v, r) => <Link to={`/lands/${r.land_id}`} className="fl-link">{v}</Link> },
-    { title: tx('মৌজা'), dataIndex: 'mouza', render: (v) => v || '—' },
-    { title: tx('দাগ নং'), dataIndex: 'dag_no', render: (v) => digits(v) },
-    { title: tx('পরিমাণ (একর)'), dataIndex: 'area_decimal', render: (v) => acres(v) },
-    { title: tx('আগের মালিক'), render: (_, r) => people(r.from) },
-    { title: '', width: 30, render: () => <ArrowRightOutlined className="tr-arrow" /> },
-    { title: tx('নতুন মালিক'), render: (_, r) => people(r.to) },
+  const allColumns: (ColumnsType<Row>[number] & { key: string })[] = [
+    { key: 'sl', title: '#', width: 44, align: 'center', render: (_, __, i) => digits(from + i) },
+    { key: 'code', title: tx('জমির নং'), width: 90, render: (_, r) => <Link to={`/lands/${r.land_id}`} className="fl-link">{r.land?.land_code}</Link> },
+    { key: 'mouza', title: tx('মৌজা'), render: (_, r) => r.land?.mouza?.name_bn ?? '—' },
+    { key: 'dag', title: tx('দাগ নং'), render: (_, r) => digits(r.land?.dag_no ?? '') },
+    { key: 'from', title: tx('বর্তমান মালিক'), render: (_, r) => <Person p={r.from_farmer} photo={r.from_photo_url} /> },
+    { key: 'to', title: tx('নতুন মালিক'), render: (_, r) => <Person p={r.to_farmer} photo={r.to_photo_url} /> },
+    { key: 'date', title: tx('হস্তান্তরের তারিখ'), dataIndex: 'transfer_date', render: fmtDate },
     {
-      title: tx('ধরন'),
-      render: (_, r) => {
-        const kept = r.to.some((t) => r.from.some((f) => f.id === t.id))
-        return kept ? <Tag className="fl-tag fl-tag-gold">{tx('অংশ বদল')}</Tag> : <Tag className="fl-tag fl-tag-green">{tx('পূর্ণ হস্তান্তর')}</Tag>
-      },
+      key: 'type',
+      title: tx('হস্তান্তরের ধরন'),
+      render: (_, r) =>
+        REASON_TONE[r.reason] ? (
+          <Tag className={`fl-tag ${REASON_TONE[r.reason]}`}>{tMeta.data?.reasons[r.reason]}</Tag>
+        ) : (
+          <Tag className={`fl-tag ${r.type === 'full' ? 'll-blue' : 'll-purple'}`}>
+            {tMeta.data?.types[r.type]}
+            {r.type === 'partial' && ` ${digits(Number(r.share_percent))}%`}
+          </Tag>
+        ),
     },
-    { title: tx('মন্তব্য'), dataIndex: 'remarks', render: (v) => v || '—' },
+    { key: 'reason', title: tx('কারণ'), dataIndex: 'reason', render: (v: string) => tMeta.data?.reasons[v] ?? v },
+    { key: 'amount', title: tx('টাকা (৳)'), dataIndex: 'amount', render: (v: number | null) => (v == null ? '—' : n0(Number(v))) },
+    { key: 'status', title: tx('অবস্থা'), dataIndex: 'status', render: (st: Row['status']) => <Tag className={`fl-tag ${TRANSFER_STATUS[st][1]}`}>{TRANSFER_STATUS[st][0]}</Tag> },
     {
+      key: 'actions',
       title: tx('অ্যাকশন'),
-      width: 80,
+      width: 124,
       align: 'center',
-      render: (_, r) => <Button className="fl-act pl-act" icon={<EyeFilled />} aria-label={tx('দেখুন')} onClick={() => navigate(`/lands/${r.land_id}?tab=ownership`)} />,
+      fixed: wide ? 'right' : undefined,
+      render: (_, r) => (
+        <div className="fl-actions pl-actions">
+          <Button className="fl-act pl-act" icon={<EyeFilled />} aria-label={tx('দেখুন')} onClick={() => navigate(`/lands/transfers/${r.id}`)} />
+          <Button className="fl-act pl-act" icon={<EditOutlined />} aria-label={tx('সম্পাদনা')} disabled={!editable(r)} onClick={() => navigate(`/lands/transfers/${r.id}`)} />
+          <Dropdown
+            trigger={['click']}
+            placement="bottomRight"
+            menu={{
+              items: [
+                { key: 'land', label: tx('জমির প্রোফাইল'), onClick: () => navigate(`/lands/${r.land_id}`) },
+                ...(r.approval_request_id ? [{ key: 'approval', label: tx('অনুমোদন দেখুন'), onClick: () => navigate(`/approvals/${r.approval_request_id}`) }] : []),
+              ],
+            }}
+          >
+            <Button className="fl-act pl-act" icon={<MoreOutlined />} aria-label={tx('আরও')} />
+          </Dropdown>
+        </div>
+      ),
     },
   ]
+  const hideable = allColumns.filter((c) => !['sl', 'actions'].includes(c.key))
+  const columns = allColumns.filter((c) => !hidden.includes(c.key))
 
   return (
     <ListFrame
       section={{ label: tx('জমি ব্যবস্থাপনা'), to: '/lands' }}
-      title={tx('জমি হস্তান্তর')}
-      subtitle={tx('জমির মালিকানা বদলের সব রেকর্ড — কে কাকে, কবে, কতটুকু হস্তান্তর করেছেন। নতুন হস্তান্তর জমির প্রোফাইল থেকে করা যায়।')}
+      title={tx('জমি হস্তান্তরের তালিকা')}
+      subtitle={tx('সব জমি হস্তান্তরের রেকর্ড দেখুন ও পরিচালনা করুন।')}
       actions={
-        <>
-          {can('land.edit') && (
-            <Button type="primary" icon={<SwapOutlined />} onClick={() => navigate('/lands/lookup')}>
-              {tx('নতুন হস্তান্তর')}
-            </Button>
-          )}
-          <ExportMenu
-            reports={[{ key: 'land_history', label: tx('জমি হস্তান্তর ও চাষ পরিবর্তন') }]}
-            filters={{ mouza_id: filters.mouza_id, from: filters.from ?? `${year}-01-01`, to: filters.to ?? `${year}-12-31` }}
-          />
-        </>
+        can('land.edit') && (
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate('/lands/transfers/new')}>
+            {tx('নতুন জমি হস্তান্তর')}
+          </Button>
+        )
       }
       cards={cards}
+      filterClass="ll-filters"
       filters={
         <>
-          <Field grow={300}>
+          <Field label={tx('খুঁজুন')} grow={380}>
             <Input
               prefix={<SearchOutlined />}
               allowClear
-              placeholder={tx('জমির নং, দাগ, মালিকের নাম বা কৃষক নং...')}
+              placeholder={tx('জমির নং, মালিক বা নতুন মালিকের নাম দিয়ে খুঁজুন...')}
               value={draft.search}
-              onChange={(e) => setDraft((d) => ({ ...d, search: e.target.value || undefined }))}
+              onChange={(e) => set({ search: e.target.value || undefined })}
               onPressEnter={apply}
             />
           </Field>
           <Field label={tx('মৌজা')}>
-            <Select
-              showSearch={{ optionFilterProp: 'label' }}
-              value={draft.mouza_id ?? ''}
-              options={[{ value: '', label: tx('সকল') }, ...(mouzas.data ?? []).map((m) => ({ value: m.id, label: nameOf(m) }))]}
-              onChange={(v) => setDraft((d) => ({ ...d, mouza_id: v === '' ? undefined : Number(v) }))}
-            />
+            <Select showSearch={{ optionFilterProp: 'label' }} value={draft.mouza_id ?? ''} options={[...all, ...(mouzas.data ?? []).map((m) => ({ value: m.id, label: nameOf(m) }))]} onChange={(v) => set({ mouza_id: v === '' ? undefined : Number(v) })} />
           </Field>
-          <Field label={tx('হস্তান্তরের তারিখের পরিসর')} grow={220}>
-            <DatePicker.RangePicker format="DD-MM-YYYY" value={range} onChange={(r) => setRange(r as [Dayjs | null, Dayjs | null] | null)} placeholder={[tx('শুরু'), tx('শেষ')]} />
+          <Field label={tx('উপজেলা')}>
+            <Select value={draft.upazila_id ?? ''} options={[...all, ...upazilaOptions.map((u) => ({ value: u.id, label: u.name_bn }))]} onChange={(v) => set({ upazila_id: v === '' ? undefined : Number(v) })} />
+          </Field>
+          <Field label={tx('জেলা')}>
+            <Select value={draft.district_id ?? ''} options={[...all, ...(places.data?.districts ?? []).map((d) => ({ value: d.id, label: d.name_bn }))]} onChange={(v) => set({ district_id: v === '' ? undefined : Number(v), upazila_id: undefined })} />
+          </Field>
+          <span className="ll-break" />
+          <Field label={tx('হস্তান্তরের ধরন')}>
+            <Select value={draft.type ?? ''} options={[...all, ...Object.entries(tMeta.data?.types ?? {}).map(([value, label]) => ({ value, label }))]} onChange={(v) => set({ type: v || undefined })} />
+          </Field>
+          <Field label={tx('অবস্থা')}>
+            <Select value={draft.status ?? ''} options={[...all, ...Object.entries(TRANSFER_STATUS).map(([value, [label]]) => ({ value, label }))]} onChange={(v) => set({ status: v || undefined })} />
+          </Field>
+          <Field label={tx('তারিখ (থেকে)')}>
+            <DatePicker format="DD-MM-YYYY" placeholder="dd-mm-yyyy" value={range.from ?? null} onChange={(d) => setRange((r) => ({ ...r, from: d }))} style={{ width: '100%', height: 36 }} />
+          </Field>
+          <Field label={tx('তারিখ (পর্যন্ত)')}>
+            <DatePicker format="DD-MM-YYYY" placeholder="dd-mm-yyyy" value={range.to ?? null} onChange={(d) => setRange((r) => ({ ...r, to: d }))} style={{ width: '100%', height: 36 }} />
           </Field>
         </>
       }
       onSearch={apply}
-      onReset={() => {
-        setDraft({})
-        setRange(null)
-        setFilters({})
-        setPage(1)
-      }}
-      tableTitle={tx('হস্তান্তরের তালিকা ({{p0}})', { p0: n0(total) })}
+      onReset={() => show({})}
+      tableTitle={tx('জমি হস্তান্তরের তালিকা ({{p0}})', { p0: n0(total) })}
+      tableTools={
+        <>
+          <Dropdown
+            trigger={['click']}
+            placement="bottomRight"
+            menu={{
+              items: [
+                { key: 'csv', label: 'Excel (CSV)', onClick: exportCsv },
+                {
+                  key: 'cols',
+                  label: tx('কলাম'),
+                  children: hideable.map((c) => ({
+                    key: `col-${c.key}`,
+                    label: (
+                      <Checkbox checked={!hidden.includes(c.key)} onChange={(e) => setHidden((h) => (e.target.checked ? h.filter((k) => k !== c.key) : [...h, c.key]))}>
+                        {c.title as string}
+                      </Checkbox>
+                    ),
+                  })),
+                },
+              ],
+            }}
+          >
+            <Button icon={<AppstoreFilled />} className="ml-columns pl-columns">
+              {tx('এক্সপোর্ট')} <DownOutlined className="fl-caret" />
+            </Button>
+          </Dropdown>
+          <Button icon={<PrinterOutlined />} className="ml-columns pl-columns" onClick={() => window.print()}>
+            {tx('প্রিন্ট')}
+          </Button>
+        </>
+      }
       paging={{
         page,
         perPage,
         total,
-        showing: tx('{{p0}} থেকে {{p1}} দেখানো হচ্ছে, মোট {{p2}}টি', { p0: n0(from), p1: n0(Math.min(page * perPage, total)), p2: n0(total) }),
+        showing: tx('{{p0}} থেকে {{p1}} দেখানো হচ্ছে, মোট {{p2}}টি রেকর্ড', { p0: n0(from), p1: n0(Math.min(page * perPage, total)), p2: n0(total) }),
         onPage: setPage,
         onPerPage: (n) => {
           setPerPage(n)
@@ -154,12 +259,13 @@ export default function LandTransferPage() {
       }}
     >
       <Table<Row>
-        className="fl-table ml-table pl-table"
-        rowKey="key"
+        className="fl-table ml-table pl-table ll-table bg-table"
+        rowKey="id"
         loading={isFetching}
         dataSource={data?.data ?? []}
-        scroll={{ x: 1200 }}
+        scroll={{ x: 'max-content' }}
         pagination={false}
+        rowSelection={{ selectedRowKeys: selected, onChange: (keys) => setSelected(keys as number[]), columnWidth: 40 }}
         columns={columns}
         locale={{ emptyText: tx('এখনো কোনো হস্তান্তর হয়নি') }}
       />

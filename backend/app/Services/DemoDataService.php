@@ -350,6 +350,7 @@ class DemoDataService
         $this->statusChanges();
         $this->voterLists();
         $this->deletions();
+        $this->landTransfers();
         $this->loans();
     }
 
@@ -868,6 +869,45 @@ class DemoDataService
                     $this->api('admin', 'POST', "farmers/{$f['id']}/restore");
                 } elseif ($what === 'purge') {
                     $this->api('admin', 'DELETE', "farmers-deleted/{$f['id']}");
+                }
+            });
+        }
+    }
+
+    /**
+     * Land sales, inheritance and gifts over the year through the transfer
+     * form: most approved by the manager, a few still waiting, a few rejected.
+     */
+    private function landTransfers(): void
+    {
+        $span = $this->start->diffInDays(Carbon::parse($this->today)) - 3;
+        $plan = array_merge(array_fill(0, 14, 'approve'), array_fill(0, 4, 'pending'), array_fill(0, 3, 'reject'));
+        foreach ($plan as $i => $outcome) {
+            // the waiting ones are recent
+            $date = $outcome === 'pending' ? Carbon::parse($this->today)->subDays(mt_rand(1, 20)) : $this->day($this->start, 20, (int) $span);
+            $this->at($date, function (string $d) use ($outcome) {
+                $land = DB::table('land_owners')->join('lands', 'lands.id', '=', 'land_owners.land_id')->whereNull('lands.deleted_at')
+                    ->whereNull('land_owners.end_date')->where('land_owners.start_date', '<', $d)
+                    ->whereNotIn('lands.id', DB::table('land_transfers')->where('status', 'pending')->select('land_id'))
+                    ->inRandomOrder()->first(['lands.id', 'land_owners.farmer_id', 'land_owners.share_percent']);
+                $buyer = array_rand($this->farmers);
+                if (! $land || $buyer === $land->farmer_id) {
+                    return;
+                }
+                $partial = $this->chance(0.35) && $land->share_percent > 20;
+                $reason = $this->pick(['sale', 'sale', 'sale', 'inheritance', 'gift', 'exchange']);
+                $r = $this->api('irrigation', 'POST', 'land-transfers', [
+                    'land_id' => $land->id, 'from_farmer_id' => $land->farmer_id, 'to_farmer_id' => $buyer,
+                    'type' => $partial ? 'partial' : 'full', 'share_percent' => $partial ? $this->pick([25, 30, 40, 50]) : null,
+                    'reason' => $reason, 'transfer_date' => $d,
+                    'amount' => $reason === 'sale' ? $this->money(150000, 900000, 10000) : null,
+                    'remarks' => $reason === 'sale' ? 'দলিল নং '.Bn::toBnDigits((string) mt_rand(1000, 9999)) : null,
+                    'submit' => true,
+                ]);
+                if ($outcome === 'approve') {
+                    $this->approve($r['approval_id'] ?? null);
+                } elseif ($outcome === 'reject' && ($r['approval_id'] ?? null)) {
+                    $this->api('manager', 'POST', "approvals/{$r['approval_id']}/decide", ['decision' => 'reject', 'remarks' => 'দলিলের কপি অস্পষ্ট — নতুন কপি দিন']);
                 }
             });
         }

@@ -10,6 +10,7 @@ use App\Approvals\InvoiceCancelHandler;
 use App\Approvals\IrrigationRateHandler;
 use App\Approvals\JournalHandler;
 use App\Approvals\JournalReversalHandler;
+use App\Approvals\LandTransferHandler;
 use App\Approvals\LoanApplicationHandler;
 use App\Approvals\LoanPaymentCancelHandler;
 use App\Approvals\MembershipAdmitHandler;
@@ -97,6 +98,7 @@ return [
         'member.cancel' => MemberStatusHandler::class,
         'member.reactivate' => MemberStatusHandler::class,
         'farmer.merge' => FarmerMergeHandler::class,
+        'land.transfer' => LandTransferHandler::class,
         'accounting.journal' => JournalHandler::class,
         'accounting.reversal' => JournalReversalHandler::class,
         'irrigation.rate' => IrrigationRateHandler::class,

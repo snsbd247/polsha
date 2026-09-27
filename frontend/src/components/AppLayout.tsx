@@ -130,8 +130,13 @@ const GROUPS: Group[] = [
         perm: 'land.view',
       },
       {
-        path: '/lands/transfers',
+        path: '/lands/transfers/new',
         label: m('জমি হস্তান্তর', 'Land Transfer'),
+        perm: 'land.edit',
+      },
+      {
+        path: '/lands/transfers',
+        label: m('জমি হস্তান্তরের তালিকা', 'Land Transfer List'),
         perm: 'land.view',
       },
       {
