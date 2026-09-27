@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useAuth } from '../../auth/AuthContext'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { App, Button, Card, Col, Descriptions, Empty, Form, Input, Modal, Row, Space, Spin, Steps, Table, Tag, Typography } from 'antd'
+import { Alert, App, Button, Card, Col, Descriptions, Empty, Form, Input, Modal, Row, Space, Spin, Steps, Table, Tag, Typography } from 'antd'
 import { api, errorMessage } from '../../lib/api'
 import { APPROVAL_STATUS, digits, fmtDateTime } from '../../lib/format'
 import { useRoleLabels } from '../../lib/queries'
@@ -41,7 +41,7 @@ const show = (v: unknown) =>
 export default function ApprovalDetailPage() {
   const { id } = useParams()
   const { message } = App.useApp()
-  const { can } = useAuth()
+  const { can, user } = useAuth()
   const queryClient = useQueryClient()
   const { data: roles } = useRoleLabels()
   const [decision, setDecision] = useState<Decision | null>(null)
@@ -92,6 +92,7 @@ export default function ApprovalDetailPage() {
 
   const keys = Array.from(new Set([...Object.keys(req.before ?? {}), ...Object.keys(req.payload ?? {})]))
   const status = APPROVAL_STATUS[req.status]
+  const waitingFor = (req.steps.find((s) => s.step_no === req.current_step)?.roles ?? []).map(roleLabel).join(' / ') || tx('অনুমোদনকারী')
 
   return (
     <>
@@ -109,6 +110,19 @@ export default function ApprovalDetailPage() {
           </Space>
         )}
       </div>
+
+      {req.status === 'pending' && !req.can_act && (
+        <Alert
+          type="info"
+          showIcon
+          style={{ marginBottom: 16 }}
+          title={
+            req.requested_by === user?.id
+              ? tx('আপনি নিজে এই অনুরোধ পাঠিয়েছেন। নিয়ম অনুযায়ী পাঠানো ব্যক্তি নিজে অনুমোদন দিতে পারেন না — অন্য একজন {{p0}} লগইন করে অনুমোদন দেবেন।', { p0: waitingFor })
+              : tx('এই ধাপে অনুমোদন দেবেন: {{p0}}।', { p0: waitingFor })
+          }
+        />
+      )}
 
       <Row gutter={[16, 16]}>
         <Col xs={24} lg={16}>
