@@ -91,7 +91,15 @@ class LandTest extends Phase2TestCase
         // borga list
         $this->actingAs($officer)->getJson('/api/land-register/cultivations?status=current')->assertJsonPath('total', 1)
             ->assertJsonPath('data.0.cultivator.id', $tenant->id)->assertJsonPath('data.0.owners.0.id', $owner->id)->assertJsonPath('data.0.terms', 'অর্ধেক');
-        $this->actingAs($officer)->getJson('/api/land-register/cultivations/summary')->assertJson(['borga' => 1, 'lease' => 0]);
+        $this->actingAs($officer)->getJson('/api/land-register/cultivations/summary')->assertJson(['borga' => 1, 'lease' => 0, 'records' => 1, 'farmers' => 1, 'active' => 1, 'expired' => 0])
+            ->assertJsonPath('owners.0.id', $owner->id)->assertJsonPath('cultivators.0.id', $tenant->id);
+        // a contract past its agreed end, with the tenant still farming, shows as expired; the owner's name finds it
+        \App\Models\LandCultivation::where('farmer_id', $tenant->id)->update(['contract_end' => now()->subDay()->toDateString(), 'share_percent' => 50]);
+        $this->actingAs($officer)->getJson('/api/land-register/cultivations?status=expired&search=মালিক')->assertJsonPath('total', 1)
+            ->assertJsonPath('data.0.status', 'expired')->assertJsonPath('data.0.share_percent', 50)->assertJsonPath('data.0.owners.0.id', $owner->id);
+        $this->actingAs($officer)->getJson('/api/land-register/cultivations?status=active')->assertJsonPath('total', 0);
+        $this->actingAs($officer)->getJson("/api/land-register/cultivations?owner_id={$tenant->id}")->assertJsonPath('total', 0);
+        $this->actingAs($officer)->getJson("/api/land-register/cultivations?cultivator_id={$tenant->id}&owner_id={$owner->id}")->assertJsonPath('total', 1);
 
         // a sale shows as one transfer with who handed over and who received
         $this->actingAs($officer)->postJson("/api/lands/$id/transfer", ['owners' => [['farmer_id' => $buyer->id, 'share_percent' => 100]], 'effective_date' => now()->toDateString(), 'remarks' => 'দলিল ১২'])->assertOk();

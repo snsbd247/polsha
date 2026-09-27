@@ -6,9 +6,9 @@ use Illuminate\Database\Eloquent\Model;
 
 class LandCultivation extends Model
 {
-    protected $fillable = ['land_id', 'farmer_id', 'type', 'terms', 'start_date', 'end_date', 'remarks', 'created_by'];
+    protected $fillable = ['land_id', 'farmer_id', 'type', 'terms', 'share_percent', 'start_date', 'contract_end', 'end_date', 'remarks', 'created_by'];
 
-    protected $casts = ['start_date' => 'date:Y-m-d', 'end_date' => 'date:Y-m-d'];
+    protected $casts = ['start_date' => 'date:Y-m-d', 'end_date' => 'date:Y-m-d', 'contract_end' => 'date:Y-m-d'];
 
     public function farmer()
     {

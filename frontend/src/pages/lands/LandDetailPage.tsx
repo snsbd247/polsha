@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Alert, App, Button, ConfigProvider, DatePicker, Dropdown, Empty, Form, Input, Modal, Radio, Select, Spin, Table, Tabs, Tag, Tooltip, Upload } from 'antd'
+import { Alert, App, Button, ConfigProvider, DatePicker, Dropdown, Empty, Form, Input, InputNumber, Modal, Radio, Select, Spin, Table, Tabs, Tag, Tooltip, Upload } from 'antd'
 import {
   DeleteOutlined,
   DownloadOutlined,
@@ -278,7 +278,7 @@ export default function LandDetailPage() {
       } else if (modal === 'transfer') {
         await api.post(`/lands/${id}/transfer`, { ...v, effective_date: fmt(v.effective_date) })
       } else if (modal === 'cultivation') {
-        await api.post(`/lands/${id}/cultivation`, { ...v, start_date: fmt(v.start_date) })
+        await api.post(`/lands/${id}/cultivation`, { ...v, start_date: fmt(v.start_date), contract_end: fmt(v.contract_end) ?? null })
       } else {
         await api.post(`/lands/${id}/cultivation/end`, { ...v, end_date: fmt(v.end_date) })
       }
@@ -819,6 +819,20 @@ export default function LandDetailPage() {
               </Form.Item>
               <Form.Item name="start_date" label={tx('শুরুর তারিখ')} rules={[required(tx('তারিখ দিন'))]}>
                 <DatePicker format="DD/MM/YYYY" style={{ width: '100%' }} disabledDate={(d) => d.isAfter(dayjs())} />
+              </Form.Item>
+              <Form.Item noStyle shouldUpdate={(a, b) => a.type !== b.type}>
+                {({ getFieldValue }) =>
+                  getFieldValue('type') !== 'own' && (
+                    <div className="lp-cult-extra">
+                      <Form.Item name="share_percent" label={tx('ফসলের অংশ (%)')}>
+                        <InputNumber min={0.01} max={100} style={{ width: '100%' }} />
+                      </Form.Item>
+                      <Form.Item name="contract_end" label={tx('চুক্তি শেষের তারিখ')}>
+                        <DatePicker format="DD/MM/YYYY" style={{ width: '100%' }} />
+                      </Form.Item>
+                    </div>
+                  )
+                }
               </Form.Item>
             </>
           )}

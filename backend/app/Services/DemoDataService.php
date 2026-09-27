@@ -486,8 +486,12 @@ class DemoDataService
                     'area' => mt_rand(8, 165), 'area_unit' => 'decimal', 'land_type_id' => $this->pick($this->landTypes),
                     'irrigation_type_id' => $this->pick($this->irrigationTypes), 'status' => $cultivated ? 'cultivated' : 'fallow',
                     'owners' => [['farmer_id' => $id, 'share_percent' => 100]], 'owned_since' => Carbon::create(mt_rand(1995, 2021), mt_rand(1, 12), 1)->toDateString(),
-                    'cultivation' => $cultivated ? ['farmer_id' => $tenant, 'type' => $borga ? 'borga' : 'own', 'start_date' => Carbon::create(mt_rand(2018, 2024), 1, 1)->toDateString(),
-                        'terms' => $borga ? 'ফসলের অর্ধেক' : null] : null,
+                    'cultivation' => $cultivated ? ($borga
+                        // borga agreements run 3 years at a 50–75% crop share; some ran out and were never renewed
+                        ? ['farmer_id' => $tenant, 'type' => 'borga', 'start_date' => ($st = Carbon::create(mt_rand(2020, 2024), mt_rand(1, 12), 1))->toDateString(),
+                            'contract_end' => $st->copy()->addYears(3)->subDay()->toDateString(), 'share_percent' => $this->pick([50, 50, 60, 70, 75]),
+                            'terms' => 'ফসলের ভাগে বর্গা']
+                        : ['farmer_id' => $tenant, 'type' => 'own', 'start_date' => Carbon::create(mt_rand(2018, 2024), 1, 1)->toDateString()]) : null,
                     'confirm_duplicate' => true,
                 ]);
                 $lands++;

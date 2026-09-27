@@ -99,3 +99,23 @@
 .ll-table .ant-table-thead > tr > th {
   white-space: nowrap;
 }
+
+/* borga list: grouped owner / cultivator header */
+.bg-table .ant-table-thead > tr > th.bg-group {
+  text-align: center;
+  border-bottom: 1px solid #e3e8f0 !important;
+}
+
+.bg-table .ant-table-thead > tr:nth-child(2) > th {
+  padding-top: 4px !important;
+  padding-bottom: 6px !important;
+  font-size: 12.5px;
+}
+
+.bg-who {
+  white-space: nowrap;
+}
+
+.bg-table .ant-table-tbody > tr > td {
+  white-space: nowrap;
+}

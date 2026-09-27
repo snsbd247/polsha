@@ -261,15 +261,12 @@ function LandForm({ id, existing }: { id?: string; existing?: LandDetail }) {
       payload.owners = owners
       payload.owned_since = fmt(v.owned_since)
       if (v.cultivator_id) {
-        // no borga: the cultivator farms their own land; with borga the terms carry the share and the agreed end.
-        // Terms are stored data, so they are always written in Bangla whatever the screen language.
-        const terms = v.is_borga
-          ? [v.borga_share != null ? `ফসলের ${v.borga_share}%` : null, v.contract_end ? `চুক্তি শেষ: ${v.contract_end.format('DD/MM/YYYY')}` : null].filter(Boolean).join(' · ')
-          : null
+        // no borga: the cultivator farms their own land; with borga the crop share and agreed end are kept with it
         payload.cultivation = {
           farmer_id: v.cultivator_id,
           type: v.is_borga ? v.borga_type : 'own',
-          terms: terms || null,
+          share_percent: v.is_borga ? (v.borga_share ?? null) : null,
+          contract_end: v.is_borga ? (fmt(v.contract_end) ?? null) : null,
           start_date: fmt(v.is_borga && v.contract_start ? v.contract_start : v.owned_since),
         }
       }

@@ -211,7 +211,9 @@ class LandController extends Controller
             'cultivation.farmer_id' => ['required_with:cultivation', 'exists:farmers,id'],
             'cultivation.type' => ['required_with:cultivation', Rule::in(array_keys(Land::CULTIVATION_TYPES))],
             'cultivation.terms' => ['nullable', 'string', 'max:500'],
+            'cultivation.share_percent' => ['nullable', 'numeric', 'gt:0', 'max:100'],
             'cultivation.start_date' => ['required_with:cultivation', 'date', 'before_or_equal:today'],
+            'cultivation.contract_end' => ['nullable', 'date', 'after:cultivation.start_date'],
         ], ['owners.required' => __('কমপক্ষে একজন মালিক দিন।')]);
 
         $this->guardDuplicate($request, $data);
@@ -256,7 +258,9 @@ class LandController extends Controller
             'farmer_id' => ['required', 'exists:farmers,id'],
             'type' => ['required', Rule::in(array_keys(Land::CULTIVATION_TYPES))],
             'terms' => ['nullable', 'string', 'max:500'],
+            'share_percent' => ['nullable', 'numeric', 'gt:0', 'max:100'],
             'start_date' => ['required', 'date', 'before_or_equal:today'],
+            'contract_end' => ['nullable', 'date', 'after:start_date'],
             'remarks' => ['nullable', 'string', 'max:500'],
         ]);
         $this->lands->changeCultivation($land, $data, $request->user()->id);

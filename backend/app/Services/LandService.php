@@ -159,6 +159,9 @@ class LandService
             'farmer_id' => $farmer->id,
             'type' => $c['type'],
             'terms' => $c['terms'] ?? null,
+            // share and agreed end only mean something for borga/lease
+            'share_percent' => $c['type'] === 'own' ? null : ($c['share_percent'] ?? null),
+            'contract_end' => $c['type'] === 'own' ? null : ($c['contract_end'] ?? null),
             'start_date' => $c['start_date'],
             'remarks' => $c['remarks'] ?? null,
             'created_by' => $userId,

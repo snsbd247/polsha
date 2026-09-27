@@ -1,18 +1,19 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
-import { Button, DatePicker, Input, Select, Table, Tag, Tooltip } from 'antd'
+import { App, Button, Checkbox, Dropdown, Input, Select, Table, Tag, Tooltip } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
-import { EyeFilled, PlusOutlined, SearchOutlined } from '@ant-design/icons'
-import dayjs, { type Dayjs } from 'dayjs'
+import { AppstoreFilled, DownloadOutlined, DownOutlined, EditOutlined, EyeFilled, MoreOutlined, PlusOutlined, PrinterOutlined, SearchOutlined, UploadOutlined } from '@ant-design/icons'
 import { useAuth } from '../../auth/AuthContext'
 import ProtectedImage from '../../components/ProtectedImage'
-import { api, type Paginated } from '../../lib/api'
+import { api, errorMessage, type Paginated } from '../../lib/api'
 import { digits, fmtDate } from '../../lib/format'
 import { useLandMeta } from '../../lib/land'
+import { usePublicSettings } from '../../lib/settings'
 import type { Mouza } from '../../lib/types'
 import { nameOf, t as tx } from '../../lib/i18n'
-import ListFrame, { acres, ExportMenu, Field, initials, n0 } from './ListFrame'
+import ListFrame, { acres, exportReport, Field, initials, n0 } from './ListFrame'
+import './land-list.css'
 
 type Person = { id: number; farmer_code: string; name_bn: string; name_en: string | null; mobile: string | null; photo_url: string | null; member_no: number | null }
 type Row = {
@@ -25,33 +26,49 @@ type Row = {
   mouza: string | null
   type: 'borga' | 'lease'
   terms: string | null
-  remarks: string | null
+  share_percent: number | null
   start_date: string
+  contract_end: string | null
   end_date: string | null
+  status: 'active' | 'expired' | 'ended'
   cultivator: Person | null
-  owners: { id: number; name_bn: string }[]
+  owners: (Person & { share_percent: number })[]
 }
-type Summary = { borga: number; lease: number; area_decimal: number; ended_this_year: number }
-type Filters = { search?: string; mouza_id?: number; type?: string; status?: string; from?: string; to?: string }
+type Named = { id: number; name_bn: string; name_en: string | null }
+type Place = { id: number; name_bn: string; district_id?: number }
+type Summary = { records: number; area_decimal: number; farmers: number; active: number; expired: number; owners: Named[]; cultivators: Named[] }
+type Filters = { search?: string; mouza_id?: number; upazila_id?: number; district_id?: number; owner_id?: number; cultivator_id?: number; land_type_id?: number; status?: string }
 
-/** How long an arrangement has run, in years and months. */
-function duration(start: string, end: string | null) {
-  const months = dayjs(end ?? undefined).diff(dayjs(start), 'month')
-  const y = Math.floor(months / 12)
-  const m = months % 12
-  return [y ? tx('{{p0}} বছর', { p0: digits(y) }) : '', m || !y ? tx('{{p0}} মাস', { p0: digits(m) }) : ''].filter(Boolean).join(' ')
+const STATUS: Record<Row['status'], [string, string]> = {
+  active: [tx('সক্রিয়'), 'fl-tag-green'],
+  expired: [tx('মেয়াদোত্তীর্ণ'), 'fl-tag-red'],
+  ended: [tx('শেষ'), 'ml-tag-gray'],
 }
 
-/** Borga (sharecropping) and lease arrangements, current and past. */
+function Who({ p }: { p: Person }) {
+  return (
+    <span className="ll-owner bg-who">
+      {p.photo_url ? <ProtectedImage url={p.photo_url} size={30} shape="square" /> : <span className="ml-initials ll-initials">{initials(nameOf(p))}</span>}
+      <Link to={`/farmers/${p.id}`} className="fl-name">
+        {nameOf(p)}
+      </Link>
+    </span>
+  )
+}
+
+/** Borga (sharecropping) and lease arrangements with their share, dates and contract status. */
 export default function BorgaPage() {
   const navigate = useNavigate()
   const { can } = useAuth()
+  const { message } = App.useApp()
   const { data: meta } = useLandMeta()
+  const { data: settings } = usePublicSettings()
   const [page, setPage] = useState(1)
   const [perPage, setPerPage] = useState(10)
-  const [draft, setDraft] = useState<Filters>({ status: 'current' })
-  const [filters, setFilters] = useState<Filters>({ status: 'current' })
-  const [range, setRange] = useState<[Dayjs | null, Dayjs | null] | null>(null)
+  const [draft, setDraft] = useState<Filters>({})
+  const [filters, setFilters] = useState<Filters>({})
+  const [selected, setSelected] = useState<number[]>([])
+  const [hidden, setHidden] = useState<string[]>([])
   const params = { page, per_page: perPage, ...filters }
 
   const { data, isFetching } = useQuery({
@@ -61,136 +78,216 @@ export default function BorgaPage() {
   })
   const summary = useQuery({ queryKey: ['land-cultivations', 'summary'], queryFn: async () => (await api.get<Summary>('/land-register/cultivations/summary')).data })
   const mouzas = useQuery({ queryKey: ['mouzas', 'all'], queryFn: async () => (await api.get<Mouza[]>('/mouzas', { params: { all: 1 } })).data })
+  const places = useQuery({ queryKey: ['mouzas', 'summary'], queryFn: async () => (await api.get<{ districts: Place[]; upazilas: Place[] }>('/mouzas-summary')).data })
 
   const s = summary.data
   const total = data?.total ?? 0
   const from = total ? (page - 1) * perPage + 1 : 0
+  const set = (patch: Partial<Filters>) => setDraft((d) => ({ ...d, ...patch }))
   const show = (f: Filters) => {
     setDraft(f)
     setFilters(f)
     setPage(1)
   }
-  const apply = () => {
-    setFilters({ ...draft, from: range?.[0]?.format('YYYY-MM-DD'), to: range?.[1]?.format('YYYY-MM-DD') })
-    setPage(1)
-  }
+  const society = nameOf({ name_bn: settings?.society_name_bn, name_en: settings?.society_name_en })
+  const run = (format: 'xlsx' | 'csv' | 'print') => exportReport('borga', { mouza_id: filters.mouza_id, q: filters.search }, format, society).catch((e) => message.error(errorMessage(e)))
+  const upazilaOptions = (places.data?.upazilas ?? []).filter((u) => !draft.district_id || u.district_id === draft.district_id)
+  const all = [{ value: '', label: tx('সকল') }]
+  const people = (list?: Named[]) => [...all, ...(list ?? []).map((p) => ({ value: p.id, label: nameOf(p) }))]
 
   const cards = [
-    { key: 'borga', label: tx('চলমান বর্গা'), value: s?.borga, icon: 'sprout', color: '#f08c00', tint: '#fdf0dc', onClick: () => show({ type: 'borga', status: 'current' }) },
-    { key: 'lease', label: tx('চলমান লিজ'), value: s?.lease, icon: 'file', color: '#2563eb', tint: '#e4edfd', onClick: () => show({ type: 'lease', status: 'current' }) },
-    { key: 'area', label: tx('বর্গা/লিজের জমি'), value: s ? acres(s.area_decimal) : undefined, unit: tx('একর'), icon: 'layers', color: '#1f9d55', tint: '#e3f5ea' },
-    { key: 'ended', label: tx('এ বছর শেষ হয়েছে'), value: s?.ended_this_year, icon: 'calendar', color: '#e0383e', tint: '#fde6e7', onClick: () => show({ status: 'ended', from: undefined }) },
+    { key: 'records', label: tx('মোট বর্গা রেকর্ড'), value: s?.records, icon: 'share', color: '#6d4ae6', tint: '#ece7fc', onClick: () => show({}) },
+    { key: 'area', label: tx('মোট বর্গা জমি'), value: s ? acres(s.area_decimal) : undefined, unit: tx('একর'), icon: 'sprout', color: '#1f9d55', tint: '#e3f5ea' },
+    { key: 'farmers', label: tx('মোট বর্গাচাষি'), value: s?.farmers, icon: 'users', color: '#2563eb', tint: '#e4edfd' },
+    { key: 'active', label: tx('সক্রিয় বর্গা চুক্তি'), value: s?.active, icon: 'file', color: '#f08c00', tint: '#fdf0dc', onClick: () => show({ status: 'active' }) },
   ]
 
-  const columns: ColumnsType<Row> = [
-    { title: '#', width: 44, align: 'center', render: (_, __, i) => digits(from + i) },
-    { title: tx('জমির নং'), dataIndex: 'land_code', width: 100, render: (v, r) => <Link to={`/lands/${r.land_id}`} className="fl-link">{v}</Link> },
-    { title: tx('মৌজা'), dataIndex: 'mouza', render: (v) => v || '—' },
-    { title: tx('দাগ নং'), dataIndex: 'dag_no', render: (v) => digits(v) },
-    { title: tx('পরিমাণ (একর)'), dataIndex: 'area_decimal', render: (v) => acres(v) },
-    { title: tx('মালিক'), render: (_, r) => r.owners.map((o) => o.name_bn).join(', ') || '—' },
+  const group = (key: string, title: string, children: ColumnsType<Row>) => ({ key, title, className: 'bg-group', children })
+  const allColumns: (ColumnsType<Row>[number] & { key: string })[] = [
+    { key: 'sl', title: '#', width: 44, align: 'center', render: (_, __, i) => digits(from + i) },
+    { key: 'code', title: tx('জমির নং'), dataIndex: 'land_code', width: 90, render: (v, r) => <Link to={`/lands/${r.land_id}`} className="fl-link">{v}</Link> },
+    { key: 'mouza', title: tx('মৌজা'), dataIndex: 'mouza', render: (v) => v || '—' },
+    { key: 'dag', title: tx('দাগ নং'), dataIndex: 'dag_no', render: (v) => digits(v) },
+    { key: 'khatian', title: tx('খতিয়ান নং'), dataIndex: 'khatian_no', render: (v) => digits(v) },
     {
-      title: tx('চাষি'),
-      render: (_, r) =>
-        r.cultivator ? (
-          <span className="bg-person">
-            {r.cultivator.photo_url ? <ProtectedImage url={r.cultivator.photo_url} size={30} shape="square" /> : <span className="ml-initials bg-initials">{initials(nameOf(r.cultivator))}</span>}
-            <span>
-              <Link to={`/farmers/${r.cultivator.id}`} className="fl-name">{nameOf(r.cultivator)}</Link>
-              <small>{digits(r.cultivator.mobile ?? '') || r.cultivator.farmer_code}</small>
-            </span>
-          </span>
-        ) : (
-          '—'
-        ),
+      ...group('owner', tx('মালিকের তথ্য'), [
+        {
+          key: 'owner_name',
+          title: tx('নাম'),
+          render: (_, r) =>
+            r.owners[0] ? (
+              <span className="ll-owner">
+                <Who p={r.owners[0]} />
+                {r.owners.length > 1 && (
+                  <Tooltip title={r.owners.slice(1).map((o) => nameOf(o)).join(', ')}>
+                    <Tag className="fl-tag ml-tag-gray">+{digits(r.owners.length - 1)}</Tag>
+                  </Tooltip>
+                )}
+              </span>
+            ) : (
+              '—'
+            ),
+        },
+        { key: 'owner_no', title: tx('সদস্য নং'), render: (_, r) => (r.owners[0]?.member_no ? digits(r.owners[0].member_no) : '—') },
+      ]),
     },
-    { title: tx('ধরন'), dataIndex: 'type', render: (t) => <Tag className={`fl-tag ${t === 'borga' ? 'fl-tag-orange' : 'lp-tag-blue bg-blue'}`}>{meta?.cultivation_types[t] ?? t}</Tag> },
-    { title: tx('শর্ত'), dataIndex: 'terms', render: (v) => (v ? <Tooltip title={v}><span className="bg-terms">{v}</span></Tooltip> : '—') },
-    { title: tx('শুরু'), dataIndex: 'start_date', render: fmtDate },
-    { title: tx('কতদিন চলছে'), render: (_, r) => duration(r.start_date, r.end_date) },
-    { title: tx('অবস্থা'), render: (_, r) => (r.end_date ? <Tooltip title={fmtDate(r.end_date)}><Tag className="fl-tag ml-tag-gray">{tx('শেষ')}</Tag></Tooltip> : <Tag className="fl-tag fl-tag-green">{tx('চলমান')}</Tag>) },
     {
+      ...group('cultivator', tx('চাষির তথ্য'), [
+        { key: 'cult_name', title: tx('নাম'), render: (_, r) => (r.cultivator ? <Who p={r.cultivator} /> : '—') },
+        { key: 'cult_no', title: tx('সদস্য নং'), render: (_, r) => (r.cultivator?.member_no ? digits(r.cultivator.member_no) : '—') },
+      ]),
+    },
+    {
+      key: 'share',
+      title: tx('অংশ %'),
+      dataIndex: 'share_percent',
+      render: (v, r) => (
+        <Tooltip title={[meta?.cultivation_types[r.type], r.terms].filter(Boolean).join(' · ')}>
+          {v != null ? `${digits(v)}%` : '—'}
+        </Tooltip>
+      ),
+    },
+    { key: 'area', title: tx('পরিমাণ (একর)'), dataIndex: 'area_decimal', render: (v) => acres(v) },
+    { key: 'start', title: tx('শুরুর তারিখ'), dataIndex: 'start_date', render: fmtDate },
+    { key: 'end', title: tx('শেষের তারিখ'), render: (_, r) => (r.end_date ? fmtDate(r.end_date) : r.contract_end ? fmtDate(r.contract_end) : '—') },
+    { key: 'status', title: tx('অবস্থা'), dataIndex: 'status', render: (st: Row['status']) => <Tag className={`fl-tag ${STATUS[st][1]}`}>{STATUS[st][0]}</Tag> },
+    {
+      key: 'actions',
       title: tx('অ্যাকশন'),
-      width: 80,
+      width: 150,
       align: 'center',
-      render: (_, r) => <Button className="fl-act pl-act" icon={<EyeFilled />} aria-label={tx('দেখুন')} onClick={() => navigate(`/lands/${r.land_id}?tab=borga`)} />,
+      render: (_, r) => (
+        <div className="fl-actions pl-actions">
+          <Button className="fl-act pl-act" icon={<EyeFilled />} aria-label={tx('দেখুন')} onClick={() => navigate(`/lands/${r.land_id}?tab=borga`)} />
+          <Button className="fl-act pl-act" icon={<EditOutlined />} aria-label={tx('সম্পাদনা')} disabled={!can('land.edit')} onClick={() => navigate(`/lands/${r.land_id}?tab=cultivation`)} />
+          <Dropdown
+            trigger={['click']}
+            placement="bottomRight"
+            menu={{
+              items: [
+                { key: 'land', label: tx('জমির প্রোফাইল'), onClick: () => navigate(`/lands/${r.land_id}`) },
+                ...(r.cultivator ? [{ key: 'farmer', label: tx('চাষির প্রোফাইল'), onClick: () => navigate(`/farmers/${r.cultivator!.id}`) }] : []),
+                { key: 'history', label: tx('জমির ইতিহাস'), onClick: () => navigate(`/lands/${r.land_id}?tab=history`) },
+              ],
+            }}
+          >
+            <Button className="fl-act pl-act" icon={<MoreOutlined />} aria-label={tx('আরও')} />
+          </Dropdown>
+        </div>
+      ),
     },
   ]
+  const hideable = allColumns.filter((c) => !['sl', 'actions'].includes(c.key))
+  const columns = allColumns.filter((c) => !hidden.includes(c.key))
 
   return (
     <ListFrame
       section={{ label: tx('জমি ব্যবস্থাপনা'), to: '/lands' }}
       title={tx('বর্গা / লিজ চাষ')}
-      subtitle={tx('অন্যের জমিতে বর্গা বা লিজে চাষের সব চুক্তি — চলমান ও শেষ হওয়া।')}
+      subtitle={tx('বর্গা চাষের রেকর্ড পরিচালনা করুন। বর্গায় দেওয়া জমি দেখুন, যোগ করুন, হালনাগাদ করুন ও নজরে রাখুন।')}
       actions={
         <>
           {can('land.edit') && (
             <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate('/lands/lookup')}>
-              {tx('নতুন বর্গা দিন')}
+              {tx('বর্গা রেকর্ড যোগ করুন')}
             </Button>
           )}
-          <ExportMenu reports={[{ key: 'borga', label: tx('বর্গা/লিজ চাষ রিপোর্ট') }]} filters={{ q: filters.search, mouza_id: filters.mouza_id }} />
+          {can('import.create') && (
+            <Button icon={<UploadOutlined />} onClick={() => navigate('/imports?type=lands')}>
+              {tx('ইমপোর্ট')}
+            </Button>
+          )}
+          <Dropdown
+            trigger={['click']}
+            placement="bottomRight"
+            menu={{
+              items: [
+                { key: 'x', label: 'Excel (.xlsx)', onClick: () => run('xlsx') },
+                { key: 'c', label: 'CSV', onClick: () => run('csv') },
+                { key: 'p', label: tx('প্রিন্ট / PDF'), onClick: () => run('print') },
+              ],
+            }}
+          >
+            <Button icon={<DownloadOutlined />}>
+              {tx('এক্সপোর্ট')} <DownOutlined className="fl-caret" />
+            </Button>
+          </Dropdown>
         </>
       }
       cards={cards}
+      filterClass="ll-filters"
       filters={
         <>
-          <Field grow={260}>
+          <Field label={tx('খুঁজুন')} grow={340}>
             <Input
               prefix={<SearchOutlined />}
               allowClear
-              placeholder={tx('চাষির নাম, কৃষক নং, জমির নং বা দাগ...')}
+              placeholder={tx('জমির নং, মালিক বা চাষির নাম, দাগ নং দিয়ে খুঁজুন...')}
               value={draft.search}
-              onChange={(e) => setDraft((d) => ({ ...d, search: e.target.value || undefined }))}
-              onPressEnter={apply}
-            />
-          </Field>
-          <Field label={tx('ধরন')}>
-            <Select
-              value={draft.type ?? ''}
-              options={[
-                { value: '', label: tx('সকল') },
-                { value: 'borga', label: meta?.cultivation_types.borga ?? tx('বর্গা') },
-                { value: 'lease', label: meta?.cultivation_types.lease ?? tx('লিজ') },
-              ]}
-              onChange={(v) => setDraft((d) => ({ ...d, type: v || undefined }))}
-            />
-          </Field>
-          <Field label={tx('অবস্থা')}>
-            <Select
-              value={draft.status ?? ''}
-              options={[
-                { value: '', label: tx('সকল') },
-                { value: 'current', label: tx('চলমান') },
-                { value: 'ended', label: tx('শেষ') },
-              ]}
-              onChange={(v) => setDraft((d) => ({ ...d, status: v || undefined }))}
+              onChange={(e) => set({ search: e.target.value || undefined })}
+              onPressEnter={() => show(draft)}
             />
           </Field>
           <Field label={tx('মৌজা')}>
-            <Select
-              showSearch={{ optionFilterProp: 'label' }}
-              value={draft.mouza_id ?? ''}
-              options={[{ value: '', label: tx('সকল') }, ...(mouzas.data ?? []).map((m) => ({ value: m.id, label: nameOf(m) }))]}
-              onChange={(v) => setDraft((d) => ({ ...d, mouza_id: v === '' ? undefined : Number(v) }))}
-            />
+            <Select showSearch={{ optionFilterProp: 'label' }} value={draft.mouza_id ?? ''} options={[...all, ...(mouzas.data ?? []).map((m) => ({ value: m.id, label: nameOf(m) }))]} onChange={(v) => set({ mouza_id: v === '' ? undefined : Number(v) })} />
           </Field>
-          <Field label={tx('শুরুর তারিখের পরিসর')} grow={200}>
-            <DatePicker.RangePicker format="DD-MM-YYYY" value={range} onChange={(r) => setRange(r as [Dayjs | null, Dayjs | null] | null)} placeholder={[tx('শুরু'), tx('শেষ')]} />
+          <Field label={tx('উপজেলা')}>
+            <Select value={draft.upazila_id ?? ''} options={[...all, ...upazilaOptions.map((u) => ({ value: u.id, label: u.name_bn }))]} onChange={(v) => set({ upazila_id: v === '' ? undefined : Number(v) })} />
+          </Field>
+          <Field label={tx('জেলা')}>
+            <Select value={draft.district_id ?? ''} options={[...all, ...(places.data?.districts ?? []).map((d) => ({ value: d.id, label: d.name_bn }))]} onChange={(v) => set({ district_id: v === '' ? undefined : Number(v), upazila_id: undefined })} />
+          </Field>
+          <span className="ll-break" />
+          <Field label={tx('মালিকের নাম')}>
+            <Select showSearch={{ optionFilterProp: 'label' }} value={draft.owner_id ?? ''} options={people(s?.owners)} onChange={(v) => set({ owner_id: v === '' ? undefined : Number(v) })} />
+          </Field>
+          <Field label={tx('চাষির নাম')}>
+            <Select showSearch={{ optionFilterProp: 'label' }} value={draft.cultivator_id ?? ''} options={people(s?.cultivators)} onChange={(v) => set({ cultivator_id: v === '' ? undefined : Number(v) })} />
+          </Field>
+          <Field label={tx('জমির ধরন')}>
+            <Select value={draft.land_type_id ?? ''} options={[...all, ...(meta?.land_types ?? []).map((t) => ({ value: t.id, label: t.name_bn }))]} onChange={(v) => set({ land_type_id: v === '' ? undefined : Number(v) })} />
+          </Field>
+          <Field label={tx('চুক্তির অবস্থা')}>
+            <Select
+              value={draft.status ?? ''}
+              options={[...all, { value: 'active', label: STATUS.active[0] }, { value: 'expired', label: STATUS.expired[0] }, { value: 'ended', label: STATUS.ended[0] }]}
+              onChange={(v) => set({ status: v || undefined })}
+            />
           </Field>
         </>
       }
-      onSearch={apply}
-      onReset={() => {
-        setRange(null)
-        show({})
-      }}
-      tableTitle={tx('বর্গা / লিজ চুক্তি ({{p0}})', { p0: n0(total) })}
+      onSearch={() => show(draft)}
+      onReset={() => show({})}
+      tableTitle={tx('বর্গা / লিজ তালিকা ({{p0}})', { p0: n0(total) })}
+      tableTools={
+        <>
+          <Dropdown
+            trigger={['click']}
+            placement="bottomRight"
+            popupRender={() => (
+              <div className="fl-colmenu">
+                {hideable.map((c) => (
+                  <Checkbox key={c.key} checked={!hidden.includes(c.key)} onChange={(e) => setHidden((h) => (e.target.checked ? h.filter((k) => k !== c.key) : [...h, c.key]))}>
+                    {c.title as string}
+                  </Checkbox>
+                ))}
+              </div>
+            )}
+          >
+            <Button icon={<AppstoreFilled />} className="ml-columns pl-columns">
+              {tx('কলাম')} <DownOutlined className="fl-caret" />
+            </Button>
+          </Dropdown>
+          <Button icon={<PrinterOutlined />} className="ml-columns pl-columns" onClick={() => run('print')}>
+            {tx('প্রিন্ট')}
+          </Button>
+        </>
+      }
       paging={{
         page,
         perPage,
         total,
-        showing: tx('{{p0}} থেকে {{p1}} দেখানো হচ্ছে, মোট {{p2}}টি', { p0: n0(from), p1: n0(Math.min(page * perPage, total)), p2: n0(total) }),
+        showing: tx('{{p0}} থেকে {{p1}} দেখানো হচ্ছে, মোট {{p2}}টি রেকর্ড', { p0: n0(from), p1: n0(Math.min(page * perPage, total)), p2: n0(total) }),
         onPage: setPage,
         onPerPage: (n) => {
           setPerPage(n)
@@ -199,12 +296,13 @@ export default function BorgaPage() {
       }}
     >
       <Table<Row>
-        className="fl-table ml-table pl-table"
+        className="fl-table ml-table pl-table ll-table bg-table"
         rowKey="id"
         loading={isFetching}
         dataSource={data?.data ?? []}
-        scroll={{ x: 1250 }}
+        scroll={{ x: 1400 }}
         pagination={false}
+        rowSelection={{ selectedRowKeys: selected, onChange: (keys) => setSelected(keys as number[]), columnWidth: 40 }}
         columns={columns}
         locale={{ emptyText: tx('কোনো বর্গা বা লিজ চুক্তি নেই') }}
       />

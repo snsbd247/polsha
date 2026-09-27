@@ -107,20 +107,59 @@ class LandRegisterController extends Controller
         ]);
     }
 
+    /**
+     * Contract status of a borga/lease row: ended (farming stopped), expired
+     * (still farming past the agreed end date) or active.
+     */
+    private function contractStatus(?string $end, ?string $contractEnd): string
+    {
+        return $end ? 'ended' : ($contractEnd && $contractEnd < now()->toDateString() ? 'expired' : 'active');
+    }
+
     /** Borga and lease arrangements, current or ended. */
     public function cultivations(Request $request): JsonResponse
     {
-        $request->validate(['type' => ['nullable', Rule::in(['borga', 'lease'])], 'status' => ['nullable', Rule::in(['current', 'ended'])],
-            'from' => ['nullable', 'date'], 'to' => ['nullable', 'date']]);
+        $request->validate(['type' => ['nullable', Rule::in(['borga', 'lease'])], 'status' => ['nullable', Rule::in(['current', 'ended', 'active', 'expired'])],
+            'from' => ['nullable', 'date'], 'to' => ['nullable', 'date'], 'owner_id' => ['nullable', 'integer'], 'cultivator_id' => ['nullable', 'integer'],
+            'upazila_id' => ['nullable', 'integer'], 'district_id' => ['nullable', 'integer'], 'land_type_id' => ['nullable', 'integer']]);
         $q = DB::table('land_cultivations')->join('lands', 'lands.id', '=', 'land_cultivations.land_id')->join('farmers', 'farmers.id', '=', 'land_cultivations.farmer_id')
             ->leftJoin('mouzas', 'mouzas.id', '=', 'lands.mouza_id')->whereNull('lands.deleted_at')
             ->whereIn('land_cultivations.type', $request->filled('type') ? [$request->query('type')] : ['borga', 'lease']);
-        $this->farmerSearch($q, $request);
+        // search: land no, dag, khatian, the cultivator (name, code, mobile) or a current owner's name
+        if ($s = trim((string) $request->query('search'))) {
+            $en = Bn::toEnDigits($s);
+            $q->where(fn ($w) => $w->where('lands.land_code', 'like', "%$en%")->orWhere('lands.dag_no', $en)->orWhere('lands.khatian_no', $en)
+                ->orWhere('farmers.name_bn', 'like', "%$s%")->orWhere('farmers.name_en', 'like', "%$s%")
+                ->orWhere('farmers.farmer_code', 'like', "%$en%")->orWhere('farmers.mobile', 'like', "%$en%")
+                ->orWhereIn('lands.id', DB::table('land_owners')->join('farmers as of', 'of.id', '=', 'land_owners.farmer_id')->whereNull('land_owners.end_date')
+                    ->where(fn ($n) => $n->where('of.name_bn', 'like', "%$s%")->orWhere('of.name_en', 'like', "%$s%"))->select('land_owners.land_id')));
+        }
+        if ($request->filled('mouza_id')) {
+            $q->where('lands.mouza_id', $request->integer('mouza_id'));
+        }
+        $today = now()->toDateString();
         match ($request->query('status')) {
             'current' => $q->whereNull('land_cultivations.end_date'),
             'ended' => $q->whereNotNull('land_cultivations.end_date'),
+            'active' => $q->whereNull('land_cultivations.end_date')->where(fn ($w) => $w->whereNull('land_cultivations.contract_end')->orWhere('land_cultivations.contract_end', '>=', $today)),
+            'expired' => $q->whereNull('land_cultivations.end_date')->where('land_cultivations.contract_end', '<', $today),
             default => null,
         };
+        if ($request->filled('cultivator_id')) {
+            $q->where('land_cultivations.farmer_id', $request->integer('cultivator_id'));
+        }
+        if ($request->filled('owner_id')) {
+            $q->whereIn('lands.id', DB::table('land_owners')->where('farmer_id', $request->integer('owner_id'))->whereNull('end_date')->select('land_id'));
+        }
+        if ($request->filled('land_type_id')) {
+            $q->where('lands.land_type_id', $request->integer('land_type_id'));
+        }
+        if ($request->filled('upazila_id')) {
+            $q->where('mouzas.upazila_id', $request->integer('upazila_id'));
+        }
+        if ($request->filled('district_id')) {
+            $q->whereIn('mouzas.upazila_id', DB::table('upazilas')->where('district_id', $request->integer('district_id'))->select('id'));
+        }
         if ($request->filled('from')) {
             $q->where('land_cultivations.start_date', '>=', $request->date('from')->toDateString());
         }
@@ -131,15 +170,18 @@ class LandRegisterController extends Controller
             ->select('land_cultivations.*', 'lands.land_code', 'lands.dag_no', 'lands.khatian_no', 'lands.area_decimal', 'mouzas.name_bn as mouza')
             ->paginate($this->perPage($request));
 
-        $people = $this->people($page->getCollection()->pluck('farmer_id')->unique()->all());
-        $owners = DB::table('land_owners')->join('farmers', 'farmers.id', '=', 'land_owners.farmer_id')
-            ->whereIn('land_owners.land_id', $page->getCollection()->pluck('land_id'))->whereNull('land_owners.end_date')
-            ->get(['land_owners.land_id', 'farmers.id', 'farmers.name_bn'])->groupBy('land_id');
+        $ownerRows = DB::table('land_owners')->whereIn('land_id', $page->getCollection()->pluck('land_id'))->whereNull('end_date')
+            ->orderByDesc('share_percent')->get(['land_id', 'farmer_id', 'share_percent']);
+        $people = $this->people($page->getCollection()->pluck('farmer_id')->merge($ownerRows->pluck('farmer_id'))->unique()->all());
+        $owners = $ownerRows->groupBy('land_id');
         $page->setCollection($page->getCollection()->map(fn ($r) => [
             'id' => $r->id, 'land_id' => $r->land_id, 'land_code' => $r->land_code, 'dag_no' => $r->dag_no, 'khatian_no' => $r->khatian_no,
             'area_decimal' => (float) $r->area_decimal, 'mouza' => $r->mouza, 'type' => $r->type, 'terms' => $r->terms, 'remarks' => $r->remarks,
-            'start_date' => $r->start_date, 'end_date' => $r->end_date, 'cultivator' => $people[$r->farmer_id] ?? null,
-            'owners' => collect($owners[$r->land_id] ?? [])->map(fn ($o) => ['id' => $o->id, 'name_bn' => $o->name_bn])->values(),
+            'share_percent' => $r->share_percent !== null ? (float) $r->share_percent : null,
+            'start_date' => $r->start_date, 'contract_end' => $r->contract_end, 'end_date' => $r->end_date,
+            'status' => $this->contractStatus($r->end_date, $r->contract_end),
+            'cultivator' => $people[$r->farmer_id] ?? null,
+            'owners' => collect($owners[$r->land_id] ?? [])->map(fn ($o) => ($people[$o->farmer_id] ?? ['id' => $o->farmer_id]) + ['share_percent' => (float) $o->share_percent])->values(),
         ]));
 
         return response()->json($page);
@@ -150,11 +192,25 @@ class LandRegisterController extends Controller
         $current = $this->current('land_cultivations');
         $yearStart = now()->startOfYear()->toDateString();
 
+        $tenancy = (clone $current)->where('land_cultivations.type', '!=', 'own');
+        $today = now()->toDateString();
+
         return response()->json([
             'borga' => (clone $current)->where('land_cultivations.type', 'borga')->count(),
             'lease' => (clone $current)->where('land_cultivations.type', 'lease')->count(),
-            'area_decimal' => round((float) (clone $current)->where('land_cultivations.type', '!=', 'own')->sum('lands.area_decimal'), 2),
+            'area_decimal' => round((float) (clone $tenancy)->sum('lands.area_decimal'), 2),
             'ended_this_year' => DB::table('land_cultivations')->whereIn('type', ['borga', 'lease'])->where('end_date', '>=', $yearStart)->count(),
+            // every borga/lease record ever, and the farmers who farm on those terms now
+            'records' => DB::table('land_cultivations')->join('lands', 'lands.id', '=', 'land_cultivations.land_id')->whereNull('lands.deleted_at')
+                ->whereIn('land_cultivations.type', ['borga', 'lease'])->count(),
+            'farmers' => (clone $tenancy)->distinct()->count('land_cultivations.farmer_id'),
+            'active' => (clone $tenancy)->where(fn ($w) => $w->whereNull('land_cultivations.contract_end')->orWhere('land_cultivations.contract_end', '>=', $today))->count(),
+            'expired' => (clone $tenancy)->where('land_cultivations.contract_end', '<', $today)->count(),
+            // for the owner / cultivator filters
+            'owners' => DB::table('land_owners')->join('farmers', 'farmers.id', '=', 'land_owners.farmer_id')->whereNull('land_owners.end_date')
+                ->whereIn('land_owners.land_id', (clone $tenancy)->select('lands.id'))->distinct()->orderBy('farmers.name_bn')->get(['farmers.id', 'farmers.name_bn', 'farmers.name_en']),
+            'cultivators' => DB::table('farmers')->whereIn('id', DB::table('land_cultivations')->whereIn('type', ['borga', 'lease'])->select('farmer_id'))
+                ->orderBy('name_bn')->get(['id', 'name_bn', 'name_en']),
         ]);
     }
 
