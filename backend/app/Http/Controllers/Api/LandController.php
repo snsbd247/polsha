@@ -295,7 +295,7 @@ class LandController extends Controller
         return [
             'mouza:id,name_bn,jl_no', 'landType:id,name_bn', 'irrigationType:id,name_bn',
             'owners.farmer:id,farmer_code,name_bn,name_en,father_name,photo',
-            'cultivation.farmer:id,farmer_code,name_bn,name_en,father_name',
+            'cultivation.farmer:id,farmer_code,name_bn,name_en,father_name,photo',
         ];
     }
 
@@ -309,6 +309,8 @@ class LandController extends Controller
             'owners' => (clone $current)->distinct()->count('farmer_id'),
             'area_decimal' => round((float) Land::sum('area_decimal'), 2),
             'mouzas' => Land::distinct()->count('mouza_id'),
+            'cultivators' => LandCultivation::whereNull('end_date')->whereHas('land')->distinct()->count('farmer_id'),
+            'borga' => LandCultivation::whereNull('end_date')->whereIn('type', ['borga', 'lease'])->whereHas('land')->count(),
             // shown (greyed) on the new-land form; the real number is taken when the land is saved
             'next_code' => ($seq = Sequence::where('key', 'land')->first()) ? SequenceService::preview($seq) : null,
         ]);
@@ -321,8 +323,8 @@ class LandController extends Controller
             $en = Bn::toEnDigits($search);
             $q->where(fn ($w) => $w->where('land_code', 'like', "%$en%")
                 ->orWhere('dag_no', $en)->orWhere('khatian_no', $en)
-                ->orWhereHas('owners.farmer', fn ($f) => $f->where('name_bn', 'like', "%$search%")->orWhere('farmer_code', $en))
-                ->orWhereHas('cultivation.farmer', fn ($f) => $f->where('name_bn', 'like', "%$search%")->orWhere('farmer_code', $en)));
+                ->orWhereHas('owners.farmer', fn ($f) => $f->where('name_bn', 'like', "%$search%")->orWhere('name_en', 'like', "%$search%")->orWhere('farmer_code', $en)->orWhere('mobile', 'like', "%$en%")->orWhere('nid', $en))
+                ->orWhereHas('cultivation.farmer', fn ($f) => $f->where('name_bn', 'like', "%$search%")->orWhere('name_en', 'like', "%$search%")->orWhere('farmer_code', $en)->orWhere('mobile', 'like', "%$en%")->orWhere('nid', $en)));
         }
         foreach (['mouza_id', 'land_type_id', 'irrigation_type_id', 'status', 'survey'] as $f) {
             if ($request->filled($f)) {
@@ -443,6 +445,7 @@ class LandController extends Controller
                 'farmer_code' => $l->cultivation->farmer?->farmer_code, 'name_bn' => $l->cultivation->farmer?->name_bn, 'name_en' => $l->cultivation->farmer?->name_en,
                 'father_name' => $l->cultivation->farmer?->father_name, 'type' => $l->cultivation->type,
                 'terms' => $l->cultivation->terms, 'start_date' => $l->cultivation->start_date?->toDateString(),
+                'photo_url' => $l->cultivation->farmer?->photo ? url("api/farmers/{$l->cultivation->farmer_id}/photo") : null,
             ] : null,
         ];
     }

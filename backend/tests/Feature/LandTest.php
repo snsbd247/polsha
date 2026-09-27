@@ -151,6 +151,21 @@ class LandTest extends Phase2TestCase
         $this->actingAs($officer)->getJson("/api/mouzas/{$this->mouza->id}")->assertOk()->assertJsonPath('patwaris', []);
     }
 
+    public function test_owner_cultivator_counts_and_search_by_mobile(): void
+    {
+        $owner = $this->makeFarmer(['name_bn' => 'মালিক']);
+        $tenant = $this->makeFarmer(['name_bn' => 'বর্গাচাষি', 'mobile' => '01755500011']);
+        $officer = $this->officer();
+        $this->actingAs($officer)->postJson('/api/lands', $this->landPayload([['farmer_id' => $owner->id, 'share_percent' => 100]], [
+            'cultivation' => ['farmer_id' => $tenant->id, 'type' => 'borga', 'start_date' => '2020-01-01'],
+        ]))->assertCreated();
+
+        $this->actingAs($officer)->getJson('/api/lands/summary')->assertJson(['lands' => 1, 'owners' => 1, 'cultivators' => 1, 'borga' => 1]);
+        $this->actingAs($officer)->getJson('/api/lands?search=০১৭৫৫৫০০০১১')->assertJsonPath('total', 1)
+            ->assertJsonPath('data.0.cultivation.farmer_id', $tenant->id)->assertJsonPath('data.0.cultivation.photo_url', null);
+        $this->actingAs($officer)->getJson('/api/lands?search=01999999999')->assertJsonPath('total', 0);
+    }
+
     public function test_owner_shares_must_total_100(): void
     {
         $a = $this->makeFarmer(['name_bn' => 'ক']);
