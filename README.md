@@ -19,7 +19,7 @@ polsha/
 4. [ফেজ ১ — স্ক্রিন স্পেসিফিকেশন](#৪-ফেজ-১--স্ক্রিন-স্পেসিফিকেশন)
 5. [ফেজ ২ — স্ক্রিন স্পেসিফিকেশন](#৫-ফেজ-২--স্ক্রিন-স্পেসিফিকেশন)
 6. [ডেটাবেস ও API](#৬-ডেটাবেস-ও-api)
-7. [অগ্রগতি](#৭-অগ্রগতি)
+7. [অগ্রগতি](#৭-অগ্রগতি) — [বাকি কাজ](#বাকি-কাজ)
 8. [লোকাল ডেভেলপমেন্ট](#৮-লোকাল-ডেভেলপমেন্ট)
 9. [cPanel ডিপ্লয়মেন্ট](#৯-cpanel-ডিপ্লয়মেন্ট)
 
@@ -82,7 +82,7 @@ FARMER ── LAND ──┬── OWNER
 
 ### চূড়ান্ত মেন্যু কাঠামো ও ফেজ-ম্যাপিং
 
-Sidebar হুবহু নিচের ১৫টি গ্রুপ ও ১১৬টি আইটেমে (১০৯টি আলাদা পাতা) সাজানো (ফেজ ৮-এ পুনর্বিন্যাস সম্পন্ন) — **কোনো আইটেম বাদ নেই**।
+Sidebar হুবহু নিচের ১৫টি গ্রুপ ও ১১৭টি আইটেমে (১১০টি আলাদা পাতা) সাজানো (ফেজ ৮-এ পুনর্বিন্যাস সম্পন্ন) — **কোনো আইটেম বাদ নেই**।
 - ফেজ ১০-এ সব আইটেম তৈরি হয়েছে; "শীঘ্রই আসছে" পাতার ব্যবস্থা (`comingSoon.ts`) ভবিষ্যতে নতুন মেন্যুর জন্য রাখা আছে।
 - একই স্ক্রিন একাধিক গ্রুপে থাকতে পারে (যেমন Voter List, QR Scanner, Ledger Integrity)। সেক্ষেত্রে দুই জায়গাতেই মেন্যু হাইলাইট হয়।
 - মেন্যুতে নেই এমন পুরোনো স্ক্রিন (খানা, Duplicates, রেওয়ামিল, অনুমোদনের নিয়ম, ব্যাকআপ, সিরিয়াল নম্বর, এলাকা, ঋণ/সঞ্চয় অডিট ইত্যাদি) সংশ্লিষ্ট পাতার উপরের বোতাম থেকে খোলা যায়।
@@ -94,7 +94,7 @@ Sidebar হুবহু নিচের ১৫টি গ্রুপ ও ১১�
 |---|---|---|
 | ১ | 🏠 Dashboard | Dashboard ✅ |
 | ২ | 👨‍🌾 Farmers & Members | Farmer List ✅ (Add Farmer বোতাম এখানে; মেন্যু থেকে সরানো) · Membership Applications ✅ · Member List ✅ · Voter List ✅ · Farmer Merge ✅ · Deleted Farmers ✅ · Patwari List ✅ · Mouza Management ✅ |
-| ৩ | 🌾 Land Management | Land List ✅ · Add Land ✅ · Land Profile ✅ · Owner & Cultivator ✅ · Borga / Sharecropping ✅ · Land Transfer ✅ · Land History ✅ · Land Types ✅ · Land Reports ✅ |
+| ৩ | 🌾 Land Management | Land List ✅ · Add Land ✅ · Land Profile ✅ · Owner & Cultivator ✅ · Borga / Sharecropping ✅ · Land Transfer ✅ · Land Transfer List ✅ · Land History ✅ · Land Types ✅ · Land Reports ✅ |
 | ৪ | 💧 Irrigation | Seasons ✅ · Irrigation Invoices ✅ · Irrigation Rates ✅ · Old Receipt Entry ✅ · Billing Split Preview ✅ · Season / Land-Type Lookup ✅ · Categories ✅ · Category Rates ✅ · Rate Audit History ✅ · Due Mismatch ✅ |
 | ৫ | 💰 Savings | Savings Entry ✅ · Share Collection ✅ · Statements ✅ · Voter List ✅ · Voter History ✅ · Voter Audit ✅ · Admission Register ✅ |
 | ৬ | 🏦 Loans | Loan List ✅ · Pending Loans ✅ · Approved Loans ✅ · Loan Applications ✅ · Loan Plans ✅ · Loan Details ✅ · Loan Schedule ✅ · Loan Installments ✅ · Loan Payments ✅ · Guarantors ✅ · Loan Due ✅ |
@@ -108,7 +108,7 @@ Sidebar হুবহু নিচের ১৫টি গ্রুপ ও ১১�
 | ১৪ | 🛠️ Tools & Import | Farmer Import ✅ · Land Import ✅ · Savings Opening Import ✅ · Share Opening Import ✅ · Loan Opening Import ✅ · Payment Import ✅ · Legacy Irrigation Import ✅ · Import Audit ✅ |
 | ১৫ | ⚙️ Settings | General Settings ✅ · Branding & Logo ✅ · Receipt Settings ✅ · SMS Settings ✅ · SMS Templates ✅ · SMS Logs ✅ · Financial Year ✅ · System Preferences ✅ · License & Installation ✅ |
 
-আলাদা পাতা হিসেবে: তৈরি ✅ ১০৯টি — সব মেন্যু আইটেম চালু (ফেজ ১০)।
+আলাদা পাতা হিসেবে: তৈরি ✅ ১১০টি — সব মেন্যু আইটেম চালু (ফেজ ১০; Land Transfer List যোগ হয়েছে নতুন নকশার সময়)। কোন পাতা নতুন নকশায় আনা হয়েছে আর কোনগুলো বাকি, তা [বাকি কাজ](#বাকি-কাজ) অংশে।
 
 <details>
 <summary><b>ফেজ ১ — ভিত্তি, প্রশাসন ও অনুমোদন ব্যবস্থা</b></summary>
@@ -788,6 +788,44 @@ app(ApprovalService::class)->submit('membership.admit', 'সদস্যপদ: 
 - [ ] UAT (প্রতিটি Role দিয়ে) — সমিতি চেকলিস্ট ধরে করবে
 - [ ] Parallel Run (২–৪ সপ্তাহ) — সমিতি
 - [ ] প্রশিক্ষণ ও Go-Live — সমিতি
+
+### বাকি কাজ
+
+_হালনাগাদ: ২৭-০৯-২০২৬।_ সফটওয়্যারের ১০টি ফেজ শেষ, মেন্যুর সব পাতা লাইভে চালু। বাকি আছে নিচের কাজগুলো।
+
+#### ক. নতুন নকশায় আনা (ডিজাইন স্যাম্পল অনুযায়ী, পিক্সেল টু পিক্সেল)
+
+নতুন নকশায় আনা হয়ে গেছে:
+- [x] Dashboard
+- [x] 👨‍🌾 Farmers & Members — সব পাতা (Farmer List, Farmer Profile, Add/Edit Farmer, Membership Applications ও আবেদন ফর্ম, Member List, Voter List, Farmer Merge, Deleted Farmers, Patwari List, Mouza Management)
+- [x] 🌾 Land Management — সব পাতা (Land List, Add Land, Land Profile, Owner & Cultivator, Borga, Land Transfer ফর্ম/বিস্তারিত, Land Transfer List, Land History, Land Types, Land Reports)
+- [x] ⚙️ Settings — ৭টি সেটিংস পাতা
+
+চালু আছে কিন্তু এখনো পুরোনো সাধারণ নকশায় (স্যাম্পল পেলে, না হলে "একই স্টাইলে"):
+- [ ] 💧 Irrigation — Seasons, Irrigation Invoices, Irrigation Rates, Old Receipt Entry, Billing Split Preview, Season / Land-Type Lookup, Categories, Category Rates, Rate Audit History, Due Mismatch
+- [ ] 💰 Savings — Savings Entry, Share Collection, Statements, Voter History, Voter Audit, Admission Register
+- [ ] 🏦 Loans — Loan List, Pending/Approved Loans, Loan Applications, Loan Plans, Loan Details, Loan Schedule, Installments, Payments, Guarantors, Loan Due
+- [ ] 💳 Cash & Payments — Payments, Receipt List, Combined Payment, QR Scanner, QR Scan History, Cash Book, Hand Cash, Cash Audit, Approvals
+- [ ] 📒 Cash Book & Ledger — ৫টি স্টেটমেন্ট/লেজার পাতা
+- [ ] 🏢 Assets — Asset Dashboard, Registry, Stock, Transfer, Installation, Repair, Repair Schedule, Sales, QR Scanner, QR History, Asset Reports
+- [ ] 📊 Accounting — ১৪টি পাতা (Chart of Accounts, Journal Entries, Vouchers, Bank Accounts ইত্যাদি)
+- [ ] 📑 Reports ও 🔍 Audit & Monitoring — Collection/Due/Audit Reports, System Audit Log, Data Integrity Scan, Day Reconciliation
+- [ ] 👤 Admin — Users, Roles, Permissions, Receipt Serial Admin ইত্যাদি
+- [ ] 🛠️ Tools & Import — ৮টি Import পাতা
+
+#### খ. ছোট কাজ (ডেভেলপারের দিক থেকে)
+- [ ] লাইভে ডেমো ডাটা আবার বসানো (`demo:purge` → `demo:seed --farmers=200`) — তাহলে জমি হস্তান্তরের তালিকায় ২১টি ডেমো হস্তান্তর দেখা যাবে; সমিতির সম্মতি নিয়ে
+- [ ] সুপার অ্যাডমিনের জমি হস্তান্তর সরাসরি কার্যকর হবে কি না — সমিতির নিশ্চিত করা বাকি (এখন সরাসরি কার্যকর হয়)
+
+#### গ. সমিতির কাজ (Go-Live-এর আগে)
+- [ ] আরও ব্যবহারকারী তৈরি (অন্তত একজন Manager/President) — লাইভে এখন শুধু admin সক্রিয়; নিজের পাঠানো অনুরোধ নিজে অনুমোদন করা যায় না
+- [ ] SMS Gateway-এর তথ্য (URL/key/sender) দেওয়া — না দিলে SMS শুধু লগ হয়, পাঠানো হয় না
+- [ ] UAT — প্রতিটি Role দিয়ে [docs/go-live-checklist.md](docs/go-live-checklist.md) ধরে
+- [ ] পুরোনো তথ্য Import — কৃষক, জমি, সঞ্চয়, শেয়ার, ঋণের প্রারম্ভিক জের
+- [ ] Parallel Run (২–৪ সপ্তাহ)
+- [ ] আসল ব্যবহারের আগে `php artisan demo:purge` দিয়ে ডেমো ডাটা মুছে ফেলা
+- [ ] প্রশিক্ষণ ও Go-Live
+- [ ] নিরাপত্তা: cPanel/SSH পাসওয়ার্ড বদলানো
 
 > **নিয়ম:** প্রতিটি কাজ শেষ হলে এখানে `[x]` করা হবে এবং [রোডম্যাপ টেবিলের](#২-১০-ফেজের-রোডম্যাপ) অবস্থা আপডেট হবে (⚪ বাকি → 🟡 চলছে → ✅ সম্পন্ন)।
 
