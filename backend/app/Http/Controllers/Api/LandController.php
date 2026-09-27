@@ -287,9 +287,22 @@ class LandController extends Controller
     {
         return [
             'mouza:id,name_bn,jl_no', 'landType:id,name_bn', 'irrigationType:id,name_bn',
-            'owners.farmer:id,farmer_code,name_bn,father_name',
-            'cultivation.farmer:id,farmer_code,name_bn,father_name',
+            'owners.farmer:id,farmer_code,name_bn,name_en,father_name,photo',
+            'cultivation.farmer:id,farmer_code,name_bn,name_en,father_name',
         ];
+    }
+
+    /** Header figures for the land list. */
+    public function summary(): JsonResponse
+    {
+        $current = LandOwner::whereNull('end_date')->whereHas('land');
+
+        return response()->json([
+            'lands' => Land::count(),
+            'owners' => (clone $current)->distinct()->count('farmer_id'),
+            'area_decimal' => round((float) Land::sum('area_decimal'), 2),
+            'mouzas' => Land::distinct()->count('mouza_id'),
+        ]);
     }
 
     private function filtered(Request $request): Builder
@@ -309,6 +322,22 @@ class LandController extends Controller
         }
         if ($request->filled('upazila_id')) {
             $q->whereHas('mouza', fn ($m) => $m->where('upazila_id', $request->query('upazila_id')));
+        }
+        if ($request->filled('district_id')) {
+            $q->whereHas('mouza.upazila', fn ($u) => $u->where('district_id', $request->integer('district_id')));
+        }
+        // single owner vs joint (two or more current owners)
+        match ($request->query('ownership')) {
+            'single' => $q->has('owners', '=', 1),
+            'joint' => $q->has('owners', '>', 1),
+            default => null,
+        };
+        // area range is asked in acres; plots are stored in decimals (100 per acre)
+        if ($request->filled('area_min')) {
+            $q->where('area_decimal', '>=', (float) Bn::toEnDigits((string) $request->query('area_min')) * 100);
+        }
+        if ($request->filled('area_max')) {
+            $q->where('area_decimal', '<=', (float) Bn::toEnDigits((string) $request->query('area_max')) * 100);
         }
         match ($request->query('cultivation')) {
             'none' => $q->whereDoesntHave('cultivation'),
@@ -384,12 +413,13 @@ class LandController extends Controller
             'status' => $l->status,
             'owners' => $l->owners->map(fn ($o) => [
                 'id' => $o->id, 'farmer_id' => $o->farmer_id, 'farmer_code' => $o->farmer?->farmer_code,
-                'name_bn' => $o->farmer?->name_bn, 'father_name' => $o->farmer?->father_name,
+                'name_bn' => $o->farmer?->name_bn, 'name_en' => $o->farmer?->name_en, 'father_name' => $o->farmer?->father_name,
+                'photo_url' => $o->farmer?->photo ? url("api/farmers/{$o->farmer_id}/photo") : null,
                 'share_percent' => (float) $o->share_percent, 'start_date' => $o->start_date?->toDateString(),
             ])->values(),
             'cultivation' => $l->cultivation ? [
                 'id' => $l->cultivation->id, 'farmer_id' => $l->cultivation->farmer_id,
-                'farmer_code' => $l->cultivation->farmer?->farmer_code, 'name_bn' => $l->cultivation->farmer?->name_bn,
+                'farmer_code' => $l->cultivation->farmer?->farmer_code, 'name_bn' => $l->cultivation->farmer?->name_bn, 'name_en' => $l->cultivation->farmer?->name_en,
                 'father_name' => $l->cultivation->farmer?->father_name, 'type' => $l->cultivation->type,
                 'terms' => $l->cultivation->terms, 'start_date' => $l->cultivation->start_date?->toDateString(),
             ] : null,

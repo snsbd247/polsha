@@ -106,6 +106,26 @@ class LandTest extends Phase2TestCase
         $this->actingAs($this->userWithRole('loan_officer'))->getJson('/api/land-register/history')->assertForbidden();
     }
 
+    public function test_land_list_summary_and_filters(): void
+    {
+        $a = $this->makeFarmer(['name_bn' => 'এক']);
+        $b = $this->makeFarmer(['name_bn' => 'দুই']);
+        $officer = $this->officer();
+        // 1 bigha = 33 decimals (0.33 acre), owned by one farmer
+        $this->actingAs($officer)->postJson('/api/lands', $this->landPayload([['farmer_id' => $a->id, 'share_percent' => 100]]))->assertCreated();
+        // 3 bigha = 99 decimals, owned jointly
+        $this->actingAs($officer)->postJson('/api/lands', $this->landPayload([['farmer_id' => $a->id, 'share_percent' => 50], ['farmer_id' => $b->id, 'share_percent' => 50]],
+            ['dag_no' => '2000', 'area' => 3]))->assertCreated();
+
+        $this->actingAs($officer)->getJson('/api/lands/summary')->assertOk()->assertJson(['lands' => 2, 'owners' => 2, 'mouzas' => 1])->assertJsonPath('area_decimal', 132);
+        $this->actingAs($officer)->getJson('/api/lands?ownership=joint')->assertJsonPath('total', 1)->assertJsonPath('data.0.dag_no', '2000');
+        $this->actingAs($officer)->getJson('/api/lands?ownership=single')->assertJsonPath('total', 1);
+        $this->actingAs($officer)->getJson('/api/lands?area_min=0.5')->assertJsonPath('total', 1);
+        $this->actingAs($officer)->getJson('/api/lands?area_max=0.5')->assertJsonPath('total', 1)->assertJsonPath('data.0.owners.0.photo_url', null);
+        $this->actingAs($officer)->getJson('/api/lands?district_id='.$this->mouza->upazila->district_id)->assertJsonPath('total', 2);
+        $this->actingAs($officer)->getJson('/api/lands?district_id=999999')->assertJsonPath('total', 0);
+    }
+
     public function test_owner_shares_must_total_100(): void
     {
         $a = $this->makeFarmer(['name_bn' => 'ক']);

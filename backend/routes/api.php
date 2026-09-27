@@ -221,6 +221,7 @@ Route::middleware(['auth:sanctum', 'usable'])->group(function () {
     Route::middleware('permission:land.view')->group(function () {
         Route::get('lands', [LandController::class, 'index']);
         Route::get('lands/export', [LandController::class, 'export'])->middleware('permission:land.export');
+        Route::get('lands/summary', [LandController::class, 'summary']);
         Route::post('lands/check-duplicate', [LandController::class, 'checkDuplicate']);
         Route::get('lands/{land}', [LandController::class, 'show']);
         Route::get('lands/{land}/history', [LandController::class, 'history']);

@@ -39,6 +39,8 @@ export default function ListFrame(props: {
   actions?: ReactNode
   cards: StatCard[]
   filters: ReactNode
+  /** extra class on the filter row, e.g. for a two-row layout */
+  filterClass?: string
   onSearch: () => void
   onReset: () => void
   tableTitle: string
@@ -90,7 +92,7 @@ export default function ListFrame(props: {
 
         {props.above}
 
-        <div className="dl-filters pl-filters">
+        <div className={`dl-filters pl-filters ${props.filterClass ?? ''}`}>
           {props.filters}
           <div className="fl-filter-btns">
             <Button type="primary" icon={<SearchOutlined />} onClick={props.onSearch}>
