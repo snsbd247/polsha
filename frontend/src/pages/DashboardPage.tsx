@@ -374,13 +374,16 @@ export default function DashboardPage() {
 
       {isLoading && <Skeleton active paragraph={{ rows: 8 }} />}
 
-      {rows.map((r, i) => (
-        <div key={i} className={`dash-kpis ${i === 2 ? 'dash-kpis-5' : ''}`} data-n={r.length} style={{ ['--n' as string]: r.length }}>
-          {r.map((k) => (
-            <KpiCard key={k.key} k={k} />
-          ))}
-        </div>
-      ))}
+      {/* rows of 4+4+5 on wide screens; on narrower ones all cards flow as one grid */}
+      <div className="dash-kpi-wrap">
+        {rows.map((r, i) => (
+          <div key={i} className={`dash-kpis ${i === 2 ? 'dash-kpis-5' : ''}`} data-n={r.length} style={{ ['--n' as string]: r.length }}>
+            {r.map((k) => (
+              <KpiCard key={k.key} k={k} />
+            ))}
+          </div>
+        ))}
+      </div>
 
       {(data?.collection || data?.season) && (
         <div className="dash-row dash-row-charts">

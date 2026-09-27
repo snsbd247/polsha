@@ -67,7 +67,26 @@
 }
 
 .dash-kpis-5[data-n="5"] {
-  grid-template-columns: 1.27fr 1.26fr 1fr 0.93fr 1fr;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+/* five across: a smaller icon leaves the big money figures more room */
+.dash-kpis-5 .dash-kpi {
+  gap: 12px;
+}
+
+.dash-kpis-5 .dash-kpi-icon {
+  width: 50px;
+  height: 50px;
+}
+
+.dash-kpis-5 .dash-kpi-value {
+  font-size: clamp(15px, calc((100cqi - 62px) / 7.4), 26px);
+}
+
+.dash-kpis-5 .dash-kpi-row {
+  flex-wrap: wrap;
+  row-gap: 2px;
 }
 
 .dash-kpis-5:not([data-n="5"]) {
@@ -76,6 +95,8 @@
 
 .dash-kpi {
   position: relative;
+  /* the value below sizes itself from this card's width */
+  container-type: inline-size;
   display: flex;
   align-items: center;
   gap: 16px;
@@ -130,14 +151,16 @@
 
 .dash-kpi-row {
   display: flex;
+  flex-wrap: wrap;
   align-items: baseline;
   justify-content: space-between;
-  gap: 8px;
+  gap: 2px 8px;
   margin-top: 6px;
 }
 
 .dash-kpi-value {
-  font-size: 26px;
+  /* (card content width − icon − gap) ÷ ~7.4em, the longest amounts measured; kept between 15 and 26px */
+  font-size: clamp(15px, calc((100cqi - 78px) / 7.4), 26px);
   font-weight: 700;
   line-height: 1.15;
   color: #111827;
@@ -643,10 +666,22 @@
   color: #94a3b8;
 }
 
-/* Tablet / phone */
-@media (max-width: 1280px) {
-  .dash-kpis-5[data-n="5"] {
+/* Laptop / tablet / phone: 4+4+5 → 3 → 2 columns, then compact two-up cards on phones */
+@media (max-width: 1366px) {
+  .dash-kpi-wrap {
+    display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 14px 15px;
+    margin-bottom: 14px;
+  }
+
+  .dash-kpi-wrap > .dash-kpis {
+    display: contents;
+  }
+
+  /* 13 cards never fill the last row evenly; the last one takes the whole row */
+  .dash-kpi-wrap > .dash-kpis:last-child > :last-child {
+    grid-column: 1 / -1;
   }
 
   .dash-row-lists {
@@ -659,23 +694,93 @@
 }
 
 @media (max-width: 1100px) {
-  .dash-kpis,
-  .dash-kpis-5[data-n="5"],
-  .dash-kpis-5:not([data-n="5"]) {
+  .dash-row-charts {
+    grid-template-columns: 1fr;
+  }
+
+  .dash-kpi-icon {
+    width: 52px;
+    height: 52px;
+  }
+
+  .dash-kpi-icon svg {
+    width: 26px;
+    height: 26px;
+  }
+}
+
+@media (max-width: 900px) {
+  .dash-kpi-wrap {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .dash-row-charts,
   .dash-row-lists {
     grid-template-columns: 1fr;
   }
 }
 
 @media (max-width: 575px) {
-  .dash-kpis,
-  .dash-kpis-5[data-n="5"],
-  .dash-kpis-5:not([data-n="5"]) {
-    grid-template-columns: 1fr;
+  .dash-kpi-wrap {
+    gap: 10px;
+  }
+
+  /* compact card: icon on top, then label, value and change */
+  .dash-kpi {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    min-height: 0;
+    padding: 10px 11px;
+  }
+
+  .dash-kpi-icon {
+    width: 36px;
+    height: 36px;
+  }
+
+  .dash-kpi-icon svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  .dash-kpi-body {
+    width: 100%;
+  }
+
+  .dash-kpi-label {
+    font-size: 12.5px;
+  }
+
+  .dash-kpi-row,
+  .dash-kpis-5 .dash-kpi-row {
+    flex-wrap: wrap;
+    gap: 2px 8px;
+    margin-top: 3px;
+  }
+
+  .dash-kpi-value,
+  .dash-kpis-5 .dash-kpi-value {
+    font-size: 17px;
+    letter-spacing: 0;
+  }
+
+  .dash-kpis-5 .dash-kpi-icon {
+    width: 36px;
+    height: 36px;
+  }
+
+  .dash-change {
+    font-size: 12px;
+  }
+
+  .dash-kpi-caption,
+  .dash-kpis-5 .dash-kpi-caption {
+    align-self: flex-start;
+    font-size: 11px;
+  }
+
+  .dash-table td.ellipsis {
+    white-space: normal;
   }
 
   .dash-head h1 {

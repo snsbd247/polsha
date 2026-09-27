@@ -98,7 +98,11 @@
 }
 
 @media (max-width: 768px) {
-  .dl-filters .fl-field,
+  .dl-filters .fl-field {
+    flex: 1 1 calc(50% - 8px);
+  }
+  .dl-filters .dl-search,
+  .dl-filters .ml-range,
   .dl-filters .fl-filter-btns {
     flex: 1 1 100%;
   }
