@@ -128,6 +128,35 @@ class FarmerTest extends Phase2TestCase
             ->assertJsonPath('data.0.reason_code', 'merged')->assertJsonPath('data.0.merged_into.id', $keep->id);
     }
 
+    public function test_super_admin_merge_needs_no_approval(): void
+    {
+        $admin = $this->userWithRole('super_admin');
+        $keep = $this->makeFarmer(['nid' => null]);
+        $remove = $this->makeFarmer();
+
+        $res = $this->actingAs($admin)->postJson('/api/farmers-merge', ['keep_id' => $keep->id, 'remove_id' => $remove->id])
+            ->assertCreated()->assertJsonPath('status', 'approved');
+        $this->assertSame($keep->id, $remove->fresh()->merged_into_id);
+        $this->assertSame(0, ApprovalRequest::find($res->json('approval_id'))->total_steps);
+
+        // anyone else still waits for a manager
+        $a = $this->makeFarmer(['nid' => null]);
+        $b = $this->makeFarmer();
+        $this->actingAs($this->officer)->postJson('/api/farmers-merge', ['keep_id' => $a->id, 'remove_id' => $b->id])->assertJsonPath('status', 'pending');
+        $this->assertNull($b->fresh()->merged_into_id);
+
+        // a merge a Super Admin sent before this rule is theirs to approve; other actions still need a second person
+        $c = $this->makeFarmer(['nid' => null]);
+        $d = $this->makeFarmer();
+        $approvals = app(\App\Services\ApprovalService::class);
+        $this->actingAs($this->officer);
+        $pending = app(\App\Services\FarmerMergeService::class)->request($c, $d, []);
+        $pending->update(['requested_by' => $admin->id]);
+        $this->assertTrue($approvals->canAct($admin, $pending->fresh()));
+        $this->actingAs($admin)->postJson("/api/approvals/{$pending->id}/decide", ['decision' => 'approve'])->assertOk();
+        $this->assertSame($c->id, $d->fresh()->merged_into_id);
+    }
+
     public function test_delete_with_reason_restore_and_purge(): void
     {
         $admin = $this->userWithRole('super_admin');

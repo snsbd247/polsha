@@ -14,6 +14,13 @@ use RuntimeException;
 class ApprovalService
 {
     /**
+     * Actions a Super Admin carries out without a second person's approval
+     * (agreed with the society, 2026-09-27). Anyone else still goes through
+     * the rule's steps.
+     */
+    public const SUPER_ADMIN_DIRECT = ['farmer.merge'];
+
+    /**
      * Open an approval request. When the action has no enabled rule (or the
      * amount is under the rule's threshold) it is approved immediately so
      * callers never need a separate "no approval" code path.
@@ -29,7 +36,8 @@ class ApprovalService
         return DB::transaction(function () use ($actionKey, $title, $approvable, $payload, $before, $amount) {
             $rule = ApprovalRule::where('action_key', $actionKey)->first();
             $needsApproval = $rule && $rule->enabled && $rule->steps
-                && ($rule->min_amount === null || $amount === null || $amount >= (float) $rule->min_amount);
+                && ($rule->min_amount === null || $amount === null || $amount >= (float) $rule->min_amount)
+                && ! $this->superAdminDirect($actionKey, auth()->user());
 
             $request = ApprovalRequest::create([
                 'action_key' => $actionKey,
@@ -63,9 +71,18 @@ class ApprovalService
         });
     }
 
+    private function superAdminDirect(?string $actionKey, $user): bool
+    {
+        return $user instanceof User && $user->isSuperAdmin() && in_array($actionKey, self::SUPER_ADMIN_DIRECT, true);
+    }
+
     public function canAct(User $user, ApprovalRequest $request): bool
     {
-        if ($request->status !== ApprovalRequest::PENDING || $request->requested_by === $user->id) {
+        if ($request->status !== ApprovalRequest::PENDING) {
+            return false;
+        }
+        // requests a Super Admin opened before they became direct may be approved by that Super Admin
+        if ($request->requested_by === $user->id && ! $this->superAdminDirect($request->action_key, $user)) {
             return false;
         }
         $step = $request->steps()->where('step_no', $request->current_step)->first();
@@ -79,7 +96,7 @@ class ApprovalService
         return DB::transaction(function () use ($request, $user, $decision, $remarks) {
             $request = ApprovalRequest::whereKey($request->id)->lockForUpdate()->firstOrFail();
 
-            if ($request->requested_by === $user->id) {
+            if ($request->requested_by === $user->id && ! $this->superAdminDirect($request->action_key, $user)) {
                 throw ValidationException::withMessages(['decision' => __('নিজের পাঠানো অনুরোধ নিজে অনুমোদন করা যাবে না।')]);
             }
             if (! $this->canAct($user, $request)) {

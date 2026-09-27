@@ -13,6 +13,7 @@ import {
   SearchOutlined,
   SettingFilled,
 } from '@ant-design/icons'
+import { useAuth } from '../../auth/AuthContext'
 import ProtectedImage from '../../components/ProtectedImage'
 import { api, errorMessage, type Paginated } from '../../lib/api'
 import { APPROVAL_STATUS, digits, fmtDate } from '../../lib/format'
@@ -201,6 +202,9 @@ export default function MergePage() {
   const [sp, setSp] = useSearchParams()
   const navigate = useNavigate()
   const { message } = App.useApp()
+  const { user } = useAuth()
+  // a Super Admin's merge applies at once; everyone else's waits for approval
+  const direct = !!user?.is_super_admin
   const { data: meta } = useFarmerMeta()
   // ?a= is the record to keep (target), ?b= the one merged away (source) — as the duplicates page links it.
   const targetId = Number(sp.get('a')) || undefined
@@ -434,7 +438,7 @@ export default function MergePage() {
           onCancel={() => setPreview(false)}
           onOk={submit}
           confirmLoading={saving}
-          okText={tx('মার্জের অনুরোধ পাঠান')}
+          okText={direct ? tx('মার্জ করুন') : tx('মার্জের অনুরোধ পাঠান')}
           cancelText={tx('বাতিল')}
         >
           {source && target && (
@@ -459,7 +463,7 @@ export default function MergePage() {
                 {tx('স্থানান্তর হবে')}: {related.filter((r) => r.checked).map((r) => r.label).join(', ') || '—'}
                 {tx('; সাথে ডকুমেন্ট, আবেদন ও পরিবারের তথ্য।')}
               </p>
-              <Alert type="warning" showIcon title={tx('অনুমোদনের পর উৎস রেকর্ডটি নিষ্ক্রিয় হয়ে লক্ষ্য রেকর্ডের সাথে যুক্ত থাকবে। এটি ফেরানো যায় না।')} />
+              <Alert type="warning" showIcon title={direct ? tx('সুপার অ্যাডমিন হিসেবে মার্জ সঙ্গে সঙ্গে কার্যকর হবে: উৎস রেকর্ডটি নিষ্ক্রিয় হয়ে লক্ষ্য রেকর্ডের সাথে যুক্ত থাকবে। এটি ফেরানো যায় না।') : tx('অনুমোদনের পর উৎস রেকর্ডটি নিষ্ক্রিয় হয়ে লক্ষ্য রেকর্ডের সাথে যুক্ত থাকবে। এটি ফেরানো যায় না।')} />
             </div>
           )}
         </Modal>
