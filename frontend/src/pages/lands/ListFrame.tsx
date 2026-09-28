@@ -25,6 +25,8 @@ export type StatCard = {
   onClick?: () => void
   /** a white glyph on a filled disc inside the tinted ring, as some designs draw it */
   solid?: ReactNode
+  /** an icon of its own, drawn in the card colour, instead of a dashboard icon */
+  glyph?: ReactNode
 }
 
 export const n0 = (v: number) => digits(v.toLocaleString('en-IN'))
@@ -49,6 +51,8 @@ export default function ListFrame(props: {
   subtitle: string
   actions?: ReactNode
   cards: StatCard[]
+  /** extra class on the card row, e.g. for six cards */
+  statsClass?: string
   filters: ReactNode
   /** extra class on the filter row, e.g. for a two-row layout */
   filterClass?: string
@@ -84,13 +88,17 @@ export default function ListFrame(props: {
           {props.actions && <div className="fl-head-btns">{props.actions}</div>}
         </div>
 
-        <div className="fl-stats ml-stats pl-stats">
+        <div className={`fl-stats ml-stats pl-stats ${props.statsClass ?? ""}`}>
           {props.cards.map((c) => (
             <button key={c.key} type="button" className={`fl-stat ${c.onClick ? '' : 'mz-stat'}`} style={{ ['--tint' as string]: c.tint }} onClick={c.onClick}>
               <span className="fl-stat-icon" style={{ background: c.tint }}>
                 {c.solid ? (
                   <span className="lf-solid" style={{ background: c.color }}>
                     {c.solid}
+                  </span>
+                ) : c.glyph ? (
+                  <span className="lf-glyph" style={{ color: c.color }}>
+                    {c.glyph}
                   </span>
                 ) : (
                   <DashIcon name={c.icon} size={30} color={c.color} stroke={2.1} />

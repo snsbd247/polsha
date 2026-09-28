@@ -28,6 +28,7 @@ use App\Http\Controllers\Api\IrrigationRateController;
 use App\Http\Controllers\Api\IrrigationReportController;
 use App\Http\Controllers\Api\IrrigationTypeController;
 use App\Http\Controllers\Api\JournalController;
+use App\Http\Controllers\Api\LandActivityController;
 use App\Http\Controllers\Api\LandController;
 use App\Http\Controllers\Api\LandRegisterController;
 use App\Http\Controllers\Api\LandTransferController;
@@ -239,6 +240,8 @@ Route::middleware(['auth:sanctum', 'usable'])->group(function () {
         Route::get('land-register/transfers/summary', [LandRegisterController::class, 'transfersSummary']);
         Route::get('land-register/history', [LandRegisterController::class, 'history']);
         Route::get('land-register/history/summary', [LandRegisterController::class, 'historySummary']);
+        Route::get('land-register/activities', [LandActivityController::class, 'index']);
+        Route::get('land-register/activities/summary', [LandActivityController::class, 'summary']);
         Route::get('land-register/overview', [LandRegisterController::class, 'overview']);
         Route::get('land-transfers/meta', [LandTransferController::class, 'meta']);
         Route::get('land-transfers', [LandTransferController::class, 'index']);

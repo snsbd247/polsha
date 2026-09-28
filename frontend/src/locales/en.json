@@ -2657,5 +2657,20 @@
   "মার্জ অনুরোধ সম্পাদনা": "Edit Merge Request",
   "মার্জের তালিকা": "Merge List",
   "পরিবর্তন সংরক্ষণ": "Save changes",
-  "মার্জের কারণ": "Reason for merge"
+  "মার্জের কারণ": "Reason for merge",
+  "মোট ইতিহাস রেকর্ড": "Total History Records",
+  "মালিকানা পরিবর্তন": "Ownership Changes",
+  "বর্গা চুক্তি": "Borga Agreements",
+  "হস্তান্তর": "Transfers",
+  "সেচ কার্যক্রম": "Irrigation Activities",
+  "কার্যক্রমের ধরন": "Activity Type",
+  "সংশ্লিষ্ট ব্যক্তি": "Related Person",
+  "রেফারেন্স নং": "Reference No.",
+  "জমির ইতিহাসের তালিকা": "Land History List",
+  "সব জমির পূর্ণ ইতিহাস দেখুন। এই তালিকায় মালিকানা, চাষাবাদ, বর্গা, হস্তান্তর, সেচ ও অন্যান্য কার্যক্রম দেখা যায়।": "View complete history records of all lands. This list shows ownership, cultivation, borga (sharecropping), transfer, irrigation and other activities.",
+  "জমির নং, মালিকের নাম, মৌজা বা রেফারেন্স দিয়ে খুঁজুন...": "Search by land no, owner name, mouza or reference...",
+  "জমির ইতিহাসের তালিকা ({{p0}})": "Land History List ({{p0}})",
+  "কোনো কার্যক্রম পাওয়া যায়নি": "No activity found",
+  "চাষাবাদ পরিবর্তন": "Cultivation Changes",
+  "সম্পাদনকারী": "Performed By"
 }

@@ -1,0 +1,209 @@
+/* Land history list — six cards, two filter rows and two-line cells as in the approved design. */
+.hs-six {
+  grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
+  gap: 12px !important;
+}
+
+.hs-six .fl-stat {
+  gap: 14px;
+  padding: 10px 12px;
+}
+
+.hs-six .fl-stat-icon {
+  width: 56px;
+  height: 56px;
+}
+
+.hs-six .fl-stat-label {
+  font-size: 13px;
+}
+
+.hs-six .fl-stat-value {
+  font-size: 26px;
+}
+
+/* the second filter row ends with the buttons on the right */
+.hs-filters .fl-filter-btns {
+  margin-left: auto;
+}
+
+.hs-filters .fl-field .ant-select,
+.hs-filters .fl-field .ant-input-affix-wrapper {
+  height: 36px;
+}
+
+.hs-filters .fl-filter-btns .ant-btn {
+  height: 40px;
+}
+
+.hs-table .ant-table-tbody > tr > td {
+  height: 44px;
+  padding-top: 5px !important;
+  padding-bottom: 5px !important;
+}
+
+.hs-code {
+  font-weight: 600;
+}
+
+.hs-two {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.35;
+  white-space: nowrap;
+}
+
+.hs-two > span,
+.hs-two > a + span {
+  color: #6b7280;
+  font-size: 12.5px;
+}
+
+.hs-detail .hs-two > span {
+  color: inherit;
+  font-size: inherit;
+}
+
+.hs-person {
+  color: #1f2937;
+}
+
+.hs-person:hover {
+  color: #1769e0;
+}
+
+.fl-tag.hs-kind.ant-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 3px 10px;
+  font-size: 12.5px;
+}
+
+.hs-red.ant-tag {
+  color: #d92d2f;
+  background: #fde6e6;
+  border-color: transparent;
+}
+
+.hs-teal.ant-tag {
+  color: #0e8f8a;
+  background: #daf4f2;
+  border-color: transparent;
+}
+
+.hs-view.ant-btn {
+  width: 40px;
+}
+
+@media (max-width: 1440px) {
+  .hs-six {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .hs-six {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+  .hs-filters .fl-filter-btns {
+    margin-left: 0;
+  }
+}
+
+/* six cards share the row: labels may take two lines, as in the design */
+.hs-six .fl-stat-label {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  font-size: 12.5px;
+  line-height: 1.25;
+}
+
+.hs-six .fl-stat {
+  gap: 10px;
+}
+
+.hs-six .fl-stat-icon {
+  width: 50px;
+  height: 50px;
+}
+
+.hs-table td.hs-detail .hs-two {
+  min-width: 170px;
+  max-width: 215px;
+  white-space: normal;
+}
+
+.hs-table .ant-table-thead > tr > th,
+.hs-table .ant-table-tbody > tr > td {
+  padding-left: 8px !important;
+  padding-right: 8px !important;
+}
+
+/* the design's table text is a size smaller than the other lists */
+.hs-table .ant-table {
+  font-size: 13px;
+}
+
+.hs-table .fl-tag.hs-kind.ant-tag {
+  font-size: 12px;
+  padding: 2px 8px;
+  gap: 6px;
+}
+
+.hs-table td.hs-detail .hs-two {
+  min-width: 200px;
+  max-width: 235px;
+}
+
+.hs-table .hs-two > span,
+.hs-table .hs-two > a + span {
+  font-size: 12px;
+}
+
+.hs-table .ant-table-tbody > tr > td,
+.hs-table .ant-table-thead > tr > th {
+  font-size: 13px;
+}
+
+.hs-table td.hs-detail .hs-two {
+  min-width: 190px;
+  max-width: 205px;
+}
+
+.hs-table td.hs-detail .hs-two > span {
+  font-size: 12.5px;
+  color: #374151;
+}
+
+/* long names take a second line rather than widening the table */
+.hs-table td.hs-person-cell .hs-two,
+.hs-table td.hs-by-cell .hs-two {
+  max-width: 150px;
+  white-space: normal;
+}
+
+.fl-table.hs-table .ant-table-tbody > tr > td {
+  font-size: 13px;
+  padding-left: 7px !important;
+  padding-right: 7px !important;
+}
+
+.fl-table.hs-table .ant-table-thead > tr > th {
+  padding-left: 7px !important;
+  padding-right: 7px !important;
+}
+
+.fl-table.hs-table td.hs-detail .hs-two {
+  min-width: 222px;
+  max-width: 232px;
+}
+
+.fl-table.hs-table td.hs-person-cell .hs-two {
+  max-width: 140px;
+}
+
+.fl-table.hs-table td.hs-by-cell .hs-two {
+  max-width: 128px;
+}
