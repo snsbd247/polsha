@@ -68,6 +68,8 @@ const TrialBalancePage = lazy(() => import('./pages/accounting/TrialBalancePage'
 const PeriodsPage = lazy(() => import('./pages/accounting/PeriodsPage'))
 const IrrigationTypesPage = lazy(() => import('./pages/settings/IrrigationTypesPage'))
 const SeasonsPage = lazy(() => import('./pages/irrigation/SeasonsPage'))
+const SeasonFormPage = lazy(() => import('./pages/irrigation/SeasonFormPage'))
+const SeasonDetailPage = lazy(() => import('./pages/irrigation/SeasonDetailPage'))
 const RatesPage = lazy(() => import('./pages/irrigation/RatesPage'))
 const InvoiceListPage = lazy(() => import('./pages/irrigation/InvoiceListPage'))
 const InvoiceFormPage = lazy(() => import('./pages/irrigation/InvoiceFormPage'))
@@ -271,6 +273,9 @@ export default function App() {
         <Route path="accounting/periods" element={<Perm perm="accounting.view"><PeriodsPage /></Perm>} />
 
         <Route path="irrigation/seasons" element={<Perm perm="irrigation.view"><SeasonsPage /></Perm>} />
+        <Route path="irrigation/seasons/new" element={<Perm perm="irrigation.edit"><SeasonFormPage key="new" /></Perm>} />
+        <Route path="irrigation/seasons/:id" element={<Perm perm="irrigation.view"><SeasonDetailPage /></Perm>} />
+        <Route path="irrigation/seasons/:id/edit" element={<Perm perm="irrigation.edit"><SeasonFormPage /></Perm>} />
         <Route path="irrigation/rates" element={<Perm perm="irrigation.view"><RatesPage /></Perm>} />
         <Route path="irrigation/invoices" element={<Perm perm="irrigation.view"><InvoiceListPage /></Perm>} />
         <Route path="irrigation/invoices/new" element={<Perm perm="irrigation.create"><InvoiceFormPage /></Perm>} />

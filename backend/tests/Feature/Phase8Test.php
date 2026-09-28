@@ -92,7 +92,7 @@ class Phase8Test extends Phase2TestCase
         $irr = $this->userWithRole('irrigation_officer');
         $deep = IrrigationType::where('name_bn', 'গভীর নলকূপ')->firstOrFail();
         $season = Season::findOrFail($this->actingAs($irr)->postJson('/api/seasons', [
-            'name_bn' => 'বোরো ২০২৬', 'crop' => 'ধান', 'start_date' => '2026-05-01', 'end_date' => '2026-09-30', 'status' => 'open',
+            'name_bn' => 'বোরো ২০২৬', 'code' => 'BORO26', 'type' => 'rabi', 'crop' => 'ধান', 'start_date' => '2026-05-01', 'end_date' => '2026-09-30', 'status' => 'open',
         ])->assertCreated()->json('id'));
         $rate = $this->actingAs($irr)->postJson('/api/irrigation-rates', [
             'season_id' => $season->id, 'irrigation_type_id' => $deep->id, 'rate' => 10, 'effective_from' => '2026-05-01',

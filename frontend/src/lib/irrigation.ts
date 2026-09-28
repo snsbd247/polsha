@@ -9,6 +9,8 @@ export type Owner = { id: number; farmer_code: string; name_bn: string; name_en:
 export type Season = {
   id: number
   name_bn: string
+  code: string | null
+  type: string | null
   crop: string | null
   start_date: string
   end_date: string

@@ -604,7 +604,8 @@ class DemoDataService
             $this->at($s, function (string $date) use ($s, $e, $names, $i) {
                 $name = $names[$s->month].' '.Bn::toBnDigits($s->year).' (ডেমো)';
                 $season = $this->api('irrigation', 'POST', 'seasons', [
-                    'name_bn' => $name, 'crop' => 'ধান', 'start_date' => $s->toDateString(), 'end_date' => $e->toDateString(),
+                    'name_bn' => $name, 'code' => 'DEMO-'.$s->format('ym'), 'type' => str_contains($name, 'বোরো') ? 'rabi' : 'kharif',
+                    'crop' => 'ধান', 'start_date' => $s->toDateString(), 'end_date' => $e->toDateString(),
                     'due_date' => $e->copy()->addDays(30)->toDateString(), 'status' => 'open',
                 ]);
                 foreach ($this->irrigationTypes as $k => $type) {

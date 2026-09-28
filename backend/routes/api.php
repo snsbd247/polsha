@@ -340,6 +340,7 @@ Route::middleware(['auth:sanctum', 'usable'])->group(function () {
     Route::put('irrigation-types/{irrigationType}', [IrrigationTypeController::class, 'update'])->middleware('permission:settings.admin');
     Route::middleware('permission:irrigation.view')->group(function () {
         Route::get('seasons', [SeasonController::class, 'index']);
+        Route::get('seasons/{season}', [SeasonController::class, 'show'])->whereNumber('season');
         Route::get('irrigation-rates', [IrrigationRateController::class, 'index']);
         Route::get('invoices/meta', [InvoiceController::class, 'meta']);
         Route::get('invoices', [InvoiceController::class, 'index']);
@@ -358,6 +359,7 @@ Route::middleware(['auth:sanctum', 'usable'])->group(function () {
     Route::middleware('permission:irrigation.edit')->group(function () {
         Route::post('seasons', [SeasonController::class, 'store']);
         Route::put('seasons/{season}', [SeasonController::class, 'update']);
+        Route::delete('seasons/{season}', [SeasonController::class, 'destroy']);
         Route::post('irrigation-rates', [IrrigationRateController::class, 'store']);
         Route::post('invoices/{invoice}/cancel', [InvoiceController::class, 'cancel']);
     });

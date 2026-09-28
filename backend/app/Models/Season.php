@@ -11,9 +11,11 @@ class Season extends Model
 
     public const STATUSES = ['planned' => 'পরিকল্পিত', 'open' => 'চলমান', 'closed' => 'বন্ধ'];
 
+    public const TYPES = ['rabi' => 'রবি', 'kharif' => 'খরিফ', 'summer' => 'গ্রীষ্মকালীন', 'other' => 'অন্যান্য'];
+
     protected string $auditModule = 'irrigation';
 
-    protected $fillable = ['name_bn', 'crop', 'start_date', 'end_date', 'due_date', 'status', 'remarks', 'created_by'];
+    protected $fillable = ['name_bn', 'code', 'type', 'crop', 'start_date', 'end_date', 'due_date', 'status', 'remarks', 'created_by'];
 
     protected $casts = ['start_date' => 'date:Y-m-d', 'end_date' => 'date:Y-m-d', 'due_date' => 'date:Y-m-d'];
 
@@ -25,5 +27,10 @@ class Season extends Model
     public function invoices()
     {
         return $this->hasMany(Invoice::class);
+    }
+
+    public function creator()
+    {
+        return $this->belongsTo(User::class, 'created_by')->withTrashed();
     }
 }

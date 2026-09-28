@@ -1221,5 +1221,10 @@
     "বিস্তারিত জমি রিপোর্ট": "Detailed Land Report",
     "একক মালিকানা": "Individual",
     "যৌথ মালিকানা": "Joint",
-    "মালিক নেই": "No owner"
+    "মালিক নেই": "No owner",
+    "এই মৌসুমে ইনভয়েস বা রেট আছে; মুছে না ফেলে বন্ধ করুন।": "This season has invoices or rates; close it instead of deleting.",
+    "কোড ২–২০টি ইংরেজি বড় হাতের অক্ষর, সংখ্যা বা হাইফেন হবে।": "The code must be 2-20 capital English letters, digits or hyphens.",
+    "রবি": "Rabi",
+    "খরিফ": "Kharif",
+    "গ্রীষ্মকালীন": "Summer"
 }

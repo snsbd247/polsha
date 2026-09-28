@@ -35,7 +35,7 @@ class IrrigationTest extends Phase2TestCase
         $this->tenant = $this->makeFarmer(['name_bn' => 'বর্গাচাষি']);
 
         $r = $this->actingAs($this->irrigation)->postJson('/api/seasons', [
-            'name_bn' => 'বোরো ২০২৬', 'crop' => 'ধান', 'start_date' => now()->subMonth()->toDateString(),
+            'name_bn' => 'বোরো ২০২৬', 'code' => 'BORO26', 'type' => 'rabi', 'crop' => 'ধান', 'start_date' => now()->subMonth()->toDateString(),
             'end_date' => now()->addMonths(3)->toDateString(), 'status' => 'open',
         ])->assertCreated();
         $this->season = Season::findOrFail($r->json('id'));
@@ -103,6 +103,27 @@ class IrrigationTest extends Phase2TestCase
     {
         $this->actingAs($this->irrigation)->getJson('/api/irrigation/mismatch')->assertOk()
             ->assertJsonPath('difference', 0)->assertJsonCount(0, 'issues');
+    }
+
+    public function test_season_code_type_details_and_delete(): void
+    {
+        $this->actingAs($this->irrigation)->postJson('/api/seasons', ['name_bn' => 'আমন ২০২৬', 'code' => 'boro26', 'type' => 'kharif',
+            'start_date' => '2026-07-01', 'end_date' => '2026-11-30', 'status' => 'planned'])->assertStatus(422)->assertJsonValidationErrors('code');
+        $new = $this->actingAs($this->irrigation)->postJson('/api/seasons', ['name_bn' => 'আমন ২০২৬', 'code' => 'aman26', 'type' => 'kharif',
+            'start_date' => '2026-07-01', 'end_date' => '2026-11-30', 'status' => 'planned'])->assertCreated()->assertJsonPath('code', 'AMAN26')->json('id');
+
+        $this->actingAs($this->irrigation)->getJson('/api/seasons')->assertOk()
+            ->assertJsonPath('current.id', $this->season->id)->assertJsonPath('types.kharif', 'খরিফ');
+
+        $this->approvedRate();
+        $this->invoice($this->land('701'));
+        $this->actingAs($this->irrigation)->getJson("/api/seasons/{$this->season->id}")->assertOk()
+            ->assertJsonPath('invoice_count', 1)->assertJsonPath('lands', 1)->assertJsonPath('farmers', 1)->assertJsonPath('can_delete', false);
+
+        // a season with bills stays; an unused one can go
+        $this->actingAs($this->irrigation)->deleteJson("/api/seasons/{$this->season->id}")->assertStatus(422);
+        $this->actingAs($this->irrigation)->deleteJson("/api/seasons/$new")->assertOk();
+        $this->assertNull(Season::find($new));
     }
 
     public function test_rate_needs_approval_before_it_bills(): void
