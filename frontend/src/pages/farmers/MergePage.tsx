@@ -1,13 +1,13 @@
 import { useMemo, useState, type ReactNode } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Alert, App, Button, Checkbox, ConfigProvider, Drawer, Input, Modal, Radio, Spin, Table, Tag, Tooltip } from 'antd'
+import { Alert, App, Button, Checkbox, ConfigProvider, Form, Input, Modal, Radio, Select, Spin, Table, Tag, Tooltip } from 'antd'
 import {
   ArrowRightOutlined,
   CheckCircleOutlined,
   CloseOutlined,
   ExclamationCircleOutlined,
-  HistoryOutlined,
+  UnorderedListOutlined,
   HomeOutlined,
   RightOutlined,
   SearchOutlined,
@@ -16,7 +16,7 @@ import {
 import { useAuth } from '../../auth/AuthContext'
 import ProtectedImage from '../../components/ProtectedImage'
 import { api, errorMessage, type Paginated } from '../../lib/api'
-import { APPROVAL_STATUS, digits, fmtDate } from '../../lib/format'
+import { digits, fmtDate } from '../../lib/format'
 import { MEMBER_STATUS, useFarmerMeta, type FarmerMeta, type FarmerRow, type MemberStatus } from '../../lib/phase2'
 import { nameOf, t as tx } from '../../lib/i18n'
 import { DashIcon } from '../dashboard/DashIcons'
@@ -41,7 +41,6 @@ type F = Record<string, unknown> & {
   related: Related
 }
 type Side = 'source' | 'target'
-type HistoryRow = { id: number; status: string; created_at: string; requested_by: string | null; keep: Pick<F, 'id' | 'farmer_code' | 'name_bn'> | null; remove: Pick<F, 'id' | 'farmer_code' | 'name_bn'> | null }
 
 const empty = (v: unknown) => v === null || v === undefined || v === ''
 const coded = (meta: FarmerMeta | undefined, key: keyof FarmerMeta, v: unknown) => (empty(v) ? '' : (meta?.[key][String(v)] ?? String(v)))
@@ -209,10 +208,13 @@ export default function MergePage() {
   // ?a= is the record to keep (target), ?b= the one merged away (source) — as the duplicates page links it.
   const targetId = Number(sp.get('a')) || undefined
   const sourceId = Number(sp.get('b')) || undefined
+  // ?edit= changes a waiting request (it keeps its number)
+  const editId = Number(sp.get('edit')) || undefined
+  const [reason, setReason] = useState(sp.get('reason') ?? 'duplicate')
+  const [reasonNote, setReasonNote] = useState('')
   const [choices, setChoices] = useState<Record<string, Side>>({})
   const [transfer, setTransfer] = useState({ land: true, irrigation: true })
   const [preview, setPreview] = useState(false)
-  const [history, setHistory] = useState(false)
   const [saving, setSaving] = useState(false)
 
   const { data, isFetching, error } = useQuery({
@@ -220,11 +222,7 @@ export default function MergePage() {
     queryFn: async () => (await api.get<{ a: F | null; b: F | null; fields: string[] }>('/farmers/compare', { params: { a: targetId, b: sourceId } })).data,
     enabled: !!(targetId || sourceId),
   })
-  const hist = useQuery({
-    queryKey: ['merge-history'],
-    queryFn: async () => (await api.get<Paginated<HistoryRow>>('/farmers-merge/history', { params: { per_page: 50 } })).data,
-    enabled: history,
-  })
+  const mergeMeta = useQuery({ queryKey: ['merge-history', 'meta'], queryFn: async () => (await api.get<{ reasons: Record<string, string> }>('/farmers-merge/meta')).data })
 
   const target = targetId ? (data?.a ?? null) : null
   const source = sourceId ? (data?.b ?? null) : null
@@ -256,14 +254,17 @@ export default function MergePage() {
     try {
       const mapped: Record<string, 'keep' | 'remove'> = {}
       for (const r of rows) for (const field of r.fields) mapped[field] = chosen(r) === 'source' ? 'remove' : 'keep'
-      const r = await api.post('/farmers-merge', {
+      const body = {
         keep_id: target.id,
         remove_id: source.id,
         choices: mapped,
         transfer: (Object.keys(transfer) as (keyof typeof transfer)[]).filter((k) => transfer[k]),
-      })
+        reason,
+        reason_note: reasonNote || null,
+      }
+      const r = editId ? await api.put(`/farmers-merge/${editId}`, body) : await api.post('/farmers-merge', body)
       message.success(r.data.message)
-      navigate(r.data.status === 'approved' ? `/farmers/${target.id}` : `/approvals/${r.data.approval_id}`)
+      navigate(r.data.status === 'approved' ? `/farmers/${target.id}` : '/farmers/merge')
     } catch (e) {
       message.error(errorMessage(e))
     } finally {
@@ -324,7 +325,9 @@ export default function MergePage() {
           <RightOutlined className="fl-crumb-sep" />
           <Link to="/farmers">{tx('কৃষক ও সদস্য')}</Link>
           <RightOutlined className="fl-crumb-sep" />
-          <span>{tx('কৃষক মার্জ')}</span>
+          <Link to="/farmers/merge">{tx('কৃষক মার্জের তালিকা')}</Link>
+          <RightOutlined className="fl-crumb-sep" />
+          <span>{editId ? tx('মার্জ অনুরোধ সম্পাদনা') : tx('নতুন মার্জ অনুরোধ')}</span>
         </nav>
 
         <div className="fl-head">
@@ -333,8 +336,8 @@ export default function MergePage() {
             <p>{tx('একই কৃষকের একাধিক রেকর্ড একটিতে মিলিয়ে দিন। উৎস কৃষক (মার্জ হয়ে যাবে) এবং লক্ষ্য কৃষক (রাখা হবে) বাছাই করুন।')}</p>
           </div>
           <div className="fl-head-btns">
-            <Button icon={<HistoryOutlined />} className="fm-history-btn" onClick={() => setHistory(true)}>
-              {tx('মার্জের ইতিহাস')}
+            <Button icon={<UnorderedListOutlined />} className="fm-history-btn" onClick={() => navigate('/farmers/merge')}>
+              {tx('মার্জের তালিকা')}
             </Button>
           </div>
         </div>
@@ -438,7 +441,7 @@ export default function MergePage() {
           onCancel={() => setPreview(false)}
           onOk={submit}
           confirmLoading={saving}
-          okText={direct ? tx('মার্জ করুন') : tx('মার্জের অনুরোধ পাঠান')}
+          okText={direct ? tx('মার্জ করুন') : editId ? tx('পরিবর্তন সংরক্ষণ') : tx('মার্জের অনুরোধ পাঠান')}
           cancelText={tx('বাতিল')}
         >
           {source && target && (
@@ -459,6 +462,14 @@ export default function MergePage() {
                   ))}
                 </tbody>
               </table>
+              <Form layout="vertical" className="fm-reason">
+                <Form.Item label={tx('মার্জের কারণ')} required>
+                  <Select value={reason} onChange={setReason} options={Object.entries(mergeMeta.data?.reasons ?? {}).map(([value, label]) => ({ value, label }))} />
+                </Form.Item>
+                <Form.Item label={tx('মন্তব্য (ঐচ্ছিক)')}>
+                  <Input maxLength={255} value={reasonNote} onChange={(e) => setReasonNote(e.target.value)} />
+                </Form.Item>
+              </Form>
               <p className="fm-preview-moves">
                 {tx('স্থানান্তর হবে')}: {related.filter((r) => r.checked).map((r) => r.label).join(', ') || '—'}
                 {tx('; সাথে ডকুমেন্ট, আবেদন ও পরিবারের তথ্য।')}
@@ -468,22 +479,6 @@ export default function MergePage() {
           )}
         </Modal>
 
-        <Drawer open={history} size="large" title={tx('মার্জের ইতিহাস')} onClose={() => setHistory(false)}>
-          <Table<HistoryRow>
-            rowKey="id"
-            size="small"
-            loading={hist.isFetching}
-            dataSource={hist.data?.data ?? []}
-            pagination={false}
-            columns={[
-              { title: tx('তারিখ'), dataIndex: 'created_at', render: fmtDate },
-              { title: tx('উৎস (মুছে গেছে)'), render: (_, r) => (r.remove ? `${r.remove.farmer_code} · ${r.remove.name_bn}` : '—') },
-              { title: tx('লক্ষ্য (রাখা হয়েছে)'), render: (_, r) => (r.keep ? <Link to={`/farmers/${r.keep.id}`}>{`${r.keep.farmer_code} · ${r.keep.name_bn}`}</Link> : '—') },
-              { title: tx('অনুরোধকারী'), dataIndex: 'requested_by' },
-              { title: tx('অবস্থা'), render: (_, r) => <Link to={`/approvals/${r.id}`}><Tag color={APPROVAL_STATUS[r.status]?.color}>{APPROVAL_STATUS[r.status]?.label ?? r.status}</Tag></Link> },
-            ]}
-          />
-        </Drawer>
       </div>
     </ConfigProvider>
   )

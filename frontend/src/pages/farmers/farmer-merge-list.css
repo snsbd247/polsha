@@ -1,0 +1,122 @@
+/* Farmer merge list — one filter row and two-line farmer cells as in the approved design. */
+.mg-filters .fl-field .ant-select,
+.mg-filters .fl-field .ant-input-affix-wrapper {
+  height: 40px;
+}
+
+.mg-filters .fl-field .ant-picker {
+  height: 40px !important;
+}
+
+.mg-filters .fl-filter-btns .ant-btn {
+  height: 40px;
+  min-width: 94px;
+}
+
+.mg-table .ant-table-tbody > tr > td {
+  height: 48px;
+  padding-top: 6px !important;
+  padding-bottom: 6px !important;
+}
+
+.mg-who {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  white-space: nowrap;
+}
+
+.mg-who .ant-avatar,
+.mg-who img {
+  border-radius: 6px;
+}
+
+.mg-initials {
+  width: 34px !important;
+  height: 34px !important;
+  font-size: 12px !important;
+  border-radius: 6px !important;
+}
+
+.mg-who-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.35;
+}
+
+.mg-name {
+  color: #1f2937;
+  font-weight: 500;
+}
+
+.mg-name:hover {
+  color: #1769e0;
+}
+
+.mg-who-text small,
+.mg-by small {
+  color: #7a8394;
+  font-size: 12px;
+}
+
+.mg-by {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.35;
+  white-space: nowrap;
+}
+
+.mg-arrow {
+  color: #1769e0;
+  font-size: 15px;
+}
+
+.fl-tag.mg-status.ant-tag {
+  min-width: 72px;
+  text-align: center;
+}
+
+.mg-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-left: 4px;
+}
+
+.mg-view.ant-btn {
+  color: #1769e0;
+  font-size: 17px;
+}
+
+.mg-act.ant-btn {
+  width: 34px;
+  height: 34px;
+  color: #1769e0;
+  border-color: #e3e8f0;
+}
+
+.mg-del.ant-btn {
+  color: #e5383b;
+}
+
+.mg-del.ant-btn:hover {
+  color: #c81e21 !important;
+  border-color: #f5b5b6 !important;
+}
+
+/* reason and requester wrap onto two lines, as in the design, so the row fits */
+.mg-table td.mg-wrap {
+  min-width: 118px;
+  max-width: 150px;
+  white-space: normal !important;
+  line-height: 1.35;
+}
+
+.mg-table td.mg-wrap .mg-by {
+  white-space: normal;
+}
+
+.mg-table .mg-arrow-cell {
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}

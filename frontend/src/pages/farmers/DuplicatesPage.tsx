@@ -75,7 +75,7 @@ export default function DuplicatesPage() {
               render: (_, p) =>
                 can('farmer.edit') && (
                   <Space orientation="vertical" size={4}>
-                    <Button size="small" type="primary" onClick={() => navigate(`/farmers/merge?a=${p.a.id}&b=${p.b.id}`)}>
+                    <Button size="small" type="primary" onClick={() => navigate(`/farmers/merge/new?a=${p.a.id}&b=${p.b.id}`)}>
                       {tx('পাশাপাশি তুলনা ও মার্জ')}
                     </Button>
                     <Button size="small" onClick={() => dismiss(p)}>

@@ -857,7 +857,7 @@ class DemoDataService
                     'village_id' => $v['id'], 'mouza_id' => $v['mouza_id'], 'occupation' => 'farmer', 'confirm_duplicate' => true,
                 ]);
                 if ($what === 'merge') {
-                    $r = $this->api('member', 'POST', 'farmers-merge', ['keep_id' => $real, 'remove_id' => $f['id'], 'choices' => []]);
+                    $r = $this->api('member', 'POST', 'farmers-merge', ['keep_id' => $real, 'remove_id' => $f['id'], 'choices' => [], 'reason' => ['duplicate', 'spelling', 'name_variation', 'registration', 'multiple'][mt_rand(0, 4)]]);
                     $this->approve($r['approval_id'] ?? null);
 
                     return;

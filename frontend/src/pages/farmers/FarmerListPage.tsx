@@ -159,7 +159,7 @@ export default function FarmerListPage() {
   const moreItems = [
     { key: 'households', icon: <TeamOutlined />, label: tx('খানা'), onClick: () => navigate('/households') },
     { key: 'duplicates', icon: <UsergroupDeleteOutlined />, label: tx('ডুপ্লিকেট পর্যালোচনা'), onClick: () => navigate('/farmers/duplicates') },
-    can('farmer.edit') && { key: 'merge', icon: <CopyOutlined />, label: tx('কৃষক একীভূত'), onClick: () => navigate('/farmers/merge') },
+    can('farmer.edit') && { key: 'merge', icon: <CopyOutlined />, label: tx('কৃষক একীভূত'), onClick: () => navigate('/farmers/merge/new') },
     { key: 'deleted', icon: <DeleteOutlined />, label: tx('মুছে ফেলা কৃষক'), onClick: () => navigate('/farmers/deleted') },
     can('farmer.export') && { key: 'excel', icon: <DownloadOutlined />, label: 'Excel', onClick: exportCsv },
   ].filter(Boolean) as { key: string; label: string; onClick: () => void }[]

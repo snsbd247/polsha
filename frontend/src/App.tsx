@@ -30,6 +30,7 @@ const FarmerFormPage = lazy(() => import('./pages/farmers/FarmerFormPage'))
 const FarmerProfilePage = lazy(() => import('./pages/farmers/FarmerProfilePage'))
 const DuplicatesPage = lazy(() => import('./pages/farmers/DuplicatesPage'))
 const MergePage = lazy(() => import('./pages/farmers/MergePage'))
+const FarmerMergeListPage = lazy(() => import('./pages/farmers/FarmerMergeListPage'))
 const HouseholdPage = lazy(() => import('./pages/farmers/HouseholdPage'))
 const ApplicationListPage = lazy(() => import('./pages/membership/ApplicationListPage'))
 const ApplicationFormPage = lazy(() => import('./pages/membership/ApplicationFormPage'))
@@ -213,7 +214,8 @@ export default function App() {
         <Route path="farmers" element={<Perm perm="farmer.view"><FarmerListPage /></Perm>} />
         <Route path="farmers/new" element={<Perm perm="farmer.create"><FarmerFormPage /></Perm>} />
         <Route path="farmers/duplicates" element={<Perm perm="farmer.view"><DuplicatesPage /></Perm>} />
-        <Route path="farmers/merge" element={<Perm perm="farmer.edit"><MergePage /></Perm>} />
+        <Route path="farmers/merge" element={<Perm perm="farmer.edit"><FarmerMergeListPage /></Perm>} />
+        <Route path="farmers/merge/new" element={<Perm perm="farmer.edit"><MergePage /></Perm>} />
         <Route path="farmers/:id" element={<Perm perm="farmer.view"><FarmerProfilePage /></Perm>} />
         <Route path="farmers/:id/edit" element={<Perm perm="farmer.edit"><FarmerFormPage /></Perm>} />
         <Route path="households" element={<Perm perm="farmer.view"><HouseholdPage /></Perm>} />

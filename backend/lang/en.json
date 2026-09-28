@@ -1136,5 +1136,21 @@
     "নতুন মালিক": "New Owner",
     "অংশ %": "Share %",
     "জমির নং": "Land No",
-    "দাগ নং": "Dag No"
+    "দাগ নং": "Dag No",
+    "অনুরোধকারী": "Requested By",
+    "অনুরোধের তারিখ": "Request Date",
+    "কৃষক ১ (রাখা হবে)": "Farmer 1 (To Keep)",
+    "কৃষক ২ (মার্জ হবে)": "Farmer 2 (To Merge)",
+    "মার্জ অনুরোধ মুছে ফেলা হয়েছে।": "Merge request deleted.",
+    "শুধু অনুরোধকারী এটি বদলাতে বা মুছতে পারেন।": "Only the requester can change or delete this.",
+    "শুধু অপেক্ষমাণ মার্জ অনুরোধ বদলানো বা মুছা যায়।": "Only a pending merge request can be changed or deleted.",
+    "ডুপ্লিকেট রেকর্ড (একই ব্যক্তি)": "Duplicate record (same person)",
+    "নামের ভিন্নতা": "Name variation",
+    "বানানের ভিন্নতা": "Spelling variation",
+    "নিবন্ধনের সময় দুবার এন্ট্রি": "Duplicate entry during registration",
+    "একই ব্যক্তি (ভিন্ন নাম)": "Same person (different name)",
+    "একাধিক নিবন্ধন": "Multiple registration",
+    "একই NID": "Same NID",
+    "মার্জ সম্পন্ন": "Merged",
+    "কৃষক মার্জ অনুরোধ": "Farmer merge request"
 }

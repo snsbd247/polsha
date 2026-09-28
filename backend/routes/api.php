@@ -168,6 +168,10 @@ Route::middleware(['auth:sanctum', 'usable'])->group(function () {
         Route::post('farmers-duplicates/dismiss', [DuplicateController::class, 'dismiss']);
         Route::post('farmers-merge', [DuplicateController::class, 'requestMerge']);
         Route::get('farmers-merge/history', [DuplicateController::class, 'history']);
+        Route::get('farmers-merge/summary', [DuplicateController::class, 'mergeSummary']);
+        Route::get('farmers-merge/meta', [DuplicateController::class, 'mergeMeta']);
+        Route::put('farmers-merge/{approval}', [DuplicateController::class, 'updateMerge'])->whereNumber('approval');
+        Route::delete('farmers-merge/{approval}', [DuplicateController::class, 'destroyMerge'])->whereNumber('approval');
         Route::post('households', [HouseholdController::class, 'store']);
         Route::post('households/{household}/head', [HouseholdController::class, 'changeHead']);
         Route::post('households/{household}/members', [HouseholdController::class, 'addMember']);

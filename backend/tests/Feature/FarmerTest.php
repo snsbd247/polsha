@@ -128,6 +128,47 @@ class FarmerTest extends Phase2TestCase
             ->assertJsonPath('data.0.reason_code', 'merged')->assertJsonPath('data.0.merged_into.id', $keep->id);
     }
 
+    public function test_merge_list_numbers_reason_edit_and_delete(): void
+    {
+        $keep = $this->makeFarmer(['nid' => null]);
+        $remove = $this->makeFarmer(['nid' => '5556667778']);
+        $year = now()->year;
+
+        $res = $this->actingAs($this->officer)->postJson('/api/farmers-merge', ['keep_id' => $keep->id, 'remove_id' => $remove->id, 'reason' => 'spelling'])->assertCreated();
+        $id = $res->json('approval_id');
+        $this->actingAs($this->officer)->postJson('/api/farmers-merge', ['keep_id' => $keep->id, 'remove_id' => $remove->id, 'reason' => 'bogus'])
+            ->assertStatus(422)->assertJsonValidationErrors('reason');
+
+        $this->actingAs($this->officer)->getJson('/api/farmers-merge/history?status=pending&search=5556667778')->assertOk()
+            ->assertJsonPath('total', 1)->assertJsonPath('data.0.request_no', "MR-$year-001")->assertJsonPath('data.0.reason', 'spelling')
+            ->assertJsonPath('data.0.remove.nid', '5556667778')->assertJsonPath('data.0.can_change', true);
+        $this->actingAs($this->officer)->getJson('/api/farmers-merge/summary')->assertJsonPath('total', 1)->assertJsonPath('pending', 1);
+        $this->actingAs($this->officer)->getJson('/api/farmers-merge/meta')->assertJsonPath('requesters.0.id', $this->officer->id);
+
+        // someone else may not change it; the sender may, and the number stays
+        $other = $this->userWithRole('admin');
+        $this->actingAs($other)->deleteJson("/api/farmers-merge/$id")->assertForbidden();
+        $new = $this->actingAs($this->officer)->putJson("/api/farmers-merge/$id", ['keep_id' => $keep->id, 'remove_id' => $remove->id, 'reason' => 'same_nid'])
+            ->assertOk()->json('approval_id');
+        $this->assertNull(ApprovalRequest::find($id));
+        $this->assertSame("MR-$year-001", ApprovalRequest::find($new)->payload['request_no']);
+        $this->assertSame('same_nid', ApprovalRequest::find($new)->payload['reason']);
+
+        // once decided it stays as history
+        $this->actingAs($this->manager)->postJson("/api/approvals/$new/decide", ['decision' => 'approve'])->assertOk();
+        $this->actingAs($this->officer)->deleteJson("/api/farmers-merge/$new")->assertStatus(422);
+        $this->actingAs($this->officer)->getJson('/api/farmers-merge/history?status=approved')->assertJsonPath('data.0.remove.nid', '5556667778')
+            ->assertJsonPath('data.0.can_change', false);
+
+        // a waiting one can be withdrawn
+        $a = $this->makeFarmer(['nid' => null]);
+        $b = $this->makeFarmer();
+        $w = $this->actingAs($this->officer)->postJson('/api/farmers-merge', ['keep_id' => $a->id, 'remove_id' => $b->id])->json('approval_id');
+        $this->assertSame("MR-$year-002", ApprovalRequest::find($w)->payload['request_no']);
+        $this->actingAs($this->officer)->deleteJson("/api/farmers-merge/$w")->assertOk();
+        $this->actingAs($this->officer)->getJson('/api/farmers-merge/summary')->assertJsonPath('total', 1)->assertJsonPath('merged', 1);
+    }
+
     public function test_super_admin_merge_needs_no_approval(): void
     {
         $admin = $this->userWithRole('super_admin');

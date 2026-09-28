@@ -292,3 +292,15 @@
   font-weight: 600;
   color: #c07c00;
 }
+
+/* a white glyph on a filled disc (merge list cards) */
+.lf-solid {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 20px;
+}

@@ -14,7 +14,18 @@ import '../farmers/deleted-farmers.css'
 import '../masters/patwari-list.css'
 import './land-reports.css'
 
-export type StatCard = { key: string; label: string; value?: number | string; unit?: string; icon: string; color: string; tint: string; onClick?: () => void }
+export type StatCard = {
+  key: string
+  label: string
+  value?: number | string
+  unit?: string
+  icon: string
+  color: string
+  tint: string
+  onClick?: () => void
+  /** a white glyph on a filled disc inside the tinted ring, as some designs draw it */
+  solid?: ReactNode
+}
 
 export const n0 = (v: number) => digits(v.toLocaleString('en-IN'))
 export const acres = (decimal: number) => digits((decimal / 100).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }))
@@ -77,7 +88,13 @@ export default function ListFrame(props: {
           {props.cards.map((c) => (
             <button key={c.key} type="button" className={`fl-stat ${c.onClick ? '' : 'mz-stat'}`} style={{ ['--tint' as string]: c.tint }} onClick={c.onClick}>
               <span className="fl-stat-icon" style={{ background: c.tint }}>
-                <DashIcon name={c.icon} size={30} color={c.color} stroke={2.1} />
+                {c.solid ? (
+                  <span className="lf-solid" style={{ background: c.color }}>
+                    {c.solid}
+                  </span>
+                ) : (
+                  <DashIcon name={c.icon} size={30} color={c.color} stroke={2.1} />
+                )}
               </span>
               <span className="fl-stat-body">
                 <span className="fl-stat-label">{c.label}</span>

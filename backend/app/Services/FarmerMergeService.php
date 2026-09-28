@@ -39,6 +39,18 @@ class FarmerMergeService
      */
     public const TRANSFERABLE = ['land', 'irrigation'];
 
+    /** Why the two records are one person — shown on the merge list. */
+    public const REASONS = [
+        'duplicate' => 'ডুপ্লিকেট রেকর্ড (একই ব্যক্তি)',
+        'name_variation' => 'নামের ভিন্নতা',
+        'spelling' => 'বানানের ভিন্নতা',
+        'registration' => 'নিবন্ধনের সময় দুবার এন্ট্রি',
+        'different_name' => 'একই ব্যক্তি (ভিন্ন নাম)',
+        'multiple' => 'একাধিক নিবন্ধন',
+        'same_nid' => 'একই NID',
+        'other' => 'অন্যান্য',
+    ];
+
     public function __construct(private ApprovalService $approvals) {}
 
     /** Counts of what each record carries, shown on the merge screen. */
@@ -61,7 +73,7 @@ class FarmerMergeService
      * @param  array<string,'keep'|'remove'>  $choices  which record each field's value comes from
      * @param  list<string>|null  $transfer  TRANSFERABLE groups to move; null = all
      */
-    public function request(Farmer $keep, Farmer $remove, array $choices, ?array $transfer = null): ApprovalRequest
+    public function request(Farmer $keep, Farmer $remove, array $choices, ?array $transfer = null, string $reason = 'duplicate', ?string $note = null, ?string $requestNo = null): ApprovalRequest
     {
         $this->assertMergeable($keep, $remove);
 
@@ -75,9 +87,42 @@ class FarmerMergeService
             'farmer.merge',
             __('কৃষক মার্জ: :p0 → :p1 (:p2)', ['p0' => $remove->farmer_code, 'p1' => $keep->farmer_code, 'p2' => $keep->name_bn]),
             $keep,
-            ['keep_id' => $keep->id, 'remove_id' => $remove->id, 'values' => $values, 'transfer' => array_values(array_intersect(self::TRANSFERABLE, $transfer ?? self::TRANSFERABLE))],
+            [
+                'request_no' => $requestNo ?? SequenceService::next('farmer_merge'),
+                'keep_id' => $keep->id, 'remove_id' => $remove->id, 'values' => $values,
+                'transfer' => array_values(array_intersect(self::TRANSFERABLE, $transfer ?? self::TRANSFERABLE)),
+                'reason' => $reason, 'reason_note' => $note,
+                // the merged-away record loses its NID, so the list keeps what both looked like
+                'snapshot' => ['keep' => self::snapshot($keep), 'remove' => self::snapshot($remove)],
+            ],
             ['keep' => $keep->farmer_code, 'remove' => $remove->farmer_code],
         );
+    }
+
+    /** A pending request changed by its sender: the old one goes, the new one keeps its number. */
+    public function replace(ApprovalRequest $old, Farmer $keep, Farmer $remove, array $choices, ?array $transfer, string $reason, ?string $note): ApprovalRequest
+    {
+        return DB::transaction(function () use ($old, $keep, $remove, $choices, $transfer, $reason, $note) {
+            $no = $old->payload['request_no'] ?? null;
+            $this->withdraw($old, 'edit');
+
+            return $this->request($keep, $remove, $choices, $transfer, $reason, $note, $no);
+        });
+    }
+
+    /** Remove a request that is still waiting; decided ones stay as history. */
+    public function withdraw(ApprovalRequest $r, string $why = 'delete'): void
+    {
+        if ($r->action_key !== 'farmer.merge' || $r->status !== ApprovalRequest::PENDING) {
+            throw ValidationException::withMessages(['status' => __('শুধু অপেক্ষমাণ মার্জ অনুরোধ বদলানো বা মুছা যায়।')]);
+        }
+        AuditLogger::log('farmer', 'merge_request_'.$why, $r, ['request_no' => $r->payload['request_no'] ?? null, 'keep_id' => $r->payload['keep_id'] ?? null, 'remove_id' => $r->payload['remove_id'] ?? null]);
+        $r->delete();
+    }
+
+    public static function snapshot(Farmer $f): array
+    {
+        return ['nid' => $f->nid, 'mobile' => $f->mobile, 'member_no' => Member::where('farmer_id', $f->id)->value('member_no')];
     }
 
     public function assertMergeable(Farmer $keep, Farmer $remove): void
