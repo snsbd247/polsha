@@ -11,9 +11,17 @@ class LandType extends Model
 
     protected string $auditModule = 'land';
 
-    protected $fillable = ['name_bn', 'category', 'description', 'is_active', 'sort_order'];
+    public const CATEGORIES = [
+        'agricultural' => 'কৃষি',
+        'residential' => 'আবাসিক',
+        'waterbody' => 'জলাশয়',
+        'non_agricultural' => 'অকৃষি',
+        'other' => 'অন্যান্য',
+    ];
 
-    protected $casts = ['is_active' => 'boolean'];
+    protected $fillable = ['name_bn', 'code', 'category', 'description', 'default_rate', 'is_active', 'sort_order'];
+
+    protected $casts = ['is_active' => 'boolean', 'default_rate' => 'float'];
 
     public function lands()
     {

@@ -51,9 +51,12 @@ export function cellText(col: Pick<ReportColumn, 'type'>, v: unknown): string {
 export const summaryText = (s: ReportSummary) => (s.type === 'money' ? money(s.value as number) : typeof s.value === 'number' ? digits(s.value) : digits(String(s.value)))
 
 /** Record an export in the export audit (fire and forget — the file is already made). */
-export function logExport(r: ReportResult, format: 'xlsx' | 'csv' | 'print') {
+export function logExport(r: ReportResult, format: 'xlsx' | 'csv' | 'print'): Promise<void> {
   const filters = Object.fromEntries(Object.entries(r.values).filter(([k, v]) => !k.startsWith('_') && v !== null && v !== ''))
-  api.post(`/reports/${r.key}/export-log`, { format, filters, rows: r.rows.length }).catch(() => {})
+  return api
+    .post(`/reports/${r.key}/export-log`, { format, filters, rows: r.rows.length })
+    .then(() => undefined)
+    .catch(() => undefined)
 }
 
 // ------------------------------------------------------------------ print → PDF
@@ -103,7 +106,7 @@ ${summary}
     frame.contentWindow!.print()
     setTimeout(() => frame.remove(), 60_000)
   }, 300)
-  logExport(r, 'print')
+  return logExport(r, 'print')
 }
 
 // ------------------------------------------------------------------ Excel (.xlsx)
@@ -285,7 +288,7 @@ export function exportXlsx(r: ReportResult, society: string) {
     return Math.min(60, Math.max(isNum(c) ? 14 : 10, longest + 2))
   })
   download(buildXlsx(r.title, rows, widths), `${r.key}-${fileStamp()}.xlsx`)
-  logExport(r, 'xlsx')
+  return logExport(r, 'xlsx')
 }
 
 /** CSV (UTF-8 with BOM so Excel shows Bangla). */
@@ -296,7 +299,7 @@ export function exportCsv(r: ReportResult) {
   }
   const lines = [r.columns.map((c) => q(c.label)).join(','), ...r.rows.map((row) => r.columns.map((c) => q(c.type === 'date' ? row[c.key] ?? '' : row[c.key])).join(','))]
   download(new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' }), `${r.key}-${fileStamp()}.csv`)
-  logExport(r, 'csv')
+  return logExport(r, 'csv')
 }
 
 export function useReportCatalog() {

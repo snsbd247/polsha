@@ -112,7 +112,7 @@ export default function LandHistoryPage() {
   const upazilaOptions = (places.data?.upazilas ?? []).filter((u) => !draft.district_id || u.district_id === draft.district_id)
   const all = [{ value: '', label: tx('সকল') }]
   const open = (r: Row) =>
-    navigate(r.kind === 'transfer' ? `/lands/transfers/${r.source_id}` : r.kind === 'irrigation' ? `/irrigation/invoices/${r.source_id}` : `/lands/${r.land?.id}?tab=history`)
+    navigate(r.kind === 'transfer' ? `/lands/transfers/${r.source_id}` : r.kind === 'irrigation' ? `/irrigation/invoices/${r.source_id}` : `/lands/lookup/history/${r.land?.id}`)
 
   const cards = [
     { key: 'total', label: tx('মোট ইতিহাস রেকর্ড'), value: s?.total, icon: '', glyph: <FileTextFilled />, color: '#1769e0', tint: '#e4edfd', onClick: () => show({}) },

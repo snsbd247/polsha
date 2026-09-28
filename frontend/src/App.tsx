@@ -46,6 +46,7 @@ const BorgaPage = lazy(() => import('./pages/lands/BorgaPage'))
 const LandTransferPage = lazy(() => import('./pages/lands/LandTransferPage'))
 const LandTransferFormPage = lazy(() => import('./pages/lands/LandTransferFormPage'))
 const LandHistoryPage = lazy(() => import('./pages/lands/LandHistoryPage'))
+const LandTimelinePage = lazy(() => import('./pages/lands/LandTimelinePage'))
 const LandReportsPage = lazy(() => import('./pages/lands/LandReportsPage'))
 const DataHealthPage = lazy(() => import('./pages/lands/DataHealthPage'))
 const ImportPage = lazy(() => import('./pages/lands/ImportPage'))
@@ -240,6 +241,7 @@ export default function App() {
         <Route path="lands/new" element={<Perm perm="land.create"><LandFormPage /></Perm>} />
         <Route path="lands/lookup" element={<Perm perm="land.view"><LandDetailPage /></Perm>} />
         <Route path="lands/lookup/history" element={<Perm perm="land.view"><LandHistoryPage /></Perm>} />
+        <Route path="lands/lookup/history/:id" element={<Perm perm="land.view"><LandTimelinePage /></Perm>} />
         <Route path="lands/owners" element={<Perm perm="land.view"><OwnerCultivatorPage /></Perm>} />
         <Route path="lands/borga" element={<Perm perm="land.view"><BorgaPage /></Perm>} />
         <Route path="lands/transfers" element={<Perm perm="land.view"><LandTransferPage /></Perm>} />

@@ -262,6 +262,61 @@ class LandTest extends Phase2TestCase
             ->assertJsonPath('data.0.person.id', $owner->id);
         $this->actingAs($officer)->getJson('/api/land-register/activities?from=2099-01-01')->assertJsonPath('total', 0);
         $this->actingAs($officer)->get('/api/land-register/activities?export=csv')->assertOk();
+
+        // one plot's story, oldest first, with the facts of each event
+        $story = $this->actingAs($officer)->getJson("/api/land-register/activities?land_id=$landId&full=1&sort=asc")->assertOk();
+        // owned since 2015 and farmed on borga since 2024, both before the record was typed in today
+        $this->assertSame(['ownership_added', 'borga_agreement', 'land_created'], array_slice(array_column($story->json('data'), 'kind'), 0, 3));
+        $this->assertContains('transfer', array_column($story->json('data'), 'kind'));
+        $borga = collect($story->json('data'))->firstWhere('kind', 'borga_agreement');
+        $this->assertContains(['label' => 'অংশ', 'value' => '60%'], $borga['facts']);
+        $this->assertContains(['label' => 'মালিক', 'value' => 'পুরোনো মালিক'], $borga['facts']);
+        $this->actingAs($officer)->getJson("/api/land-register/activities/summary?land_id=$landId")->assertJsonPath('transfers', 1);
+    }
+
+    public function test_land_types_codes_categories_and_delete(): void
+    {
+        $admin = $this->userWithRole('super_admin');
+        $this->actingAs($admin)->postJson('/api/land-types', ['name_bn' => 'ফলের বাগান', 'category' => 'bogus'])
+            ->assertStatus(422)->assertJsonValidationErrors(['code', 'category']);
+        $id = $this->actingAs($admin)->postJson('/api/land-types', ['name_bn' => 'ফলের বাগান', 'code' => 'orc', 'category' => 'agricultural', 'default_rate' => 150])
+            ->assertCreated()->assertJsonPath('code', 'ORC')->json('id');
+        $this->actingAs($admin)->postJson('/api/land-types', ['name_bn' => 'অন্য বাগান', 'code' => 'ORC', 'category' => 'other'])->assertJsonValidationErrors('code');
+
+        $row = collect($this->actingAs($admin)->getJson('/api/land-types')->assertOk()->json())->firstWhere('id', $id);
+        $this->assertSame('কৃষি', $row['display_category']);
+        $this->assertFalse($row['in_use']);
+        $this->actingAs($admin)->getJson('/api/land-types/meta')->assertJsonPath('categories.waterbody', 'জলাশয়');
+
+        // a type in use cannot be removed; an unused one can
+        $used = LandType::first();
+        $this->actingAs($this->officer())->postJson('/api/lands', $this->landPayload([['farmer_id' => $this->makeFarmer()->id, 'share_percent' => 100]], ['land_type_id' => $used->id]))->assertCreated();
+        $this->actingAs($admin)->deleteJson("/api/land-types/{$used->id}")->assertStatus(422);
+        $this->actingAs($admin)->deleteJson("/api/land-types/$id")->assertOk();
+        $this->assertNull(LandType::find($id));
+    }
+
+    public function test_land_reports_summary_and_generated_list(): void
+    {
+        $officer = $this->officer();
+        $a = $this->makeFarmer();
+        $b = $this->makeFarmer();
+        $this->actingAs($officer)->postJson('/api/lands', $this->landPayload([['farmer_id' => $a->id, 'share_percent' => 50], ['farmer_id' => $b->id, 'share_percent' => 50]]))->assertCreated();
+
+        $s = $this->actingAs($officer)->getJson('/api/land-reports/summary')->assertOk()->assertJsonPath('lands', 1)->assertJsonPath('owners', 2);
+        $this->assertSame('joint', $s->json('ownership.0.key'));
+        $this->actingAs($officer)->getJson('/api/land-reports/meta')->assertJsonPath('types.0.value', 'summary');
+
+        // a report saved or printed shows on the list; its maker may take it off (the export log keeps it)
+        $this->actingAs($officer)->postJson('/api/reports/land_by_type/export-log', ['format' => 'print', 'filters' => ['mouza_id' => $this->mouza->id], 'rows' => 3])->assertCreated();
+        $list = $this->actingAs($officer)->getJson('/api/land-reports/generated?type=type')->assertOk()->assertJsonPath('total', 1)
+            ->assertJsonPath('data.0.rows', 3)->assertJsonPath('data.0.can_remove', true);
+        $this->actingAs($officer)->getJson('/api/land-reports/generated?type=ownership')->assertJsonPath('total', 0);
+        $id = $list->json('data.0.id');
+        $this->actingAs($this->userWithRole('manager'))->deleteJson("/api/land-reports/generated/$id")->assertForbidden();
+        $this->actingAs($officer)->deleteJson("/api/land-reports/generated/$id")->assertOk();
+        $this->actingAs($officer)->getJson('/api/land-reports/generated')->assertJsonPath('total', 0);
+        $this->assertNotNull(\App\Models\ExportLog::find($id)->dismissed_at);
     }
 
     public function test_own_and_borga_cultivation_rules(): void

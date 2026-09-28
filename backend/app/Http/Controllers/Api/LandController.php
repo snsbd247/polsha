@@ -39,7 +39,7 @@ class LandController extends Controller
             'units' => Tr::map(AreaUnit::LABELS),
             'unit_factors' => AreaUnit::factors(),
             'irrigation_types' => IrrigationType::where('is_active', true)->orderBy('sort_order')->get(['id', 'name_bn'])->map(fn ($t) => ['id' => $t->id, 'name_bn' => __($t->name_bn)]),
-            'land_types' => LandType::where('is_active', true)->orderBy('sort_order')->get(['id', 'name_bn', 'category'])->map(fn ($t) => ['id' => $t->id, 'name_bn' => __($t->name_bn), 'category' => Tr::label($t->category)]),
+            'land_types' => LandType::where('is_active', true)->orderBy('sort_order')->get(['id', 'name_bn', 'category'])->map(fn ($t) => ['id' => $t->id, 'name_bn' => __($t->name_bn), 'category' => $t->category ? __(LandType::CATEGORIES[$t->category] ?? $t->category) : null]),
         ]);
     }
 

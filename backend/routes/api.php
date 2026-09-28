@@ -31,6 +31,7 @@ use App\Http\Controllers\Api\JournalController;
 use App\Http\Controllers\Api\LandActivityController;
 use App\Http\Controllers\Api\LandController;
 use App\Http\Controllers\Api\LandRegisterController;
+use App\Http\Controllers\Api\LandReportController;
 use App\Http\Controllers\Api\LandTransferController;
 use App\Http\Controllers\Api\LandTypeController;
 use App\Http\Controllers\Api\LoanController;
@@ -243,6 +244,10 @@ Route::middleware(['auth:sanctum', 'usable'])->group(function () {
         Route::get('land-register/activities', [LandActivityController::class, 'index']);
         Route::get('land-register/activities/summary', [LandActivityController::class, 'summary']);
         Route::get('land-register/overview', [LandRegisterController::class, 'overview']);
+        Route::get('land-reports/meta', [LandReportController::class, 'meta']);
+        Route::get('land-reports/summary', [LandReportController::class, 'summary']);
+        Route::get('land-reports/generated', [LandReportController::class, 'generated']);
+        Route::delete('land-reports/generated/{exportLog}', [LandReportController::class, 'dismiss']);
         Route::get('land-transfers/meta', [LandTransferController::class, 'meta']);
         Route::get('land-transfers', [LandTransferController::class, 'index']);
         Route::get('land-transfers-summary', [LandTransferController::class, 'summary']);
@@ -268,8 +273,10 @@ Route::middleware(['auth:sanctum', 'usable'])->group(function () {
     });
     Route::delete('lands/{land}', [LandController::class, 'destroy'])->middleware('permission:land.delete');
     Route::get('land-types', [LandTypeController::class, 'index']);
+    Route::get('land-types/meta', [LandTypeController::class, 'meta']);
     Route::post('land-types', [LandTypeController::class, 'store'])->middleware('permission:settings.admin');
     Route::put('land-types/{landType}', [LandTypeController::class, 'update'])->middleware('permission:settings.admin');
+    Route::delete('land-types/{landType}', [LandTypeController::class, 'destroy'])->middleware('permission:settings.admin');
 
     // ---- Phase 3: import ----
     Route::middleware('permission:import.view')->group(function () {

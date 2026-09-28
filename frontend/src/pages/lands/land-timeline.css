@@ -1,0 +1,315 @@
+/* One plot's history — land card, underline tabs and a timeline table as in the approved design. */
+.tl-land {
+  display: grid;
+  grid-template-columns: auto auto 1fr 1.4fr 262px;
+  align-items: center;
+  gap: 22px;
+  padding: 10px 14px 10px 22px;
+  margin-bottom: 14px;
+  background: #fff;
+  border: 1px solid #e6eaf1;
+  border-radius: 10px;
+}
+
+.tl-land-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 66px;
+  height: 66px;
+  background: #e3f5ea;
+  border-radius: 10px;
+}
+
+.tl-land-code {
+  display: grid;
+  grid-template-columns: auto auto;
+  align-items: center;
+  column-gap: 16px;
+  padding-right: 22px;
+  border-right: 1px solid #e6eaf1;
+}
+
+.tl-land-code small {
+  grid-column: 1 / -1;
+  color: #374151;
+  font-size: 13.5px;
+}
+
+.tl-land-code strong {
+  font-size: 25px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.tl-kv {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 9px 14px;
+  margin: 0;
+  font-size: 13.5px;
+}
+
+.tl-kv dt {
+  color: #374151;
+}
+
+.tl-kv dt::after {
+  content: ' :';
+  float: right;
+  padding-left: 10px;
+}
+
+.tl-kv dd {
+  margin: 0;
+  color: #111827;
+}
+
+.tl-map {
+  overflow: hidden;
+  height: 104px;
+  border-radius: 6px;
+}
+
+.tl-map > * {
+  height: 100%;
+}
+
+.tl-card {
+  padding: 0 14px 14px;
+  background: #fff;
+  border: 1px solid #e6eaf1;
+  border-radius: 10px;
+}
+
+.tl-tabs {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  border-bottom: 1px solid #e6eaf1;
+}
+
+.tl-tabs button {
+  flex: none;
+  padding: 14px 16px 12px;
+  font: inherit;
+  font-size: 13.5px;
+  color: #374151;
+  cursor: pointer;
+  background: none;
+  border: 0;
+  border-bottom: 3px solid transparent;
+}
+
+.tl-tabs button.on {
+  font-weight: 500;
+  color: #1769e0;
+  border-bottom-color: #1769e0;
+}
+
+.tl-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 14px;
+  padding: 16px 0 14px;
+}
+
+.tl-filters .ant-picker {
+  width: 195px;
+  height: 36px;
+}
+
+.tl-filters label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: #111827;
+}
+
+.tl-filters label .ant-select {
+  width: 235px;
+  height: 36px;
+}
+
+.tl-filters label:nth-of-type(2) .ant-select {
+  width: 245px;
+}
+
+.tl-filter-btns {
+  display: flex;
+  gap: 12px;
+  margin-left: auto;
+}
+
+.tl-filter-btns .ant-btn {
+  min-width: 100px;
+  height: 40px;
+}
+
+.tl-table .ant-table-tbody > tr > td {
+  height: auto;
+  padding-top: 9px !important;
+  padding-bottom: 9px !important;
+  vertical-align: top;
+}
+
+/* the dots sit on one line running down the table */
+.tl-table td.tl-dot-cell {
+  position: relative;
+}
+
+.tl-table td.tl-dot-cell::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 2px;
+  background: #d5dce7;
+  transform: translateX(-50%);
+}
+
+.tl-table tr:first-child td.tl-dot-cell::before {
+  top: 20px;
+}
+
+.tl-table tr:last-child td.tl-dot-cell::before {
+  bottom: auto;
+  height: 20px;
+}
+
+.tl-dot {
+  position: relative;
+  display: block;
+  width: 14px;
+  height: 14px;
+  margin: 4px auto 0;
+  background: #fff;
+  border: 4px solid var(--dot);
+  border-radius: 50%;
+}
+
+.tl-head-dot {
+  display: block;
+  width: 10px;
+  height: 10px;
+  margin: 0 auto;
+  background: #d5dce7;
+  border-radius: 50%;
+}
+
+.tl-sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+  font: inherit;
+  cursor: pointer;
+  background: none;
+  border: 0;
+}
+
+.tl-caret {
+  width: 0;
+  height: 0;
+  border-right: 4px solid transparent;
+  border-left: 4px solid transparent;
+}
+
+.tl-caret-asc {
+  border-bottom: 5px solid #9ca3af;
+}
+
+.tl-caret-desc {
+  border-top: 5px solid #9ca3af;
+}
+
+.tl-kind {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.tl-kind-icon.ant-tag,
+.tl-kind-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  font-size: 14px;
+  border-radius: 50%;
+}
+
+.tl-kind-icon.ll-blue { color: #1769e0; background: #e4edfd; }
+.tl-kind-icon.ll-green { color: #1c8a45; background: #e2f5e8; }
+.tl-kind-icon.ll-orange { color: #d97706; background: #fdefd6; }
+.tl-kind-icon.ll-purple { color: #7c3aed; background: #efe4fc; }
+.tl-kind-icon.hs-red { color: #d92d2f; background: #fde6e6; }
+.tl-kind-icon.hs-teal { color: #0e8f8a; background: #daf4f2; }
+.tl-kind-icon.ll-gray { color: #4b5563; background: #eef0f4; }
+
+.tl-detail {
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: #111827;
+}
+
+.tl-detail ul {
+  margin: 1px 0 0;
+  padding-left: 18px;
+}
+
+.tl-by {
+  white-space: normal;
+}
+
+.tl-view.ant-btn {
+  width: 44px;
+  height: 34px;
+  color: #1769e0;
+  border-color: #e3e8f0;
+}
+
+.tl-pager {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 12px;
+}
+
+@media (max-width: 1280px) {
+  .tl-land {
+    grid-template-columns: auto auto 1fr 1fr;
+  }
+  .tl-map {
+    grid-column: 1 / -1;
+    height: 140px;
+  }
+}
+
+@media (max-width: 768px) {
+  .tl-land {
+    grid-template-columns: auto 1fr;
+    gap: 14px;
+    padding: 12px;
+  }
+  .tl-land-code {
+    padding-right: 0;
+    border-right: 0;
+  }
+  .tl-kv {
+    grid-column: 1 / -1;
+  }
+  .tl-filters .ant-picker,
+  .tl-filters label,
+  .tl-filters label .ant-select,
+  .tl-filters label:nth-of-type(2) .ant-select {
+    width: 100%;
+  }
+  .tl-filter-btns {
+    margin-left: 0;
+  }
+}

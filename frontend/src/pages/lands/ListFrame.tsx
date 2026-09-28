@@ -61,6 +61,8 @@ export default function ListFrame(props: {
   tableTitle: string
   tableTools?: ReactNode
   above?: ReactNode
+  /** a panel beside the cards and the list (e.g. an add/edit form) */
+  aside?: ReactNode
   children: ReactNode
   paging?: { page: number; perPage: number; total: number; showing: string; onPage: (p: number) => void; onPerPage: (n: number) => void }
 }) {
@@ -69,7 +71,7 @@ export default function ListFrame(props: {
   return (
     // the approved designs use a blue accent on these pages, whatever the brand colour
     <ConfigProvider theme={{ token: { colorPrimary: '#1769e0', colorLink: '#1769e0' } }}>
-      <div className="fl ml pl">
+      <div className={`fl ml pl ${props.aside ? 'lf-has-aside' : ''}`}>
         <nav className="fl-crumb">
           <Link to="/" aria-label={tx('ড্যাশবোর্ড')}>
             <HomeOutlined />
@@ -88,7 +90,9 @@ export default function ListFrame(props: {
           {props.actions && <div className="fl-head-btns">{props.actions}</div>}
         </div>
 
-        <div className={`fl-stats ml-stats pl-stats ${props.statsClass ?? ""}`}>
+        {props.aside && <div className="lf-aside">{props.aside}</div>}
+
+        <div className={`fl-stats ml-stats pl-stats ${props.statsClass ?? ''}`}>
           {props.cards.map((c) => (
             <button key={c.key} type="button" className={`fl-stat ${c.onClick ? '' : 'mz-stat'}`} style={{ ['--tint' as string]: c.tint }} onClick={c.onClick}>
               <span className="fl-stat-icon" style={{ background: c.tint }}>
@@ -165,9 +169,10 @@ export default function ListFrame(props: {
 /** Run one of the server reports with the page's filters and save or print it (the export is logged like any report). */
 export async function exportReport(key: string, filters: Record<string, unknown>, format: 'xlsx' | 'csv' | 'print', society: string) {
   const r = (await api.get<ReportResult>(`/reports/${key}`, { params: filters })).data
-  if (format === 'xlsx') exportXlsx(r, society)
-  else if (format === 'csv') exportCsv(r)
-  else printReport(r, society)
+  // the export is logged once saved, so a list of exports can refresh right after
+  if (format === 'xlsx') await exportXlsx(r, society)
+  else if (format === 'csv') await exportCsv(r)
+  else await printReport(r, society)
 }
 
 /** "Export ▾" with Excel, CSV and print of the matching server report(s). */

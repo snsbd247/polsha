@@ -10,9 +10,9 @@ class ExportLog extends Model
 
     public const FORMATS = ['xlsx' => 'Excel', 'csv' => 'CSV', 'print' => 'প্রিন্ট / PDF'];
 
-    protected $fillable = ['user_id', 'report_key', 'title', 'format', 'filters', 'row_count', 'ip'];
+    protected $fillable = ['user_id', 'report_key', 'title', 'format', 'filters', 'row_count', 'ip', 'dismissed_at'];
 
-    protected $casts = ['filters' => 'array', 'created_at' => 'datetime'];
+    protected $casts = ['filters' => 'array', 'created_at' => 'datetime', 'dismissed_at' => 'datetime'];
 
     public function user()
     {

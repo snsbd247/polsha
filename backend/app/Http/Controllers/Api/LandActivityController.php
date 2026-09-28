@@ -10,6 +10,8 @@ use App\Models\Land;
 use App\Models\LandCultivation;
 use App\Models\LandOwner;
 use App\Models\LandTransfer;
+use App\Models\LandType;
+use App\Models\Member;
 use App\Models\User;
 use App\Support\Bn;
 use App\Support\CsvExport;
@@ -20,10 +22,11 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 /**
- * The land history list: one row per thing that happened to a plot — created,
- * an owner or cultivator added, a borga agreement made or ended, a transfer,
- * an irrigation bill, or its details edited — gathered from the tables that
- * record them.
+ * The land history: one row per thing that happened to a plot — created, an
+ * owner or cultivator added, a borga agreement made or ended, a transfer, an
+ * irrigation bill, a document, or its details edited — gathered from the
+ * tables that record them. The list page shows all plots; the land history
+ * page asks for one plot (land_id) with the full detail of each event.
  */
 class LandActivityController extends Controller
 {
@@ -37,21 +40,25 @@ class LandActivityController extends Controller
         'transfer' => 'হস্তান্তর',
         'irrigation' => 'সেচ কার্যক্রম',
         'details_updated' => 'তথ্য পরিবর্তন',
+        'document_added' => 'ডকুমেন্ট যুক্ত',
     ];
 
     private const PREFIX = [
         'land_created' => 'LND', 'ownership_added' => 'OWN', 'cultivation_added' => 'CUL', 'cultivation_updated' => 'CUL',
-        'borga_agreement' => 'BOR', 'borga_ended' => 'BOR', 'details_updated' => 'UPD',
+        'borga_agreement' => 'BOR', 'borga_ended' => 'BOR', 'details_updated' => 'UPD', 'document_added' => 'DOC',
     ];
 
     public function index(Request $request)
     {
-        $request->validate(['from' => ['nullable', 'date'], 'to' => ['nullable', 'date'], 'user_id' => ['nullable', 'integer']]);
+        $request->validate(['from' => ['nullable', 'date'], 'to' => ['nullable', 'date'], 'user_id' => ['nullable', 'integer'], 'land_id' => ['nullable', 'integer']]);
         $q = DB::query()->fromSub($this->union(), 'a')
             ->leftJoin('lands as l', 'l.id', '=', 'a.land_id')
             ->leftJoin('mouzas as m', 'm.id', '=', 'l.mouza_id')
             ->leftJoin('farmers as f', 'f.id', '=', 'a.farmer_id')
             ->select('a.*');
+        if ($request->filled('land_id')) {
+            $q->where('a.land_id', $request->integer('land_id'));
+        }
         if ($s = trim((string) $request->query('search'))) {
             $en = Bn::toEnDigits($s);
             $q->where(fn ($w) => $w->where('l.land_code', 'like', "%$en%")->orWhere('l.dag_no', $en)->orWhere('a.ref', 'like', "%$en%")
@@ -78,7 +85,13 @@ class LandActivityController extends Controller
         if ($request->filled('to')) {
             $q->where('a.occurred_on', '<=', $request->date('to')->toDateString().' 23:59:59');
         }
-        $q->orderByDesc('a.occurred_on')->orderByDesc('a.sort_at')->orderByDesc('a.source_id');
+        // one plot's story reads oldest first; the list of all plots newest first
+        $dir = $request->query('sort') === 'asc' ? 'asc' : 'desc';
+        // on the same day a plot is created before it gets owners, and owners before cultivators
+        $q->orderBy('a.occurred_on', $dir)
+            ->orderByRaw("case a.kind when 'land_created' then 0 when 'ownership_added' then 1 when 'cultivation_added' then 2 when 'borga_agreement' then 2 else 3 end $dir")
+            ->orderBy('a.sort_at', $dir)->orderBy('a.source_id', $dir);
+        $full = $request->boolean('full');
 
         if ($request->query('export') === 'csv') {
             return CsvExport::download('land-history.csv',
@@ -90,15 +103,16 @@ class LandActivityController extends Controller
         }
 
         $page = $q->paginate($this->perPage($request));
-        $page->setCollection($this->hydrate($page->getCollection()));
+        $page->setCollection($this->hydrate($page->getCollection(), $full));
 
         return response()->json($page);
     }
 
-    public function summary(): JsonResponse
+    public function summary(Request $request): JsonResponse
     {
-        $by = DB::query()->fromSub($this->union(), 'a')->groupBy('kind')->selectRaw('kind, count(*) as c')->pluck('c', 'kind');
-        $userIds = DB::query()->fromSub($this->union(), 'a')->whereNotNull('user_id')->distinct()->pluck('user_id');
+        $base = fn () => DB::query()->fromSub($this->union(), 'a')->when($request->filled('land_id'), fn ($q) => $q->where('land_id', $request->integer('land_id')));
+        $by = $base()->groupBy('kind')->selectRaw('kind, count(*) as c')->pluck('c', 'kind');
+        $userIds = $base()->whereNotNull('user_id')->distinct()->pluck('user_id');
 
         return response()->json([
             'total' => (int) $by->sum(),
@@ -107,6 +121,7 @@ class LandActivityController extends Controller
             'borga' => (int) ($by['borga_agreement'] ?? 0),
             'transfers' => (int) ($by['transfer'] ?? 0),
             'irrigation' => (int) ($by['irrigation'] ?? 0),
+            'documents' => (int) ($by['document_added'] ?? 0),
             'kinds' => Tr::map(self::KINDS),
             'users' => User::withTrashed()->whereIn('id', $userIds)->orderBy('name_bn')->get(['id', 'name_bn', 'name_en']),
         ]);
@@ -123,11 +138,14 @@ class LandActivityController extends Controller
 
         $lands = DB::table('lands')->select($cols("'land_created'", 'DATE(lands.created_at)', 'lands.created_at', 'lands.id', sprintf($firstOwner, 'lands.id'), 'lands.created_by', 'lands.id', null));
 
-        // owners that came from a transfer are shown once, as the transfer
+        // owners that came from a transfer are shown once, as the transfer: a row the transfer
+        // wrote starts that day, after an earlier row of the same plot was closed that day
         $owners = DB::table('land_owners')->select($cols("'ownership_added'", 'land_owners.start_date', 'land_owners.created_at', 'land_owners.land_id', 'land_owners.farmer_id', 'land_owners.created_by', 'land_owners.id', null))
             ->whereNotExists(fn ($t) => $t->from('land_transfers as t')->whereColumn('t.land_id', 'land_owners.land_id')->where('t.status', 'approved')
                 ->whereColumn('t.transfer_date', 'land_owners.start_date')
-                ->where(fn ($w) => $w->whereColumn('t.to_farmer_id', 'land_owners.farmer_id')->orWhereColumn('t.from_farmer_id', 'land_owners.farmer_id')));
+                ->where(fn ($w) => $w->whereColumn('t.to_farmer_id', 'land_owners.farmer_id')->orWhereColumn('t.from_farmer_id', 'land_owners.farmer_id'))
+                ->whereExists(fn ($p) => $p->from('land_owners as prev')->whereColumn('prev.land_id', 'land_owners.land_id')
+                    ->whereColumn('prev.id', '<', 'land_owners.id')->whereColumn('prev.end_date', 't.transfer_date')));
 
         $kind = "case when c.type = 'borga' then 'borga_agreement' when exists (select 1 from land_cultivations p where p.land_id = c.land_id and p.id < c.id) then 'cultivation_updated' else 'cultivation_added' end";
         $cultivations = DB::table('land_cultivations as c')->select($cols($kind, 'c.start_date', 'c.created_at', 'c.land_id', 'c.farmer_id', 'c.created_by', 'c.id', null));
@@ -140,85 +158,146 @@ class LandActivityController extends Controller
             ->select($cols("'irrigation'", 'invoices.invoice_date', 'invoices.created_at', 'invoices.land_id', 'invoices.farmer_id', 'invoices.created_by', 'invoices.id', 'invoices.invoice_no'));
         $edits = DB::table('audit_logs')->where('module', 'land')->where('auditable_type', 'Land')->where('action', 'update')
             ->select($cols("'details_updated'", 'DATE(audit_logs.created_at)', 'audit_logs.created_at', 'audit_logs.auditable_id', sprintf($mainOwner, 'audit_logs.auditable_id'), 'audit_logs.user_id', 'audit_logs.id', null));
+        $documents = DB::table('land_documents')
+            ->select($cols("'document_added'", 'DATE(land_documents.created_at)', 'land_documents.created_at', 'land_documents.land_id', sprintf($mainOwner, 'land_documents.land_id'), 'land_documents.uploaded_by', 'land_documents.id', null));
 
-        return $lands->unionAll($owners)->unionAll($cultivations)->unionAll($borgaEnded)->unionAll($transfers)->unionAll($irrigation)->unionAll($edits);
+        return $lands->unionAll($owners)->unionAll($cultivations)->unionAll($borgaEnded)->unionAll($transfers)->unionAll($irrigation)->unionAll($edits)->unionAll($documents);
     }
 
-    /** Names, photos and a readable line for each event on the page. */
-    private function hydrate($rows)
+    /** Names, photos and a readable line for each event on the page; with $full, also a titled list of the facts. */
+    private function hydrate($rows, bool $full = false)
     {
         $rows = collect($rows);
         $ids = fn (string ...$kinds) => $rows->whereIn('kind', $kinds)->pluck('source_id')->all();
-        $farmers = Farmer::withTrashed()->whereIn('id', $rows->pluck('farmer_id')->filter())->get(['id', 'farmer_code', 'name_bn', 'name_en', 'photo'])->keyBy('id');
-        $users = User::withTrashed()->with('roles')->whereIn('id', $rows->pluck('user_id')->filter())->get()->keyBy('id');
-        $lands = Land::withTrashed()->with('mouza:id,name_bn')->whereIn('id', $rows->pluck('land_id')->filter())->get(['id', 'land_code', 'dag_no', 'mouza_id', 'area_decimal'])->keyBy('id');
         $owners = LandOwner::whereIn('id', $ids('ownership_added'))->get()->keyBy('id');
         $cultivations = LandCultivation::whereIn('id', $ids('cultivation_added', 'cultivation_updated', 'borga_agreement', 'borga_ended'))->get()->keyBy('id');
         $transfers = LandTransfer::whereIn('id', $ids('transfer'))->get()->keyBy('id');
-        $invoices = Invoice::with('irrigationType:id,name_bn')->whereIn('id', $ids('irrigation'))->get()->keyBy('id');
+        $invoices = Invoice::with(['irrigationType:id,name_bn', 'season:id,name_bn,start_date,end_date'])->whereIn('id', $ids('irrigation'))->get()->keyBy('id');
         $edits = AuditLog::whereIn('id', $ids('details_updated'))->get()->keyBy('id');
-        $acres = fn ($d) => number_format(((float) $d) / 100, 2);
+        $documents = DB::table('land_documents')->whereIn('id', $ids('document_added'))->get()->keyBy('id');
+        $lands = Land::withTrashed()->with(['mouza:id,name_bn', 'landType:id,name_bn'])->whereIn('id', $rows->pluck('land_id')->filter())->get()->keyBy('id');
 
-        return $rows->map(function ($r) use ($farmers, $users, $lands, $owners, $cultivations, $transfers, $invoices, $edits, $acres) {
+        // for a borga agreement the owner is who held the plot when it began
+        $borgaOwner = [];
+        foreach ($cultivations->where('type', 'borga') as $c) {
+            $borgaOwner[$c->id] = LandOwner::where('land_id', $c->land_id)->whereDate('start_date', '<=', $c->start_date ?? now())
+                ->where(fn ($w) => $w->whereNull('end_date')->orWhereDate('end_date', '>', $c->start_date ?? now()))->orderByDesc('share_percent')->value('farmer_id');
+        }
+        $farmerIds = $rows->pluck('farmer_id')->merge($transfers->pluck('from_farmer_id'))->merge(array_values($borgaOwner))->filter()->unique();
+        $farmers = Farmer::withTrashed()->whereIn('id', $farmerIds)->get(['id', 'farmer_code', 'name_bn', 'name_en', 'photo'])->keyBy('id');
+        $memberNo = Member::whereIn('farmer_id', $farmerIds)->pluck('member_no', 'farmer_id');
+        $users = User::withTrashed()->with('roles')->whereIn('id', $rows->pluck('user_id')->filter())->get()->keyBy('id');
+
+        $acres = fn ($d) => number_format(((float) $d) / 100, 2);
+        $pct = fn ($p) => rtrim(rtrim(number_format((float) $p, 2), '0'), '.').'%';
+        $date = fn ($d) => $d ? substr((string) $d, 0, 10) : '—';
+        $who = fn ($id) => ($farmers[$id] ?? null)?->name_bn ?? '—';
+        $whoNo = fn ($id) => $who($id).(isset($memberNo[$id]) ? ' ('.__('সদস্য নং').' '.$memberNo[$id].')' : '');
+
+        return $rows->map(function ($r) use ($farmers, $users, $lands, $owners, $cultivations, $transfers, $invoices, $edits, $documents, $borgaOwner, $memberNo, $acres, $pct, $date, $who, $whoNo, $full) {
             $person = $farmers[$r->farmer_id] ?? null;
             $name = $person?->name_bn ?? '—';
+            $land = $lands[$r->land_id] ?? null;
             $role = 'মালিক';
             $detail2 = null;
+            $title = null;
+            $facts = [];
             switch ($r->kind) {
                 case 'land_created':
                     $detail = __('জমির রেকর্ড সিস্টেমে তৈরি হয়েছে।');
+                    $facts = [['মৌজা', $land?->mouza?->name_bn], ['দাগ নং', $land?->dag_no], ['খতিয়ান নং', $land?->khatian_no], ['মোট পরিমাণ', __(':p0 একর', ['p0' => $acres($land?->area_decimal)])]];
                     break;
                 case 'ownership_added':
                     $share = (float) ($owners[$r->source_id]->share_percent ?? 100);
-                    $detail = __('মালিক যুক্ত: :p0', ['p0' => $name]).($share < 100 ? ' ('.rtrim(rtrim(number_format($share, 2), '0'), '.').'%)' : '');
+                    $detail = __('মালিক যুক্ত: :p0', ['p0' => $name]).($share < 100 ? ' ('.$pct($share).')' : '');
+                    $title = __('মালিক যুক্ত হয়েছে।');
+                    $facts = [['মালিক', $name], ['সদস্য নং', $memberNo[$r->farmer_id] ?? '—']];
+                    if ($share < 100) {
+                        $facts[] = ['অংশ', $pct($share)];
+                    }
                     break;
                 case 'cultivation_added':
                 case 'cultivation_updated':
                     $detail = $r->kind === 'cultivation_added' ? __('চাষি নির্ধারণ:') : __('চাষি পরিবর্তন:');
                     $detail2 = $name;
+                    $title = $r->kind === 'cultivation_added' ? __('বর্তমান চাষি নির্ধারণ করা হয়েছে।') : __('চাষি পরিবর্তন হয়েছে।');
+                    $facts = [['চাষি', $name], ['সদস্য নং', $memberNo[$r->farmer_id] ?? '—']];
                     $role = 'চাষি';
                     break;
                 case 'borga_agreement':
                     $c = $cultivations[$r->source_id] ?? null;
                     $detail = __('বর্গা চুক্তি তৈরি');
-                    $detail2 = $c?->share_percent ? __('(অংশ: :p0%)', ['p0' => rtrim(rtrim(number_format((float) $c->share_percent, 2), '0'), '.')]) : null;
+                    $detail2 = $c?->share_percent ? __('(অংশ: :p0%)', ['p0' => rtrim($pct($c->share_percent), '%')]) : null;
+                    $title = __('বর্গা চুক্তি তৈরি হয়েছে।');
+                    $facts = [['মালিক', $who($borgaOwner[$r->source_id] ?? null)], ['বর্গাচাষি', $name], ['অংশ', $c?->share_percent ? $pct($c->share_percent) : '—'],
+                        ['শুরুর তারিখ', $date($c?->start_date)], ['শেষের তারিখ', $date($c?->contract_end)]];
                     $role = 'বর্গাচাষি';
                     break;
                 case 'borga_ended':
+                    $c = $cultivations[$r->source_id] ?? null;
                     $detail = __('বর্গা চুক্তি শেষ');
+                    $title = __('বর্গা চুক্তি শেষ হয়েছে।');
+                    $facts = [['বর্গাচাষি', $name], ['শুরুর তারিখ', $date($c?->start_date)], ['শেষের তারিখ', $date($c?->end_date)]];
                     $role = 'বর্গাচাষি';
                     break;
                 case 'transfer':
                     $t = $transfers[$r->source_id] ?? null;
                     $detail = __('জমি হস্তান্তর:');
-                    $detail2 = $name.($t && $t->type === 'partial' ? ' ('.rtrim(rtrim(number_format((float) $t->share_percent, 2), '0'), '.').'%)' : '');
+                    $detail2 = $name.($t && $t->type === 'partial' ? ' ('.$pct($t->share_percent).')' : '');
+                    $title = __('জমির মালিকানা হস্তান্তর হয়েছে।');
+                    $facts = [['হস্তান্তরকারী', $whoNo($t?->from_farmer_id)], ['গ্রহীতা', $whoNo($r->farmer_id)],
+                        ['কারণ', $t ? __(LandTransfer::REASONS[$t->reason] ?? $t->reason) : '—'], ['চুক্তির টাকা', $t?->amount !== null ? number_format((float) $t->amount) : '—']];
+                    if ($t && $t->type === 'partial') {
+                        $facts[] = ['অংশ', $pct($t->share_percent)];
+                    }
                     $role = 'নতুন মালিক';
                     break;
                 case 'irrigation':
                     $inv = $invoices[$r->source_id] ?? null;
                     $detail = __('সেচ দেওয়া হয়েছে');
                     $detail2 = __('(ধরন: :p0, পরিমাণ: :p1 একর)', ['p0' => $inv?->irrigationType?->name_bn ?? '—', 'p1' => $acres($inv?->area_decimal)]);
+                    $title = __('সেচ দেওয়া হয়েছে।');
+                    $facts = [['সেচের ধরন', $inv?->irrigationType?->name_bn ?? '—'], ['পরিমাণ', __(':p0 একর', ['p0' => $acres($inv?->area_decimal)])],
+                        ['মৌসুম', $inv?->season?->name_bn ?? '—'], ['সময়কাল', $inv?->season ? $date($inv->season->start_date).' → '.$date($inv->season->end_date) : '—']];
                     $role = $inv?->cultivation_type === 'borga' ? 'বর্গাচাষি' : 'মালিক';
+                    break;
+                case 'document_added':
+                    $d = $documents[$r->source_id] ?? null;
+                    $detail = __('ডকুমেন্ট যুক্ত: :p0', ['p0' => $d?->title ?? '—']);
+                    $title = __('ডকুমেন্ট যুক্ত হয়েছে।');
+                    $facts = [['নাম', $d?->title ?? '—'], ['ফাইল', $d?->original_name ?? '—']];
                     break;
                 default: // details_updated
                     $log = $edits[$r->source_id] ?? null;
                     $old = $log?->old_values ?? [];
                     $new = $log?->new_values ?? [];
                     $detail = __('জমির তথ্য পরিবর্তন');
+                    $title = __('জমির তথ্য পরিবর্তন হয়েছে।');
+                    $labels = ['khatian_no' => 'খতিয়ান', 'dag_no' => 'দাগ', 'status' => 'অবস্থা', 'remarks' => 'মন্তব্য', 'land_type_id' => 'জমির ধরন',
+                        'irrigation_type_id' => 'সেচের ধরন', 'mouza_id' => 'মৌজা', 'village_id' => 'গ্রাম', 'survey' => 'জরিপ', 'irrigable_decimal' => 'সেচযোগ্য পরিমাণ',
+                        'area_decimal' => 'পরিমাণ', 'latitude' => 'অবস্থান', 'longitude' => 'অবস্থান', 'location_note' => 'অবস্থান'];
                     if (array_key_exists('area_decimal', $new) && array_key_exists('area_decimal', $old)) {
                         $detail2 = __('(পরিমাণ: :p0 → :p1 একর)', ['p0' => $acres($old['area_decimal']), 'p1' => $acres($new['area_decimal'])]);
                     } else {
-                        $labels = ['khatian_no' => 'খতিয়ান', 'dag_no' => 'দাগ', 'status' => 'অবস্থা', 'remarks' => 'মন্তব্য', 'land_type_id' => 'জমির ধরন',
-                            'irrigation_type_id' => 'সেচের ধরন', 'mouza_id' => 'মৌজা', 'village_id' => 'গ্রাম', 'survey' => 'জরিপ', 'irrigable_decimal' => 'সেচযোগ্য পরিমাণ',
-                            'latitude' => 'অবস্থান', 'longitude' => 'অবস্থান', 'location_note' => 'অবস্থান'];
                         $fields = collect(array_keys($new))->map(fn ($k) => $labels[$k] ?? null)->filter()->unique()->map(fn ($l) => __($l));
                         $detail2 = $fields->isNotEmpty() ? '('.$fields->take(3)->implode(', ').')' : null;
                     }
+                    foreach (array_slice(array_intersect_key($new, $labels), 0, 4, true) as $k => $v) {
+                        $value = match ($k) {
+                            'area_decimal', 'irrigable_decimal' => __(':p0 একর', ['p0' => $acres($v)]),
+                            'land_type_id' => LandType::find($v)?->name_bn,
+                            'mouza_id' => DB::table('mouzas')->where('id', $v)->value('name_bn'),
+                            'village_id' => DB::table('villages')->where('id', $v)->value('name_bn'),
+                            'irrigation_type_id' => DB::table('irrigation_types')->where('id', $v)->value('name_bn'),
+                            default => $v,
+                        };
+                        $old_value = array_key_exists($k, $old) && in_array($k, ['area_decimal', 'irrigable_decimal'], true) ? $acres($old[$k]).' → ' : '';
+                        $facts[] = [$labels[$k], $old_value.($value === null || $value === '' ? '—' : (string) $value)];
+                    }
             }
             $user = $users[$r->user_id] ?? null;
-            $land = $lands[$r->land_id] ?? null;
 
-            return [
+            $out = [
                 'key' => $r->kind.'-'.$r->source_id,
                 'kind' => $r->kind,
                 'date' => $r->occurred_on,
@@ -231,6 +310,12 @@ class LandActivityController extends Controller
                     'photo_url' => $person->photo ? url("api/farmers/{$person->id}/photo") : null] : null,
                 'by' => $user ? ['id' => $user->id, 'name_bn' => $user->name_bn, 'name_en' => $user->name_en, 'role' => Tr::label($user->roles->first()?->label)] : null,
             ];
+            if ($full) {
+                $out['title'] = $title ?? $detail;
+                $out['facts'] = array_map(fn ($f) => ['label' => __($f[0]), 'value' => (string) ($f[1] ?? '—')], $facts);
+            }
+
+            return $out;
         })->values();
     }
 }
