@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { App, Button, Checkbox, DatePicker, Dropdown, Grid, Input, Select, Table, Tag } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
-import { AppstoreFilled, DownOutlined, EditOutlined, EyeFilled, MoreOutlined, PlusOutlined, PrinterOutlined, SearchOutlined } from '@ant-design/icons'
+import { AppstoreFilled, CheckOutlined, ClockCircleOutlined, CloseOutlined, SwapOutlined, DownOutlined, EditOutlined, EyeFilled, MoreOutlined, PlusOutlined, PrinterOutlined, SearchOutlined } from '@ant-design/icons'
 import type { Dayjs } from 'dayjs'
 import { useAuth } from '../../auth/AuthContext'
 import ProtectedImage from '../../components/ProtectedImage'
@@ -102,10 +102,10 @@ export default function LandTransferPage() {
   const editable = (r: Row) => can('land.edit') && (r.status === 'draft' || r.status === 'rejected')
 
   const cards = [
-    { key: 'total', label: tx('মোট হস্তান্তর রেকর্ড'), value: s?.total, icon: 'share', color: '#2563eb', tint: '#e4edfd', onClick: () => show({}) },
-    { key: 'approved', label: tx('সম্পন্ন হস্তান্তর'), value: s?.approved, icon: 'userCheck', color: '#1f9d55', tint: '#e3f5ea', onClick: () => show({ status: 'approved' }) },
-    { key: 'pending', label: tx('অনুমোদনের অপেক্ষায়'), value: s?.pending, icon: 'userClock', color: '#f08c00', tint: '#fdf0dc', onClick: () => show({ status: 'pending' }) },
-    { key: 'rejected', label: tx('প্রত্যাখ্যাত হস্তান্তর'), value: s?.rejected, icon: 'userX', color: '#e0383e', tint: '#fde6e7', onClick: () => show({ status: 'rejected' }) },
+    { key: 'total', label: tx('মোট হস্তান্তর রেকর্ড'), value: s?.total, icon: '', glyph: <SwapOutlined />, color: '#1769e0', tint: '#e4edfd', onClick: () => show({}) },
+    { key: 'approved', label: tx('সম্পন্ন হস্তান্তর'), value: s?.approved, icon: '', solid: <CheckOutlined />, color: '#1f9d55', tint: '#dcf3e5', onClick: () => show({ status: 'approved' }) },
+    { key: 'pending', label: tx('অনুমোদনের অপেক্ষায়'), value: s?.pending, icon: '', solid: <ClockCircleOutlined />, color: '#f5a524', tint: '#fdefd6', onClick: () => show({ status: 'pending' }) },
+    { key: 'rejected', label: tx('প্রত্যাখ্যাত হস্তান্তর'), value: s?.rejected, icon: '', solid: <CloseOutlined />, color: '#e5383b', tint: '#fde4e5', onClick: () => show({ status: 'rejected' }) },
   ]
 
   const allColumns: (ColumnsType<Row>[number] & { key: string })[] = [

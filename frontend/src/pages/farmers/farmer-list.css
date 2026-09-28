@@ -575,3 +575,16 @@ a.fl-name:hover {
     width: 100%;
   }
 }
+
+/* the title block gives way so the page buttons stay on the right, as in the designs */
+@media (min-width: 1100px) {
+  .fl-head {
+    flex-wrap: nowrap;
+  }
+  .fl-head > div:first-child {
+    min-width: 0;
+  }
+  .fl-head-btns {
+    flex: none;
+  }
+}

@@ -218,3 +218,11 @@
     justify-content: center;
   }
 }
+
+/* card labels take a second line rather than being cut short */
+.ml-stats .fl-stat-label {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  line-height: 1.25;
+}
