@@ -343,6 +343,7 @@ Route::middleware(['auth:sanctum', 'usable'])->group(function () {
         Route::get('seasons/{season}', [SeasonController::class, 'show'])->whereNumber('season');
         Route::get('irrigation-rates', [IrrigationRateController::class, 'index']);
         Route::get('invoices/meta', [InvoiceController::class, 'meta']);
+        Route::get('invoices/summary', [InvoiceController::class, 'summary']);
         Route::get('invoices', [InvoiceController::class, 'index']);
         Route::get('invoices/{invoice}', [InvoiceController::class, 'show']);
         Route::get('irrigation/dues', [IrrigationReportController::class, 'dues']);

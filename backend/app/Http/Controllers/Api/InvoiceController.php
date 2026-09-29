@@ -59,6 +59,19 @@ class InvoiceController extends Controller
             + ['totals' => ['amount' => round((float) $totals->a, 2), 'paid' => round((float) $totals->p, 2), 'due' => round((float) $totals->a - (float) $totals->p, 2)]]);
     }
 
+    /** Counts for the list cards: all, paid, waiting (unpaid or part paid) and overdue. */
+    public function summary(): JsonResponse
+    {
+        $live = Invoice::where('status', '!=', 'cancelled');
+
+        return response()->json([
+            'total' => (clone $live)->count(),
+            'paid' => (clone $live)->where('status', 'paid')->count(),
+            'pending' => (clone $live)->whereIn('status', ['unpaid', 'partial'])->count(),
+            'overdue' => (clone $live)->whereIn('status', ['unpaid', 'partial'])->whereDate('due_date', '<', now()->toDateString())->count(),
+        ]);
+    }
+
     public function show(Invoice $invoice): JsonResponse
     {
         $invoice->load(['journal:id,voucher_no,status', 'creator:id,name_bn,name_en', 'rateRow:id,rate,effective_from,approved_at',
@@ -138,6 +151,11 @@ class InvoiceController extends Controller
             'irrigation_type_id' => ['nullable', 'exists:irrigation_types,id'],
             'area_decimal' => ['nullable', 'numeric', 'gt:0', 'max:99999999'],
             'remarks' => ['nullable', 'string', 'max:500'],
+            'charges' => ['nullable', 'array', 'max:10'],
+            'charges.*.description' => ['required', 'string', 'max:100'],
+            'charges.*.qty' => ['required', 'numeric', 'gt:0', 'max:99999'],
+            'charges.*.rate' => ['required', 'numeric', 'min:0', 'max:9999999'],
+            'discount' => ['nullable', 'numeric', 'min:0', 'max:99999999'],
         ]);
     }
 
@@ -152,7 +170,7 @@ class InvoiceController extends Controller
 
     private function filtered(Request $request): Builder
     {
-        $q = Invoice::query()->with(['season:id,name_bn', 'land:id,mouza_id']);
+        $q = Invoice::query()->with(['season:id,name_bn', 'land:id,mouza_id', 'farmer:id,photo']);
         foreach (['season_id', 'status', 'farmer_id', 'land_id', 'batch_id', 'irrigation_type_id', 'cultivation_type'] as $f) {
             if ($request->filled($f)) {
                 $q->where($f, $request->query($f));
@@ -176,7 +194,7 @@ class InvoiceController extends Controller
         if ($search = trim((string) $request->query('search'))) {
             $en = Bn::toEnDigits($search);
             $q->where(fn ($w) => $w->where('invoice_no', 'like', "%$en%")
-                ->orWhereHas('farmer', fn ($f) => $f->where('name_bn', 'like', "%$search%")->orWhere('name_en', 'like', "%$search%")->orWhere('farmer_code', $en))
+                ->orWhereHas('farmer', fn ($f) => $f->where('name_bn', 'like', "%$search%")->orWhere('name_en', 'like', "%$search%")->orWhere('farmer_code', $en)->orWhere('mobile', 'like', "%$en%"))
                 ->orWhereHas('land', fn ($l) => $l->where('dag_no', $en)->orWhere('land_code', $en)));
         }
 
@@ -209,10 +227,14 @@ class InvoiceController extends Controller
             'irrigation_type' => Tr::label($s['irrigation_type'] ?? null),
             'area_decimal' => (float) $i->area_decimal,
             'rate' => (float) $i->rate,
+            'charges' => $i->charges ?? [],
+            'discount' => (float) $i->discount,
             'amount' => (float) $i->amount,
             'paid_amount' => (float) $i->paid_amount,
             'due' => $i->dueAmount(),
             'status' => $i->status,
+            'overdue' => in_array($i->status, ['unpaid', 'partial'], true) && $i->due_date && $i->due_date->lt(now()->startOfDay()),
+            'photo_url' => $i->farmer?->photo ? url("api/farmers/{$i->farmer_id}/photo") : null,
         ];
     }
 }

@@ -269,6 +269,18 @@ class IrrigationService
 
     private function book(array $c, Season $season, array $opts): Invoice
     {
+        // extra charge lines and a discount only come from the single-invoice form
+        $charges = collect($opts['charges'] ?? [])->map(fn ($l) => [
+            'description' => trim((string) $l['description']), 'qty' => (float) $l['qty'], 'rate' => (float) $l['rate'],
+            'amount' => round((float) $l['qty'] * (float) $l['rate'], 2),
+        ])->filter(fn ($l) => $l['amount'] > 0)->values()->all();
+        $discount = round((float) ($opts['discount'] ?? 0), 2);
+        $total = round($c['amount'] + collect($charges)->sum('amount') - $discount, 2);
+        if ($total <= 0) {
+            throw ValidationException::withMessages(['discount' => __('ছাড় বিলের চেয়ে বেশি হতে পারে না।')]);
+        }
+        $c['amount'] = $total;
+
         $invoice = Invoice::create([
             'invoice_no' => SequenceService::next('irrigation_invoice'),
             'season_id' => $season->id,
@@ -282,6 +294,8 @@ class IrrigationService
             'due_date' => $opts['due_date'] ?? null,
             'area_decimal' => $c['area_decimal'],
             'rate' => $c['rate'],
+            'charges' => $charges ?: null,
+            'discount' => $discount,
             'amount' => $c['amount'],
             'paid_amount' => 0,
             'status' => 'unpaid',

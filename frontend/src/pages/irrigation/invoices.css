@@ -1,0 +1,212 @@
+/* Irrigation invoices — list, form, details, bulk and collection, as in the approved designs. */
+.iv-filters .fl-field .ant-select,
+.iv-filters .fl-field .ant-input-affix-wrapper,
+.iv-filters .fl-field .ant-picker {
+  height: 40px;
+}
+
+.iv-filters .fl-filter-btns .ant-btn {
+  height: 40px;
+  min-width: 110px;
+}
+
+.iv-table .ant-table-tbody > tr > td {
+  height: 42px;
+}
+
+.iv-no {
+  font-weight: 600;
+}
+
+.fl-tag.iv-status.ant-tag {
+  min-width: 64px;
+  text-align: center;
+}
+
+.iv-scope {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding: 8px 14px;
+  font-size: 13.5px;
+  color: #1f2937;
+  background: #eef5ff;
+  border: 1px solid #d6e5fb;
+  border-radius: 8px;
+}
+
+/* create invoice */
+.iv-form .iv-section {
+  margin-bottom: 14px;
+}
+
+.iv-section-icon {
+  display: inline-flex;
+  font-size: 20px;
+  color: #1769e0;
+}
+
+.iv-form .lf-card-head h3 {
+  color: #1769e0;
+}
+
+.iv-grid {
+  display: grid;
+  column-gap: 18px;
+}
+
+.iv-grid-3 {
+  grid-template-columns: 1.3fr 1fr 1fr;
+}
+
+.iv-grid-5 {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.iv-form .ant-input,
+.iv-form .ant-select,
+.iv-form .ant-picker,
+.iv-form .ant-input-number {
+  min-height: 38px;
+}
+
+.iv-form .ant-form-item-label > label {
+  font-weight: 600;
+  color: #111827;
+}
+
+.iv-count {
+  display: block;
+  text-align: right;
+}
+
+.iv-billto {
+  padding: 8px 12px;
+  font-size: 13.5px;
+  background: #f5f8fd;
+  border-radius: 8px;
+}
+
+.iv-warn {
+  color: #b45309;
+}
+
+.iv-charges {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.iv-charges th {
+  padding: 8px 10px;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: left;
+  background: #f8fafc;
+  border-bottom: 1px solid #e6eaf1;
+}
+
+.iv-charges td {
+  padding: 6px 10px;
+  border-bottom: 1px solid #edf0f5;
+}
+
+.iv-charges th:first-child,
+.iv-charges td:first-child {
+  width: 40px;
+  text-align: center;
+}
+
+.iv-charges th:last-child,
+.iv-charges td:last-child {
+  width: 80px;
+  text-align: center;
+}
+
+.iv-amt.ant-input[disabled] {
+  color: #111827;
+  background: #f1f4f8;
+}
+
+.iv-charge-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-top: 14px;
+}
+
+.iv-add.ant-btn {
+  height: 40px;
+  color: #1769e0;
+  background: #e8f0fd;
+  border-color: transparent;
+}
+
+.iv-totals {
+  width: 360px;
+  padding: 12px 18px;
+  background: #e9f7ee;
+  border-radius: 10px;
+}
+
+.iv-totals > div {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 0;
+  color: #15803d;
+}
+
+.iv-discount.ant-input-number {
+  width: 170px;
+}
+
+.iv-discount input {
+  text-align: right !important;
+}
+
+.iv-grand {
+  margin-top: 4px;
+  font-size: 18px;
+  font-weight: 700;
+  color: #111827 !important;
+}
+
+.iv-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 6px;
+}
+
+.iv-actions .ant-btn {
+  height: 44px;
+  min-width: 120px;
+}
+
+.iv-spacer {
+  flex: 1;
+}
+
+@media (max-width: 1280px) {
+  .iv-grid-5 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .iv-grid-3,
+  .iv-grid-5 {
+    grid-template-columns: 1fr;
+  }
+  .iv-charge-foot {
+    flex-direction: column;
+  }
+  .iv-totals {
+    width: 100%;
+  }
+  .iv-charges {
+    display: block;
+    overflow-x: auto;
+  }
+}

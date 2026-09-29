@@ -1,0 +1,204 @@
+/* Irrigation invoice details, as in the approved design. */
+.id-actions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.id-actions .ant-btn {
+  height: 38px;
+}
+
+.id-alert {
+  margin-bottom: 12px;
+}
+
+.id-top {
+  display: grid;
+  grid-template-columns: 1.9fr repeat(5, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.id-hero,
+.id-fact {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 14px;
+  background: #fff;
+  border: 1px solid #e6eaf1;
+  border-radius: 10px;
+}
+
+.id-hero-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 72px;
+  height: 72px;
+  font-size: 32px;
+  color: #1769e0;
+  background: #e4edfd;
+  border-radius: 50%;
+}
+
+.id-hero small,
+.id-fact small {
+  display: block;
+  font-size: 12.5px;
+  color: #4b5563;
+}
+
+.id-hero strong {
+  display: block;
+  margin: 2px 0 4px;
+  font-size: 21px;
+  white-space: nowrap;
+  font-weight: 700;
+  color: #111827;
+}
+
+.id-fact-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 42px;
+  height: 42px;
+  font-size: 19px;
+  border-radius: 50%;
+}
+
+.id-fact strong {
+  display: block;
+  font-size: 15.5px;
+  color: #111827;
+}
+
+.id-box {
+  margin-bottom: 14px;
+  overflow: hidden;
+  background: #fff;
+  border: 1px solid #e6eaf1;
+  border-radius: 10px;
+}
+
+.id-box > header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 18px;
+  font-size: 20px;
+  color: #1769e0;
+  background: #f5f8fd;
+  border-bottom: 1px solid #e6eaf1;
+}
+
+.id-box > header h3 {
+  margin: 0;
+  font-size: 16.5px;
+  font-weight: 600;
+  color: #1769e0;
+}
+
+.id-two {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.id-kv {
+  margin: 0;
+  padding: 10px 18px;
+}
+
+.id-kv > div {
+  display: grid;
+  grid-template-columns: 150px 18px 1fr;
+  padding: 6px 0;
+  font-size: 14px;
+}
+
+.id-kv dt {
+  color: #111827;
+}
+
+.id-kv dd {
+  margin: 0;
+  color: #1f2937;
+}
+
+.id-grid3 {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.id-charges-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: 14px;
+  align-items: start;
+}
+
+.id-charges .iv-charges {
+  margin: 0;
+}
+
+.id-charges .iv-charges td,
+.id-charges .iv-charges th {
+  padding: 10px 14px;
+}
+
+.id-totals {
+  width: auto;
+  margin-bottom: 14px;
+}
+
+.id-totals .iv-grand {
+  padding: 8px 0 !important;
+  border-top: 1px solid #c9e8d4;
+  border-bottom: 1px solid #c9e8d4;
+}
+
+.id-due {
+  color: #b91c1c !important;
+  font-weight: 600;
+}
+
+.id-payments {
+  padding: 4px 12px;
+}
+
+.id-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-right: 18px;
+  border-top: 1px solid #edf0f5;
+}
+
+@media (max-width: 1400px) {
+  .id-top {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 900px) {
+  .id-top,
+  .id-two,
+  .id-grid3,
+  .id-charges-row {
+    grid-template-columns: 1fr;
+  }
+  .id-kv > div {
+    grid-template-columns: 120px 14px 1fr;
+  }
+}
+
+@media print {
+  .id-top {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}

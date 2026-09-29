@@ -19,13 +19,13 @@ class Invoice extends Model implements Payable
 
     protected $fillable = [
         'invoice_no', 'season_id', 'land_id', 'farmer_id', 'cultivation_type', 'land_type_id', 'irrigation_type_id', 'rate_id',
-        'invoice_date', 'due_date', 'area_decimal', 'rate', 'amount', 'paid_amount', 'status', 'snapshot', 'remarks',
+        'invoice_date', 'due_date', 'area_decimal', 'rate', 'charges', 'discount', 'amount', 'paid_amount', 'status', 'snapshot', 'remarks',
         'batch_id', 'journal_id', 'created_by', 'cancelled_at', 'cancelled_by', 'cancel_reason', 'import_batch_id',
     ];
 
     protected $casts = [
         'invoice_date' => 'date:Y-m-d', 'due_date' => 'date:Y-m-d', 'area_decimal' => 'decimal:4', 'rate' => 'decimal:4',
-        'amount' => 'decimal:2', 'paid_amount' => 'decimal:2', 'snapshot' => 'array', 'cancelled_at' => 'datetime',
+        'amount' => 'decimal:2', 'paid_amount' => 'decimal:2', 'snapshot' => 'array', 'charges' => 'array', 'discount' => 'decimal:2', 'cancelled_at' => 'datetime',
     ];
 
     public function season()
@@ -76,6 +76,14 @@ class Invoice extends Model implements Payable
     public function receiptItems()
     {
         return $this->morphMany(ReceiptItem::class, 'payable');
+    }
+
+    /** What the bill should total: irrigation (area × rate) plus extra charges, less the discount. */
+    public function expectedAmount(): float
+    {
+        $extra = collect($this->charges ?? [])->sum(fn ($c) => (float) ($c['amount'] ?? 0));
+
+        return round(round((float) $this->area_decimal * (float) $this->rate, 2) + $extra - (float) $this->discount, 2);
     }
 
     public function dueAmount(): float

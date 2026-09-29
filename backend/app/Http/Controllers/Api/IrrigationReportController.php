@@ -165,7 +165,7 @@ class IrrigationReportController extends Controller
                 } elseif ((float) $rate->rate !== (float) $i->rate) {
                     $problems[] = 'rate_changed';
                 }
-                if (round((float) $i->area_decimal * (float) $i->rate, 2) !== round((float) $i->amount, 2)) {
+                if ($i->expectedAmount() !== round((float) $i->amount, 2)) {
                     $problems[] = 'amount_math';
                 }
                 if ($i->area_decimal > ($i->snapshot['land_area'] ?? PHP_INT_MAX)) {

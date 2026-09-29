@@ -126,6 +126,28 @@ class IrrigationTest extends Phase2TestCase
         $this->assertNull(Season::find($new));
     }
 
+    public function test_invoice_extra_charges_and_discount_reach_the_ledger(): void
+    {
+        $this->approvedRate();
+        $land = $this->land('702');
+        $base = ['season_id' => $this->season->id, 'land_id' => $land->id, 'invoice_date' => now()->toDateString()];
+
+        // 33 decimals × 10 = 330, + service charge 1 × 50, − 30 discount = 350
+        $this->actingAs($this->irrigation)->postJson('/api/invoices', $base + ['discount' => 1000])->assertStatus(422)->assertJsonValidationErrors('discount');
+        $id = $this->actingAs($this->irrigation)->postJson('/api/invoices', $base + [
+            'charges' => [['description' => 'সার্ভিস চার্জ', 'qty' => 1, 'rate' => 50]], 'discount' => 30,
+        ])->assertCreated()->json('id');
+
+        $inv = Invoice::findOrFail($id);
+        $this->assertSame(350.0, (float) $inv->amount);
+        $this->assertSame(350.0, $inv->expectedAmount());
+        $this->assertSame(350.0, $this->balance('irrigation_receivable'));
+        $this->actingAs($this->irrigation)->getJson("/api/invoices/$id")->assertJsonPath('discount', 30)->assertJsonPath('charges.0.amount', 50);
+        $this->actingAs($this->irrigation)->getJson('/api/invoices/summary')->assertJsonPath('total', 1)->assertJsonPath('pending', 1);
+        // the rate audit accepts the extra lines
+        $this->actingAs($this->irrigation)->getJson("/api/irrigation/rate-audit?season_id={$this->season->id}")->assertOk()->assertJsonCount(0, 'invoice_issues');
+    }
+
     public function test_rate_needs_approval_before_it_bills(): void
     {
         $land = $this->land('১০১');
