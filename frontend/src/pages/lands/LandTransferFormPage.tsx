@@ -219,6 +219,12 @@ export default function LandTransferFormPage() {
             </h1>
             <p>{tx('এক মালিকের কাছ থেকে আরেকজনের কাছে জমির মালিকানা হস্তান্তর করুন। নিচের তথ্য পূরণ করে অনুমোদনের জন্য পাঠান।')}</p>
           </div>
+          {draft.data && (
+            <span className="lt-badges">
+              <Tag className="lt-no">{draft.data.transfer_no}</Tag>
+              <Tag className={`fl-tag lt-no ${TRANSFER_STATUS[draft.data.status as keyof typeof TRANSFER_STATUS]?.[1] ?? ''}`}>{TRANSFER_STATUS[draft.data.status as keyof typeof TRANSFER_STATUS]?.[0]}</Tag>
+            </span>
+          )}
           <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/lands/transfers')}>
             {tx('হস্তান্তরের তালিকায় ফিরুন')}
           </Button>

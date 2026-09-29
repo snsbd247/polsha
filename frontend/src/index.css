@@ -513,3 +513,44 @@ body {
     box-shadow: none !important;
   }
 }
+
+/*
+ * Page titles and their one-line descriptions are not shown on any page (the
+ * breadcrumb names the page); buttons beside them stay, on the right.
+ * On older pages a status tag inside the title stays visible.
+ */
+.fl-head > div:first-child:not(.fl-head-btns),
+.dash-head > div:first-child,
+.st-head > div:first-child,
+.ff-head > div:first-child,
+.lf-head > div:first-child,
+.ma-head,
+.lp-title {
+  display: none !important;
+}
+
+.fl-head,
+.dash-head,
+.st-head,
+.ff-head,
+.lf-head {
+  justify-content: flex-end !important;
+}
+
+.fl-head:not(:has(.fl-head-btns)),
+.st-head:not(:has(.st-head-extra)) {
+  display: none !important;
+}
+
+.page-header {
+  justify-content: flex-end;
+}
+
+.page-header h2 {
+  font-size: 0 !important;
+  margin: 0;
+}
+
+.page-header h2:not(:has(.ant-tag)) {
+  display: none;
+}

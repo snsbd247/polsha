@@ -425,3 +425,10 @@
     grid-template-columns: 1fr;
   }
 }
+
+.lt-badges {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-right: 12px;
+}
