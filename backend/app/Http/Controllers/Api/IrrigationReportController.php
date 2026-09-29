@@ -91,6 +91,69 @@ class IrrigationReportController extends Controller
      * Where the operational records and the ledger disagree. Everything
      * listed here should be empty on a healthy system.
      */
+    /**
+     * Each bill against what its receipts brought in: under (still due), over
+     * (more than billed), or matched; with a summary and one bill's receipts.
+     */
+    public function collectionCheck(Request $request): JsonResponse
+    {
+        $morph = (new Invoice)->getMorphClass();
+        $collected = DB::table('receipt_items')->join('receipts', 'receipts.id', '=', 'receipt_items.receipt_id')
+            ->where('receipt_items.payable_type', $morph)->where('receipts.status', '!=', 'cancelled')
+            ->groupBy('receipt_items.payable_id')->selectRaw('receipt_items.payable_id as invoice_id, SUM(receipt_items.amount) as got');
+        $q = DB::table('invoices')->leftJoinSub($collected, 'c', 'c.invoice_id', '=', 'invoices.id')
+            ->leftJoin('seasons', 'seasons.id', '=', 'invoices.season_id')->leftJoin('farmers', 'farmers.id', '=', 'invoices.farmer_id')
+            ->leftJoin('land_types', 'land_types.id', '=', 'invoices.land_type_id')->leftJoin('irrigation_types', 'irrigation_types.id', '=', 'invoices.irrigation_type_id')
+            ->where('invoices.status', '!=', 'cancelled')
+            ->selectRaw("invoices.id, invoices.invoice_no, invoices.invoice_date, invoices.amount as expected, COALESCE(c.got, 0) as collected, invoices.snapshot,
+                invoices.farmer_id, farmers.name_bn, farmers.name_en, farmers.mobile, seasons.name_bn as season, land_types.name_bn as land_type, irrigation_types.name_bn as irrigation_type,
+                case when COALESCE(c.got, 0) > invoices.amount then 'over' when COALESCE(c.got, 0) < invoices.amount then 'under' else 'matched' end as state");
+        foreach (['season_id', 'land_type_id', 'irrigation_type_id'] as $f) {
+            if ($request->filled($f)) {
+                $q->where("invoices.$f", $request->integer($f));
+            }
+        }
+        if ($s = trim((string) $request->query('search'))) {
+            $en = Bn::toEnDigits($s);
+            $q->where(fn ($w) => $w->where('invoices.invoice_no', 'like', "%$en%")->orWhere('farmers.name_bn', 'like', "%$s%")->orWhere('farmers.name_en', 'like', "%$s%")
+                ->orWhere('farmers.mobile', 'like', "%$en%")->orWhere('invoices.snapshot->dag_no', $en));
+        }
+        $all = DB::query()->fromSub($q, 'x');
+        $sum = (clone $all)->selectRaw("SUM(state = 'over') as over_n, SUM(state = 'under') as under_n, SUM(state = 'matched') as matched_n,
+            SUM(case when state = 'over' then collected - expected else 0 end) as over_amt, SUM(case when state = 'under' then expected - collected else 0 end) as under_amt")->first();
+        if ($request->filled('state')) {
+            $all->where('state', $request->query('state'));
+        }
+        $page = $all->orderByRaw("case state when 'under' then 0 when 'over' then 1 else 2 end")->orderBy('invoice_date', 'desc')->orderBy('id', 'desc')->paginate($this->perPage($request));
+        $page->setCollection($page->getCollection()->map(function ($r) {
+            $snap = json_decode($r->snapshot ?? '{}', true) ?: [];
+
+            return [
+                'id' => $r->id, 'invoice_no' => $r->invoice_no, 'invoice_date' => $r->invoice_date, 'farmer_id' => $r->farmer_id,
+                'name_bn' => $r->name_bn, 'name_en' => $r->name_en, 'mobile' => $r->mobile, 'season' => $r->season,
+                'dag_no' => $snap['dag_no'] ?? null, 'land_code' => $snap['land_code'] ?? null,
+                'land_type' => Tr::label($r->land_type), 'irrigation_type' => Tr::label($r->irrigation_type),
+                'expected' => round((float) $r->expected, 2), 'collected' => round((float) $r->collected, 2),
+                'difference' => round((float) $r->collected - (float) $r->expected, 2), 'state' => $r->state,
+            ];
+        }));
+
+        return response()->json($page->toArray() + ['summary' => [
+            'over' => (int) $sum->over_n, 'under' => (int) $sum->under_n, 'matched' => (int) $sum->matched_n,
+            'mismatch' => (int) $sum->over_n + (int) $sum->under_n,
+            'over_amount' => round((float) $sum->over_amt, 2), 'under_amount' => round((float) $sum->under_amt, 2),
+            'difference' => round((float) $sum->over_amt - (float) $sum->under_amt, 2),
+        ]]);
+    }
+
+    /** The receipts that paid one bill, for the side panel. */
+    public function invoiceReceipts(Invoice $invoice): JsonResponse
+    {
+        return response()->json(DB::table('receipt_items')->join('receipts', 'receipts.id', '=', 'receipt_items.receipt_id')
+            ->where('receipt_items.payable_type', $invoice->getMorphClass())->where('receipt_items.payable_id', $invoice->id)
+            ->orderBy('receipts.date')->get(['receipts.id', 'receipts.receipt_no', 'receipts.legacy_no', 'receipts.date', 'receipts.status', 'receipt_items.amount', 'receipts.remarks']));
+    }
+
     public function mismatch(): JsonResponse
     {
         $receivable = Account::byKey('irrigation_receivable');

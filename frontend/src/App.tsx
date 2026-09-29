@@ -67,6 +67,7 @@ const BankAccountsPage = lazy(() => import('./pages/accounting/BankAccountsPage'
 const TrialBalancePage = lazy(() => import('./pages/accounting/TrialBalancePage'))
 const PeriodsPage = lazy(() => import('./pages/accounting/PeriodsPage'))
 const IrrigationTypesPage = lazy(() => import('./pages/settings/IrrigationTypesPage'))
+const LookupPage = lazy(() => import('./pages/irrigation/LookupPage'))
 const CategoryRatesPage = lazy(() => import('./pages/irrigation/CategoryRatesPage'))
 const RateProposePage = lazy(() => import('./pages/irrigation/RateProposePage'))
 const SeasonsPage = lazy(() => import('./pages/irrigation/SeasonsPage'))
@@ -137,7 +138,6 @@ const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage'))
 
 /** Menu items that are simply one or more server reports (the page shows only those the user may open). */
 const REPORT_ROUTES: { path: string; title: string; keys: string[] }[] = [
-  { path: 'irrigation/lookup', title: tx('মৌসুম / জমির ধরন অনুসন্ধান'), keys: ['irrigation_rates'] },
   { path: 'members/voter-history', title: tx('ভোটার ইতিহাস'), keys: ['voter_lists', 'voters'] },
   { path: 'members/voter-audit', title: tx('ভোটার অডিট'), keys: ['voter_changes'] },
   { path: 'loans/guarantors', title: tx('জামিনদার'), keys: ['guarantors'] },
@@ -288,6 +288,7 @@ export default function App() {
         <Route path="irrigation/seasons/:id" element={<Perm perm="irrigation.view"><SeasonDetailPage /></Perm>} />
         <Route path="irrigation/seasons/:id/edit" element={<Perm perm="irrigation.edit"><SeasonFormPage /></Perm>} />
         <Route path="irrigation/rates" element={<Perm perm="irrigation.view"><RatesPage /></Perm>} />
+        <Route path="irrigation/lookup" element={<Perm perm="irrigation.view"><LookupPage /></Perm>} />
         <Route path="irrigation/category-rates" element={<Perm perm="irrigation.view"><CategoryRatesPage /></Perm>} />
         <Route path="irrigation/rates/new" element={<Perm perm="irrigation.edit"><RateProposePage /></Perm>} />
         <Route path="irrigation/invoices" element={<Perm perm="irrigation.view"><InvoiceListPage /></Perm>} />

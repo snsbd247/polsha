@@ -173,6 +173,20 @@ class IrrigationTest extends Phase2TestCase
         $this->actingAs($admin)->deleteJson("/api/irrigation-types/$id")->assertOk();
     }
 
+    public function test_collection_check_marks_under_and_matched_bills(): void
+    {
+        $this->approvedRate();
+        $a = $this->invoice($this->land('961'));
+        $b = $this->invoice($this->land('962'));
+        $this->collect($this->owner, [['invoice_id' => $a->id, 'amount' => 330], ['invoice_id' => $b->id, 'amount' => 100]]);
+
+        $this->actingAs($this->irrigation)->getJson('/api/irrigation/collection-check')->assertOk()
+            ->assertJsonPath('summary.matched', 1)->assertJsonPath('summary.under', 1)->assertJsonPath('summary.under_amount', 230)
+            ->assertJsonPath('data.0.id', $b->id)->assertJsonPath('data.0.difference', -230);
+        $this->actingAs($this->irrigation)->getJson('/api/irrigation/collection-check?state=matched')->assertJsonPath('total', 1);
+        $this->actingAs($this->irrigation)->getJson("/api/irrigation/invoices/{$b->id}/receipts")->assertOk()->assertJsonPath('0.amount', 100);
+    }
+
     public function test_old_receipt_list_filters_and_summary(): void
     {
         $this->approvedRate();

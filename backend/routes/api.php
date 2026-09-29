@@ -351,6 +351,8 @@ Route::middleware(['auth:sanctum', 'usable'])->group(function () {
         Route::get('irrigation/dues', [IrrigationReportController::class, 'dues']);
         Route::get('irrigation/farmers/{farmer}/statement', [IrrigationReportController::class, 'statement']);
         Route::get('irrigation/mismatch', [IrrigationReportController::class, 'mismatch']);
+        Route::get('irrigation/collection-check', [IrrigationReportController::class, 'collectionCheck']);
+        Route::get('irrigation/invoices/{invoice}/receipts', [IrrigationReportController::class, 'invoiceReceipts']);
         Route::get('irrigation/rate-audit', [IrrigationReportController::class, 'rateAudit']);
     });
     Route::middleware('permission:irrigation.create')->group(function () {

@@ -73,3 +73,175 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* due mismatch */
+.mm-bang {
+  font-size: 22px;
+  font-weight: 800;
+}
+
+.mm-blue {
+  color: #1769e0;
+}
+
+.mm-table .ant-table-tbody > tr {
+  cursor: pointer;
+}
+
+.mm-panel .id-box {
+  margin-bottom: 12px;
+}
+
+.mm-panel .id-box > header {
+  font-size: 18px;
+  padding: 10px 14px;
+}
+
+.mm-panel .id-box > header h3 {
+  font-size: 15px;
+}
+
+.mm-panel .id-kv {
+  padding: 8px 14px;
+}
+
+.mm-panel .id-kv > div {
+  grid-template-columns: 110px 14px 1fr;
+  padding: 4px 0;
+  font-size: 13px;
+}
+
+.mm-empty,
+.mm-note {
+  margin: 0;
+  padding: 12px 14px;
+  font-size: 13px;
+  color: #374151;
+}
+
+.lf-has-aside .fl-stat-value {
+  font-size: 24px;
+}
+
+.lf-has-aside .fl-stat-value .mz-unit {
+  display: block;
+  margin-left: 0;
+  font-size: 12px;
+}
+
+/* season / land-type lookup */
+.lk-tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.lk-tabs button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 220px;
+  height: 40px;
+  padding: 0 20px;
+  justify-content: center;
+  font: inherit;
+  color: #374151;
+  cursor: pointer;
+  background: #fff;
+  border: 1px solid #e3e8f0;
+  border-radius: 6px;
+}
+
+.lk-tabs button.on {
+  color: #1769e0;
+  font-weight: 500;
+  background: #e8f0fd;
+  border-color: #cfdef8;
+}
+
+.lk-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) 1.1fr;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.lk-stats .fl-stat {
+  min-height: 84px;
+}
+
+.lk-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 18px;
+  font-size: 13px;
+  color: #374151;
+  background: #fff7e6;
+  border: 1px solid #fde7c2;
+  border-radius: 10px;
+}
+
+.lk-info .anticon {
+  font-size: 22px;
+  color: #f5a524;
+}
+
+.lk-card {
+  margin-bottom: 14px;
+}
+
+.lk-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.lk-filters {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  padding: 10px 14px;
+}
+
+.lk-filters .ant-input-affix-wrapper {
+  flex: 1;
+  height: 38px;
+}
+
+.lk-filters label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.lk-filters .ant-select {
+  width: 220px;
+  height: 38px;
+}
+
+.lk-filters .ant-btn {
+  height: 38px;
+  min-width: 100px;
+}
+
+@media (max-width: 1100px) {
+  .lk-stats {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 700px) {
+  .lk-stats {
+    grid-template-columns: 1fr;
+  }
+  .lk-filters {
+    flex-wrap: wrap;
+  }
+  .lk-tabs button {
+    min-width: 0;
+    flex: 1;
+  }
+}

@@ -294,7 +294,7 @@
 /* a list with a panel on its right (add/edit form): the panel floats beside the cards, filters and list */
 .lf-has-aside > .lf-aside {
   float: right;
-  width: 300px;
+  width: var(--aside-w, 300px);
   margin-left: 16px;
 }
 
