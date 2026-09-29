@@ -1,0 +1,171 @@
+/* Bulk irrigation invoices — stepper, criteria with a summary, and the pick list, as in the approved design. */
+@import './invoice-detail.css';
+
+.bi-steps {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 2px 0 14px;
+  padding: 12px 90px;
+}
+
+.bi-step {
+  position: relative;
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 12px;
+}
+
+.bi-step:not(:last-child)::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  margin: 0 16px;
+  background: #d5dce7;
+}
+
+.bi-step span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 34px;
+  height: 34px;
+  font-weight: 600;
+  color: #4b5563;
+  background: #e9edf3;
+  border-radius: 50%;
+}
+
+.bi-step strong {
+  font-weight: 500;
+  color: #374151;
+  white-space: nowrap;
+}
+
+.bi-step-on span,
+.bi-step-done span {
+  color: #fff;
+  background: #1769e0;
+}
+
+.bi-step-on strong {
+  font-weight: 600;
+  color: #1769e0;
+}
+
+.bi-top {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 390px;
+  gap: 14px;
+  align-items: start;
+}
+
+.bi-span2 {
+  grid-column: span 2;
+}
+
+.bi-summary {
+  margin-bottom: 14px;
+}
+
+.bi-kv > div {
+  grid-template-columns: 150px 18px 1fr;
+  padding: 5px 0;
+}
+
+.bi-done {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 14px;
+  padding: 12px 18px;
+  background: #e9f7ee;
+  border: 1px solid #c9e8d4;
+  border-radius: 10px;
+}
+
+.bi-done strong {
+  color: #15803d;
+}
+
+.bi-done .ant-btn {
+  margin-left: auto;
+}
+
+.bi-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.bi-tabs {
+  display: flex;
+  gap: 8px;
+}
+
+.bi-tabs button {
+  height: 38px;
+  padding: 0 18px;
+  font: inherit;
+  font-weight: 500;
+  color: #1f2937;
+  cursor: pointer;
+  background: #fff;
+  border: 1px solid #d5dce7;
+  border-radius: 6px;
+}
+
+.bi-tabs button.on {
+  color: #fff;
+  background: #1769e0;
+  border-color: #1769e0;
+}
+
+.bi-search.ant-input-affix-wrapper {
+  width: 320px;
+  height: 38px;
+  margin-left: auto;
+}
+
+.bi-load.ant-btn {
+  height: 38px;
+  color: #1769e0;
+  background: #eef4fe;
+  border-color: #cfdef8;
+}
+
+.bi-table .ant-table-tbody > tr > td {
+  height: 40px;
+}
+
+@media (max-width: 1280px) {
+  .bi-top {
+    grid-template-columns: 1fr;
+  }
+  .bi-steps {
+    padding: 12px 10px;
+  }
+}
+
+@media (max-width: 900px) {
+  .bi-steps {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .bi-step::after {
+    display: none;
+  }
+  .bi-bar {
+    flex-wrap: wrap;
+  }
+  .bi-search.ant-input-affix-wrapper {
+    width: 100%;
+    margin-left: 0;
+  }
+  .bi-span2 {
+    grid-column: auto;
+  }
+}

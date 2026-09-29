@@ -112,14 +112,14 @@ class InvoiceController extends Controller
     public function bulkPreview(Request $request): JsonResponse
     {
         $data = $this->validatedBulk($request);
-        $p = $this->irrigation->preview(Season::findOrFail($data['season_id']), $data['mouza_id'] ?? null, $data['invoice_date']);
+        $p = $this->irrigation->preview(Season::findOrFail($data['season_id']), $data['mouza_id'] ?? null, $data['invoice_date'], $this->only($data));
 
         return response()->json([
             'summary' => $p['summary'],
             'lines' => $p['lines']->map(fn ($c) => [
                 'land_id' => $c['land_id'], 'ok' => $c['ok'], 'reason' => $c['reason'],
                 'land_code' => $c['snapshot']['land_code'], 'mouza' => $c['snapshot']['mouza'], 'mouza_en' => $c['snapshot']['mouza_en'],
-                'dag_no' => $c['snapshot']['dag_no'], 'khatian_no' => $c['snapshot']['khatian_no'], 'cultivator' => $c['snapshot']['cultivator'],
+                'dag_no' => $c['snapshot']['dag_no'], 'khatian_no' => $c['snapshot']['khatian_no'], 'cultivator' => $c['snapshot']['cultivator'], 'farmer_id' => $c['farmer_id'],
                 'owners' => $c['snapshot']['owners'], 'cultivation_type' => $c['cultivation_type'],
                 'land_type' => Tr::label($c['snapshot']['land_type']), 'irrigation_type' => Tr::label($c['snapshot']['irrigation_type']),
                 'area_decimal' => $c['area_decimal'], 'rate' => $c['rate'], 'amount' => $c['amount'],
@@ -130,7 +130,7 @@ class InvoiceController extends Controller
     public function bulkStore(Request $request): JsonResponse
     {
         $data = $this->validatedBulk($request);
-        $batch = $this->irrigation->bulk(Season::findOrFail($data['season_id']), $data['mouza_id'] ?? null, $data['invoice_date']);
+        $batch = $this->irrigation->bulk(Season::findOrFail($data['season_id']), $data['mouza_id'] ?? null, $data['invoice_date'], $this->only($data));
 
         return response()->json($batch, 201);
     }
@@ -165,7 +165,15 @@ class InvoiceController extends Controller
             'season_id' => ['required', 'exists:seasons,id'],
             'mouza_id' => ['nullable', 'exists:mouzas,id'],
             'invoice_date' => ['required', 'date', 'before_or_equal:today'],
+            'irrigation_type_id' => ['nullable', 'exists:irrigation_types,id'],
+            'land_ids' => ['nullable', 'array', 'max:5000'],
+            'land_ids.*' => ['integer'],
         ]);
+    }
+
+    private function only(array $data): array
+    {
+        return ['irrigation_type_id' => $data['irrigation_type_id'] ?? null, 'land_ids' => $data['land_ids'] ?? null];
     }
 
     private function filtered(Request $request): Builder

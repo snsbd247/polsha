@@ -162,9 +162,12 @@ class IrrigationService
     }
 
     /** @return array{lines: Collection, summary: array} */
-    public function preview(Season $season, ?int $mouzaId, string $date): array
+    /** @param array{irrigation_type_id?: ?int, land_ids?: ?array} $only narrows the run to one irrigation source and/or chosen plots */
+    public function preview(Season $season, ?int $mouzaId, string $date, array $only = []): array
     {
         $lands = Land::query()->when($mouzaId, fn ($q) => $q->where('mouza_id', $mouzaId))
+            ->when($only['irrigation_type_id'] ?? null, fn ($q, $v) => $q->where('irrigation_type_id', $v))
+            ->when($only['land_ids'] ?? null, fn ($q, $v) => $q->whereIn('id', $v))
             ->with(['mouza:id,name_bn,name_en,jl_no', 'landType:id,name_bn', 'irrigationType:id,name_bn',
                 'owners.farmer:id,farmer_code,name_bn,name_en,father_name', 'cultivation.farmer:id,farmer_code,name_bn,name_en,father_name,mobile'])
             ->orderBy('mouza_id')->orderBy('land_code')->get();
@@ -196,14 +199,14 @@ class IrrigationService
         ];
     }
 
-    public function bulk(Season $season, ?int $mouzaId, string $date): InvoiceBatch
+    public function bulk(Season $season, ?int $mouzaId, string $date, array $only = []): InvoiceBatch
     {
         $this->guardSeasonOpen($season);
 
-        return DB::transaction(function () use ($season, $mouzaId, $date) {
+        return DB::transaction(function () use ($season, $mouzaId, $date, $only) {
             // One bulk run per season at a time; the season row is the lock.
             Season::whereKey($season->id)->lockForUpdate()->first();
-            $preview = $this->preview($season, $mouzaId, $date);
+            $preview = $this->preview($season, $mouzaId, $date, $only);
             $ok = $preview['lines']->where('ok', true);
             if ($ok->isEmpty()) {
                 throw ValidationException::withMessages(['season_id' => __('ইনভয়েস তৈরির মতো কোনো জমি পাওয়া যায়নি।')]);

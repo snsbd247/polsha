@@ -148,6 +148,22 @@ class IrrigationTest extends Phase2TestCase
         $this->actingAs($this->irrigation)->getJson("/api/irrigation/rate-audit?season_id={$this->season->id}")->assertOk()->assertJsonCount(0, 'invoice_issues');
     }
 
+    public function test_bulk_can_be_narrowed_to_a_source_and_chosen_plots(): void
+    {
+        $this->approvedRate();
+        $a = $this->land('801');
+        $b = $this->land('802');
+        $this->land('803', null, false); // no irrigation type
+        $body = ['season_id' => $this->season->id, 'invoice_date' => now()->toDateString()];
+
+        $this->actingAs($this->irrigation)->postJson('/api/invoices/bulk/preview', $body + ['irrigation_type_id' => $this->deep->id])
+            ->assertOk()->assertJsonPath('summary.lands', 2)->assertJsonPath('summary.invoices', 2);
+        $this->actingAs($this->irrigation)->postJson('/api/invoices/bulk', $body + ['irrigation_type_id' => $this->deep->id, 'land_ids' => [$b->id]])
+            ->assertCreated()->assertJsonPath('invoice_count', 1);
+        $this->assertSame(0, Invoice::where('land_id', $a->id)->count());
+        $this->assertSame(1, Invoice::where('land_id', $b->id)->count());
+    }
+
     public function test_rate_needs_approval_before_it_bills(): void
     {
         $land = $this->land('১০১');
