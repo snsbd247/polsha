@@ -112,6 +112,11 @@ class DemoDataService
         if ($this->seeded()) {
             throw new RuntimeException('ডেমো ডাটা আগেই বসানো আছে। নতুন করে বসাতে আগে demo:purge চালান।');
         }
+        // a snapshot of a half-migrated database could not be put back cleanly
+        $ran = DB::table('migrations')->pluck('migration')->flip();
+        if (collect(glob(database_path('migrations/*.php')))->contains(fn ($f) => ! isset($ran[basename($f, '.php')]))) {
+            throw new RuntimeException('কিছু মাইগ্রেশন বাকি আছে; আগে php artisan migrate চালান।');
+        }
         $this->log = $log;
         mt_srand(20260926);
         $this->today = now()->toDateString();
@@ -193,6 +198,19 @@ class DemoDataService
         $extra = array_filter(array_column($own, 'name'), fn ($t) => ! isset($known[$t]));
         if ($extra) {
             Schema::withoutForeignKeyConstraints(fn () => array_map(fn ($t) => Schema::drop($t), $extra));
+        }
+        // a snapshot can hold an empty table whose migration it does not record; let that migration make it afresh
+        $ran = DB::table('migrations')->pluck('migration')->flip();
+        foreach (glob(database_path('migrations/*.php')) as $file) {
+            if (isset($ran[basename($file, '.php')])) {
+                continue;
+            }
+            preg_match_all("/Schema::create\\('([^']+)'/", (string) file_get_contents($file), $made);
+            foreach ($made[1] as $table) {
+                if (Schema::hasTable($table) && DB::table($table)->doesntExist()) {
+                    Schema::withoutForeignKeyConstraints(fn () => Schema::drop($table));
+                }
+            }
         }
         Artisan::call('migrate', ['--force' => true]);
         $log('ডাটাবেসের কাঠামো হালনাগাদ করা হয়েছে।');
@@ -623,7 +641,7 @@ class DemoDataService
                 });
                 if ($e->toDateString() < $this->today) {
                     $this->at($e->copy()->addDays(31), fn () => $this->api('irrigation', 'PUT', "seasons/{$season['id']}", [
-                        'name_bn' => $name, 'crop' => 'ধান', 'start_date' => $s->toDateString(), 'end_date' => $e->toDateString(),
+                        'name_bn' => $name, 'code' => $season['code'], 'type' => $season['type'], 'crop' => 'ধান', 'start_date' => $s->toDateString(), 'end_date' => $e->toDateString(),
                         'due_date' => $e->copy()->addDays(30)->toDateString(), 'status' => 'closed',
                     ]));
                 }
