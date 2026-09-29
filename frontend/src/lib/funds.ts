@@ -29,6 +29,7 @@ export type FundMeta = {
   methods: Record<string, string>
   account_statuses: Record<string, string>
   ledger_account: { id: number; code: string; name_bn: string; name_en: string | null }
+  share_unit_price: number | null
 }
 
 export type FundTxn = {

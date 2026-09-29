@@ -1,4 +1,4 @@
-/* Savings menu screens: entries, share collection, withdrawals. */
+/* Savings menu screens: accounts, share collection, withdrawals. */
 
 .sv-total {
   display: inline-flex;
@@ -15,6 +15,11 @@
 
 .sv-total strong {
   font-weight: 700;
+}
+
+.sv-muted {
+  background: #f3f4f6;
+  color: #4b5563;
 }
 
 .sv-head-extra {
@@ -40,36 +45,108 @@
   font-size: 17px;
 }
 
+.sv-held {
+  margin-left: 6px;
+  color: #b45309;
+  font-size: 13px;
+}
+
 .iv-form .ant-alert {
   margin-top: 4px;
 }
 
-.sv-lookup-row {
+.sv-note.ant-alert {
+  margin: 0 0 14px;
+}
+
+.sv-label {
+  display: block;
+  margin-bottom: 6px;
+  font-weight: 500;
+}
+
+.sv-foot-note {
+  margin: 0;
+  padding: 10px 18px;
+  color: #6b7280;
+  font-size: 13px;
+}
+
+/* approve / reject buttons in a row */
+.fl-act.sv-approve.ant-btn {
+  color: #1f9d55;
+  border-color: #b7e4c7;
+  background: #eefaf2;
+}
+
+.fl-act.sv-reject.ant-btn {
+  color: #e5383b;
+  border-color: #f7c1c2;
+  background: #fff1f1;
+}
+
+.sv-decide {
+  display: inline-flex;
+  gap: 8px;
+}
+
+/* accounts */
+.sv-kind.ant-segmented {
+  padding: 3px;
+  background: #eef2f8;
+}
+
+.sv-row-closing > td {
+  background: #fffbeb !important;
+}
+
+.sv-close-facts {
+  margin-top: 14px;
+  grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+}
+
+.sv-fact {
   display: flex;
-  gap: 10px;
-  padding: 16px 18px 12px;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px 14px;
+  border: 1px solid #e6eaf1;
+  border-radius: 10px;
+  background: #fff;
 }
 
-.sv-lookup-row .ant-input-affix-wrapper {
-  flex: 1;
+.sv-fact small {
+  color: #6b7280;
 }
 
-.sv-sub {
-  margin: 4px 18px 4px;
-  font-size: 15px;
-  font-weight: 600;
-  color: #374151;
+.sv-fact strong {
+  font-size: 17px;
 }
 
-.sv-pick .ant-table-row {
-  cursor: pointer;
+.sv-fact span {
+  color: #6b7280;
+  font-size: 13px;
+}
+
+.sv-fact .ant-tag {
+  align-self: flex-start;
+}
+
+.sv-fact-ok strong {
+  color: #1f9d55;
+}
+
+.sv-fact-bad strong {
+  color: #e5383b;
+}
+
+@media (max-width: 991px) {
+  .sv-close-facts {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
 }
 
 @media (max-width: 575px) {
-  .sv-lookup-row {
-    flex-direction: column;
-  }
-
   /* four buttons: two to a row on a phone */
   .sv-form .iv-actions {
     flex-wrap: wrap;

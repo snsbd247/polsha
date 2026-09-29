@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { App, Button, Checkbox, DatePicker, Dropdown, Grid, Input, Select, Table, Tag } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
-import { AppstoreFilled, CalendarFilled, DownOutlined, EyeFilled, FileTextFilled, HistoryOutlined, MoreOutlined, PlusOutlined, PrinterFilled, PrinterOutlined, SearchOutlined } from '@ant-design/icons'
+import { AppstoreFilled, CalendarFilled, ClockCircleFilled, DownOutlined, EyeFilled, FileTextFilled, MoreOutlined, PlusOutlined, PrinterFilled, PrinterOutlined, SearchOutlined } from '@ant-design/icons'
 import dayjs, { type Dayjs } from 'dayjs'
 import { useAuth } from '../../auth/AuthContext'
 import { api, errorMessage, type Paginated } from '../../lib/api'
@@ -45,7 +45,7 @@ export default function EntryListPage({ entry }: { entry: EntryKey }) {
   const params = { page, per_page: perPage, type: cfg.type, ...filters }
   const { data, isFetching } = useQuery({
     queryKey: ['fund-entries', cfg.key, params],
-    queryFn: async () => (await api.get<Paginated<Row> & { total_in: number }>(`/funds/${cfg.kind}/transactions`, { params })).data,
+    queryFn: async () => (await api.get<Paginated<Row> & { total_in: number; total_out: number }>(`/funds/${cfg.kind}/transactions`, { params })).data,
     placeholderData: keepPreviousData,
   })
   const summary = useQuery({ queryKey: ['fund-entries', cfg.key, 'summary'], queryFn: async () => (await api.get<EntrySummary>(`/funds/${cfg.kind}/entry-summary`, { params: { type: cfg.type } })).data })
@@ -72,7 +72,9 @@ export default function EntryListPage({ entry }: { entry: EntryKey }) {
   const cards = [
     { key: 'count', label: tx('মোট {{p0}}', { p0: cfg.noun }), value: s?.count, unit: tx('টি'), icon: '', glyph: <FileTextFilled />, color: '#1769e0', tint: '#e4edfd', onClick: () => show({}) },
     { key: 'amount', label: tx('মোট পরিমাণ'), value: s ? `৳ ${money(s.amount)}` : undefined, icon: 'piggy', color: '#1f9d55', tint: '#dcf3e5', onClick: () => show({ status: 'posted' }) },
-    { key: 'today', label: tx('আজকের {{p0}}', { p0: cfg.noun }), value: s ? `৳ ${money(s.today_amount)}` : undefined, icon: '', glyph: <CalendarFilled />, color: '#f08c00', tint: '#fdefd6', onClick: () => show({ from: today, to: today }) },
+    cfg.out
+      ? { key: 'pending', label: tx('অনুমোদনের অপেক্ষায়'), value: s ? `৳ ${money(s.pending_amount)}` : undefined, unit: s ? tx('({{p0}}টি)', { p0: n0(s.pending) }) : undefined, icon: '', glyph: <ClockCircleFilled />, color: '#f08c00', tint: '#fdefd6', onClick: () => show({ status: 'pending' }) }
+      : { key: 'today', label: tx('আজকের {{p0}}', { p0: cfg.noun }), value: s ? `৳ ${money(s.today_amount)}` : undefined, icon: '', glyph: <CalendarFilled />, color: '#f08c00', tint: '#fdefd6', onClick: () => show({ from: today, to: today }) },
     { key: 'month', label: tx('এই মাসের {{p0}}', { p0: cfg.noun }), value: s ? `৳ ${money(s.month_amount)}` : undefined, icon: 'chart', color: '#8b3fe0', tint: '#efe4fc', onClick: () => show({ from: monthStart, to: today }) },
   ]
 
@@ -103,9 +105,12 @@ export default function EntryListPage({ entry }: { entry: EntryKey }) {
     { key: 'mobile', title: tx('মোবাইল'), render: (_, r) => digits(r.account?.member?.farmer?.mobile ?? '—') },
     { key: 'method', title: tx('মাধ্যম'), dataIndex: 'method', render: (v: string | null) => (v ? (METHOD_LABEL[v] ?? v) : '—') },
     { key: 'amount', title: tx('টাকা (৳)'), dataIndex: 'amount', align: 'right', render: (v: string) => <strong>{money(v)}</strong> },
+    ...(cfg.kind === 'share' && meta?.share_unit_price
+      ? [{ key: 'units', title: tx('শেয়ার সংখ্যা'), align: 'right' as const, render: (_: unknown, r: Row) => n0(Math.round(Number(r.amount) / meta.share_unit_price!)) }]
+      : []),
     { key: 'balance', title: tx('জের (৳)'), dataIndex: 'balance_after', align: 'right', render: (v: string | null) => (v === null ? '—' : money(v)) },
     { key: 'status', title: tx('অবস্থা'), dataIndex: 'status', render: (v: string) => <Tag className={`fl-tag iv-status ${TXN_TONE[v] ?? 'll-gray'}`}>{meta?.statuses[v] ?? v}</Tag> },
-    { key: 'by', title: tx('আদায়কারী'), render: (_, r) => nameOf(r.creator) || '—' },
+    { key: 'by', title: cfg.by, render: (_, r) => nameOf(r.creator) || '—' },
     {
       key: 'actions',
       title: tx('অ্যাকশন'),
@@ -143,9 +148,6 @@ export default function EntryListPage({ entry }: { entry: EntryKey }) {
       subtitle=""
       actions={
         <>
-          <Button icon={<HistoryOutlined />} onClick={() => navigate(`${cfg.base}/history`)}>
-            {cfg.history}
-          </Button>
           {can(`${cfg.kind}.create`) && (
             <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate(`${cfg.base}/new`)}>
               {cfg.add}
@@ -187,7 +189,7 @@ export default function EntryListPage({ entry }: { entry: EntryKey }) {
       tableTools={
         <>
           <span className="sv-total">
-            {tx('মোট')}: <strong>৳ {money(data?.total_in ?? 0)}</strong>
+            {tx('মোট')}: <strong>৳ {money((cfg.out ? data?.total_out : data?.total_in) ?? 0)}</strong>
           </span>
           <Dropdown
             trigger={['click']}

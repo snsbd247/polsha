@@ -75,8 +75,10 @@ class ReportService
         // A required filter not chosen yet: return the filter list (so the page can offer it) with no rows.
         $notice = isset($filters['_missing']) ? __(':field নির্বাচন করুন।', ['field' => $filters['_missing']]) : null;
         $result = $notice ? [] : ($d['rows'])($filters);
-        $rows = $result instanceof Collection || is_array($result) ? collect($result) : collect($result['rows']);
-        $summary = is_array($result) && isset($result['rows']) ? ($result['summary'] ?? []) : [];
+        // a report returns its rows, or ['rows' => …, 'summary' => …]
+        $withSummary = is_array($result) && array_key_exists('rows', $result);
+        $rows = collect($withSummary ? $result['rows'] : $result);
+        $summary = $withSummary ? ($result['summary'] ?? []) : [];
 
         $truncated = $rows->count() > self::MAX_ROWS;
         $rows = $rows->take(self::MAX_ROWS)->values();
@@ -142,6 +144,8 @@ class ReportService
             'invoice_status' => ['name' => 'status', 'type' => 'select', 'label' => __('অবস্থা'), 'options' => fn () => $this->options(Invoice::STATUSES)],
             'loan_status' => ['name' => 'status', 'type' => 'select', 'label' => __('অবস্থা'), 'options' => fn () => $this->options(Loan::STATUSES)],
             'fund_kind' => ['name' => 'kind', 'type' => 'select', 'label' => __('হিসাবের ধরন'), 'default' => 'savings', 'options' => fn () => $this->options(['savings' => 'সঞ্চয়', 'share' => 'শেয়ার'])],
+            'withdrawal_status' => ['name' => 'status', 'type' => 'select', 'label' => __('অবস্থা'),
+                'options' => fn () => $this->options(['posted' => 'অনুমোদিত', 'pending' => 'অপেক্ষমাণ', 'rejected' => 'প্রত্যাখ্যাত', 'cancelled' => 'বাতিলকৃত'])],
             'asset_status' => ['name' => 'status', 'type' => 'select', 'label' => __('অবস্থা'), 'options' => fn () => $this->options(Asset::STATUSES)],
             'approval_status' => ['name' => 'status', 'type' => 'select', 'label' => __('অবস্থা'),
                 'options' => fn () => $this->options(['pending' => 'অপেক্ষমাণ', 'approved' => 'অনুমোদিত', 'rejected' => 'প্রত্যাখ্যাত', 'returned' => 'ফেরত'])],
@@ -790,6 +794,138 @@ class ReportService
                     ->get(['a.*', 'members.member_no', 'farmers.name_bn', 'farmers.name_en', 'villages.name_bn as village_bn', 'villages.name_en as village_en'])
                     ->map(fn ($r) => ['account_no' => $r->account_no, 'member_no' => $r->member_no, 'name' => $this->nm($r), 'village' => $this->nm($r, 'village_bn', 'village_en'),
                         'opened_on' => $r->opened_on, 'status' => $r->status === 'active' ? __('সক্রিয়') : __('বন্ধ'), 'balance' => (float) $r->balance]),
+            ],
+        ] + $this->savingsMenuReports();
+    }
+
+    /**
+     * The savings menu's report pages: collection (savings + share), deposits,
+     * withdrawals, balances as of a date, and share capital.
+     */
+    private function savingsMenuReports(): array
+    {
+        $txns = fn ($f) => DB::table('member_transactions as t')->join('member_accounts as a', 'a.id', '=', 't.member_account_id')
+            ->join('members', 'members.id', '=', 'a.member_id')->join('farmers', 'farmers.id', '=', 'members.farmer_id')
+            ->leftJoin('users', 'users.id', '=', 't.created_by')
+            ->when($f['mouza_id'] ?? null, fn ($q, $v) => $q->where('farmers.mouza_id', $v))
+            ->whereBetween('t.date', [$f['from'], $f['to']]);
+        $cols = ['t.*', 'a.account_no', 'members.member_no', 'farmers.name_bn', 'farmers.name_en', 'users.name_bn as by_bn', 'users.name_en as by_en'];
+        $book = fn ($k) => $k === 'share' ? __('শেয়ার') : __('সঞ্চয়');
+        // balance of every account at the end of a day, from its effective transactions
+        $balances = fn ($f, string $kind) => DB::table('member_accounts as a')->join('members', 'members.id', '=', 'a.member_id')->join('farmers', 'farmers.id', '=', 'members.farmer_id')
+            ->leftJoin('villages', 'villages.id', '=', 'farmers.village_id')->where('a.kind', $kind)->where('a.opened_on', '<=', $f['as_of'])
+            ->when($f['mouza_id'] ?? null, fn ($q, $v) => $q->where('farmers.mouza_id', $v))
+            ->selectSub(DB::table('member_transactions as t')->whereColumn('t.member_account_id', 'a.id')->whereIn('t.status', ['posted', 'cancel_pending'])
+                ->where('t.date', '<=', $f['as_of'])->selectRaw("coalesce(sum(case when t.direction = 'in' then t.amount else -t.amount end),0)"), 'bal')
+            ->selectSub(DB::table('member_transactions as t')->whereColumn('t.member_account_id', 'a.id')->whereIn('t.status', ['posted', 'cancel_pending'])
+                ->where('t.date', '<=', $f['as_of'])->where('t.direction', 'in')->selectRaw('max(t.date)'), 'last_in')
+            ->addSelect(['a.account_no', 'a.opened_on', 'a.status', 'a.closed_on', 'members.member_no', 'farmers.name_bn', 'farmers.name_en', 'farmers.mobile',
+                'villages.name_bn as village_bn', 'villages.name_en as village_en'])
+            ->orderBy('members.member_no')->limit(self::MAX_ROWS + 1)->get();
+        $open = fn ($r, $f) => $r->status !== 'closed' || ($r->closed_on && $r->closed_on > $f['as_of']);
+
+        return [
+            'sv_collection' => [
+                'categories' => ['savings', 'collection'], 'perm' => ['savings.view', 'share.view'], 'title' => __('সঞ্চয় ও শেয়ার আদায় রিপোর্ট'),
+                'filters' => ['period', 'mouza'],
+                'columns' => [['date', __('তারিখ'), 'date'], ['txn_no', __('লেনদেন নং')], ['book', __('খাত')], ['member_no', __('সদস্য নং')], ['name', __('নাম')],
+                    ['method', __('মাধ্যম')], ['by', __('আদায়কারী')], ['amount', __('টাকা'), 'money', true]],
+                'rows' => function ($f) use ($txns, $cols, $book) {
+                    $rows = $txns($f)->whereIn('t.status', ['posted', 'cancel_pending'])->whereIn('t.type', ['deposit', 'purchase'])
+                        ->orderBy('t.date')->orderBy('t.id')->limit(self::MAX_ROWS + 1)->get($cols)
+                        ->map(fn ($r) => ['date' => $r->date, 'txn_no' => $r->txn_no, 'book' => $book($r->kind), 'book_key' => $r->kind, 'member_no' => $r->member_no,
+                            'name' => $this->nm($r), 'method' => $this->lbl(Receipt::METHODS, $r->method), 'by' => $this->nm($r, 'by_bn', 'by_en'), 'amount' => (float) $r->amount]);
+
+                    return ['rows' => $rows, 'summary' => [
+                        ['label' => __('মোট আদায়'), 'value' => round($rows->sum('amount'), 2), 'type' => 'money'],
+                        ['label' => __('সঞ্চয় জমা'), 'value' => round($rows->where('book_key', 'savings')->sum('amount'), 2), 'type' => 'money'],
+                        ['label' => __('শেয়ার আদায়'), 'value' => round($rows->where('book_key', 'share')->sum('amount'), 2), 'type' => 'money'],
+                        ['label' => __('লেনদেন'), 'value' => $rows->count()],
+                        ['label' => __('সদস্য'), 'value' => $rows->pluck('member_no')->unique()->count()],
+                    ]];
+                },
+            ],
+            'sv_deposit' => [
+                'categories' => ['savings'], 'perm' => 'savings.view', 'title' => __('সঞ্চয় জমা রিপোর্ট'),
+                'filters' => ['period', 'mouza'],
+                'columns' => [['date', __('তারিখ'), 'date'], ['txn_no', __('জমা নং')], ['account_no', __('হিসাব নং')], ['member_no', __('সদস্য নং')], ['name', __('নাম')],
+                    ['method', __('মাধ্যম')], ['by', __('আদায়কারী')], ['amount', __('টাকা'), 'money', true], ['balance', __('জমার পর জের'), 'money']],
+                'rows' => function ($f) use ($txns, $cols) {
+                    $rows = $txns($f)->where('t.kind', 'savings')->where('t.type', 'deposit')->whereIn('t.status', ['posted', 'cancel_pending'])
+                        ->orderBy('t.date')->orderBy('t.id')->limit(self::MAX_ROWS + 1)->get($cols)
+                        ->map(fn ($r) => ['date' => $r->date, 'txn_no' => $r->txn_no, 'account_no' => $r->account_no, 'member_no' => $r->member_no, 'name' => $this->nm($r),
+                            'method' => $this->lbl(Receipt::METHODS, $r->method), 'by' => $this->nm($r, 'by_bn', 'by_en'), 'amount' => (float) $r->amount,
+                            'balance' => $r->balance_after === null ? null : (float) $r->balance_after]);
+                    $members = $rows->pluck('member_no')->unique()->count();
+
+                    return ['rows' => $rows, 'summary' => [
+                        ['label' => __('মোট জমা'), 'value' => round($rows->sum('amount'), 2), 'type' => 'money'],
+                        ['label' => __('জমার সংখ্যা'), 'value' => $rows->count()],
+                        ['label' => __('সদস্য'), 'value' => $members],
+                        ['label' => __('সদস্যপ্রতি গড়'), 'value' => $members ? round($rows->sum('amount') / $members, 2) : 0, 'type' => 'money'],
+                    ]];
+                },
+            ],
+            'sv_withdrawal' => [
+                'categories' => ['savings'], 'perm' => 'savings.view', 'title' => __('সঞ্চয় উত্তোলন রিপোর্ট'),
+                'filters' => ['period', 'mouza', 'withdrawal_status'],
+                'columns' => [['date', __('তারিখ'), 'date'], ['txn_no', __('উত্তোলন নং')], ['account_no', __('হিসাব নং')], ['member_no', __('সদস্য নং')], ['name', __('নাম')],
+                    ['method', __('মাধ্যম')], ['by', __('এন্ট্রিকারী')], ['status', __('অবস্থা')], ['amount', __('টাকা'), 'money', true]],
+                'rows' => function ($f) use ($txns, $cols) {
+                    $statuses = MemberTransaction::STATUSES;
+                    $rows = $txns($f)->where('t.kind', 'savings')->where('t.type', 'withdrawal')
+                        ->when($f['status'] ?? null, fn ($q, $v) => $q->where('t.status', $v))
+                        ->orderBy('t.date')->orderBy('t.id')->limit(self::MAX_ROWS + 1)->get($cols)
+                        ->map(fn ($r) => ['date' => $r->date, 'txn_no' => $r->txn_no, 'account_no' => $r->account_no, 'member_no' => $r->member_no, 'name' => $this->nm($r),
+                            'method' => $this->lbl(Receipt::METHODS, $r->method), 'by' => $this->nm($r, 'by_bn', 'by_en'), 'status' => $this->lbl($statuses, $r->status),
+                            'status_key' => $r->status, 'amount' => (float) $r->amount]);
+                    $sum = fn ($s) => round($rows->where('status_key', $s)->sum('amount'), 2);
+
+                    return ['rows' => $rows, 'summary' => [
+                        ['label' => __('অনুমোদিত উত্তোলন'), 'value' => round($sum('posted') + $sum('cancel_pending'), 2), 'type' => 'money'],
+                        ['label' => __('অপেক্ষমাণ'), 'value' => $sum('pending'), 'type' => 'money'],
+                        ['label' => __('প্রত্যাখ্যাত'), 'value' => $sum('rejected'), 'type' => 'money'],
+                        ['label' => __('আবেদন'), 'value' => $rows->count()],
+                    ]];
+                },
+            ],
+            'sv_balance' => [
+                'categories' => ['savings'], 'perm' => 'savings.view', 'title' => __('সঞ্চয় জের রিপোর্ট'),
+                'filters' => ['as_of', 'mouza'],
+                'columns' => [['account_no', __('হিসাব নং')], ['member_no', __('সদস্য নং')], ['name', __('নাম')], ['village', __('গ্রাম')], ['mobile', __('মোবাইল')],
+                    ['opened_on', __('খোলার তারিখ'), 'date'], ['last_in', __('শেষ জমা'), 'date'], ['status', __('অবস্থা')], ['balance', __('জের'), 'money', true]],
+                'rows' => function ($f) use ($balances, $open) {
+                    $rows = $balances($f, 'savings')->map(fn ($r) => ['account_no' => $r->account_no, 'member_no' => $r->member_no, 'name' => $this->nm($r),
+                        'village' => $this->nm($r, 'village_bn', 'village_en'), 'mobile' => $r->mobile, 'opened_on' => $r->opened_on, 'last_in' => $r->last_in,
+                        'status' => $open($r, $f) ? __('সক্রিয়') : __('বন্ধ'), 'balance' => round((float) $r->bal, 2)]);
+
+                    return ['rows' => $rows, 'summary' => [
+                        ['label' => __('মোট জের'), 'value' => round($rows->sum('balance'), 2), 'type' => 'money'],
+                        ['label' => __('হিসাব'), 'value' => $rows->count()],
+                        ['label' => __('শূন্য জের'), 'value' => $rows->where('balance', 0)->count()],
+                        ['label' => __('গড় জের'), 'value' => $rows->count() ? round($rows->sum('balance') / $rows->count(), 2) : 0, 'type' => 'money'],
+                    ]];
+                },
+            ],
+            'sv_share' => [
+                'categories' => ['savings'], 'perm' => 'share.view', 'title' => __('শেয়ার মূলধন রিপোর্ট'),
+                'filters' => ['as_of', 'mouza'],
+                'columns' => [['account_no', __('হিসাব নং')], ['member_no', __('সদস্য নং')], ['name', __('নাম')], ['village', __('গ্রাম')],
+                    ['last_in', __('শেষ ক্রয়'), 'date'], ['status', __('অবস্থা')], ['units', __('শেয়ার সংখ্যা'), 'number', true], ['balance', __('শেয়ার মূলধন'), 'money', true]],
+                'rows' => function ($f) use ($balances, $open) {
+                    $unit = (float) SettingService::get('share_unit_price', 10) ?: 10.0;
+                    $rows = $balances($f, 'share')->map(fn ($r) => ['account_no' => $r->account_no, 'member_no' => $r->member_no, 'name' => $this->nm($r),
+                        'village' => $this->nm($r, 'village_bn', 'village_en'), 'last_in' => $r->last_in, 'status' => $open($r, $f) ? __('সক্রিয়') : __('বন্ধ'),
+                        'units' => (int) round((float) $r->bal / $unit), 'balance' => round((float) $r->bal, 2)]);
+                    $total = round($rows->sum('balance'), 2);
+
+                    return ['rows' => $rows, 'summary' => [
+                        ['label' => __('মোট শেয়ার মূলধন'), 'value' => $total, 'type' => 'money'],
+                        ['label' => __('মোট শেয়ার'), 'value' => $rows->sum('units')],
+                        ['label' => __('প্রতি শেয়ারের দাম'), 'value' => $unit, 'type' => 'money'],
+                        ['label' => __('শেয়ারধারী সদস্য'), 'value' => $rows->where('balance', '>', 0)->count()],
+                    ]];
+                },
             ],
         ];
     }

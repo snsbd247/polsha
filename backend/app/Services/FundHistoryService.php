@@ -94,6 +94,57 @@ class FundHistoryService
         ];
     }
 
+    /** Account events: event => [audit action, new status or null, old status or null]. */
+    public const ACCOUNT_EVENTS = [
+        'opened' => ['create', null, null],
+        'close_requested' => ['update', 'closing', null],
+        'closed' => ['update', 'closed', null],
+        'close_rejected' => ['update', 'active', 'closing'],
+        'reopened' => ['update', 'active', 'closed'],
+    ];
+
+    public const ACCOUNT_LABELS = [
+        'opened' => 'হিসাব খোলা',
+        'close_requested' => 'বন্ধের আবেদন',
+        'closed' => 'হিসাব বন্ধ',
+        'close_rejected' => 'বন্ধের আবেদন নামঞ্জুর',
+        'reopened' => 'আবার চালু',
+    ];
+
+    /** Audit rows of one kind's accounts that open, close or reopen them (balance updates are left out). */
+    public function accountQuery(string $kind, ?array $events = null): Builder
+    {
+        $events = $events ? array_intersect_key(self::ACCOUNT_EVENTS, array_flip($events)) : self::ACCOUNT_EVENTS;
+
+        return AuditLog::where('auditable_type', 'MemberAccount')->where('module', $kind)
+            ->where(function ($w) use ($events) {
+                foreach ($events as [$action, $new, $old]) {
+                    $w->orWhere(function ($e) use ($action, $new, $old) {
+                        $e->where('action', $action);
+                        if ($new) {
+                            $this->hasStatus($e, 'new_values', $new);
+                        }
+                        if ($old) {
+                            $this->hasStatus($e, 'old_values', $old);
+                        }
+                    });
+                }
+            });
+    }
+
+    public function accountEventOf(AuditLog $log): ?string
+    {
+        $new = $log->new_values['status'] ?? null;
+        $old = $log->old_values['status'] ?? null;
+        foreach (self::ACCOUNT_EVENTS as $key => [$action, $status, $from]) {
+            if ($log->action === $action && (! $status || $new === $status) && (! $from || $old === $from)) {
+                return $key;
+            }
+        }
+
+        return null;
+    }
+
     /** The JSON may be stored compact ("a":"b") or spaced ("a": "b") depending on the database. */
     private function hasStatus(Builder $q, string $column, string $status): void
     {

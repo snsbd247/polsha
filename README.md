@@ -96,7 +96,7 @@ Sidebar হুবহু নিচের ১৫টি গ্রুপ ও ১১�
 | ২ | 👨‍🌾 Farmers & Members | Farmer List ✅ (Add Farmer বোতাম এখানে; মেন্যু থেকে সরানো) · Membership Applications ✅ · Member List ✅ · Voter List ✅ · Farmer Merge ✅ · Deleted Farmers ✅ · Patwari List ✅ · Mouza Management ✅ |
 | ৩ | 🌾 Land Management | Land List ✅ · Add Land ✅ · Land Profile ✅ · Owner & Cultivator ✅ · Borga / Sharecropping ✅ · Land Transfer ✅ · Land Transfer List ✅ · Land History ✅ · Land Types ✅ · Land Reports ✅ |
 | ৪ | 💧 Irrigation | Seasons ✅ · Irrigation Invoices ✅ · Irrigation Rates ✅ · Old Receipt Entry ✅ · Billing Split Preview ✅ · Season / Land-Type Lookup ✅ · Categories ✅ · Category Rates ✅ · Rate Audit History ✅ · Due Mismatch ✅ |
-| ৫ | 💰 Savings | Savings Entry ✅ · Share Collection ✅ · Statements ✅ · Voter List ✅ · Voter History ✅ · Voter Audit ✅ · Admission Register ✅ |
+| ৫ | 💰 Savings | Savings Account List ✅ · Share Collection List ✅ · Withdrawal List ✅ · Withdrawal Approval ✅ · Close Account ✅ · Account History ✅ |
 | ৬ | 🏦 Loans | Loan List ✅ · Pending Loans ✅ · Approved Loans ✅ · Loan Applications ✅ · Loan Plans ✅ · Loan Details ✅ · Loan Schedule ✅ · Loan Installments ✅ · Loan Payments ✅ · Guarantors ✅ · Loan Due ✅ |
 | ৭ | 💳 Cash & Payments | Payments ✅ · Receipt List ✅ · Combined Payment ✅ · QR Scanner ✅ · QR Scan History ✅ · Cash Book ✅ · Hand Cash ✅ · Cash Audit ✅ · Approvals ✅ |
 | ৮ | 📒 Cash Book & Ledger | Irrigation Cash Statement ✅ · Society Cash Statement ✅ · Income & Expense Cash Book ✅ · Cash Book (Ledger) ✅ · Export Audit ✅ |
@@ -818,14 +818,11 @@ _হালনাগাদ: ২৯-০৯-২০২৬।_ সফটওয়্�
 
 চালু আছে কিন্তু এখনো পুরোনো সাধারণ নকশায় (স্যাম্পল পেলে, না হলে "একই স্টাইলে"):
 - [x] 💧 Irrigation — Seasons, Irrigation Invoices, Irrigation Rates, Old Receipt Entry, Billing Split Preview, Season / Land-Type Lookup, Categories, Category Rates, Rate Audit History, Due Mismatch (সঙ্গে সেচ চার্জ আদায় — Cash & Payments → Payments)
-- [ ] 💰 Savings — নতুন করে সাজানো হচ্ছে (৭ ধাপ, নিচে)। Voter History, Voter Audit, Admission Register সঞ্চয় থেকে সরে শুধু "কৃষক ও সদস্য" গ্রুপে।
-  - [x] ধাপ ১ — সঞ্চয় মেন্যু তিন স্তরে (শুধু এই গ্রুপ; সঞ্চয় জমা / শেয়ার আদায় / উত্তোলন / হিসাব / বিবরণী / রিপোর্ট / অডিট); বাকি ধাপের পাতা "শীঘ্রই আসছে (সঞ্চয় ধাপ N)" দেখায়। সঞ্চয় জমা: জমার তালিকা (৪ কার্ড, ফিল্টার, এক্সপোর্ট), নতুন জমা (সদস্য বাছাই, হিসাব না থাকলে এক ক্লিকে খোলা, নতুন জের, সংরক্ষণ ও প্রিন্ট), জমার বিস্তারিত (নম্বর/সদস্য দিয়ে খোঁজা; বিস্তারিত পাতায় রশিদ প্রিন্ট, বাতিলের আবেদন, ইতিহাস), জমার ইতিহাস (অডিট লগ থেকে — এন্ট্রি, বাতিলের আবেদন, নামঞ্জুর, বাতিল; লেনদেন কখনো মোছা হয় না)। সঙ্গে ঠিক করা: সঞ্চয়/শেয়ার হিসাব ও ঋণের খোঁজে নাম লিখলে সব রেকর্ড চলে আসত; প্রত্যাখ্যাত উত্তোলন ও নামঞ্জুর বাতিল-আবেদন এখন অডিট লগে ওঠে; feature test (মোট ১২৯টি পাস)
-  - [ ] ধাপ ২ — উত্তোলন (তালিকা, নতুন উত্তোলন, উত্তোলন অনুমোদন)
-  - [ ] ধাপ ৩ — শেয়ার আদায় (তালিকা, নতুন, ইতিহাস)
-  - [ ] ধাপ ৪ — হিসাব (তালিকা, হিসাব খোলা, হিসাব বন্ধ — জের শূন্য করে ম্যানেজারের অনুমোদনে, হিসাবের ইতিহাস)
-  - [ ] ধাপ ৫ — বিবরণী (সদস্যের, সঞ্চয়, শেয়ার, সম্মিলিত — সঞ্চয় + শেয়ার + ঋণ + সেচের বকেয়া; প্রিন্ট ও Excel)
-  - [ ] ধাপ ৬ — রিপোর্ট (আদায়, জমা, উত্তোলন, জের, শেয়ার)
-  - [ ] ধাপ ৭ — অডিট (লেনদেন অডিট, রশিদ অডিট, দিন শেষের মিলকরণ)
+- [x] 💰 Savings — সহজ করে সাজানো (সমিতির সিদ্ধান্ত, ২৯-০৯-২০২৬): মেন্যুতে শুধু ৬টি পাতা — সঞ্চয় হিসাবের তালিকা, শেয়ার আদায়ের তালিকা, উত্তোলনের তালিকা, উত্তোলন অনুমোদন, হিসাব বন্ধ, হিসাবের ইতিহাস। আগের তিন স্তরের মেন্যু, আলাদা জমার পাতা, হিসাব খোলার পাতা, বিবরণী ও রিপোর্ট পাতা পুরোপুরি সরানো; পুরোনো ঠিকানা খুললে নতুন পাতায় যায়। Voter History, Voter Audit, Admission Register শুধু "কৃষক ও সদস্য" গ্রুপে।
+  - নিয়ম: সঞ্চয়, শেয়ার ও ঋণ শুধু সদস্যের। সদস্যপদ অনুমোদন হলে (বা পুরোনো খাতার/ইমপোর্ট করা সদস্য যোগ হলে) সঞ্চয় ও শেয়ার হিসাব নিজে থেকে খোলে; আগের সদস্যদের যাঁদের হিসাব ছিল না, আপডেটের সময় একবারে খুলে দেওয়া হয়েছে। সদস্য নন এমন কৃষকের প্রোফাইলে সঞ্চয়/শেয়ার/ঋণ ট্যাবে "সদস্য নন" বার্তা ও আবেদনের বোতাম। আবেদনের প্রাথমিক শেয়ারের টাকা নিজে থেকে জমা হয় না (টাকা নেওয়া হয়েছে কি না আবেদনে লেখা থাকে না) — প্রথম শেয়ার আদায় স্বাভাবিকভাবে এন্ট্রি করতে হয়
+  - সঞ্চয় হিসাবের তালিকা: সঞ্চয়/শেয়ার দুটোই; প্রতিটি সারিতে "জমা নিন" (শেয়ারে "শেয়ার আদায়") — রশিদসহ; "দেখুন" থেকে হিসাবের পাতা ও বিবরণী (প্রিন্ট/Excel); হিসাব বন্ধ ও ইতিহাস
+  - শেয়ার আদায়ের তালিকা (নতুন আদায় — শেয়ার সংখ্যা দিলে টাকা নিজে বসে), উত্তোলনের তালিকা (নতুন উত্তোলন — উত্তোলনযোগ্য জের পর্যন্ত, অনুমোদনে যায়), উত্তোলন অনুমোদন (এখানেই অনুমোদন/প্রত্যাখ্যান; যিনি এন্ট্রি করেছেন তিনি পারেন না), হিসাব বন্ধ (জের শূন্য → আবেদন → ম্যানেজারের অনুমোদন; অপেক্ষার সময় লেনদেন বন্ধ; সদস্যপদ বাতিল হলে হিসাবও বন্ধ, আবার চালু হলে খোলে), হিসাবের ইতিহাস (খোলা, বন্ধের আবেদন, বন্ধ, নামঞ্জুর, আবার চালু); প্রতিটি লেনদেনের পাতায় তার নিজের ইতিহাস
+  - রিপোর্ট সেন্টারে নতুন ৫টি রিপোর্ট: সঞ্চয় ও শেয়ার আদায়, সঞ্চয় জমা, সঞ্চয় উত্তোলন, সঞ্চয় জের (যেকোনো তারিখ পর্যন্ত), শেয়ার মূলধন। সঙ্গে ঠিক করা: রিপোর্ট সেন্টারের "সদস্যের হিসাব বিবরণী" আসল লেনদেনের বদলে দুটি অর্থহীন সারি দেখাত; নাম দিয়ে খুঁজলে সঞ্চয়/শেয়ার হিসাব ও ঋণের সব রেকর্ড চলে আসত
 - [ ] 🏦 Loans — Loan List, Pending/Approved Loans, Loan Applications, Loan Plans, Loan Details, Loan Schedule, Installments, Payments, Guarantors, Loan Due
 - [ ] 💳 Cash & Payments — Payments, Receipt List, Combined Payment, QR Scanner, QR Scan History, Cash Book, Hand Cash, Cash Audit, Approvals
 - [ ] 📒 Cash Book & Ledger — ৫টি স্টেটমেন্ট/লেজার পাতা

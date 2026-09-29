@@ -519,6 +519,22 @@ export default function FarmerProfilePage() {
     </>
   )
 
+  const notMember = (
+    <div className="fp-empty">
+      <Empty
+        description={
+          pendingApp ? tx('সদস্যপদের আবেদন অনুমোদনের অপেক্ষায় — অনুমোদনের পর সঞ্চয়, শেয়ার ও ঋণ চালু হবে।') : tx('সদস্য নন — সঞ্চয়, শেয়ার ও ঋণ শুধু সদস্যদের জন্য। সদস্যপদ অনুমোদন হলে চালু হবে।')
+        }
+      >
+        {!pendingApp && can('membership.create') && (
+          <Button type="primary" onClick={() => navigate(`/membership/applications/new?farmer=${f.id}`)}>
+            {tx('সদস্যপদের আবেদন করুন')}
+          </Button>
+        )}
+      </Empty>
+    </div>
+  )
+
   const tabs = [
     { key: 'overview', label: tx('ওভারভিউ') },
     { key: 'personal', label: tx('ব্যক্তিগত তথ্য') },
@@ -592,9 +608,10 @@ export default function FarmerProfilePage() {
     ),
     land: <section className="fp-card fp-pad"><FarmerLandsTab farmerId={f.id} /></section>,
     irrigation: <section className="fp-card fp-pad"><IrrigationTab farmerId={f.id} /></section>,
-    savings: <section className="fp-card fp-pad"><FundTab kind="savings" accountId={o?.savings?.account_id} /></section>,
-    share: <section className="fp-card fp-pad"><FundTab kind="share" accountId={o?.share?.account_id} /></section>,
-    loans: <section className="fp-card fp-pad"><LoansTab memberId={f.member?.id} /></section>,
+    // savings, share and loans belong to members only; a non-member is pointed to the application
+    savings: <section className="fp-card fp-pad">{f.member ? <FundTab kind="savings" accountId={o?.savings?.account_id} /> : notMember}</section>,
+    share: <section className="fp-card fp-pad">{f.member ? <FundTab kind="share" accountId={o?.share?.account_id} /> : notMember}</section>,
+    loans: <section className="fp-card fp-pad">{f.member ? <LoansTab memberId={f.member.id} /> : notMember}</section>,
     payments: <section className="fp-card fp-pad"><PaymentsTab farmerId={f.id} /></section>,
     documents: <section className="fp-card fp-pad"><DocumentsTab farmerId={f.id} /></section>,
     history: <section className="fp-card fp-pad"><HistoryTab farmerId={f.id} /></section>,

@@ -31,6 +31,12 @@ class Member extends Model
         return $this->belongsTo(Farmer::class);
     }
 
+    /** The member's savings and share accounts. */
+    public function accounts()
+    {
+        return $this->hasMany(MemberAccount::class);
+    }
+
     public function application()
     {
         return $this->belongsTo(MembershipApplication::class, 'application_id');

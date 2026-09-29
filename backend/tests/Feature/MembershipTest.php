@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Member;
+use App\Models\MemberAccount;
 use App\Models\MembershipApplication;
 use App\Models\Mouza;
 use App\Models\Patwari;
@@ -49,6 +50,12 @@ class MembershipTest extends Phase2TestCase
             ])->assertCreated();
         }
         $this->assertSame(10002, Sequence::where('key', 'member')->value('next_value'));
+        // an old-register member has savings and share like any member, opened from the admission date
+        $old = Member::where('member_no', 96)->first();
+        $this->assertSame(['savings', 'share'], $old->accounts()->orderBy('kind')->pluck('kind')->all());
+        $this->assertSame('2010-01-01', $old->accounts()->first()->opened_on->toDateString());
+        // a farmer without a member number has none (accounts belong to members only)
+        $this->assertSame(4 * 2, MemberAccount::count());
 
         // Duplicate legacy number is refused.
         $this->actingAs($admin)->postJson('/api/members/legacy', [
@@ -112,6 +119,10 @@ class MembershipTest extends Phase2TestCase
             $this->approveBothSteps(MembershipApplication::find($res->json('id'))->approval_request_id);
         }
         $member = $b->member()->first();
+        // approval opened both accounts; they close with the membership and reopen with it
+        $this->assertSame(['savings', 'share'], $member->accounts()->orderBy('kind')->pluck('kind')->all());
+        $acc = $member->accounts()->where('kind', 'savings')->first();
+        $this->assertSame($member->admitted_on->toDateString(), $acc->opened_on->toDateString());
 
         $this->actingAs($this->manager)->postJson("/api/members/{$member->id}/status", [
             'action' => 'cancel', 'effective_date' => now()->toDateString(), 'reason' => 'মৃত্যু',
@@ -125,6 +136,7 @@ class MembershipTest extends Phase2TestCase
 
         $this->approveBothSteps($res->json('approval_id'));
         $this->assertSame(Member::CANCELLED, $member->fresh()->status);
+        $this->assertSame(['closed', 'membership'], [$acc->fresh()->status, $acc->fresh()->close_kind]);
 
         $admin = $this->userWithRole('admin');
         $admin->givePermissionTo('member.admin');
@@ -150,6 +162,7 @@ class MembershipTest extends Phase2TestCase
         ])->assertCreated();
         $this->approveBothSteps($res->json('approval_id'));
         $this->assertSame([Member::ACTIVE, $no], [$member->fresh()->status, $member->fresh()->member_no]);
+        $this->assertSame(['active', null], [$acc->fresh()->status, $acc->fresh()->closed_on]);
     }
 
     public function test_patwari_mouza_change_keeps_history(): void

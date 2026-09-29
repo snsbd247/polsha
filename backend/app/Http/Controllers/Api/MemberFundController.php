@@ -41,6 +41,8 @@ class MemberFundController extends Controller
             'methods' => Tr::map(Receipt::METHODS),
             'account_statuses' => Tr::map(MemberAccount::STATUSES),
             'ledger_account' => $ledger->only(['id', 'code', 'name_bn', 'name_en']),
+            // shares are bought in whole units of this price
+            'share_unit_price' => $kind === 'share' ? ((float) SettingService::get('share_unit_price', 10) ?: 10.0) : null,
         ]);
     }
 
@@ -67,6 +69,8 @@ class MemberFundController extends Controller
             'totals' => ['accounts' => (int) $totals->c, 'balance' => round((float) $totals->b, 2)],
             'ledger_balance' => $this->ledgerBalance($kind),
             'book_balance' => round((float) MemberAccount::where('kind', $kind)->sum('balance'), 2),
+            // for the status cards, whatever the filters
+            'status_counts' => MemberAccount::where('kind', $kind)->groupBy('status')->selectRaw('status, COUNT(*) c')->pluck('c', 'status')->map(fn ($c) => (int) $c),
         ]);
     }
 
@@ -260,7 +264,7 @@ class MemberFundController extends Controller
         $sums = (clone $q)->whereIn('status', ['posted', 'cancel_pending'])
             ->selectRaw("COALESCE(SUM(CASE WHEN direction = 'in' THEN amount END), 0) i, COALESCE(SUM(CASE WHEN direction = 'out' THEN amount END), 0) o")->first();
 
-        return response()->json($q->with(['account:id,account_no,member_id', 'account.member:id,farmer_id,member_no', 'account.member.farmer:id,farmer_code,name_bn,name_en,mobile', 'creator:id,name_bn,name_en'])
+        return response()->json($q->with(['account:id,account_no,member_id,balance', 'account.member:id,farmer_id,member_no', 'account.member.farmer:id,farmer_code,name_bn,name_en,mobile', 'creator:id,name_bn,name_en'])
             ->orderByDesc('date')->orderByDesc('id')->paginate($this->perPage($request))->toArray()
             + ['total_in' => round((float) $sums->i, 2), 'total_out' => round((float) $sums->o, 2)]);
     }

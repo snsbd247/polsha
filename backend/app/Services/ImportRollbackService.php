@@ -9,6 +9,7 @@ use App\Models\Invoice;
 use App\Models\Land;
 use App\Models\Loan;
 use App\Models\Member;
+use App\Models\MemberAccount;
 use App\Models\MemberTransaction;
 use App\Models\Receipt;
 use App\Models\ReceiptItem;
@@ -28,7 +29,9 @@ class ImportRollbackService
         'merged_into_id' => ['farmers'],
     ];
 
-    private const MEMBER_REFS = ['member_accounts', 'loans', 'loan_guarantors', 'voter_list_items', 'distribution_items'];
+    // Savings/share accounts open by themselves with the membership, so an
+    // empty one does not count as use; one with transactions does.
+    private const MEMBER_REFS = ['loans', 'loan_guarantors', 'voter_list_items', 'distribution_items'];
 
     public function __construct(
         private ApprovalService $approvals,
@@ -134,6 +137,12 @@ class ImportRollbackService
                 $used[$memberIds->search($mid)][] = $t;
             }
         }
+        $withTxns = DB::table('member_accounts')->whereIn('member_id', $memberIds->values())
+            ->whereExists(fn ($q) => $q->from('member_transactions')->whereColumn('member_transactions.member_account_id', 'member_accounts.id'))
+            ->distinct()->pluck('member_id');
+        foreach ($withTxns as $mid) {
+            $used[$memberIds->search($mid)][] = 'member_accounts';
+        }
         $byId = $farmers->keyBy('id');
 
         return collect($used)->map(fn ($tables, $id) => __(':code :name — :where-এ ব্যবহৃত', [
@@ -213,6 +222,8 @@ class ImportRollbackService
     private function undoFarmers(ImportBatch $batch): void
     {
         $ids = Farmer::withTrashed()->where('import_batch_id', $batch->id)->pluck('id');
+        // the accounts opened with the membership are empty (the blocker check made sure of it)
+        MemberAccount::whereIn('member_id', Member::whereIn('farmer_id', $ids)->select('id'))->get()->each->delete();
         Member::whereIn('farmer_id', $ids)->get()->each->delete(); // nominees + status history cascade
         Farmer::withTrashed()->whereIn('id', $ids)->get()->each->forceDelete();
     }

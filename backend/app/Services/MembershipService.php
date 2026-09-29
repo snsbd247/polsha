@@ -103,6 +103,8 @@ class MembershipService
                 'approval_request_id' => $request?->id,
                 'created_by' => $request?->requested_by,
             ]);
+            // savings and share become available with the membership
+            app(MemberFundService::class)->ensureAccounts($member, $member->admitted_on->toDateString());
 
             return $member;
         });
@@ -140,6 +142,7 @@ class MembershipService
             if ($seq && $memberNo >= $seq->next_value) {
                 $seq->update(['next_value' => $memberNo + 1]);
             }
+            app(MemberFundService::class)->ensureAccounts($member, $admittedOn);
 
             return $member;
         });
@@ -208,6 +211,13 @@ class MembershipService
                 'approval_request_id' => $request->id,
                 'created_by' => $request->requested_by,
             ]);
+
+            // accounts follow the membership: closed with it, reopened with it
+            if ($action === 'cancel') {
+                app(MemberFundService::class)->closeForMembership($member, $p['effective_date']);
+            } elseif ($action === 'reactivate') {
+                app(MemberFundService::class)->reopenForMembership($member);
+            }
         });
     }
 

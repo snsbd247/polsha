@@ -400,8 +400,9 @@ Route::middleware(['auth:sanctum', 'usable'])->group(function () {
         Route::post('transactions/{txn}/cancel', [MemberFundController::class, 'cancelTransaction']);
         Route::get('audit', [MemberFundController::class, 'audit']);
         Route::get('entry-summary', [FundEntryController::class, 'summary']);
-        Route::get('history', [FundEntryController::class, 'history']);
-        Route::get('history/summary', [FundEntryController::class, 'historySummary']);
+        Route::post('accounts/{account}/close', [FundEntryController::class, 'close']);
+        Route::get('account-history', [FundEntryController::class, 'accountHistory']);
+        Route::get('account-history/summary', [FundEntryController::class, 'accountHistorySummary']);
     });
     Route::get('distributions', [DistributionController::class, 'index']);
     Route::get('distributions/{run}', [DistributionController::class, 'show'])->whereNumber('run');

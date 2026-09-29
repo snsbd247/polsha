@@ -539,8 +539,11 @@ class DemoDataService
     private function openAccounts(int $memberId, string $date, int $savings = 0, int $share = 0): void
     {
         foreach (['savings' => $savings, 'share' => $share] as $kind => $opening) {
-            $a = $this->api('cashier', 'POST', "funds/$kind/accounts", ['member_id' => $memberId, 'opened_on' => $date]);
-            $this->accounts[$memberId][$kind] = $a['id'];
+            // the membership opened them already; older snapshots may still lack one
+            $id = MemberAccount::where('member_id', $memberId)->where('kind', $kind)->value('id')
+                ?? $this->api('cashier', 'POST', "funds/$kind/accounts", ['member_id' => $memberId, 'opened_on' => $date])['id'];
+            $a = ['id' => $id];
+            $this->accounts[$memberId][$kind] = $id;
             if ($opening > 0) {
                 $t = $this->api('cashier', 'POST', "funds/$kind/accounts/{$a['id']}/transactions", [
                     'type' => 'opening', 'date' => $date, 'amount' => $opening, 'method' => null, 'fund_account_id' => null, 'counter_account_id' => null,

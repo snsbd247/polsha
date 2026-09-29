@@ -58,8 +58,18 @@ export default function EntryFormPage({ entry }: { entry: EntryKey }) {
     enabled: !!account,
   })
 
+  // a withdrawal may not exceed the balance less what earlier requests already hold
+  const detail = useQuery({
+    queryKey: ['fund-account', cfg.kind, account?.id],
+    queryFn: async () => (await api.get<{ available: number; held: number }>(`/funds/${cfg.kind}/accounts/${account!.id}`)).data,
+    enabled: !!account && !!cfg.out,
+  })
   const balance = account ? Number(account.balance) : 0
+  const available = detail.data ? Number(detail.data.available) : balance
+  const held = detail.data ? Number(detail.data.held) : 0
   const closed = account?.status === 'closed'
+  const unitPrice = cfg.kind === 'share' ? (meta?.share_unit_price ?? null) : null
+  const after = cfg.out ? balance - (amount ?? 0) : balance + (amount ?? 0)
 
   const openAccount = async () => {
     if (!row) return
@@ -88,7 +98,7 @@ export default function EntryFormPage({ entry }: { entry: EntryKey }) {
         date: (v.date as Dayjs).format('YYYY-MM-DD'),
         fund_account_id: v.method !== 'cash' ? v.fund_account_id : null,
       })
-      message.success(tx('{{p0}} {{p1}} সংরক্ষিত হয়েছে।', { p0: cfg.noun, p1: digits(r.data.txn_no) }))
+      message.success(r.data.status === 'pending' ? r.data.message : tx('{{p0}} {{p1}} সংরক্ষিত হয়েছে।', { p0: cfg.noun, p1: digits(r.data.txn_no) }))
       queryClient.invalidateQueries({ queryKey: ['fund-entries'] })
       queryClient.invalidateQueries({ queryKey: ['fund-lookup', cfg.kind] })
       navigate(`${cfg.base}/details/${r.data.id}${print ? '?print=1' : ''}`)
@@ -115,9 +125,6 @@ export default function EntryFormPage({ entry }: { entry: EntryKey }) {
       title={cfg.add}
       actions={
         <>
-          <Button icon={<HistoryOutlined />} className="fm-history-btn" onClick={() => navigate(`${cfg.base}/history`)}>
-            {cfg.history}
-          </Button>
           <Button icon={<ArrowLeftOutlined />} className="fm-history-btn" onClick={() => navigate(cfg.base)}>
             {tx('তালিকায় ফিরুন')}
           </Button>
@@ -165,6 +172,7 @@ export default function EntryFormPage({ entry }: { entry: EntryKey }) {
               showIcon
               title={tx('এই সদস্যের কোনো {{p0}} হিসাব নেই।', { p0: KIND_LABEL[cfg.kind] })}
               action={
+                !cfg.out &&
                 can(`${cfg.kind}.create`) && (
                   <Button size="small" type="primary" loading={opening} onClick={openAccount}>
                     {tx('আজকের তারিখে হিসাব খুলুন')}
@@ -178,6 +186,13 @@ export default function EntryFormPage({ entry }: { entry: EntryKey }) {
             <div className="sv-balance">
               <span>
                 {tx('বর্তমান জের')}: <strong>৳ {money(balance)}</strong>
+                {cfg.out && (
+                  <>
+                    {' · '}
+                    {tx('উত্তোলনযোগ্য')}: <strong>৳ {money(available)}</strong>
+                    {held > 0 && <small className="sv-held">{tx('(৳{{p0}} আগের আবেদনে আটকে আছে)', { p0: money(held) })}</small>}
+                  </>
+                )}
               </span>
               <Link to={`/funds/${cfg.kind}/accounts/${account.id}`}>{tx('হিসাব বিবরণী দেখুন')}</Link>
             </div>
@@ -185,12 +200,32 @@ export default function EntryFormPage({ entry }: { entry: EntryKey }) {
         </Section>
 
         <Section no={2} icon={<WalletOutlined />} title={cfg.section}>
+          {cfg.out && <Alert type="info" showIcon className="sv-note" title={tx('ম্যানেজারের অনুমোদনের পর হিসাব থেকে টাকা কাটা হবে। ততক্ষণ এই টাকা হিসাবে আটকে থাকবে।')} />}
           <div className="iv-grid iv-grid-3">
             <Form.Item name="date" label={tx('তারিখ')} rules={[{ required: true, message: tx('তারিখ দিন') }]}>
               <DatePicker prefix={<CalendarOutlined />} format="DD/MM/YYYY" style={{ width: '100%' }} disabledDate={(d) => d.isAfter(dayjs(), 'day')} />
             </Form.Item>
-            <Form.Item name="amount" label={tx('টাকার পরিমাণ (৳)')} rules={[{ required: true, message: tx('টাকার পরিমাণ দিন') }]}>
-              <InputNumber min={0.01} precision={2} style={{ width: '100%' }} prefix="৳" placeholder="0.00" />
+            {unitPrice && (
+              // shares are bought in whole units: the count sets the amount
+              <Form.Item label={tx('শেয়ার সংখ্যা (প্রতিটি ৳{{p0}})', { p0: money(unitPrice) })}>
+                <InputNumber
+                  min={1}
+                  precision={0}
+                  style={{ width: '100%' }}
+                  value={amount ? amount / unitPrice : undefined}
+                  onChange={(n) => form.setFieldValue('amount', n ? Number(n) * unitPrice : undefined)}
+                />
+              </Form.Item>
+            )}
+            <Form.Item
+              name="amount"
+              label={tx('টাকার পরিমাণ (৳)')}
+              rules={[
+                { required: true, message: tx('টাকার পরিমাণ দিন') },
+                ...(unitPrice ? [{ validator: (_: unknown, v?: number) => (!v || Math.abs(v / unitPrice - Math.round(v / unitPrice)) < 1e-6 ? Promise.resolve() : Promise.reject(new Error(tx('শেয়ারের দামের (৳{{p0}}) গুণিতক হতে হবে', { p0: money(unitPrice) })))) }] : []),
+              ]}
+            >
+              <InputNumber min={0.01} max={cfg.out && account ? available : undefined} precision={2} style={{ width: '100%' }} prefix="৳" placeholder="0.00" />
             </Form.Item>
             <Form.Item name="method" label={tx('মাধ্যম')}>
               <Select options={Object.entries(METHOD_LABEL).map(([value, label]) => ({ value, label }))} />
@@ -218,12 +253,12 @@ export default function EntryFormPage({ entry }: { entry: EntryKey }) {
                 <span>{money(balance)}</span>
               </div>
               <div>
-                <span>{tx('এই {{p0}} (+)', { p0: cfg.noun })}</span>
+                <span>{cfg.out ? tx('এই {{p0}} (−)', { p0: cfg.noun }) : tx('এই {{p0}} (+)', { p0: cfg.noun })}</span>
                 <span>{money(amount ?? 0)}</span>
               </div>
               <div className="iv-grand">
                 <span>{tx('নতুন জের (৳)')}</span>
-                <span>{money(balance + (amount ?? 0))}</span>
+                <span>{money(after)}</span>
               </div>
             </div>
           </div>
@@ -256,11 +291,11 @@ export default function EntryFormPage({ entry }: { entry: EntryKey }) {
           </Button>
           <Button onClick={reset}>{tx('রিসেট')}</Button>
           <span className="iv-spacer" />
-          <Button icon={<PrinterOutlined />} loading={saving} disabled={!account || closed} onClick={() => confirmSave(true)}>
+          <Button icon={<PrinterOutlined />} loading={saving} disabled={!account || closed || (!!cfg.out && available <= 0)} onClick={() => confirmSave(true)}>
             {tx('সংরক্ষণ ও প্রিন্ট')}
           </Button>
-          <Button type="primary" icon={<SaveOutlined />} loading={saving} disabled={!account || closed} onClick={() => confirmSave(false)}>
-            {tx('{{p0}} সংরক্ষণ', { p0: cfg.noun })}
+          <Button type="primary" icon={<SaveOutlined />} loading={saving} disabled={!account || closed || (!!cfg.out && available <= 0)} onClick={() => confirmSave(false)}>
+            {cfg.out ? tx('অনুমোদনে পাঠান') : tx('{{p0}} সংরক্ষণ', { p0: cfg.noun })}
           </Button>
         </div>
       </Form>

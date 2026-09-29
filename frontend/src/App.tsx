@@ -95,7 +95,10 @@ const FundAuditPage = lazy(() => import('./pages/funds/FundAuditPage'))
 const EntryListPage = lazy(() => import('./pages/savings/EntryListPage'))
 const EntryFormPage = lazy(() => import('./pages/savings/EntryFormPage'))
 const EntryDetailPage = lazy(() => import('./pages/savings/EntryDetailPage'))
-const EntryHistoryPage = lazy(() => import('./pages/savings/EntryHistoryPage'))
+const WithdrawalApprovalPage = lazy(() => import('./pages/savings/WithdrawalApprovalPage'))
+const AccountListPage = lazy(() => import('./pages/savings/AccountListPage'))
+const AccountClosePage = lazy(() => import('./pages/savings/AccountClosePage'))
+const AccountHistoryPage = lazy(() => import('./pages/savings/AccountHistoryPage'))
 const DistributionListPage = lazy(() => import('./pages/funds/DistributionListPage'))
 const DistributionFormPage = lazy(() => import('./pages/funds/DistributionFormPage'))
 const DistributionDetailPage = lazy(() => import('./pages/funds/DistributionDetailPage'))
@@ -314,11 +317,19 @@ export default function App() {
           <Route key={`${k}-s`} path={`funds/${k}/transactions/:id`} element={<Perm perm={`${k}.view`}><FundTxnDetailPage key={k} kind={k} /></Perm>} />,
           <Route key={`${k}-u`} path={`funds/${k}/audit`} element={<Perm perm={`${k}.view`}><FundAuditPage key={k} kind={k} /></Perm>} />,
         ])}
-        <Route path="savings/entries" element={<Perm perm="savings.view"><EntryListPage key="deposit" entry="deposit" /></Perm>} />
-        <Route path="savings/entries/new" element={<Perm perm="savings.create"><EntryFormPage key="deposit" entry="deposit" /></Perm>} />
-        <Route path="savings/entries/details" element={<Perm perm="savings.view"><EntryDetailPage key="deposit" entry="deposit" /></Perm>} />
-        <Route path="savings/entries/history" element={<Perm perm="savings.view"><EntryHistoryPage key="deposit" entry="deposit" /></Perm>} />
-        <Route path="savings/entries/details/:id" element={<Perm perm="savings.view"><EntryDetailPage key="deposit" entry="deposit" /></Perm>} />
+        <Route path="savings/accounts" element={<Perm perm={['savings.view', 'share.view']}><AccountListPage /></Perm>} />
+        <Route path="savings/accounts/close" element={<Perm perm={['savings.view', 'share.view']}><AccountClosePage /></Perm>} />
+        <Route path="savings/accounts/history" element={<Perm perm={['savings.view', 'share.view']}><AccountHistoryPage /></Perm>} />
+        <Route path="savings/shares" element={<Perm perm="share.view"><EntryListPage key="share" entry="share" /></Perm>} />
+        <Route path="savings/shares/new" element={<Perm perm="share.create"><EntryFormPage key="share" entry="share" /></Perm>} />
+        <Route path="savings/shares/details/:id" element={<Perm perm="share.view"><EntryDetailPage key="share" entry="share" /></Perm>} />
+        <Route path="savings/withdrawals" element={<Perm perm="savings.view"><EntryListPage key="withdrawal" entry="withdrawal" /></Perm>} />
+        <Route path="savings/withdrawals/new" element={<Perm perm="savings.create"><EntryFormPage key="withdrawal" entry="withdrawal" /></Perm>} />
+        <Route path="savings/withdrawals/details/:id" element={<Perm perm="savings.view"><EntryDetailPage key="withdrawal" entry="withdrawal" /></Perm>} />
+        <Route path="savings/withdrawals/approval" element={<Perm perm="savings.view"><WithdrawalApprovalPage /></Perm>} />
+        {/* addresses of the earlier savings menu (bookmarks) land on the new pages */}
+        <Route path="savings/reports/*" element={<Navigate to="/reports" replace />} />
+        <Route path="savings/*" element={<Navigate to="/savings/accounts" replace />} />
         <Route path="funds/distributions" element={<Perm perm={['savings.view', 'share.view']}><DistributionListPage /></Perm>} />
         <Route path="funds/distributions/new/:kind" element={<Perm perm={['savings.edit', 'share.edit']}><DistributionFormPage /></Perm>} />
         <Route path="funds/distributions/:id" element={<Perm perm={['savings.view', 'share.view']}><DistributionDetailPage /></Perm>} />

@@ -14,6 +14,7 @@ use App\Approvals\LandTransferHandler;
 use App\Approvals\LoanApplicationHandler;
 use App\Approvals\LoanPaymentCancelHandler;
 use App\Approvals\MembershipAdmitHandler;
+use App\Approvals\MemberAccountCloseHandler;
 use App\Approvals\MemberStatusHandler;
 use App\Approvals\MemberTxnCancelHandler;
 use App\Approvals\MemberTxnHandler;
@@ -114,6 +115,8 @@ return [
         'share.adjustment' => MemberTxnHandler::class,
         'share.txn_cancel' => MemberTxnCancelHandler::class,
         'share.dividend' => DistributionRunHandler::class,
+        'savings.account_close' => MemberAccountCloseHandler::class,
+        'share.account_close' => MemberAccountCloseHandler::class,
         'loan.application' => LoanApplicationHandler::class,
         'loan.payment_cancel' => LoanPaymentCancelHandler::class,
         'cash.day_reopen' => DayReopenHandler::class,

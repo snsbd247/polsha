@@ -8,6 +8,7 @@ import { Letterhead, ReceiptFoot, ReceiptPaper, ReceiptSign } from './PrintParts
 
 type Acc = { code: string; name_bn: string; name_en: string | null } | null
 export type FundTxnDetail = FundTxn & {
+  approval_request_id: number | null
   cancelled_at: string | null
   posted_at: string | null
   type_label: string

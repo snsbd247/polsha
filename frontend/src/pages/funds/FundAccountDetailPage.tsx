@@ -20,6 +20,8 @@ type Detail = {
   member_id: number
   opened_on: string
   status: string
+  closed_on: string | null
+  close_reason: string | null
   balance: string
   remarks: string | null
   member: (MemberBrief & { admitted_on: string | null; farmer: MemberBrief['farmer'] & { father_name: string; mobile: string | null } }) | null
@@ -97,7 +99,21 @@ export default function FundAccountDetailPage({ kind }: { kind: FundKind }) {
         </Space>
       </div>
 
-      {!active && <Alert className="no-print" type="warning" showIcon style={{ marginBottom: 16 }} title={tx('হিসাব বা সদস্যপদ সক্রিয় নয় — নতুন লেনদেন করা যাবে না।')} />}
+      {!active && (
+        <Alert
+          className="no-print"
+          type="warning"
+          showIcon
+          style={{ marginBottom: 16 }}
+          title={
+            a.status === 'closed'
+              ? tx('হিসাবটি {{p0}} তারিখে বন্ধ হয়েছে ({{p1}}) — নতুন লেনদেন হবে না, বিবরণী দেখা যাবে।', { p0: fmtDate(a.closed_on), p1: a.close_reason ?? '—' })
+              : a.status === 'closing'
+                ? tx('হিসাব বন্ধের আবেদন অনুমোদনের অপেক্ষায় — এখন লেনদেন করা যাবে না।')
+                : tx('হিসাব বা সদস্যপদ সক্রিয় নয় — নতুন লেনদেন করা যাবে না।')
+          }
+        />
+      )}
 
       <div className="print-only receipt-title" style={{ textAlign: 'center' }}>
         {tx('সদস্য বিবরণী — {{p0}} হিসাব {{p1}}', { p0: KIND_LABEL[kind], p1: digits(a.account_no) })}

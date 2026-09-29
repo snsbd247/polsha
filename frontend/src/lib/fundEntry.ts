@@ -2,81 +2,72 @@ import type { FundKind } from './funds'
 import { t as tx } from './i18n'
 
 /**
- * The savings menu's entry screens run on one set of pages: a savings
- * deposit, a share collection and a withdrawal differ only in the book,
- * the transaction type and the words.
+ * The savings menu's two transaction lists run on one set of pages: a share
+ * collection and a savings withdrawal differ only in the book, the
+ * transaction type and the words. (Savings deposits are taken from the
+ * account list.)
  */
-export type EntryKey = 'deposit' | 'share'
+export type EntryKey = 'share' | 'withdrawal'
 
 export type EntryConfig = {
   key: EntryKey
   kind: FundKind
   type: string
   base: string
-  group: string
   list: string
   add: string
   detail: string
-  history: string
   no: string
   section: string
   noun: string
-  /** history events worth a card of their own */
-  events: string[]
+  /** money going out: needs approval, cannot exceed the available balance */
+  out?: boolean
+  /** who entered it, as the list column calls them */
+  by: string
 }
 
 export const ENTRY: Record<EntryKey, EntryConfig> = {
-  deposit: {
-    key: 'deposit',
-    kind: 'savings',
-    type: 'deposit',
-    base: '/savings/entries',
-    group: tx('সঞ্চয় জমা'),
-    list: tx('জমার তালিকা'),
-    add: tx('নতুন জমা'),
-    detail: tx('জমার বিস্তারিত'),
-    history: tx('জমার ইতিহাস'),
-    no: tx('জমা নং'),
-    section: tx('জমার বিবরণ'),
-    noun: tx('জমা'),
-    events: ['entered', 'cancel_requested', 'cancel_rejected', 'cancelled'],
-  },
   share: {
     key: 'share',
     kind: 'share',
     type: 'purchase',
     base: '/savings/shares',
-    group: tx('শেয়ার আদায়'),
     list: tx('শেয়ার আদায়ের তালিকা'),
     add: tx('নতুন শেয়ার আদায়'),
     detail: tx('শেয়ার আদায়ের বিস্তারিত'),
-    history: tx('শেয়ার আদায়ের ইতিহাস'),
     no: tx('আদায় নং'),
     section: tx('আদায়ের বিবরণ'),
     noun: tx('আদায়'),
-    events: ['entered', 'cancel_requested', 'cancel_rejected', 'cancelled'],
+    by: tx('আদায়কারী'),
+  },
+  withdrawal: {
+    key: 'withdrawal',
+    kind: 'savings',
+    type: 'withdrawal',
+    base: '/savings/withdrawals',
+    list: tx('উত্তোলনের তালিকা'),
+    add: tx('নতুন উত্তোলন'),
+    detail: tx('উত্তোলনের বিস্তারিত'),
+    no: tx('উত্তোলন নং'),
+    section: tx('উত্তোলনের বিবরণ'),
+    noun: tx('উত্তোলন'),
+    out: true,
+    by: tx('এন্ট্রিকারী'),
   },
 }
 
-export type EntrySummary = { count: number; amount: number; today_count: number; today_amount: number; month_amount: number; members: number; pending: number; cancelled: number }
-
-export type HistoryRow = {
-  id: number
-  event: string | null
-  event_label: string
-  at: string
-  by: { id: number; name_bn: string; name_en: string | null } | null
-  reason: string | null
-  transaction: {
-    id: number
-    txn_no: string
-    date: string
-    type: string
-    amount: number
-    status: string
-    method: string | null
-    account: { id: number; account_no: string; member_no: number | string | null; farmer: { id: number; farmer_code: string; name_bn: string; name_en: string | null } | null } | null
-  } | null
+export type EntrySummary = {
+  count: number
+  amount: number
+  today_count: number
+  today_amount: number
+  month_amount: number
+  members: number
+  pending: number
+  pending_amount: number
+  approved_today: number
+  rejected: number
+  cancelled: number
 }
 
 /** Status tag tone on the approved list designs. */

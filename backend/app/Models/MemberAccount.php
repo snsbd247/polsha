@@ -18,7 +18,8 @@ class MemberAccount extends Model
         'share' => ['ledger' => 'share_capital', 'seq' => 'share_account', 'txn_seq' => 'share_txn', 'in' => 'purchase'],
     ];
 
-    public const STATUSES = ['active' => 'সক্রিয়', 'closed' => 'বন্ধ'];
+    /** closing = a close request is waiting for approval; no transactions meanwhile. */
+    public const STATUSES = ['active' => 'সক্রিয়', 'closing' => 'বন্ধের অপেক্ষায়', 'closed' => 'বন্ধ'];
 
     protected string $auditModule = 'savings';
 
@@ -27,9 +28,9 @@ class MemberAccount extends Model
         return $this->kind === 'share' ? 'share' : 'savings';
     }
 
-    protected $fillable = ['kind', 'member_id', 'account_no', 'opened_on', 'status', 'balance', 'remarks', 'created_by', 'import_batch_id'];
+    protected $fillable = ['kind', 'member_id', 'account_no', 'opened_on', 'status', 'closed_on', 'close_reason', 'close_kind', 'close_request_id', 'balance', 'remarks', 'created_by', 'import_batch_id'];
 
-    protected $casts = ['opened_on' => 'date:Y-m-d', 'balance' => 'decimal:2'];
+    protected $casts = ['opened_on' => 'date:Y-m-d', 'closed_on' => 'date:Y-m-d', 'balance' => 'decimal:2'];
 
     public function member()
     {

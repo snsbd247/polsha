@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Alert, App, Button, Form, Input, Modal, Spin, Table, Tag } from 'antd'
 import {
   ArrowLeftOutlined,
@@ -14,17 +14,16 @@ import {
   HistoryOutlined,
   PlusOutlined,
   PrinterOutlined,
-  SearchOutlined,
   StopOutlined,
   UserOutlined,
 } from '@ant-design/icons'
 import { useAuth } from '../../auth/AuthContext'
 import FundReceipt, { type FundTxnDetail } from '../../components/FundReceipt'
 import PageFrame from '../../components/PageFrame'
-import { api, applyFormErrors, errorMessage, type Paginated } from '../../lib/api'
+import { api, applyFormErrors, errorMessage } from '../../lib/api'
 import { accountLabel, money } from '../../lib/accounting'
-import { digits, fmtDate, fmtDateTime, toEnDigits } from '../../lib/format'
-import { useFundMeta, type FundTxn } from '../../lib/funds'
+import { digits, fmtDate, fmtDateTime } from '../../lib/format'
+import { useFundMeta } from '../../lib/funds'
 import { ENTRY, EVENT_TONE, TXN_TONE, type EntryKey } from '../../lib/fundEntry'
 import { METHOD_LABEL } from '../../lib/irrigation'
 import { required } from '../../lib/rules'
@@ -34,89 +33,18 @@ import '../irrigation/invoices.css'
 import '../irrigation/invoice-detail.css'
 import '../lands/land-list.css'
 import '../lands/land-history.css'
+import DecideButtons from './DecideButtons'
 import './savings.css'
 
-type Found = FundTxn & { account: { id: number; account_no: string; member: { member_no: number | string; farmer: { name_bn: string; name_en: string | null } | null } | null } | null }
-
-/** Find an entry by its number, the member's name, number or mobile. */
-function EntryLookup({ entry }: { entry: EntryKey }) {
-  const cfg = ENTRY[entry]
-  const navigate = useNavigate()
-  const { data: meta } = useFundMeta(cfg.kind)
-  const [term, setTerm] = useState('')
-  const [search, setSearch] = useState('')
-  const { data, isFetching } = useQuery({
-    queryKey: ['fund-entries', cfg.key, 'lookup', search],
-    queryFn: async () => (await api.get<Paginated<Found>>(`/funds/${cfg.kind}/transactions`, { params: { type: cfg.type, search: search || undefined, per_page: 10 } })).data,
-    placeholderData: keepPreviousData,
-  })
-  const rows = data?.data ?? []
-  // an exact number opens straight away
-  useEffect(() => {
-    if (search && rows.length === 1 && rows[0].txn_no.toLowerCase() === toEnDigits(search).toLowerCase()) navigate(`${cfg.base}/details/${rows[0].id}`)
-  }, [search, rows, cfg.base, navigate])
-
-  return (
-    <PageFrame className="id-page" crumbs={[{ label: tx('সঞ্চয়'), to: cfg.base }, { label: cfg.list, to: cfg.base }, { label: cfg.detail }]} title={cfg.detail}>
-      <section className="id-box sv-lookup">
-        <header>
-          <SearchOutlined />
-          <h3>{tx('{{p0}} খুঁজুন', { p0: cfg.noun })}</h3>
-        </header>
-        <div className="sv-lookup-row">
-          <Input
-            size="large"
-            prefix={<SearchOutlined />}
-            allowClear
-            autoFocus
-            placeholder={tx('{{p0}}, সদস্যের নাম, সদস্য নং বা মোবাইল দিয়ে খুঁজুন...', { p0: cfg.no })}
-            value={term}
-            onChange={(e) => setTerm(e.target.value)}
-            onPressEnter={() => setSearch(term.trim())}
-          />
-          <Button size="large" type="primary" icon={<SearchOutlined />} onClick={() => setSearch(term.trim())}>
-            {tx('খুঁজুন')}
-          </Button>
-        </div>
-        <h4 className="sv-sub">{search ? tx('খোঁজের ফলাফল ({{p0}})', { p0: digits(data?.total ?? 0) }) : tx('সাম্প্রতিক {{p0}}', { p0: cfg.noun })}</h4>
-        <Table<Found>
-          rowKey="id"
-          size="small"
-          className="id-payments sv-pick"
-          pagination={false}
-          loading={isFetching}
-          dataSource={rows}
-          scroll={{ x: 'max-content' }}
-          onRow={(r) => ({ onClick: () => navigate(`${cfg.base}/details/${r.id}`) })}
-          locale={{ emptyText: tx('কোনো {{p0}} পাওয়া যায়নি', { p0: cfg.noun }) }}
-          columns={[
-            { title: cfg.no, dataIndex: 'txn_no', render: (v: string, r) => <Link to={`${cfg.base}/details/${r.id}`}>{digits(v)}</Link> },
-            { title: tx('তারিখ'), dataIndex: 'date', render: fmtDate },
-            { title: tx('সদস্যের নাম'), render: (_, r) => nameOf(r.account?.member?.farmer) || '—' },
-            { title: tx('সদস্য নং'), render: (_, r) => digits(r.account?.member?.member_no ?? '—') },
-            { title: tx('হিসাব নং'), render: (_, r) => digits(r.account?.account_no ?? '—') },
-            { title: tx('টাকা'), dataIndex: 'amount', align: 'right', render: money },
-            { title: tx('অবস্থা'), dataIndex: 'status', render: (v: string) => <Tag className={`fl-tag ${TXN_TONE[v] ?? 'll-gray'}`}>{meta?.statuses[v] ?? v}</Tag> },
-          ]}
-        />
-      </section>
-    </PageFrame>
-  )
-}
-
-/** One deposit / share payment: who, how much, how it was paid, its voucher, its history, and the printable slip. */
+/** One share payment or withdrawal: who, how much, how it was paid, its voucher, its history, and the printable slip. */
 export default function EntryDetailPage({ entry }: { entry: EntryKey }) {
-  const { id } = useParams()
-  return id ? <EntryDetail entry={entry} id={id} /> : <EntryLookup entry={entry} />
-}
-
-function EntryDetail({ entry, id }: { entry: EntryKey; id: string }) {
+  const { id = '' } = useParams()
   const cfg = ENTRY[entry]
   const [sp] = useSearchParams()
   const { hash } = useLocation()
   const navigate = useNavigate()
   const { message } = App.useApp()
-  const { can } = useAuth()
+  const { can, user } = useAuth()
   const queryClient = useQueryClient()
   const [cancelling, setCancelling] = useState(false)
   const [form] = Form.useForm()
@@ -169,6 +97,17 @@ function EntryDetail({ entry, id }: { entry: EntryKey; id: string }) {
                   {cfg.add}
                 </Button>
               )}
+              {cfg.out && t.status === 'pending' && t.approval_request_id && can(`${cfg.kind}.approve`) && t.creator?.id !== user?.id && (
+                <DecideButtons
+                  approvalId={t.approval_request_id}
+                  amount={t.amount}
+                  who={nameOf(farmer)}
+                  onDone={() => {
+                    queryClient.invalidateQueries({ queryKey: ['fund-txn', cfg.kind] })
+                    queryClient.invalidateQueries({ queryKey: ['fund-entries'] })
+                  }}
+                />
+              )}
               {t.can_cancel && can(`${cfg.kind}.create`) && (
                 <Button danger icon={<StopOutlined />} onClick={() => (form.resetFields(), setCancelling(true))}>
                   {tx('বাতিল')}
@@ -180,7 +119,7 @@ function EntryDetail({ entry, id }: { entry: EntryKey; id: string }) {
             </span>
           }
         >
-          {t.status === 'pending' && <Alert type="warning" showIcon className="id-alert" title={tx('এই লেনদেন অনুমোদনের অপেক্ষায় — অনুমোদনের পর হিসাবে যোগ হবে।')} />}
+          {t.status === 'pending' && <Alert type="warning" showIcon className="id-alert" title={cfg.out ? tx('এই উত্তোলন অনুমোদনের অপেক্ষায় — অনুমোদনের পর হিসাব থেকে কাটা হবে।') : tx('এই লেনদেন অনুমোদনের অপেক্ষায় — অনুমোদনের পর হিসাবে যোগ হবে।')} />}
           {t.status === 'cancel_pending' && <Alert type="warning" showIcon className="id-alert" title={tx('বাতিলের আবেদন অনুমোদনের অপেক্ষায় — কারণ: {{p0}}', { p0: t.cancel_reason ?? '' })} />}
           {t.status === 'cancelled' && <Alert type="error" showIcon className="id-alert" title={tx('বাতিল হয়েছে {{p0}} — কারণ: {{p1}}', { p0: fmtDateTime(t.cancelled_at), p1: t.cancel_reason ?? '' })} />}
 
@@ -243,7 +182,7 @@ function EntryDetail({ entry, id }: { entry: EntryKey; id: string }) {
                     ),
                   ],
                   [tx('তহবিল'), t.method === 'cash' ? tx('নগদ') : t.fund ? accountLabel(t.fund) : '—'],
-                  [tx('আদায়কারী'), nameOf(t.creator) || '—'],
+                  [cfg.by, nameOf(t.creator) || '—'],
                   [tx('মন্তব্য'), t.remarks || '—'],
                 ]}
               />

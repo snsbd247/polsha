@@ -41,21 +41,12 @@ type Leaf = {
   perm?: string | string[]
   superOnly?: boolean
 }
-/** A third-level folder inside a group (only the Savings group uses these). */
-type Sub = {
-  key: string
-  label: string
-  children: Leaf[]
-}
 type Group = {
   key: string
   label: string
   icon: React.ReactNode
-  children: (Leaf | Sub)[]
+  children: Leaf[]
 }
-const isSub = (n: Leaf | Sub): n is Sub => 'children' in n
-/** Every leaf of a group, sub-folders flattened. */
-const leavesOf = (g: Group): Leaf[] => g.children.flatMap((n) => (isSub(n) ? n.children : [n]))
 
 const ACC = ['accounting.view', 'cash.view', 'bank.view']
 
@@ -243,72 +234,34 @@ const GROUPS: Group[] = [
     icon: <WalletFilled />,
     children: [
       {
-        key: 's-entry',
-        label: m('সঞ্চয় জমা', 'Savings Entry'),
-        children: [
-          { path: '/savings/entries', label: m('জমার তালিকা', 'Entry List'), perm: 'savings.view' },
-          { path: '/savings/entries/new', label: m('নতুন জমা', 'New Entry'), perm: 'savings.create' },
-          { path: '/savings/entries/details', label: m('জমার বিস্তারিত', 'Entry Details'), perm: 'savings.view' },
-          { path: '/savings/entries/history', label: m('জমার ইতিহাস', 'Entry History'), perm: 'savings.view' },
-        ],
+        path: '/savings/accounts',
+        label: m('সঞ্চয় হিসাবের তালিকা', 'Savings Account List'),
+        perm: ['savings.view', 'share.view'],
       },
       {
-        key: 's-share',
-        label: m('শেয়ার আদায়', 'Share Collection'),
-        children: [
-          { path: '/savings/shares', label: m('শেয়ার আদায়ের তালিকা', 'Share Collection List'), perm: 'share.view' },
-          { path: '/savings/shares/new', label: m('নতুন শেয়ার আদায়', 'New Share Collection'), perm: 'share.create' },
-          { path: '/savings/shares/history', label: m('শেয়ার আদায়ের ইতিহাস', 'Share Collection History'), perm: 'share.view' },
-        ],
+        path: '/savings/shares',
+        label: m('শেয়ার আদায়ের তালিকা', 'Share Collection List'),
+        perm: 'share.view',
       },
       {
-        key: 's-withdraw',
-        label: m('উত্তোলন', 'Withdrawal'),
-        children: [
-          { path: '/savings/withdrawals', label: m('উত্তোলনের তালিকা', 'Withdrawal List'), perm: 'savings.view' },
-          { path: '/savings/withdrawals/new', label: m('নতুন উত্তোলন', 'New Withdrawal'), perm: 'savings.create' },
-          { path: '/savings/withdrawals/approval', label: m('উত্তোলন অনুমোদন', 'Withdrawal Approval'), perm: 'savings.view' },
-        ],
+        path: '/savings/withdrawals',
+        label: m('উত্তোলনের তালিকা', 'Withdrawal List'),
+        perm: 'savings.view',
       },
       {
-        key: 's-accounts',
-        label: m('হিসাব', 'Accounts'),
-        children: [
-          { path: '/savings/accounts', label: m('সঞ্চয় হিসাবের তালিকা', 'Savings Account List'), perm: 'savings.view' },
-          { path: '/savings/accounts/open', label: m('হিসাব খোলা', 'Open Account'), perm: 'savings.create' },
-          { path: '/savings/accounts/close', label: m('হিসাব বন্ধ', 'Close Account'), perm: 'savings.edit' },
-          { path: '/savings/accounts/history', label: m('হিসাবের ইতিহাস', 'Account History'), perm: 'savings.view' },
-        ],
+        path: '/savings/withdrawals/approval',
+        label: m('উত্তোলন অনুমোদন', 'Withdrawal Approval'),
+        perm: 'savings.view',
       },
       {
-        key: 's-statements',
-        label: m('বিবরণী', 'Statements'),
-        children: [
-          { path: '/savings/statements/member', label: m('সদস্যের বিবরণী', 'Member Statement'), perm: 'savings.view' },
-          { path: '/savings/statements/savings', label: m('সঞ্চয় বিবরণী', 'Savings Statement'), perm: 'savings.view' },
-          { path: '/savings/statements/share', label: m('শেয়ার বিবরণী', 'Share Statement'), perm: 'share.view' },
-          { path: '/savings/statements/combined', label: m('সম্মিলিত বিবরণী', 'Combined Statement'), perm: 'savings.view' },
-        ],
+        path: '/savings/accounts/close',
+        label: m('হিসাব বন্ধ', 'Close Account'),
+        perm: ['savings.view', 'share.view'],
       },
       {
-        key: 's-reports',
-        label: m('রিপোর্ট', 'Reports'),
-        children: [
-          { path: '/savings/reports/collection', label: m('আদায় রিপোর্ট', 'Collection Report'), perm: 'savings.view' },
-          { path: '/savings/reports/deposit', label: m('জমা রিপোর্ট', 'Deposit Report'), perm: 'savings.view' },
-          { path: '/savings/reports/withdrawal', label: m('উত্তোলন রিপোর্ট', 'Withdrawal Report'), perm: 'savings.view' },
-          { path: '/savings/reports/balance', label: m('জের রিপোর্ট', 'Balance Report'), perm: 'savings.view' },
-          { path: '/savings/reports/share', label: m('শেয়ার রিপোর্ট', 'Share Report'), perm: 'share.view' },
-        ],
-      },
-      {
-        key: 's-audit',
-        label: m('অডিট', 'Audit'),
-        children: [
-          { path: '/savings/audit/transactions', label: m('লেনদেন অডিট', 'Transaction Audit'), perm: 'savings.view' },
-          { path: '/savings/audit/receipts', label: m('রশিদ অডিট', 'Receipt Audit'), perm: 'savings.view' },
-          { path: '/cash/day-close', label: m('দিন শেষের মিলকরণ', 'Day-End Reconciliation'), perm: 'cash.view' },
-        ],
+        path: '/savings/accounts/history',
+        label: m('হিসাবের ইতিহাস', 'Account History'),
+        perm: ['savings.view', 'share.view'],
       },
     ],
   },
@@ -760,7 +713,7 @@ function bestPath(pathname: string, search: string): string | null {
   let best: string | null = null
   let score = 0
   for (const g of GROUPS)
-    for (const l of leavesOf(g)) {
+    for (const l of g.children) {
       const [p, q] = l.path.split('?')
       let s = 0
       if (q !== undefined) s = pathname === p && search === `?${q}` ? 3000 : 0
@@ -832,7 +785,7 @@ export default function AppLayout() {
     const allowed = (n: Leaf) => (n.superOnly ? !!user?.is_super_admin : !n.perm || can(n.perm))
     const badgeFor = (path: string) => (path === '/approvals' ? pending : path === '/membership/applications' ? applications : 0)
     const groups: MenuProps['items'] = GROUPS.map((g) => {
-      const leaf = (l: Leaf) => {
+      const children = g.children.filter(allowed).map((l) => {
         const n = badgeFor(l.path)
         return {
           key: leafKey(g, l),
@@ -845,11 +798,6 @@ export default function AppLayout() {
             l.label
           ),
         }
-      }
-      const children = g.children.flatMap((c) => {
-        if (!isSub(c)) return allowed(c) ? [leaf(c)] : []
-        const sub = c.children.filter(allowed).map(leaf)
-        return sub.length ? [{ key: c.key, label: c.label, children: sub }] : []
       })
       return children.length ? { key: g.key, label: g.label, icon: g.icon, children } : null
     }).filter(Boolean)
@@ -857,11 +805,8 @@ export default function AppLayout() {
   }, [can, user, pending, applications])
 
   const best = location.pathname === HOME ? null : bestPath(location.pathname, location.search)
-  const selectedKeys = best ? GROUPS.flatMap((g) => leavesOf(g).filter((l) => l.path === best).map((l) => leafKey(g, l))) : location.pathname === HOME ? [HOME] : []
-  const openKeys = GROUPS.flatMap((g) => [
-    ...(leavesOf(g).some((l) => l.path === best) ? [g.key] : []),
-    ...g.children.filter((c): c is Sub => isSub(c) && c.children.some((l) => l.path === best)).map((c) => c.key),
-  ])
+  const selectedKeys = best ? GROUPS.flatMap((g) => g.children.filter((l) => l.path === best).map((l) => leafKey(g, l))) : location.pathname === HOME ? [HOME] : []
+  const openKeys = GROUPS.filter((g) => g.children.some((l) => l.path === best)).map((g) => g.key)
 
   const menu = (
     <ConfigProvider

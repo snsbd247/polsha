@@ -151,7 +151,7 @@ class SavingsShareTest extends Phase2TestCase
         $this->assertAuditClean('savings');
     }
 
-    public function test_entry_summary_history_and_timeline(): void
+    public function test_entry_summary_and_timeline(): void
     {
         $a = $this->open('savings', $this->member('রহিম'));
         $d1 = $this->txn($a, ['type' => 'deposit', 'amount' => 500, 'method' => 'cash']);
@@ -172,22 +172,19 @@ class SavingsShareTest extends Phase2TestCase
         $this->assertSame(1, $s->json('cancelled'));
         $this->actingAs($this->cashier)->getJson('/api/funds/savings/entry-summary?type=purchase')->assertStatus(422);
 
-        $h = $this->actingAs($this->cashier)->getJson('/api/funds/savings/history/summary?type=deposit')->assertOk();
-        $this->assertSame(['entered' => 2, 'submitted' => 0, 'approved' => 0, 'rejected' => 0, 'cancel_requested' => 2, 'cancel_rejected' => 1, 'cancelled' => 1], $h->json('counts'));
-        $this->assertSame(6, $h->json('total'));
+        $ws = $this->actingAs($this->cashier)->getJson('/api/funds/savings/entry-summary?type=withdrawal')->assertOk();
+        $this->assertSame(1, $ws->json('rejected'));
+        $this->assertSame(0, $ws->json('pending'));
+        $w2 = $this->txn($a, ['type' => 'withdrawal', 'amount' => 50, 'method' => 'cash']);
+        $ws = $this->actingAs($this->cashier)->getJson('/api/funds/savings/entry-summary?type=withdrawal')->assertOk();
+        $this->assertEquals(50, $ws->json('pending_amount'));
+        $this->approve($w2->approval_request_id);
+        $this->assertSame(1, $this->actingAs($this->cashier)->getJson('/api/funds/savings/entry-summary?type=withdrawal')->json('approved_today'));
+        $this->assertNotNull($this->actingAs($this->cashier)->getJson('/api/funds/savings/transactions?type=withdrawal')->json('data.0.account.balance'));
 
-        $list = $this->actingAs($this->cashier)->getJson('/api/funds/savings/history?type=deposit&event=cancelled')->assertOk();
-        $this->assertSame(1, $list->json('total'));
-        $this->assertSame($d1->txn_no, $list->json('data.0.transaction.txn_no'));
-        $this->assertSame('রহিম', $list->json('data.0.transaction.account.farmer.name_bn'));
-        $this->assertSame(0, $this->actingAs($this->cashier)->getJson('/api/funds/savings/history?type=deposit&search=নেই')->assertOk()->json('total'));
-        $this->assertStringContainsString($d2->txn_no, $this->actingAs($this->cashier)->get('/api/funds/savings/history?type=deposit&export=csv')->assertOk()->streamedContent());
-
-        // the withdrawal's own history: sent, then rejected (a guarded update, logged by hand)
-        $wh = $this->actingAs($this->cashier)->getJson('/api/funds/savings/history/summary?type=withdrawal')->assertOk();
-        $this->assertSame(1, $wh->json('counts.submitted'));
-        $this->assertSame(1, $wh->json('counts.rejected'));
-
+        // each transaction carries its own history: the refused withdrawal was logged by hand (a guarded update)
+        $this->assertSame(['submitted', 'rejected'], array_column($this->actingAs($this->cashier)->getJson("/api/funds/savings/transactions/{$w->id}")->json('timeline'), 'event'));
+        $this->assertSame(['entered', 'cancel_requested', 'cancelled'], array_column($this->actingAs($this->cashier)->getJson("/api/funds/savings/transactions/{$d1->id}")->json('timeline'), 'event'));
         $t = $this->actingAs($this->cashier)->getJson("/api/funds/savings/transactions/{$d2->id}")->assertOk();
         $this->assertSame(['entered', 'cancel_requested', 'cancel_rejected'], array_column($t->json('timeline'), 'event'));
         $this->assertSame('ভুল', $t->json('timeline.1.reason'));
@@ -209,6 +206,49 @@ class SavingsShareTest extends Phase2TestCase
         $this->actingAs($this->cashier)->postJson('/api/print-logs', ['document_type' => 'invoice', 'document_id' => 1])->assertStatus(422);
         $this->actingAs($this->cashier)->postJson('/api/print-logs', ['document_type' => 'member_transaction', 'document_id' => 99999])->assertNotFound();
         $this->actingAs($this->userWithRole('asset_officer'))->postJson('/api/print-logs', $doc)->assertForbidden();
+    }
+
+    public function test_closing_an_account_needs_zero_balance_and_approval(): void
+    {
+        $a = $this->open('savings', $this->member('জলিল'));
+        $this->txn($a, ['type' => 'deposit', 'amount' => 300, 'method' => 'cash']);
+        $this->cashier->givePermissionTo('savings.edit');
+        $close = fn () => $this->actingAs($this->cashier)->postJson("/api/funds/savings/accounts/{$a->id}/close", ['date' => now()->toDateString(), 'reason' => 'সদস্যের অনুরোধ']);
+
+        // money still in it: withdraw first
+        $close()->assertStatus(422)->assertJsonValidationErrors('account');
+        $w = $this->txn($a, ['type' => 'withdrawal', 'amount' => 300, 'method' => 'cash']);
+        $close()->assertStatus(422); // the withdrawal is still pending
+        $this->approve($w->approval_request_id);
+
+        $r = $close()->assertCreated();
+        $this->assertSame('closing', $a->fresh()->status);
+        // no transactions while the request waits
+        $this->txn($a, ['type' => 'deposit', 'amount' => 10, 'method' => 'cash'], 422);
+        $close()->assertStatus(422);
+
+        // refused: open again
+        $this->actingAs($this->manager)->postJson("/api/approvals/{$a->fresh()->close_request_id}/decide", ['decision' => 'reject', 'remarks' => 'না'])->assertOk();
+        $this->assertSame(['active', null], [$a->fresh()->status, $a->fresh()->close_reason]);
+
+        $close()->assertCreated();
+        $this->approve($a->fresh()->close_request_id);
+        $a->refresh();
+        $this->assertSame(['closed', 'request', 'সদস্যের অনুরোধ'], [$a->status, $a->close_kind, $a->close_reason]);
+        $this->txn($a, ['type' => 'deposit', 'amount' => 10, 'method' => 'cash'], 422);
+        // history and statement stay readable
+        $this->actingAs($this->cashier)->getJson("/api/funds/savings/accounts/{$a->id}/statement")->assertOk();
+
+        $h = $this->actingAs($this->cashier)->getJson('/api/funds/savings/account-history/summary')->assertOk();
+        $this->assertSame(['opened' => 1, 'close_requested' => 2, 'closed' => 1, 'close_rejected' => 1, 'reopened' => 0], $h->json('counts'));
+        $list = $this->actingAs($this->cashier)->getJson('/api/funds/savings/account-history?event=closed&search=জলিল')->assertOk();
+        $this->assertSame(1, $list->json('total'));
+        $this->assertSame('জলিল', $list->json('data.0.account.farmer.name_bn'));
+        $this->assertSame(1, $this->actingAs($this->cashier)->getJson('/api/funds/savings/accounts')->json('status_counts.closed'));
+
+        // only with edit permission
+        $this->actingAs($this->userWithRole('asset_officer'))->postJson("/api/funds/savings/accounts/{$a->id}/close", ['date' => now()->toDateString(), 'reason' => 'x'])->assertForbidden();
+        $this->assertAuditClean('savings');
     }
 
     public function test_share_purchase_transfer_and_reconciliation(): void

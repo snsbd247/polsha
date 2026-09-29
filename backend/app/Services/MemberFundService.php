@@ -46,6 +46,23 @@ class MemberFundService
     }
 
     /**
+     * Every active member has one savings and one share account: opened when
+     * the membership begins (approval, old register, import). Only the
+     * missing ones are opened, so this is safe to call again.
+     */
+    public function ensureAccounts(Member $member, string $openedOn): void
+    {
+        if ($member->status !== Member::ACTIVE) {
+            return;
+        }
+        foreach (array_keys(MemberAccount::CONFIG) as $kind) {
+            if (! MemberAccount::where('kind', $kind)->where('member_id', $member->id)->exists()) {
+                $this->openAccount($member, $kind, $openedOn, __('সদস্যপদের সাথে স্বয়ংক্রিয়ভাবে খোলা'));
+            }
+        }
+    }
+
+    /**
      * Deposit (savings) or share purchase — posted immediately.
      *
      * @param  array{date:string, amount:float, method:string, fund_account_id?:?int, reference?:?string, remarks?:?string}  $data
@@ -231,6 +248,88 @@ class MemberFundService
     {
         if (MemberTransaction::whereKey($txn->id)->where('status', 'cancel_pending')->update(['status' => 'posted', 'cancel_reason' => null])) {
             AuditLogger::log($txn->auditModule(), 'update', $txn, ['status' => 'cancel_pending', 'cancel_reason' => $txn->cancel_reason], ['status' => 'posted', 'cancel_reason' => null]);
+        }
+    }
+
+    // ---- closing an account ----
+
+    /**
+     * Close on request: the balance must already be zero (withdrawn, or share
+     * transferred) with nothing pending. The account stops taking
+     * transactions at once and closes when the manager approves.
+     */
+    public function requestClose(MemberAccount $account, string $date, string $reason): MemberAccount
+    {
+        return DB::transaction(function () use ($account, $date, $reason) {
+            $account = MemberAccount::whereKey($account->id)->lockForUpdate()->firstOrFail();
+            if ($account->status !== 'active') {
+                throw ValidationException::withMessages(['account' => $account->status === 'closing'
+                    ? __('এই হিসাব বন্ধের আবেদন অনুমোদনের অপেক্ষায় আছে।') : __('হিসাবটি আগেই বন্ধ।')]);
+            }
+            $this->assertClosable($account);
+            $account->update(['status' => 'closing', 'closed_on' => $date, 'close_reason' => $reason, 'close_kind' => 'request']);
+
+            $req = $this->approvals->submit(
+                $account->kind.'.account_close',
+                __(':kind হিসাব বন্ধ: :name (:no)', ['kind' => __(MemberAccount::KINDS[$account->kind]), 'name' => $account->member?->farmer?->name_bn, 'no' => $account->account_no]),
+                $account,
+                ['হিসাব নং' => $account->account_no, 'সদস্য' => $account->member?->farmer?->name_bn, 'সদস্য নং' => $account->member?->member_no,
+                    'বন্ধের তারিখ' => date('d/m/Y', strtotime($date)), 'জের' => (float) $account->balance, 'কারণ' => $reason],
+            );
+            $account->refresh();
+            // without an approval rule the handler has already closed it
+            if ($account->status === 'closing') {
+                $account->update(['close_request_id' => $req->id]);
+            }
+
+            return $account->fresh();
+        });
+    }
+
+    /** Approval handler: close it, checking again that nothing has moved meanwhile. */
+    public function close(MemberAccount $account): void
+    {
+        DB::transaction(function () use ($account) {
+            $account = MemberAccount::whereKey($account->id)->lockForUpdate()->firstOrFail();
+            if ($account->status === 'closed') {
+                return;
+            }
+            $this->assertClosable($account);
+            $account->update(['status' => 'closed', 'closed_on' => $account->closed_on ?? now()->toDateString()]);
+        });
+    }
+
+    /** Approval refused: the account is open again as before. */
+    public function keepOpen(MemberAccount $account): void
+    {
+        MemberAccount::whereKey($account->id)->where('status', 'closing')->first()
+            ?->update(['status' => 'active', 'closed_on' => null, 'close_reason' => null, 'close_kind' => null, 'close_request_id' => null]);
+    }
+
+    /** A cancelled membership closes the member's accounts (their balances are already zero). */
+    public function closeForMembership(Member $member, string $date): void
+    {
+        foreach (MemberAccount::where('member_id', $member->id)->whereIn('status', ['active', 'closing'])->get() as $account) {
+            $this->assertClosable($account);
+            $account->update(['status' => 'closed', 'closed_on' => $date, 'close_reason' => __('সদস্যপদ বাতিল'), 'close_kind' => 'membership']);
+        }
+    }
+
+    /** Reactivating the membership reopens the accounts its cancellation closed. */
+    public function reopenForMembership(Member $member): void
+    {
+        foreach (MemberAccount::where('member_id', $member->id)->where('status', 'closed')->where('close_kind', 'membership')->get() as $account) {
+            $account->update(['status' => 'active', 'closed_on' => null, 'close_reason' => null, 'close_kind' => null]);
+        }
+    }
+
+    private function assertClosable(MemberAccount $account): void
+    {
+        if (round((float) $account->balance, 2) !== 0.0) {
+            throw ValidationException::withMessages(['account' => __('হিসাবের জের :amount টাকা — আগে জের শূন্য করুন (সঞ্চয় উত্তোলন / শেয়ার হস্তান্তর)।', ['amount' => number_format((float) $account->balance, 2)])]);
+        }
+        if ($account->transactions()->whereIn('status', ['pending', 'cancel_pending'])->exists()) {
+            throw ValidationException::withMessages(['account' => __('এই হিসাবে অনুমোদনের অপেক্ষায় লেনদেন আছে — আগে সেগুলোর নিষ্পত্তি করুন।')]);
         }
     }
 
@@ -442,7 +541,8 @@ class MemberFundService
     private function assertUsable(MemberAccount $account, bool $needsActiveMember): void
     {
         if ($account->status !== 'active') {
-            throw ValidationException::withMessages(['account' => __('হিসাবটি বন্ধ।')]);
+            throw ValidationException::withMessages(['account' => $account->status === 'closing'
+                ? __('হিসাব বন্ধের আবেদন অনুমোদনের অপেক্ষায় — এখন লেনদেন করা যাবে না।') : __('হিসাবটি বন্ধ।')]);
         }
         if ($needsActiveMember && $account->member?->status !== Member::ACTIVE) {
             throw ValidationException::withMessages(['account' => __('শুধু সক্রিয় সদস্যের হিসাবে জমা নেওয়া যায়।')]);
