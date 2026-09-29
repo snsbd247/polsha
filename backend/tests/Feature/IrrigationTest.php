@@ -148,6 +148,32 @@ class IrrigationTest extends Phase2TestCase
         $this->actingAs($this->irrigation)->getJson("/api/irrigation/rate-audit?season_id={$this->season->id}")->assertOk()->assertJsonCount(0, 'invoice_issues');
     }
 
+    public function test_batch_collection_makes_one_receipt_per_farmer(): void
+    {
+        $this->approvedRate();
+        $a = $this->invoice($this->land('901'));              // owner, 330
+        $b = $this->invoice($this->land('902', $this->tenant)); // tenant, 330
+        $c = $this->invoice($this->land('903'));              // owner, 330
+
+        $r = $this->actingAs($this->irrigation)->postJson('/api/receipts/batch', [
+            'date' => now()->toDateString(), 'method' => 'cash',
+            'items' => [['invoice_id' => $a->id, 'amount' => 330], ['invoice_id' => $b->id, 'amount' => 100], ['invoice_id' => $c->id, 'amount' => 30]],
+        ])->assertCreated()->assertJsonCount(2, 'receipts')->assertJsonPath('total', 460);
+
+        $this->assertSame('paid', $a->fresh()->status);
+        $this->assertSame('partial', $b->fresh()->status);
+        $this->assertSame(360.0, (float) Receipt::find(collect($r->json('receipts'))->firstWhere('farmer_id', $this->owner->id)['id'])->amount);
+        $this->assertSame(530.0, $this->balance('irrigation_receivable'));
+        $this->assertNoMismatch();
+
+        // more than is due fails as a whole: nothing is saved
+        $this->actingAs($this->irrigation)->postJson('/api/receipts/batch', [
+            'date' => now()->toDateString(), 'method' => 'cash',
+            'items' => [['invoice_id' => $c->id, 'amount' => 10], ['invoice_id' => $b->id, 'amount' => 9999]],
+        ])->assertStatus(422);
+        $this->assertSame(30.0, (float) $c->fresh()->paid_amount);
+    }
+
     public function test_bulk_can_be_narrowed_to_a_source_and_chosen_plots(): void
     {
         $this->approvedRate();

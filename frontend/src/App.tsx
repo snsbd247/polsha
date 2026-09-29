@@ -79,6 +79,7 @@ const DuesPage = lazy(() => import('./pages/irrigation/DuesPage'))
 const FarmerStatementPage = lazy(() => import('./pages/irrigation/FarmerStatementPage'))
 const MismatchPage = lazy(() => import('./pages/irrigation/MismatchPage'))
 const RateAuditPage = lazy(() => import('./pages/irrigation/RateAuditPage'))
+const IrrigationCollectPage = lazy(() => import('./pages/payments/IrrigationCollectPage'))
 const CollectionPage = lazy(() => import('./pages/payments/CollectionPage'))
 const ReceiptListPage = lazy(() => import('./pages/payments/ReceiptListPage'))
 const ReceiptDetailPage = lazy(() => import('./pages/payments/ReceiptDetailPage'))
@@ -167,6 +168,12 @@ function RequireAuth({ children }: { children: ReactNode }) {
 }
 
 /** Remount when the query string changes: for pages that read a ?preset once (menu items like /loans?status=pending). */
+/** The menu's Old Receipt Entry opens /payments/collect?legacy=1; the plain path is irrigation collection. */
+function CollectRoute() {
+  const { search } = useLocation()
+  return new URLSearchParams(search).get('legacy') === '1' ? <CollectionPage /> : <IrrigationCollectPage />
+}
+
 function ByQuery({ children }: { children: ReactNode }) {
   const { search } = useLocation()
   return <Fragment key={search}>{children}</Fragment>
@@ -285,7 +292,7 @@ export default function App() {
         <Route path="irrigation/farmers/:id/statement" element={<Perm perm="irrigation.view"><FarmerStatementPage /></Perm>} />
         <Route path="irrigation/mismatch" element={<Perm perm="irrigation.view"><MismatchPage /></Perm>} />
         <Route path="irrigation/rate-audit" element={<Perm perm="irrigation.view"><RateAuditPage /></Perm>} />
-        <Route path="payments/collect" element={<Perm perm="payment.create"><ByQuery><CollectionPage /></ByQuery></Perm>} />
+        <Route path="payments/collect" element={<Perm perm="payment.create"><ByQuery><CollectRoute /></ByQuery></Perm>} />
         <Route path="payments/receipts" element={<Perm perm="payment.view"><ReceiptListPage /></Perm>} />
         <Route path="payments/receipts/:id" element={<Perm perm="payment.view"><ReceiptDetailPage /></Perm>} />
 

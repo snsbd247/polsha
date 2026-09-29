@@ -372,6 +372,7 @@ Route::middleware(['auth:sanctum', 'usable'])->group(function () {
     });
     Route::middleware('permission:payment.create')->group(function () {
         Route::post('receipts', [ReceiptController::class, 'store']);
+        Route::post('receipts/batch', [ReceiptController::class, 'storeBatch']);
         Route::post('receipts/{receipt}/cancel', [ReceiptController::class, 'cancel']);
     });
 

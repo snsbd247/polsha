@@ -16,6 +16,7 @@ use App\Support\Tr;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
@@ -131,6 +132,43 @@ class ReceiptController extends Controller
         $legacy || app(SmsService::class)->paymentConfirmation($farmer->mobile, $farmer->name_bn, (float) $receipt->amount, $receipt->receipt_no, $data['date'], $receipt);
 
         return response()->json(['id' => $receipt->id, 'receipt_no' => $receipt->receipt_no], 201);
+    }
+
+    /**
+     * Collect against invoices of several farmers at once: one receipt per
+     * farmer, all saved together or none.
+     */
+    public function storeBatch(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'date' => ['required', 'date', 'before_or_equal:today'],
+            'method' => ['required', Rule::in(array_keys(Receipt::METHODS))],
+            'fund_account_id' => ['nullable', 'integer'],
+            'reference' => ['nullable', 'string', 'max:100'],
+            'remarks' => ['nullable', 'string', 'max:500'],
+            'items' => ['required', 'array', 'min:1', 'max:300'],
+            'items.*.invoice_id' => ['required', 'integer', 'distinct', 'exists:invoices,id'],
+            'items.*.amount' => ['required', 'numeric', 'gt:0', 'max:9999999999999'],
+        ]);
+        $invoices = Invoice::whereIn('id', array_column($data['items'], 'invoice_id'))->get()->keyBy('id');
+        $byFarmer = collect($data['items'])->groupBy(fn ($it) => $invoices[$it['invoice_id']]->farmer_id);
+        $farmers = Farmer::whereIn('id', $byFarmer->keys())->get()->keyBy('id');
+
+        $receipts = DB::transaction(fn () => $byFarmer->map(fn ($items, $farmerId) => $this->receipts->create([
+            'module' => 'irrigation', 'farmer_id' => $farmerId, 'payer_name' => $farmers[$farmerId]->name_bn,
+            'date' => $data['date'], 'method' => $data['method'], 'fund_account_id' => $data['fund_account_id'] ?? null,
+            'reference' => $data['reference'] ?? null, 'remarks' => $data['remarks'] ?? null, 'is_legacy' => false, 'legacy_no' => null,
+        ], $items->map(fn ($it) => ['payable' => $invoices[$it['invoice_id']], 'amount' => (float) $it['amount']])->all()))->values());
+
+        foreach ($receipts as $r) {
+            $f = $farmers[$r->farmer_id];
+            app(SmsService::class)->paymentConfirmation($f->mobile, $f->name_bn, (float) $r->amount, $r->receipt_no, $data['date'], $r);
+        }
+
+        return response()->json([
+            'receipts' => $receipts->map(fn ($r) => ['id' => $r->id, 'receipt_no' => $r->receipt_no, 'farmer_id' => $r->farmer_id, 'amount' => (float) $r->amount]),
+            'total' => round($receipts->sum(fn ($r) => (float) $r->amount), 2),
+        ], 201);
     }
 
     public function cancel(Request $request, Receipt $receipt): JsonResponse

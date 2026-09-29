@@ -179,7 +179,7 @@ class InvoiceController extends Controller
     private function filtered(Request $request): Builder
     {
         $q = Invoice::query()->with(['season:id,name_bn', 'land:id,mouza_id', 'farmer:id,photo']);
-        foreach (['season_id', 'status', 'farmer_id', 'land_id', 'batch_id', 'irrigation_type_id', 'cultivation_type'] as $f) {
+        foreach (['season_id', 'status', 'farmer_id', 'land_id', 'batch_id', 'irrigation_type_id', 'land_type_id', 'cultivation_type'] as $f) {
             if ($request->filled($f)) {
                 $q->where($f, $request->query($f));
             }
