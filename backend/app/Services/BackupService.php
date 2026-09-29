@@ -3,9 +3,11 @@
 namespace App\Services;
 
 use App\Models\Backup;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use RuntimeException;
 use Symfony\Component\Process\Process;
+use ZipArchive;
 
 class BackupService
 {
@@ -28,6 +30,71 @@ class BackupService
         AuditLogger::log('backup', 'create', $backup, null, ['filename' => $filename, 'type' => $type], null, $userId);
 
         return $backup;
+    }
+
+    /** Largest attachment most mail services accept, with room for encoding. */
+    public const EMAIL_LIMIT = 18 * 1024 * 1024;
+
+    /**
+     * Off-site copy: email the dump to the address in Settings, inside a
+     * password-protected zip when a password is set. The outcome is kept on
+     * the backup row; a failure never breaks the backup itself.
+     */
+    public function email(Backup $backup, ?string $to = null): bool
+    {
+        $to = trim((string) ($to ?? SettingService::get('backup_email')));
+        if ($to === '') {
+            return false;
+        }
+        $file = $this->path($backup);
+        $zip = null;
+        try {
+            if (! is_file($file)) {
+                throw new RuntimeException(__('ব্যাকআপ ফাইল পাওয়া যায়নি।'));
+            }
+            $password = (string) SettingService::get('backup_zip_password');
+            if ($password !== '') {
+                $zip = $this->encrypt($file, $backup->filename, $password);
+            }
+            $attach = $zip ?? $file;
+            if (filesize($attach) > self::EMAIL_LIMIT) {
+                throw new RuntimeException(__('ফাইল ইমেইলের জন্য বেশি বড় — ডাউনলোড করে রাখুন।'));
+            }
+            $society = SettingService::get('society_name_bn') ?: config('app.name');
+            Mail::raw(
+                __("স্বয়ংক্রিয় ব্যাকআপ: :society\nফাইল: :file\nসময়: :time\n\nএই ফাইল সমিতির সব তথ্য বহন করে — নিরাপদে রাখুন, কারও সাথে শেয়ার করবেন না।",
+                    ['society' => $society, 'file' => basename($attach), 'time' => $backup->created_at?->format('d-m-Y H:i')]),
+                fn ($m) => $m->to($to)->subject(__('ব্যাকআপ — :society — :date', ['society' => $society, 'date' => $backup->created_at?->format('d-m-Y')]))
+                    ->attach($attach, ['as' => basename($attach)]),
+            );
+            $backup->update(['emailed_to' => $to, 'emailed_at' => now(), 'email_error' => null]);
+            AuditLogger::log('backup', 'email', $backup, null, ['to' => $to]);
+
+            return true;
+        } catch (\Throwable $e) {
+            $backup->update(['emailed_to' => $to, 'emailed_at' => null, 'email_error' => mb_substr($e->getMessage(), 0, 300)]);
+
+            return false;
+        } finally {
+            if ($zip) {
+                @unlink($zip);
+            }
+        }
+    }
+
+    /** A temporary AES-256 zip holding the dump. */
+    private function encrypt(string $file, string $name, string $password): string
+    {
+        $zipPath = sys_get_temp_dir().DIRECTORY_SEPARATOR.preg_replace('/\.sql\.gz$/', '', $name).'.zip';
+        $zip = new ZipArchive;
+        if ($zip->open($zipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
+            throw new RuntimeException(__('জিপ ফাইল তৈরি করা যায়নি।'));
+        }
+        $zip->addFile($file, $name);
+        $zip->setEncryptionName($name, ZipArchive::EM_AES_256, $password);
+        $zip->close();
+
+        return $zipPath;
     }
 
     public function prune(): int

@@ -114,7 +114,7 @@ export default function ReceiptDetailPage() {
         />
       )}
 
-      <ReceiptPaper society={r.society}>
+      <ReceiptPaper society={r.society} doc={{ type: "receipt", id: r.id }}>
         {r.status === 'cancelled' && <div className="receipt-stamp">{tx('বাতিলকৃত')}</div>}
         <div className="receipt-head">
           {r.society.logo && <img src={logoUrl()} alt="" className="receipt-logo" />}

@@ -193,6 +193,24 @@ class SavingsShareTest extends Phase2TestCase
         $this->assertSame('ভুল', $t->json('timeline.1.reason'));
     }
 
+    public function test_receipt_prints_are_numbered_so_reprints_show(): void
+    {
+        $a = $this->open('savings', $this->member());
+        $d = $this->txn($a, ['type' => 'deposit', 'amount' => 100, 'method' => 'cash']);
+        $doc = ['document_type' => 'member_transaction', 'document_id' => $d->id];
+
+        $this->assertSame(0, $this->actingAs($this->cashier)->getJson('/api/print-logs?'.http_build_query($doc))->assertOk()->json('count'));
+        $this->assertSame(1, $this->actingAs($this->cashier)->postJson('/api/print-logs', $doc)->assertCreated()->json('copy_no'));
+        $this->assertSame(2, $this->actingAs($this->manager)->postJson('/api/print-logs', $doc)->assertCreated()->json('copy_no'));
+        $r = $this->actingAs($this->cashier)->getJson('/api/print-logs?'.http_build_query($doc))->assertOk();
+        $this->assertSame(2, $r->json('count'));
+        $this->assertNotNull($r->json('data.1.user.name_bn'));
+
+        $this->actingAs($this->cashier)->postJson('/api/print-logs', ['document_type' => 'invoice', 'document_id' => 1])->assertStatus(422);
+        $this->actingAs($this->cashier)->postJson('/api/print-logs', ['document_type' => 'member_transaction', 'document_id' => 99999])->assertNotFound();
+        $this->actingAs($this->userWithRole('asset_officer'))->postJson('/api/print-logs', $doc)->assertForbidden();
+    }
+
     public function test_share_purchase_transfer_and_reconciliation(): void
     {
         $x = $this->member('ক');

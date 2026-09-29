@@ -5,12 +5,11 @@
  * are re-evaluated too — no hook plumbing needed.
  * `npm run i18n:check` verifies every key has an English entry.
  */
-import en from '../locales/en.json'
-
 export type Lang = 'bn' | 'en'
 
 const STORAGE_KEY = 'polsha.lang'
-const EN = en as Record<string, string>
+// the English dictionary is a separate download, fetched only in English mode
+let EN: Record<string, string> = {}
 
 function readLang(): Lang {
   try {
@@ -21,6 +20,11 @@ function readLang(): Lang {
 }
 
 export const lang: Lang = readLang()
+
+/** Fetch the English dictionary when English is active; Bangla needs none. main.tsx waits for it. */
+export async function loadDictionary(): Promise<void> {
+  if (lang === 'en') EN = (await import('../locales/en.json')).default as Record<string, string>
+}
 
 /** True once a language has been chosen on this device (otherwise adopt the user's saved one). */
 export function hasStoredLang(): boolean {

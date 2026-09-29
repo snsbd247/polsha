@@ -2,7 +2,11 @@
 
 namespace Tests\Feature;
 
+use App\Models\AuditLog;
+use App\Models\Backup;
+use App\Services\BackupService;
 use App\Services\SettingService;
+use Illuminate\Support\Facades\Storage;
 
 class SettingsTest extends Phase2TestCase
 {
@@ -54,5 +58,39 @@ class SettingsTest extends Phase2TestCase
 
         $this->actingAs($admin)->putJson('/api/settings/preferences', ['default_locale' => 'bn', 'page_size' => 25, 'idle_logout_minutes' => 0, 'share_unit_price' => 0])
             ->assertStatus(422)->assertJsonValidationErrors('share_unit_price');
+    }
+    public function test_backups_are_emailed_off_site_in_a_locked_zip(): void
+    {
+        $admin = $this->userWithRole('super_admin');
+        config(['mail.default' => 'array']);
+        Storage::fake('local');
+        Storage::disk('local')->put(BackupService::DIR.'/polsha-20261001-020000.sql.gz', gzencode('-- dump'));
+        $backup = Backup::create(['filename' => 'polsha-20261001-020000.sql.gz', 'size' => 10, 'type' => 'auto']);
+
+        // no address yet: nothing is sent
+        $this->actingAs($admin)->postJson("/api/backups/{$backup->id}/email")->assertStatus(422);
+        $this->assertFalse(app(BackupService::class)->email($backup));
+
+        $this->actingAs($admin)->putJson('/api/backups/settings', ['backup_email' => 'not-an-email'])->assertStatus(422);
+        $this->actingAs($admin)->putJson('/api/backups/settings', ['backup_email' => 'office@example.org', 'zip_password' => 'secret-pass-1'])
+            ->assertOk()->assertJson(['backup_email' => 'office@example.org', 'zip_password_set' => true])->assertJsonMissing(['secret-pass-1']);
+        // the password is a secret: never in the settings API, and logged only as changed
+        $this->assertStringNotContainsString('secret-pass-1', $this->actingAs($admin)->getJson('/api/settings')->getContent());
+        $this->assertSame(0, AuditLog::where('new_values', 'like', '%secret-pass-1%')->count());
+
+        $this->actingAs($admin)->postJson("/api/backups/{$backup->id}/email")->assertOk()->assertJson(['emailed_to' => 'office@example.org', 'email_error' => null]);
+        $sent = app('mailer')->getSymfonyTransport()->messages();
+        $this->assertCount(1, $sent);
+        $attachment = $sent[0]->getOriginalMessage()->getAttachments()[0];
+        $this->assertSame('polsha-20261001-020000.zip', $attachment->getFilename());
+        $this->assertNotNull($backup->fresh()->emailed_at);
+
+        // a missing file is recorded, not thrown
+        Storage::disk('local')->delete(BackupService::DIR.'/polsha-20261001-020000.sql.gz');
+        $this->actingAs($admin)->postJson("/api/backups/{$backup->id}/email")->assertStatus(422);
+        $this->assertNotNull($backup->fresh()->email_error);
+
+        // only the super admin manages backups
+        $this->actingAs($this->userWithRole('manager'))->getJson('/api/backups/settings')->assertForbidden();
     }
 }

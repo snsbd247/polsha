@@ -30,7 +30,7 @@ export default function FundReceipt({ t, kind }: { t: FundTxnDetail; kind: FundK
   const title = t.direction === 'in' ? tx('{{p0}} জমার রশিদ', { p0: KIND_LABEL[kind] }) : tx('{{p0}} খরচের রশিদ', { p0: KIND_LABEL[kind] })
 
   return (
-    <ReceiptPaper society={t.society}>
+    <ReceiptPaper society={t.society} doc={{ type: "member_transaction", id: t.id }}>
       {t.status === 'cancelled' && <div className="receipt-stamp">{tx('বাতিলকৃত')}</div>}
       {t.status === 'pending' && <div className="receipt-stamp">{tx('অনুমোদনের অপেক্ষায়')}</div>}
       <div className="receipt-head">

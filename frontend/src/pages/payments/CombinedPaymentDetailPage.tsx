@@ -103,7 +103,7 @@ export default function CombinedPaymentDetailPage() {
         <Alert className="no-print" type="error" showIcon style={{ marginBottom: 16 }} title={tx('বাতিল হয়েছে {{p0}} — কারণ: {{p1}}', { p0: fmtDateTime(r.cancelled_at), p1: r.cancel_reason ?? '' })} />
       )}
 
-      <ReceiptPaper society={r.society}>
+      <ReceiptPaper society={r.society} doc={{ type: "combined_payment", id: r.id }}>
         {r.status === 'cancelled' && <div className="receipt-stamp">{tx('বাতিলকৃত')}</div>}
         <div className="receipt-head">
           {r.society.logo && <img src={logoUrl()} alt="" className="receipt-logo" />}

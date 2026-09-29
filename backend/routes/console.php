@@ -24,6 +24,12 @@ Artisan::command('backup:run {--type=auto}', function (BackupService $backups) {
     $backup = $backups->run($this->option('type'));
     $pruned = $backups->prune();
     $this->info("Backup {$backup->filename} created; {$pruned} old backup(s) removed.");
+    // the nightly one also goes off-site, when an address is set
+    if ($this->option('type') === 'auto' && $backups->email($backup)) {
+        $this->info("Emailed to {$backup->emailed_to}.");
+    } elseif ($backup->email_error) {
+        $this->warn("Email failed: {$backup->email_error}");
+    }
 })->purpose('Dump the database and prune old backups');
 
 // One-off (safe to re-run): admission fees of members admitted before the ledger existed.

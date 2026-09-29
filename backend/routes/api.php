@@ -44,6 +44,7 @@ use App\Http\Controllers\Api\MembershipApplicationController;
 use App\Http\Controllers\Api\MouzaController;
 use App\Http\Controllers\Api\PasswordResetController;
 use App\Http\Controllers\Api\PatwariController;
+use App\Http\Controllers\Api\PrintLogController;
 use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\PublicPaymentController;
 use App\Http\Controllers\Api\QrController;
@@ -112,6 +113,9 @@ Route::middleware(['auth:sanctum', 'usable'])->group(function () {
     // Approvals
     Route::get('approvals', [ApprovalController::class, 'index']);
     Route::get('approvals/pending-count', [ApprovalController::class, 'pendingCount']);
+    // receipt prints (reprints are marked and audited); permission is per document type
+    Route::get('print-logs', [PrintLogController::class, 'index']);
+    Route::post('print-logs', [PrintLogController::class, 'store']);
     Route::get('approval-rules', [ApprovalController::class, 'rules'])->middleware('permission:approval.admin');
     Route::put('approval-rules/{rule}', [ApprovalController::class, 'updateRule'])->middleware('permission:approval.admin');
     Route::get('approvals/{approval}', [ApprovalController::class, 'show']);
@@ -552,5 +556,8 @@ Route::middleware(['auth:sanctum', 'usable'])->group(function () {
         Route::get('backups', [BackupController::class, 'index']);
         Route::post('backups', [BackupController::class, 'store']);
         Route::get('backups/{backup}/download', [BackupController::class, 'download']);
+        Route::get('backups/settings', [BackupController::class, 'settings']);
+        Route::put('backups/settings', [BackupController::class, 'saveSettings']);
+        Route::post('backups/{backup}/email', [BackupController::class, 'email']);
     });
 });

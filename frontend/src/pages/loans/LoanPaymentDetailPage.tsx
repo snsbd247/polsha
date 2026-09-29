@@ -87,7 +87,7 @@ export default function LoanPaymentDetailPage() {
         <Alert className="no-print" type="error" showIcon style={{ marginBottom: 16 }} title={tx('বাতিল হয়েছে {{p0}} — কারণ: {{p1}}', { p0: fmtDateTime(p.cancelled_at), p1: p.cancel_reason ?? '' })} />
       )}
 
-      <ReceiptPaper society={p.society}>
+      <ReceiptPaper society={p.society} doc={{ type: "loan_payment", id: p.id }}>
         {p.status === 'cancelled' && <div className="receipt-stamp">{tx('বাতিলকৃত')}</div>}
         <div className="receipt-head">
           {p.society.logo && <img src={logoUrl()} alt="" className="receipt-logo" />}

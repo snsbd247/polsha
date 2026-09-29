@@ -1,6 +1,8 @@
 #!/bin/bash
 # Runs ON the cPanel server. Expects in ~/polsha/releases/:
-#   backend.tgz  (git archive of backend/)   frontend.tgz (contents of frontend/dist)
+#   backend.tgz  (git archive HEAD backend)
+#   frontend.tgz (contents of frontend/dist: tar -czf frontend.tgz -C frontend/dist .)
+# Both are checked before anything live changes, and the database is dumped first.
 # First deploy only: ~/polsha/.first-deploy.env with DB_DATABASE, DB_USERNAME,
 # DB_PASSWORD, APP_URL, ADMIN_PASSWORD. It is deleted after use.
 set -euo pipefail
@@ -10,6 +12,29 @@ WEB="$HOME/public_html"
 PHP="$(command -v php)"
 COMPOSER="$HOME/bin/composer"
 cd "$ROOT"
+
+fail() { echo "!! $*" >&2; exit 1; }
+
+echo "== check packages"
+# Look inside both archives before anything live is touched: a wrongly packed
+# release must stop here, not after the old site has been removed.
+[ -s releases/backend.tgz ] || fail "releases/backend.tgz missing"
+[ -s releases/frontend.tgz ] || fail "releases/frontend.tgz missing"
+tar -tzf releases/backend.tgz | grep -qx 'backend/artisan' || fail "backend.tgz has no backend/artisan (pack with: git archive HEAD backend)"
+rm -rf frontend.new && mkdir frontend.new
+tar -xzf releases/frontend.tgz -C frontend.new
+# tolerate a package made of the dist folder itself instead of its contents
+if [ ! -f frontend.new/index.html ] && [ -f frontend.new/dist/index.html ]; then
+  mv frontend.new frontend.pkg && mv frontend.pkg/dist frontend.new && rm -rf frontend.pkg
+fi
+[ -f frontend.new/index.html ] || fail "frontend.tgz has no index.html"
+ls frontend.new/assets/index-*.js >/dev/null 2>&1 || fail "frontend.tgz has no assets/index-*.js"
+
+echo "== backup database"
+# The running release takes a dump before migrations change anything.
+if [ -f backend/artisan ]; then
+  (cd backend && "$PHP" artisan backup:run --type=pre-deploy) || fail "backup failed — nothing was changed"
+fi
 
 echo "== unpack backend"
 rm -rf backend.new && mkdir backend.new
@@ -86,8 +111,11 @@ cd "$ROOT"
 
 echo "== frontend"
 # Replace only what the build owns; leave anything else in public_html alone.
+# The new files were unpacked and checked above, so the swap is a few quick moves.
 rm -rf "$WEB/assets" "$WEB/index.html" "$WEB/laravel.php" "$WEB/.htaccess"
-tar -xzf releases/frontend.tgz -C "$WEB"
+cp -a frontend.new/. "$WEB/"
+rm -rf frontend.new
+echo "live bundle: $(cd "$WEB/assets" && ls index-*.js)"
 
 echo "== cron"
 CRON="* * * * * cd $ROOT/backend && $PHP artisan schedule:run >> /dev/null 2>&1"

@@ -93,13 +93,16 @@ class SettingService
         'go_live_date' => null,
         'installation_id' => null,
         'license_key' => '',
+        // off-site copy: every nightly backup is emailed here (optionally in a password-protected zip)
+        'backup_email' => '',
+        'backup_zip_password' => '',
     ];
 
     /** Uploadable images (logo, authorised signature, society seal). */
     public const IMAGES = ['logo', 'signature', 'seal'];
 
     /** Never sent to the browser as is. */
-    public const SECRET_KEYS = ['sms_api_key', 'license_key'];
+    public const SECRET_KEYS = ['sms_api_key', 'license_key', 'backup_zip_password'];
 
     public static function all(): array
     {
@@ -153,7 +156,9 @@ class SettingService
 
         $changed = array_filter($values, fn ($v, $k) => ($before[$k] ?? null) !== $v, ARRAY_FILTER_USE_BOTH);
         if ($changed) {
-            AuditLogger::log('settings', 'update', null, array_intersect_key($before, $changed), $changed);
+            // secrets are logged as changed, never with their values
+            $mask = fn (array $v) => array_map(fn ($x) => $x === '' || $x === null ? $x : '••••', array_intersect_key($v, array_flip(self::SECRET_KEYS))) + $v;
+            AuditLogger::log('settings', 'update', null, $mask(array_intersect_key($before, $changed)), $mask($changed));
         }
     }
 }

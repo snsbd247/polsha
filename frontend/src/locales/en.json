@@ -3130,5 +3130,19 @@
   "আজকের {{p0}}": "Today's {{p0}}",
   "এই মাসের {{p0}}": "This Month's {{p0}}",
   "জের (৳)": "Balance (৳)",
-  "হিসাব বিবরণী": "Account Statement"
+  "হিসাব বিবরণী": "Account Statement",
+  "প্রতিলিপি — কপি {{p0}}": "DUPLICATE — copy {{p0}}",
+  "আপডেটের আগে": "Before update",
+  "সংরক্ষিত হয়েছে।": "Saved.",
+  "সার্ভারের বাইরে কপি (ইমেইল)": "Off-server copy (email)",
+  "সার্ভার নষ্ট হলে সার্ভারের ব্যাকআপও হারাবে। ঠিকানা দিলে প্রতি রাতের ব্যাকআপ এই ইমেইলে যাবে। পাসওয়ার্ড দিলে ফাইলটি পাসওয়ার্ড-সুরক্ষিত জিপে যাবে — পাসওয়ার্ডটি আলাদা জায়গায় লিখে রাখুন, হারালে ফাইল খোলা যাবে না।": "If the server fails, the backups on it are lost too. With an address set, every nightly backup is emailed there. With a password, the file goes in a password-protected zip — write the password down somewhere else; without it the file cannot be opened.",
+  "ইমেইল ঠিকানা": "Email address",
+  "জিপ পাসওয়ার্ড (দেওয়া আছে — বদলাতে নতুনটি লিখুন)": "Zip password (set — type a new one to change it)",
+  "জিপ পাসওয়ার্ড (ঐচ্ছিক, অন্তত ৮ অক্ষর)": "Zip password (optional, at least 8 characters)",
+  "পাসওয়ার্ড তুলে দিন": "Remove password",
+  "সার্ভারে ইমেইল পাঠানো চালু নেই (MAIL_MAILER=log) — ইমেইল শুধু লগে লেখা হবে।": "Email sending is not enabled on the server (MAIL_MAILER=log) — emails are only written to the log.",
+  "ইমেইলে কপি": "Email copy",
+  "পাঠানো হয়েছে": "Sent",
+  "পাঠানো যায়নি": "Not sent",
+  "ইমেইলে পাঠান": "Send by email"
 }

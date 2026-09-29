@@ -1241,5 +1241,13 @@
     "এন্ট্রি ও পোস্ট": "Entered & posted",
     "অনুমোদনে পাঠানো": "Sent for approval",
     "বাতিলের আবেদন": "Cancellation requested",
-    "বাতিলের আবেদন নামঞ্জুর": "Cancellation refused"
+    "বাতিলের আবেদন নামঞ্জুর": "Cancellation refused",
+    "আগে ব্যাকআপের ইমেইল ঠিকানা দিন।": "Set the backup email address first.",
+    "ইমেইলে পাঠানো হয়েছে।": "Sent by email.",
+    "জিপ ফাইল তৈরি করা যায়নি।": "Could not create the zip file.",
+    "পাঠানো যায়নি: :e": "Not sent: :e",
+    "ফাইল ইমেইলের জন্য বেশি বড় — ডাউনলোড করে রাখুন।": "The file is too large to email — download it instead.",
+    "ব্যাকআপ ফাইল পাওয়া যায়নি।": "Backup file not found.",
+    "ব্যাকআপ — :society — :date": "Backup — :society — :date",
+    "স্বয়ংক্রিয় ব্যাকআপ: :society\nফাইল: :file\nসময়: :time\n\nএই ফাইল সমিতির সব তথ্য বহন করে — নিরাপদে রাখুন, কারও সাথে শেয়ার করবেন না।": "Automatic backup: :society\nFile: :file\nTime: :time\n\nThis file holds all of the society's data — keep it safe and do not share it."
 }
