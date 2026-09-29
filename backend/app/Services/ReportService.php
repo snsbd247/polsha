@@ -1080,8 +1080,10 @@ class ReportService
                         ->whereIn('j.status', LedgerService::EFFECTIVE)->where(fn ($q) => $q->whereNull('j.module')->orWhere('j.module', '!=', FinancialYearService::MODULE))
                         ->whereIn('a.type', ['income', 'expense'])->whereBetween('j.date', [$f['from'], $f['to']])
                         ->orderBy('j.date')->orderBy('j.id')->limit(self::MAX_ROWS + 1)
-                        ->get(['j.date', 'j.voucher_no', 'j.narration', 'a.code', 'a.name_bn', 'a.name_en', 'a.type', 'l.debit', 'l.credit'])
-                        ->map(fn ($r) => ['date' => $r->date, 'voucher_no' => $r->voucher_no, 'account' => $r->code.' '.$this->nm($r), 'narration' => $r->narration,
+                        ->get(['j.id as journal_id', 'j.date', 'j.voucher_no', 'j.narration', 'a.id as account_id', 'a.code', 'a.name_bn', 'a.name_en', 'a.type', 'l.debit', 'l.credit'])
+                        // journal_id / account_id / type are not columns: the cash book page uses them for links and filters
+                        ->map(fn ($r) => ['journal_id' => $r->journal_id, 'account_id' => $r->account_id, 'type' => $r->type,
+                            'date' => $r->date, 'voucher_no' => $r->voucher_no, 'account' => $r->code.' '.$this->nm($r), 'narration' => $r->narration,
                             'income' => $r->type === 'income' ? round((float) $r->credit - (float) $r->debit, 2) : 0.0,
                             'expense' => $r->type === 'expense' ? round((float) $r->debit - (float) $r->credit, 2) : 0.0]);
                     $inc = round($rows->sum('income'), 2);

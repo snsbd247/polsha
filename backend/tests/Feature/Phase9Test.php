@@ -60,6 +60,13 @@ class Phase9Test extends Phase2TestCase
         $this->assertNotContains('audit_activity', $keys);
         $this->actingAs($cashier)->getJson('/api/reports/audit_activity')->assertForbidden();
         $this->assertSame(1, ExportLog::count());
+
+        // the Export Audit page lists it with its cards; a cashier may not see it
+        $this->actingAs($this->admin)->getJson('/api/export-logs?format=xlsx')->assertOk()
+            ->assertJsonPath('total', 1)->assertJsonPath('data.0.report_key', 'lands')->assertJsonPath('data.0.user.id', $this->admin->id)
+            ->assertJsonPath('counts.total', 1)->assertJsonPath('counts.today', 1)->assertJsonPath('counts.rows', 3)->assertJsonPath('counts.users', 1);
+        $this->actingAs($this->admin)->getJson('/api/export-logs?format=csv')->assertJsonPath('total', 0);
+        $this->actingAs($cashier)->getJson('/api/export-logs')->assertForbidden();
     }
 
     public function test_dashboard_shows_kpis_by_permission(): void

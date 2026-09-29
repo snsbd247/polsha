@@ -63,6 +63,9 @@ const JournalFormPage = lazy(() => import('./pages/accounting/JournalFormPage'))
 const JournalDetailPage = lazy(() => import('./pages/accounting/JournalDetailPage'))
 const FundsPage = lazy(() => import('./pages/accounting/FundsPage'))
 const LedgerPage = lazy(() => import('./pages/accounting/LedgerPage'))
+const CashStatementPage = lazy(() => import('./pages/cashbook/CashStatementPage'))
+const IncomeExpenseBookPage = lazy(() => import('./pages/cashbook/IncomeExpenseBookPage'))
+const ExportAuditPage = lazy(() => import('./pages/cashbook/ExportAuditPage'))
 const BankAccountsPage = lazy(() => import('./pages/accounting/BankAccountsPage'))
 const TrialBalancePage = lazy(() => import('./pages/accounting/TrialBalancePage'))
 const PeriodsPage = lazy(() => import('./pages/accounting/PeriodsPage'))
@@ -148,10 +151,6 @@ const REPORT_ROUTES: { path: string; title: string; keys: string[] }[] = [
   { path: 'members/voter-history', title: tx('ভোটার ইতিহাস'), keys: ['voter_lists', 'voters'] },
   { path: 'members/voter-audit', title: tx('ভোটার অডিট'), keys: ['voter_changes'] },
   { path: 'loans/guarantors', title: tx('জামিনদার'), keys: ['guarantors'] },
-  { path: 'cashbook/irrigation', title: tx('সেচ নগদ বিবরণী'), keys: ['cash_irrigation'] },
-  { path: 'cashbook/society', title: tx('সমিতির নগদ বিবরণী'), keys: ['cash_society'] },
-  { path: 'cashbook/income-expense', title: tx('আয়-ব্যয় নগদ বই'), keys: ['income_expense_cashbook'] },
-  { path: 'audit/exports', title: tx('Export অডিট'), keys: ['export_logs'] },
   { path: 'assets/reports', title: tx('সম্পদের রিপোর্ট'), keys: ['asset_register', 'asset_by_category', 'asset_depreciation', 'asset_maintenance'] },
   { path: 'accounting/summary', title: tx('আর্থিক সারসংক্ষেপ'), keys: ['income_statement', 'balance_sheet', 'cash_flow'] },
   { path: 'accounting/source-vs-ledger', title: tx('উৎস বনাম খতিয়ান'), keys: ['source_vs_ledger'] },
@@ -281,6 +280,10 @@ export default function App() {
 
         <Route path="accounting/funds" element={<Perm perm={['cash.view', 'bank.view']}><FundsPage /></Perm>} />
         <Route path="accounting/ledger" element={<Perm perm={['accounting.view', 'cash.view', 'bank.view']}><LedgerPage /></Perm>} />
+        <Route path="cashbook/irrigation" element={<Perm perm={['accounting.view', 'cash.view', 'bank.view']}><CashStatementPage key="irrigation" stream="cash_irrigation" /></Perm>} />
+        <Route path="cashbook/society" element={<Perm perm={['accounting.view', 'cash.view', 'bank.view']}><CashStatementPage key="society" stream="cash_society" /></Perm>} />
+        <Route path="cashbook/income-expense" element={<Perm perm={['accounting.view', 'cash.view', 'bank.view']}><IncomeExpenseBookPage /></Perm>} />
+        <Route path="audit/exports" element={<Perm perm="audit.view"><ExportAuditPage /></Perm>} />
         <Route path="accounting/bank-accounts" element={<Perm perm="bank.view"><BankAccountsPage /></Perm>} />
         <Route path="accounting/journals" element={<Perm perm="accounting.view"><JournalListPage /></Perm>} />
         <Route path="accounting/journals/new" element={<Perm perm="accounting.create"><ByQuery><JournalFormPage /></ByQuery></Perm>} />

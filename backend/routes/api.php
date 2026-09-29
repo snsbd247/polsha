@@ -16,6 +16,7 @@ use App\Http\Controllers\Api\DataHealthController;
 use App\Http\Controllers\Api\DayCloseController;
 use App\Http\Controllers\Api\DistributionController;
 use App\Http\Controllers\Api\DuplicateController;
+use App\Http\Controllers\Api\ExportLogController;
 use App\Http\Controllers\Api\FarmerController;
 use App\Http\Controllers\Api\FarmerDocumentController;
 use App\Http\Controllers\Api\FinancialYearController;
@@ -514,6 +515,7 @@ Route::middleware(['auth:sanctum', 'usable'])->group(function () {
     Route::get('reports/{key}', [ReportController::class, 'show']);
     Route::post('reports/{key}/export-log', [ReportController::class, 'logExport']);
     Route::middleware('permission:audit.view')->group(function () {
+        Route::get('export-logs', [ExportLogController::class, 'index']);
         Route::get('integrity-scans', [IntegrityScanController::class, 'index']);
         Route::get('integrity-scans/{integrityScan}', [IntegrityScanController::class, 'show'])->whereNumber('integrityScan');
         Route::post('integrity-scans', [IntegrityScanController::class, 'store']);
