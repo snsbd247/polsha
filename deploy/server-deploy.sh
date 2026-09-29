@@ -20,7 +20,7 @@ echo "== check packages"
 # release must stop here, not after the old site has been removed.
 [ -s releases/backend.tgz ] || fail "releases/backend.tgz missing"
 [ -s releases/frontend.tgz ] || fail "releases/frontend.tgz missing"
-tar -tzf releases/backend.tgz | grep -qx 'backend/artisan' || fail "backend.tgz has no backend/artisan (pack with: git archive HEAD backend)"
+tar -tzf releases/backend.tgz | grep -x 'backend/artisan' >/dev/null || fail "backend.tgz has no backend/artisan (pack with: git archive HEAD backend)"
 rm -rf frontend.new && mkdir frontend.new
 tar -xzf releases/frontend.tgz -C frontend.new
 # tolerate a package made of the dist folder itself instead of its contents
