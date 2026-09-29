@@ -230,6 +230,23 @@ class ReceiptController extends Controller
     }
 
     /** Old (hand-written) receipts entered into the system: count, money, farmers and the dates they cover. */
+    /** Card figures for the receipt list: valid receipts overall, today and this month, and cancellations. */
+    public function summary(): JsonResponse
+    {
+        $valid = fn () => Receipt::where('status', '!=', 'cancelled');
+        $today = now()->toDateString();
+
+        return response()->json([
+            'count' => $valid()->count(),
+            'amount' => round((float) $valid()->sum('amount'), 2),
+            'today_count' => $valid()->where('date', $today)->count(),
+            'today_amount' => round((float) $valid()->where('date', $today)->sum('amount'), 2),
+            'month_amount' => round((float) $valid()->whereBetween('date', [now()->startOfMonth()->toDateString(), $today])->sum('amount'), 2),
+            'cancelled' => Receipt::where('status', 'cancelled')->count(),
+            'cancel_pending' => Receipt::where('status', 'cancel_pending')->count(),
+        ]);
+    }
+
     public function legacySummary(): JsonResponse
     {
         $q = Receipt::where('is_legacy', true)->where('status', '!=', 'cancelled');

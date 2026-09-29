@@ -41,7 +41,16 @@ class ApprovalController extends Controller
             }
         }
 
-        return response()->json($q->latest('id')->paginate($this->perPage($request)));
+        $mine = ApprovalRequest::where('requested_by', '!=', $user->id);
+        $mine = $user->isSuperAdmin() ? $mine->where('status', ApprovalRequest::PENDING) : $mine->awaitingRoles($user->getRoleNames()->all());
+        $sent = fn ($status) => ApprovalRequest::where('requested_by', $user->id)->where('status', $status)->count();
+
+        return response()->json($q->latest('id')->paginate($this->perPage($request))->toArray() + [
+            // the inbox cards: waiting for me, and what became of what I sent
+            'counts' => ['mine' => $mine->count(), 'sent_pending' => $sent(ApprovalRequest::PENDING),
+                'sent_approved' => $sent(ApprovalRequest::APPROVED), 'sent_rejected' => $sent(ApprovalRequest::REJECTED)],
+            'modules' => collect(config('erp.modules'))->map(fn ($l) => __($l)),
+        ]);
     }
 
     /** Badge count for the top bar. */

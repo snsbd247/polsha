@@ -1,0 +1,50 @@
+/* Cash & Payments pages: money in / out colouring, the ledger's opening line and the day-close pieces. */
+.cs-in {
+  color: #1f9d55;
+  font-weight: 600;
+}
+
+.cs-out {
+  color: #e5383b;
+  font-weight: 600;
+}
+
+.cs-narration {
+  display: block;
+  color: #6b7280;
+  font-size: 12px;
+}
+
+.cs-muted {
+  color: #6b7280;
+  font-size: 13px;
+}
+
+.cs-day-pick {
+  align-items: center;
+}
+
+/* the day-close figures: six small cards in one row */
+.id-top.cs-facts {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+.cs-facts .id-fact strong {
+  white-space: nowrap;
+}
+
+.id-page .ap-tabs {
+  margin-bottom: 14px;
+}
+
+@media (max-width: 1280px) {
+  .id-top.cs-facts {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 575px) {
+  .id-top.cs-facts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

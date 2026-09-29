@@ -20,8 +20,8 @@ export const DENOMINATIONS = [1000, 500, 200, 100, 50, 20, 10, 5, 2, 1]
 
 export type CombinedModule = 'loan' | 'irrigation' | 'share' | 'savings'
 export const COMBINED_MODULES: CombinedModule[] = ['loan', 'irrigation', 'share', 'savings']
-export const COMBINED_STATUS_COLOR: Record<string, string> = { posted: 'green', cancel_pending: 'gold', cancelled: 'red' }
-export const MODULE_COLOR: Record<string, string> = { loan: 'purple', irrigation: 'blue', share: 'cyan', savings: 'green' }
+/** Tag tone per money head (the fl-tag / ll-* classes), same colours as the combined list cards. */
+export const MODULE_TONE: Record<string, string> = { irrigation: 'll-blue', loan: 'fl-tag-red', savings: 'fl-tag-green', share: 'll-purple' }
 
 export type CombinedQuote = {
   farmer: { id: number; farmer_code: string; name_bn: string; name_en: string | null; father_name: string; mobile: string | null }
@@ -36,7 +36,6 @@ export type CombinedQuote = {
   modules: Record<CombinedModule, string>
 }
 
-export const DAY_STATUS_COLOR: Record<string, string> = { closed: 'green', reopen_pending: 'gold', reopened: 'orange' }
 export const REC_STATUS_COLOR: Record<string, string> = { draft: 'gold', finalized: 'green' }
 export const ASSET_STATUS_COLOR: Record<string, string> = {
   in_stock: 'blue',

@@ -1,17 +1,42 @@
-import { useEffect, useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useEffect, useState, type ReactNode } from 'react'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Alert, App, Button, Card, Col, DatePicker, Descriptions, Form, Input, InputNumber, Radio, Row, Select, Space, Table, Tag, Typography } from 'antd'
-import { CheckOutlined, UndoOutlined } from '@ant-design/icons'
+import { Alert, App, Button, DatePicker, Form, Input, InputNumber, Radio, Select, Space, Table, Tag } from 'antd'
+import { ArrowLeftOutlined, CalendarOutlined, CheckOutlined, CloseOutlined, FileTextOutlined, PieChartOutlined, UndoOutlined, UserOutlined, WalletOutlined } from '@ant-design/icons'
 import dayjs, { type Dayjs } from 'dayjs'
 import FarmerPicker from '../../components/FarmerPicker'
+import PageFrame from '../../components/PageFrame'
 import { api, applyFormErrors, errorMessage } from '../../lib/api'
 import { accountLabel, money } from '../../lib/accounting'
 import { digits } from '../../lib/format'
 import { METHOD_LABEL, round2, type ReceiptFund } from '../../lib/irrigation'
-import { COMBINED_MODULES, MODULE_COLOR, type CombinedModule, type CombinedQuote } from '../../lib/phase8'
+import { COMBINED_MODULES, MODULE_TONE, type CombinedModule, type CombinedQuote } from '../../lib/phase8'
 import { required } from '../../lib/rules'
 import { nameOf, t as tx } from '../../lib/i18n'
+import { KV } from '../irrigation/InvoiceDetailPage'
+import '../lands/land-form.css'
+import '../lands/land-list.css'
+import '../irrigation/invoices.css'
+import '../irrigation/invoice-detail.css'
+import '../savings/savings.css'
+import '../loans/loans.css'
+
+const MODULE_NAME: Record<CombinedModule, string> = { loan: tx('ঋণ'), irrigation: tx('সেচ'), share: tx('শেয়ার'), savings: tx('সঞ্চয়') }
+
+function Section({ no, icon, title, children, extra }: { no: number; icon: ReactNode; title: string; children: ReactNode; extra?: ReactNode }) {
+  return (
+    <section className="lf-card iv-section">
+      <header className="lf-card-head">
+        <span className="iv-section-icon">{icon}</span>
+        <h3>
+          {digits(no)}. {title}
+        </h3>
+        {extra && <span className="sv-head-extra">{extra}</span>}
+      </header>
+      <div className="lf-card-body">{children}</div>
+    </section>
+  )
+}
 
 /** One payment at the counter, split over loan instalment, irrigation dues, share and savings. */
 export default function CombinedPaymentPage() {
@@ -33,6 +58,7 @@ export default function CombinedPaymentPage() {
 
   const date: Dayjs = Form.useWatch('date', form) ?? dayjs()
   const method: string = Form.useWatch('method', form) ?? 'cash'
+  const remarks: string | undefined = Form.useWatch('remarks', form)
   const quote = useQuery({
     queryKey: ['combined-quote', farmerId, date.format('YYYY-MM-DD'), debounced],
     queryFn: async () => (await api.get<CombinedQuote>('/combined-payments/quote', { params: { farmer_id: farmerId, date: date.format('YYYY-MM-DD'), amount: debounced } })).data,
@@ -40,7 +66,7 @@ export default function CombinedPaymentPage() {
     placeholderData: keepPreviousData,
   })
   const funds = useQuery({ queryKey: ['receipt-funds'], queryFn: async () => (await api.get<ReceiptFund[]>('/receipts/funds')).data })
-  const q = quote.data
+  const q = farmerId ? quote.data : undefined
   const auto = q?.allocation.parts
   const parts: Record<CombinedModule, number> = { loan: 0, irrigation: 0, share: 0, savings: 0, ...(auto ?? {}), ...(manual ?? {}) }
   const partsSum = round2(COMBINED_MODULES.reduce((s, m) => s + (parts[m] || 0), 0))
@@ -58,9 +84,14 @@ export default function CombinedPaymentPage() {
     setAmount(null)
     setManual(null)
   }
+  const reset = () => {
+    form.resetFields()
+    pickFarmer(null)
+  }
 
   const save = async () => {
-    const v = await form.validateFields()
+    const v = await form.validateFields().catch(() => null)
+    if (!v) return
     if (!amount || amount <= 0) {
       message.warning(tx('মোট টাকার পরিমাণ দিন।'))
       return
@@ -91,7 +122,7 @@ export default function CombinedPaymentPage() {
     }
   }
 
-  const label = (m: CombinedModule) => q?.modules[m] ?? m
+  const label = (m: CombinedModule) => q?.modules[m] ?? MODULE_NAME[m]
   const dueText = (m: CombinedModule) => {
     if (!q) return ''
     if (m === 'loan') return q.loan ? (q.loan.payable ? tx('কিস্তি বকেয়া ৳{{p0}} (সম্পূর্ণ পরিশোধ ৳{{p1}})', { p0: money(q.loan.due_now), p1: money(q.loan.payoff) }) : tx('ঋণ এখনো বিতরণ হয়নি')) : tx('চলমান ঋণ নেই')
@@ -101,137 +132,188 @@ export default function CombinedPaymentPage() {
   }
 
   return (
-    <>
-      <div className="page-header">
-        <h2>{tx('সমন্বিত টাকা আদায়')}</h2>
-      </div>
-      <Card style={{ marginBottom: 16 }}>
-        <Space wrap align="center">
-          <span>{tx('প্রদানকারী')}:</span>
-          <div style={{ width: 420, maxWidth: '80vw' }}>
-            <FarmerPicker value={farmerId} onChange={(id) => pickFarmer(id)} initialLabel={q ? `${q.farmer.name_bn} (${q.farmer.farmer_code})` : undefined} placeholder={tx('নাম, কোড, NID বা মোবাইল লিখে খুঁজুন')} />
-          </div>
-        </Space>
-      </Card>
+    <PageFrame
+      crumbs={[{ label: tx('নগদ ও পেমেন্ট'), to: '/payments/receipts' }, { label: tx('একত্রিত পেমেন্ট'), to: '/payments/combined' }, { label: tx('সমন্বিত টাকা আদায়') }]}
+      title={tx('সমন্বিত টাকা আদায়')}
+      actions={
+        <Button icon={<ArrowLeftOutlined />} className="fm-history-btn" onClick={() => navigate('/payments/combined')}>
+          {tx('তালিকায় ফিরুন')}
+        </Button>
+      }
+    >
+      <div className="ln-form-grid">
+        <Form form={form} layout="vertical" className="iv-form sv-form" initialValues={{ date: dayjs(), method: 'cash' }}>
+          <Section no={1} icon={<UserOutlined />} title={tx('প্রদানকারী')}>
+            <Form.Item label={tx('চাষি / সদস্য')} required>
+              <FarmerPicker value={farmerId} onChange={(id) => pickFarmer(id)} initialLabel={q ? `${q.farmer.name_bn} (${q.farmer.farmer_code})` : undefined} placeholder={tx('নাম, কোড, NID বা মোবাইল লিখে খুঁজুন')} />
+            </Form.Item>
+            {!farmerId && <Alert type="info" showIcon className="sv-note" title={tx('চাষি/সদস্য বাছাই করুন। এক রশিদে ঋণের কিস্তি, সেচ চার্জ, শেয়ার ও সঞ্চয় একসাথে নেওয়া যাবে।')} />}
+            {q && !q.member_active && <Alert type="warning" showIcon className="sv-note" title={tx('সক্রিয় সদস্য না হওয়ায় শুধু সেচ চার্জ নেওয়া যাবে; বাড়তি টাকা সঞ্চয়ে রাখা যাবে না।')} />}
+          </Section>
 
-      {!farmerId ? (
-        <Alert type="info" showIcon title={tx('চাষি/সদস্য বাছাই করুন। এক রশিদে ঋণের কিস্তি, সেচ চার্জ, শেয়ার ও সঞ্চয় একসাথে নেওয়া যাবে।')} />
-      ) : (
-        <Row gutter={[16, 16]}>
-          <Col xs={24} xl={14}>
-            <Card title={tx('বকেয়া ও ভাগ')} loading={quote.isLoading}>
-              {q && (
-                <>
-                  <Descriptions size="small" column={{ xs: 1, md: 3 }} style={{ marginBottom: 12 }}>
-                    <Descriptions.Item label={tx('নাম')}>{nameOf(q.farmer)}</Descriptions.Item>
-                    <Descriptions.Item label={tx('পিতা')}>{q.farmer.father_name}</Descriptions.Item>
-                    <Descriptions.Item label={tx('সদস্য নং')}>{q.member ? digits(q.member.member_no) : tx('সদস্য নন')}</Descriptions.Item>
-                  </Descriptions>
-                  {!q.member_active && <Alert type="warning" showIcon style={{ marginBottom: 12 }} title={tx('সক্রিয় সদস্য না হওয়ায় শুধু সেচ চার্জ নেওয়া যাবে; বাড়তি টাকা সঞ্চয়ে রাখা যাবে না।')} />}
-                  <Typography.Paragraph type="secondary">
-                    {tx('ভাগের ক্রম')}: {[...q.order.map(label), label('savings')].join(' → ')}
-                  </Typography.Paragraph>
+          <Section
+            no={2}
+            icon={<PieChartOutlined />}
+            title={tx('বকেয়া ও ভাগ')}
+            extra={
+              manual && (
+                <Space size={8}>
+                  <Tag className="fl-tag fl-tag-gold">{tx('হাতে ভাগ করা')}</Tag>
+                  <Button size="small" icon={<UndoOutlined />} onClick={() => setManual(null)}>
+                    {tx('স্বয়ংক্রিয় ভাগে ফিরুন')}
+                  </Button>
+                </Space>
+              )
+            }
+          >
+            {!q ? (
+              <p className="sv-foot-note">{quote.isFetching ? tx('লোড হচ্ছে...') : tx('প্রদানকারী বাছাই করলে বকেয়া ও ভাগ দেখা যাবে।')}</p>
+            ) : (
+              <>
+                <p className="sv-foot-note">
+                  {tx('ভাগের ক্রম')}: {[...q.order.map(label), label('savings')].join(' → ')}
+                </p>
+                <div className="id-payments">
                   <Table
                     rowKey="m"
                     size="small"
                     pagination={false}
+                    loading={quote.isFetching}
+                    scroll={{ x: 'max-content' }}
                     dataSource={COMBINED_MODULES.map((m) => ({ m }))}
                     summary={() => (
-                      <Table.Summary.Row>
+                      <Table.Summary.Row className="ln-sum-row">
                         <Table.Summary.Cell index={0} colSpan={2}>
-                          <strong>{tx('মোট')}</strong>
+                          {tx('মোট')}
                         </Table.Summary.Cell>
                         <Table.Summary.Cell index={2} align="right">
-                          <strong style={{ color: gap !== 0 ? '#cf1322' : undefined }}>৳{money(partsSum)}</strong>
+                          <span style={{ color: gap !== 0 ? '#cf1322' : undefined }}>৳ {money(partsSum)}</span>
                         </Table.Summary.Cell>
                       </Table.Summary.Row>
                     )}
                     columns={[
-                      { title: tx('খাত'), width: 110, render: (_, { m }) => <Tag color={MODULE_COLOR[m]}>{label(m)}</Tag> },
+                      { title: tx('খাত'), width: 100, render: (_, { m }) => <Tag className={`fl-tag ${MODULE_TONE[m] ?? 'll-gray'}`}>{label(m)}</Tag> },
                       { title: tx('বকেয়া / অবস্থা'), render: (_, { m }) => dueText(m) },
                       {
-                        title: tx('এখন জমা'),
+                        title: tx('এখন জমা (৳)'),
                         width: 160,
                         align: 'right',
                         render: (_, { m }) => (
-                          <InputNumber
-                            min={0}
-                            max={limits[m]}
-                            disabled={limits[m] === 0}
-                            value={parts[m] || null}
-                            style={{ width: 140 }}
-                            onChange={(v) => setManual({ ...parts, [m]: Number(v ?? 0) })}
-                          />
+                          <InputNumber min={0} max={limits[m]} precision={2} disabled={limits[m] === 0} value={parts[m] || null} placeholder="0.00" style={{ width: 140 }} onChange={(v) => setManual({ ...parts, [m]: Number(v ?? 0) })} />
                         ),
                       },
                     ]}
                   />
-                  {manual && (
-                    <Space style={{ marginTop: 12 }}>
-                      <Tag color="orange">{tx('হাতে ভাগ করা')}</Tag>
-                      <Button size="small" icon={<UndoOutlined />} onClick={() => setManual(null)}>
-                        {tx('স্বয়ংক্রিয় ভাগে ফিরুন')}
-                      </Button>
-                    </Space>
-                  )}
-                  {(q.allocation.unallocated > 0 && !manual) && (
-                    <Alert type="error" showIcon style={{ marginTop: 12 }} title={tx('৳{{p0}} কোনো খাতে ভাগ করা যায়নি।', { p0: money(q.allocation.unallocated) })} />
-                  )}
-                </>
-              )}
-            </Card>
-          </Col>
-          <Col xs={24} xl={10}>
-            <Card title={tx('রশিদ')}>
-              <Form form={form} layout="vertical" initialValues={{ date: dayjs(), method: 'cash' }} onFinish={save}>
-                <Form.Item label={tx('মোট টাকা')} required extra={totalDue > 0 ? tx('মোট বকেয়া ৳{{p0}}', { p0: money(totalDue) }) : undefined}>
-                  <Space.Compact style={{ width: '100%' }}>
-                    <InputNumber
-                      min={0}
-                      prefix="৳"
-                      size="large"
-                      value={amount}
-                      style={{ width: '100%' }}
-                      onChange={(v) => {
-                        setAmount(v === null ? null : Number(v))
-                        setManual(null)
-                      }}
-                    />
-                    <Button size="large" disabled={!totalDue} onClick={() => (setAmount(totalDue), setManual(null))}>
-                      {tx('সব বকেয়া')}
-                    </Button>
-                  </Space.Compact>
+                </div>
+                {q.allocation.unallocated > 0 && !manual && <Alert type="error" showIcon className="sv-note" title={tx('৳{{p0}} কোনো খাতে ভাগ করা যায়নি।', { p0: money(q.allocation.unallocated) })} />}
+              </>
+            )}
+          </Section>
+
+          <Section no={3} icon={<WalletOutlined />} title={tx('টাকা ও মাধ্যম')}>
+            <div className="iv-grid iv-grid-2">
+              <Form.Item label={tx('মোট টাকা (৳)')} required extra={totalDue > 0 ? tx('মোট বকেয়া ৳{{p0}}', { p0: money(totalDue) }) : undefined}>
+                <Space.Compact style={{ width: '100%' }}>
+                  <InputNumber
+                    min={0}
+                    precision={2}
+                    prefix="৳"
+                    placeholder="0.00"
+                    value={amount}
+                    disabled={!q}
+                    style={{ width: '100%' }}
+                    onChange={(v) => {
+                      setAmount(v === null ? null : Number(v))
+                      setManual(null)
+                    }}
+                  />
+                  <Button disabled={!totalDue} onClick={() => (setAmount(totalDue), setManual(null))}>
+                    {tx('সব বকেয়া')}
+                  </Button>
+                </Space.Compact>
+              </Form.Item>
+              <Form.Item name="date" label={tx('তারিখ')} rules={[required(tx('তারিখ দিন'))]}>
+                <DatePicker prefix={<CalendarOutlined />} format="DD/MM/YYYY" style={{ width: '100%' }} disabledDate={(d) => d.isAfter(dayjs())} onChange={() => setManual(null)} />
+              </Form.Item>
+            </div>
+            <Form.Item name="method" label={tx('মাধ্যম')}>
+              <Radio.Group optionType="button" options={Object.entries(METHOD_LABEL).map(([value, l]) => ({ value, label: value === 'other' ? tx('অন্যান্য') : l }))} />
+            </Form.Item>
+            {method === 'cash' ? (
+              <Alert type="info" showIcon className="sv-note" title={tx('সেচের অংশ সেচ ক্যাশে এবং বাকি অংশ সমিতির ক্যাশে জমা হবে।')} />
+            ) : (
+              <div className="iv-grid iv-grid-2">
+                <Form.Item name="fund_account_id" label={method === 'bank' ? tx('ব্যাংক হিসাব') : tx('যে হিসাবে জমা')} rules={[required(tx('হিসাব বাছাই করুন'))]}>
+                  <Select options={(funds.data ?? []).filter((f) => (method === 'bank' ? f.kind === 'bank' : true)).map((a) => ({ value: a.id, label: accountLabel(a) + (a.account_no ? ` (${digits(a.account_no)})` : '') }))} />
                 </Form.Item>
-                <Form.Item name="date" label={tx('তারিখ')} rules={[required(tx('তারিখ দিন'))]}>
-                  <DatePicker format="DD/MM/YYYY" style={{ width: '100%' }} disabledDate={(d) => d.isAfter(dayjs())} onChange={() => setManual(null)} />
+                <Form.Item name="reference" label={tx('রেফারেন্স')} rules={[required(tx('রেফারেন্স দিন'))]} extra={tx('চেক/ডিপোজিট স্লিপ বা মোবাইল লেনদেন নম্বর')}>
+                  <Input maxLength={100} />
                 </Form.Item>
-                <Form.Item name="method" label={tx('মাধ্যম')}>
-                  <Radio.Group optionType="button" options={Object.entries(METHOD_LABEL).map(([value, l]) => ({ value, label: value === 'other' ? tx('অন্যান্য') : l }))} />
-                </Form.Item>
-                {method === 'cash' ? (
-                  <Alert type="info" showIcon style={{ marginBottom: 16 }} title={tx('সেচের অংশ সেচ ক্যাশে এবং বাকি অংশ সমিতির ক্যাশে জমা হবে।')} />
-                ) : (
-                  <>
-                    <Form.Item name="fund_account_id" label={method === 'bank' ? tx('ব্যাংক হিসাব') : tx('যে হিসাবে জমা')} rules={[required(tx('হিসাব বাছাই করুন'))]}>
-                      <Select options={(funds.data ?? []).filter((f) => (method === 'bank' ? f.kind === 'bank' : true)).map((a) => ({ value: a.id, label: accountLabel(a) + (a.account_no ? ` (${digits(a.account_no)})` : '') }))} />
-                    </Form.Item>
-                    <Form.Item name="reference" label={tx('রেফারেন্স')} rules={[required(tx('রেফারেন্স দিন'))]} extra={tx('চেক/ডিপোজিট স্লিপ বা মোবাইল লেনদেন নম্বর')}>
-                      <Input maxLength={100} />
-                    </Form.Item>
-                  </>
-                )}
-                <Form.Item name="remarks" label={tx('মন্তব্য')}>
-                  <Input.TextArea rows={2} maxLength={500} />
-                </Form.Item>
-                {gap !== 0 && amount ? <Alert type="warning" showIcon style={{ marginBottom: 12 }} title={tx('ভাগের যোগফল থেকে মোট টাকা ৳{{p0}} আলাদা।', { p0: money(Math.abs(gap)) })} /> : null}
-                <Button type="primary" htmlType="submit" icon={<CheckOutlined />} loading={saving} disabled={!amount || gap !== 0 || !q} block size="large">
-                  {tx('টাকা গ্রহণ ও রশিদ তৈরি')}
-                </Button>
-              </Form>
-            </Card>
-          </Col>
-        </Row>
-      )}
-    </>
+              </div>
+            )}
+            <Form.Item name="remarks" label={tx('মন্তব্য (ঐচ্ছিক)')} style={{ marginTop: 16 }} extra={<span className="iv-count">{tx('{{p0}}/৫০০ অক্ষর', { p0: digits(remarks?.length ?? 0) })}</span>}>
+              <Input.TextArea rows={2} maxLength={500} placeholder={tx('মন্তব্য লিখুন (যদি থাকে)...')} />
+            </Form.Item>
+          </Section>
+
+          <div className="iv-actions">
+            <Button icon={<CloseOutlined />} onClick={() => navigate('/payments/combined')}>
+              {tx('বাতিল')}
+            </Button>
+            <Button onClick={reset}>{tx('রিসেট')}</Button>
+            <span className="iv-spacer" />
+            <Button type="primary" icon={<CheckOutlined />} loading={saving} disabled={!amount || gap !== 0 || !q} onClick={save}>
+              {tx('টাকা গ্রহণ ও রশিদ তৈরি')}
+            </Button>
+          </div>
+        </Form>
+
+        <div className="ln-side">
+          <section className="id-box">
+            <header>
+              <UserOutlined />
+              <h3>{tx('প্রদানকারীর তথ্য')}</h3>
+            </header>
+            {!q ? (
+              <p className="sv-foot-note">{tx('প্রদানকারী বাছাই করলে তথ্য দেখা যাবে।')}</p>
+            ) : (
+              <KV
+                rows={[
+                  [tx('নাম'), <Link to={`/farmers/${q.farmer.id}`}>{nameOf(q.farmer)}</Link>],
+                  [tx('কৃষক আইডি'), digits(q.farmer.farmer_code)],
+                  [tx('পিতার নাম'), q.farmer.father_name || '—'],
+                  [tx('মোবাইল নং'), q.farmer.mobile ? digits(q.farmer.mobile) : '—'],
+                  [tx('সদস্য নং'), q.member ? digits(q.member.member_no) : tx('সদস্য নন')],
+                  [tx('চলমান ঋণ'), q.loan ? digits(q.loan.loan_no) : '—'],
+                ]}
+              />
+            )}
+          </section>
+          <section className="id-box">
+            <header>
+              <FileTextOutlined />
+              <h3>{tx('রশিদের সারাংশ')}</h3>
+            </header>
+            <div className="ln-limit">
+              <table className="ln-limit-table">
+                <tbody>
+                  {COMBINED_MODULES.map((m) => (
+                    <tr key={m}>
+                      <td>{label(m)}</td>
+                      <td>৳ {money(parts[m] || 0)}</td>
+                    </tr>
+                  ))}
+                  <tr className="ln-limit-total">
+                    <td>{tx('মোট জমা')}</td>
+                    <td>৳ {money(amount ?? 0)}</td>
+                  </tr>
+                </tbody>
+              </table>
+              {gap !== 0 && amount ? <Alert type="warning" showIcon title={tx('ভাগের যোগফল থেকে মোট টাকা ৳{{p0}} আলাদা।', { p0: money(Math.abs(gap)) })} /> : null}
+            </div>
+          </section>
+        </div>
+      </div>
+    </PageFrame>
   )
 }

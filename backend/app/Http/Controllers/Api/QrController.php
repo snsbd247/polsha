@@ -73,8 +73,13 @@ class QrController extends Controller
             $q->where(fn ($w) => $w->where('code', 'like', "%$en%")->orWhere('label', 'like', "%$search%"));
         }
 
+        // card figures over the same scope (mine, or everyone's) before the filters narrow the list
+        $scope = QrScan::query()->when(! $request->user()->can('audit.view') || ! $request->boolean('all'), fn ($w) => $w->where('user_id', $request->user()->id));
+        $counts = ['total' => (clone $scope)->count(), 'found' => (clone $scope)->where('found', true)->count(),
+            'missing' => (clone $scope)->where('found', false)->count(), 'today' => (clone $scope)->where('created_at', '>=', now()->startOfDay())->count()];
+
         return response()->json($q->orderByDesc('id')->paginate($this->perPage($request))->toArray()
-            + ['types' => Tr::map(QrScan::TYPES), 'can_all' => $request->user()->can('audit.view')]);
+            + ['types' => Tr::map(QrScan::TYPES), 'can_all' => $request->user()->can('audit.view'), 'counts' => $counts]);
     }
 
     /** @return array{0: ?Model, 1: ?string, 2: ?string, 3: ?string} */

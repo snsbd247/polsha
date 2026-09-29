@@ -199,6 +199,10 @@ class IrrigationTest extends Phase2TestCase
         $this->actingAs($this->irrigation)->getJson("/api/receipts?is_legacy=1&with_invoices=1&season_id={$this->season->id}&mouza_id={$this->mouza->id}")
             ->assertOk()->assertJsonPath('total', 1)->assertJsonPath('data.0.legacy_no', 'OLD-77')->assertJsonPath('data.0.invoices.0.id', $inv->id);
         $this->actingAs($this->irrigation)->getJson('/api/receipts?is_legacy=1&season_id=999999')->assertJsonPath('total', 0);
+
+        // the receipt list cards count every live receipt, old and new
+        $this->actingAs($this->irrigation)->getJson('/api/receipts/summary')->assertOk()
+            ->assertJsonPath('count', 2)->assertJsonPath('amount', 150)->assertJsonPath('cancelled', 0);
     }
 
     public function test_batch_collection_makes_one_receipt_per_farmer(): void

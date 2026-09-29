@@ -17,6 +17,7 @@ use App\Support\Tr;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 class CombinedPaymentController extends Controller
@@ -38,11 +39,16 @@ class CombinedPaymentController extends Controller
                         $by['loan'] ?? 0, $by['irrigation'] ?? 0, $by['share'] ?? 0, $by['savings'] ?? 0, $p->amount, $statuses[$p->status] ?? $p->status];
                 }));
         }
-        $total = (clone $q)->reorder()->where('status', '!=', 'cancelled')->sum('amount');
+        $valid = (clone $q)->reorder()->where('status', '!=', 'cancelled');
+        $total = (clone $valid)->sum('amount');
+        // how the money split between the books, for the list cards (same filters)
+        $byModule = DB::table('combined_payment_parts')->whereIn('combined_payment_id', (clone $valid)->select('id'))
+            ->groupBy('module')->selectRaw('module, SUM(amount) a')->pluck('a', 'module')->map(fn ($a) => round((float) $a, 2));
 
         return response()->json($q->with(['parts:id,combined_payment_id,module,amount', 'farmer:id,farmer_code', 'creator:id,name_bn,name_en'])
             ->orderByDesc('date')->orderByDesc('id')->paginate($this->perPage($request))->toArray()
-            + ['total_amount' => round((float) $total, 2), 'methods' => $methods, 'statuses' => $statuses, 'modules' => Tr::map(CombinedPayment::MODULES)]);
+            + ['total_amount' => round((float) $total, 2), 'module_totals' => $byModule, 'valid_count' => (clone $valid)->count(),
+                'methods' => $methods, 'statuses' => $statuses, 'modules' => Tr::map(CombinedPayment::MODULES)]);
     }
 
     /** Dues of the payer plus the automatic split for an amount. */

@@ -26,9 +26,21 @@ class DayCloseController extends Controller
         if ($request->boolean('with_difference')) {
             $q->where('difference', '!=', 0);
         }
+        if ($request->filled('status')) {
+            $q->where('status', $request->query('status'));
+        }
 
-        return response()->json($q->orderByDesc('date')->paginate($this->perPage($request))->toArray()
-            + ['statuses' => Tr::map(DayClose::STATUSES), 'unclosed' => $this->days->unclosedDays()]);
+        return response()->json($q->orderByDesc('date')->paginate($this->perPage($request))->toArray() + [
+            'statuses' => Tr::map(DayClose::STATUSES),
+            'unclosed' => $this->days->unclosedDays(),
+            // the register cards: every day ever closed, the ones that did not tally and those waiting to reopen
+            'counts' => [
+                'total' => DayClose::count(),
+                'with_difference' => DayClose::where('difference', '!=', 0)->count(),
+                'difference' => round((float) DayClose::sum('difference'), 2),
+                'reopen_pending' => DayClose::where('status', 'reopen_pending')->count(),
+            ],
+        ]);
     }
 
     public function summary(Request $request): JsonResponse

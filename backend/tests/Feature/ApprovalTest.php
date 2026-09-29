@@ -91,6 +91,10 @@ class ApprovalTest extends TestCase
         $this->actingAs($this->manager)->getJson('/api/approvals/pending-count')->assertJson(['count' => 1]);
         $this->actingAs($this->president)->getJson('/api/approvals/pending-count')->assertJson(['count' => 0]);
         $this->actingAs($this->maker)->getJson('/api/approvals/pending-count')->assertJson(['count' => 0]);
+
+        // the inbox cards: the manager has one waiting, the maker sent one that is still pending
+        $this->actingAs($this->manager)->getJson('/api/approvals')->assertJsonPath('counts.mine', 1)->assertJsonCount(1, 'data');
+        $this->actingAs($this->maker)->getJson('/api/approvals?tab=sent')->assertJsonPath('counts.sent_pending', 1)->assertJsonPath('counts.mine', 0);
     }
 
     public function test_disabled_rule_auto_approves(): void

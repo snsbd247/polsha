@@ -200,6 +200,9 @@ class Phase8Test extends Phase2TestCase
         $day = DayClose::firstOrFail();
         $this->assertEquals(-30, $day->difference);
         $this->assertSame('closed', $day->status);
+        // the register cards count the short day
+        $this->actingAs($this->cashier)->getJson('/api/day-closes')->assertOk()
+            ->assertJsonPath('counts.total', 1)->assertJsonPath('counts.with_difference', 1)->assertJsonPath('counts.reopen_pending', 0);
 
         // the closed day (and every day before it) takes no more cash
         $this->actingAs($this->cashier)->postJson('/api/combined-payments', [
