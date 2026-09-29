@@ -222,8 +222,8 @@ class LoanController extends Controller
             $en = Bn::toEnDigits($search);
             $q->where(fn ($w) => $w->where('payment_no', 'like', "%$en%")->orWhere('reference', 'like', "%$en%")
                 ->orWhereHas('loan', fn ($l) => $l->where('loan_no', 'like', "%$en%")
-                    ->orWhereHas('member', fn ($m) => $m->when(ctype_digit($en), fn ($x) => $x->where('member_no', (int) $en))
-                        ->orWhereHas('farmer', fn ($f) => $f->where('name_bn', 'like', "%$search%")->orWhere('name_en', 'like', "%$search%")))));
+                    ->orWhereHas('member', fn ($m) => $m->where(fn ($g) => $g->when(ctype_digit($en), fn ($x) => $x->where('member_no', (int) $en))
+                        ->orWhereHas('farmer', fn ($f) => $f->where('name_bn', 'like', "%$search%")->orWhere('name_en', 'like', "%$search%"))))));
         }
         $statuses = Tr::map(LoanPayment::STATUSES);
         if ($request->query('export') === 'csv') {
@@ -402,9 +402,9 @@ class LoanController extends Controller
         if ($search = trim((string) $request->query('search'))) {
             $en = Bn::toEnDigits($search);
             $q->where(fn ($w) => $w->where('loan_no', 'like', "%$en%")
-                ->orWhereHas('member', fn ($m) => $m->when(ctype_digit($en), fn ($x) => $x->where('member_no', (int) $en))
+                ->orWhereHas('member', fn ($m) => $m->where(fn ($g) => $g->when(ctype_digit($en), fn ($x) => $x->where('member_no', (int) $en))
                     ->orWhereHas('farmer', fn ($f) => $f->where('name_bn', 'like', "%$search%")->orWhere('name_en', 'like', "%$search%")
-                        ->orWhere('farmer_code', 'like', "%$en%")->orWhere('mobile', 'like', "%$en%"))));
+                        ->orWhere('farmer_code', 'like', "%$en%")->orWhere('mobile', 'like', "%$en%")))));
         }
 
         return $q;

@@ -34,7 +34,7 @@ type Detail = InvoiceRow & {
   snapshot: { jl_no?: string | null; crop?: string | null; land_area?: number; cultivator?: { mobile?: string | null } }
 }
 
-function Fact({ icon, label, children, color, tint }: { icon: ReactNode; label: string; children: ReactNode; color: string; tint: string }) {
+export function Fact({ icon, label, children, color, tint }: { icon: ReactNode; label: string; children: ReactNode; color: string; tint: string }) {
   return (
     <div className="id-fact">
       <span className="id-fact-icon" style={{ color, background: tint }}>
@@ -48,7 +48,7 @@ function Fact({ icon, label, children, color, tint }: { icon: ReactNode; label: 
   )
 }
 
-function Box({ icon, title, children, className }: { icon: ReactNode; title: string; children: ReactNode; className?: string }) {
+export function Box({ icon, title, children, className }: { icon: ReactNode; title: string; children: ReactNode; className?: string }) {
   return (
     <section className={`id-box ${className ?? ''}`}>
       <header>
@@ -60,7 +60,7 @@ function Box({ icon, title, children, className }: { icon: ReactNode; title: str
   )
 }
 
-function KV({ rows }: { rows: [string, ReactNode][] }) {
+export function KV({ rows }: { rows: [string, ReactNode][] }) {
   return (
     <dl className="id-kv">
       {rows.map(([k, v]) => (

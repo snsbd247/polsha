@@ -7,6 +7,7 @@ use App\Models\Member;
 use App\Models\MemberAccount;
 use App\Models\MemberTransaction;
 use App\Models\Receipt;
+use App\Services\FundHistoryService;
 use App\Services\LedgerService;
 use App\Services\MemberFundService;
 use App\Services\SettingService;
@@ -242,7 +243,8 @@ class MemberFundController extends Controller
             $en = Bn::toEnDigits($search);
             $q->where(fn ($w) => $w->where('txn_no', 'like', "%$en%")->orWhere('reference', 'like', "%$en%")
                 ->orWhereHas('account', fn ($a) => $a->where('account_no', 'like', "%$en%")
-                    ->orWhereHas('member.farmer', fn ($f) => $f->where('name_bn', 'like', "%$search%")->orWhere('name_en', 'like', "%$search%"))));
+                    ->when(ctype_digit($en), fn ($x) => $x->orWhereHas('member', fn ($m) => $m->where('member_no', (int) $en)))
+                    ->orWhereHas('member.farmer', fn ($f) => $f->where('name_bn', 'like', "%$search%")->orWhere('name_en', 'like', "%$search%")->orWhere('mobile', 'like', "%$en%"))));
         }
         $types = Tr::map(MemberTransaction::TYPES[$kind]);
         $statuses = Tr::map(MemberTransaction::STATUSES);
@@ -258,7 +260,7 @@ class MemberFundController extends Controller
         $sums = (clone $q)->whereIn('status', ['posted', 'cancel_pending'])
             ->selectRaw("COALESCE(SUM(CASE WHEN direction = 'in' THEN amount END), 0) i, COALESCE(SUM(CASE WHEN direction = 'out' THEN amount END), 0) o")->first();
 
-        return response()->json($q->with(['account:id,account_no,member_id', 'account.member:id,farmer_id,member_no', 'account.member.farmer:id,farmer_code,name_bn,name_en'])
+        return response()->json($q->with(['account:id,account_no,member_id', 'account.member:id,farmer_id,member_no', 'account.member.farmer:id,farmer_code,name_bn,name_en,mobile', 'creator:id,name_bn,name_en'])
             ->orderByDesc('date')->orderByDesc('id')->paginate($this->perPage($request))->toArray()
             + ['total_in' => round((float) $sums->i, 2), 'total_out' => round((float) $sums->o, 2)]);
     }
@@ -278,6 +280,7 @@ class MemberFundController extends Controller
             'type_label' => $txn->typeLabel(),
             'can_cancel' => $txn->status === 'posted' && in_array($txn->type, MemberTransaction::CANCELLABLE, true),
             'society' => SettingService::society(),
+            'timeline' => app(FundHistoryService::class)->timeline($txn),
         ]);
     }
 
@@ -366,9 +369,10 @@ class MemberFundController extends Controller
         if ($search = trim((string) $request->query('search'))) {
             $en = Bn::toEnDigits($search);
             $q->where(fn ($w) => $w->where('account_no', 'like', "%$en%")
-                ->orWhereHas('member', fn ($m) => $m->when(ctype_digit($en), fn ($x) => $x->where('member_no', (int) $en))
+                // grouped, or the "or" would escape the member relation's own condition
+                ->orWhereHas('member', fn ($m) => $m->where(fn ($g) => $g->when(ctype_digit($en), fn ($x) => $x->where('member_no', (int) $en))
                     ->orWhereHas('farmer', fn ($f) => $f->where('name_bn', 'like', "%$search%")->orWhere('name_en', 'like', "%$search%")
-                        ->orWhere('farmer_code', 'like', "%$en%")->orWhere('mobile', 'like', "%$en%"))));
+                        ->orWhere('farmer_code', 'like', "%$en%")->orWhere('mobile', 'like', "%$en%")))));
         }
 
         return $q;

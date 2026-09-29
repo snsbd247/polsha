@@ -39,6 +39,7 @@ use App\Http\Controllers\Api\LoanProductController;
 use App\Http\Controllers\Api\LocationController;
 use App\Http\Controllers\Api\MemberController;
 use App\Http\Controllers\Api\MemberFundController;
+use App\Http\Controllers\Api\FundEntryController;
 use App\Http\Controllers\Api\MembershipApplicationController;
 use App\Http\Controllers\Api\MouzaController;
 use App\Http\Controllers\Api\PasswordResetController;
@@ -394,6 +395,9 @@ Route::middleware(['auth:sanctum', 'usable'])->group(function () {
         Route::get('transactions/{txn}', [MemberFundController::class, 'showTransaction']);
         Route::post('transactions/{txn}/cancel', [MemberFundController::class, 'cancelTransaction']);
         Route::get('audit', [MemberFundController::class, 'audit']);
+        Route::get('entry-summary', [FundEntryController::class, 'summary']);
+        Route::get('history', [FundEntryController::class, 'history']);
+        Route::get('history/summary', [FundEntryController::class, 'historySummary']);
     });
     Route::get('distributions', [DistributionController::class, 'index']);
     Route::get('distributions/{run}', [DistributionController::class, 'show'])->whereNumber('run');

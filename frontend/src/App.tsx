@@ -92,6 +92,10 @@ const FundAccountDetailPage = lazy(() => import('./pages/funds/FundAccountDetail
 const FundTxnListPage = lazy(() => import('./pages/funds/FundTxnListPage'))
 const FundTxnDetailPage = lazy(() => import('./pages/funds/FundTxnDetailPage'))
 const FundAuditPage = lazy(() => import('./pages/funds/FundAuditPage'))
+const EntryListPage = lazy(() => import('./pages/savings/EntryListPage'))
+const EntryFormPage = lazy(() => import('./pages/savings/EntryFormPage'))
+const EntryDetailPage = lazy(() => import('./pages/savings/EntryDetailPage'))
+const EntryHistoryPage = lazy(() => import('./pages/savings/EntryHistoryPage'))
 const DistributionListPage = lazy(() => import('./pages/funds/DistributionListPage'))
 const DistributionFormPage = lazy(() => import('./pages/funds/DistributionFormPage'))
 const DistributionDetailPage = lazy(() => import('./pages/funds/DistributionDetailPage'))
@@ -310,6 +314,11 @@ export default function App() {
           <Route key={`${k}-s`} path={`funds/${k}/transactions/:id`} element={<Perm perm={`${k}.view`}><FundTxnDetailPage key={k} kind={k} /></Perm>} />,
           <Route key={`${k}-u`} path={`funds/${k}/audit`} element={<Perm perm={`${k}.view`}><FundAuditPage key={k} kind={k} /></Perm>} />,
         ])}
+        <Route path="savings/entries" element={<Perm perm="savings.view"><EntryListPage key="deposit" entry="deposit" /></Perm>} />
+        <Route path="savings/entries/new" element={<Perm perm="savings.create"><EntryFormPage key="deposit" entry="deposit" /></Perm>} />
+        <Route path="savings/entries/details" element={<Perm perm="savings.view"><EntryDetailPage key="deposit" entry="deposit" /></Perm>} />
+        <Route path="savings/entries/history" element={<Perm perm="savings.view"><EntryHistoryPage key="deposit" entry="deposit" /></Perm>} />
+        <Route path="savings/entries/details/:id" element={<Perm perm="savings.view"><EntryDetailPage key="deposit" entry="deposit" /></Perm>} />
         <Route path="funds/distributions" element={<Perm perm={['savings.view', 'share.view']}><DistributionListPage /></Perm>} />
         <Route path="funds/distributions/new/:kind" element={<Perm perm={['savings.edit', 'share.edit']}><DistributionFormPage /></Perm>} />
         <Route path="funds/distributions/:id" element={<Perm perm={['savings.view', 'share.view']}><DistributionDetailPage /></Perm>} />

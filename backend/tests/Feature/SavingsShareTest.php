@@ -151,6 +151,48 @@ class SavingsShareTest extends Phase2TestCase
         $this->assertAuditClean('savings');
     }
 
+    public function test_entry_summary_history_and_timeline(): void
+    {
+        $a = $this->open('savings', $this->member('রহিম'));
+        $d1 = $this->txn($a, ['type' => 'deposit', 'amount' => 500, 'method' => 'cash']);
+        $d2 = $this->txn($a, ['type' => 'deposit', 'amount' => 200, 'method' => 'cash']);
+        $w = $this->txn($a, ['type' => 'withdrawal', 'amount' => 100, 'method' => 'cash']);
+
+        // the withdrawal refused; one deposit cancelled, a cancel of the other refused
+        $this->actingAs($this->manager)->postJson("/api/approvals/{$w->approval_request_id}/decide", ['decision' => 'reject', 'remarks' => 'না'])->assertOk();
+        $req = $this->actingAs($this->cashier)->postJson("/api/funds/savings/transactions/{$d1->id}/cancel", ['reason' => 'ভুল'])->assertCreated();
+        $this->approve($req->json('id'));
+        $req = $this->actingAs($this->cashier)->postJson("/api/funds/savings/transactions/{$d2->id}/cancel", ['reason' => 'ভুল'])->assertCreated();
+        $this->actingAs($this->manager)->postJson("/api/approvals/{$req->json('id')}/decide", ['decision' => 'reject', 'remarks' => 'না'])->assertOk();
+
+        $s = $this->actingAs($this->cashier)->getJson('/api/funds/savings/entry-summary?type=deposit')->assertOk();
+        $this->assertSame(1, $s->json('count'));
+        $this->assertEquals(200, $s->json('amount'));
+        $this->assertEquals(200, $s->json('today_amount'));
+        $this->assertSame(1, $s->json('cancelled'));
+        $this->actingAs($this->cashier)->getJson('/api/funds/savings/entry-summary?type=purchase')->assertStatus(422);
+
+        $h = $this->actingAs($this->cashier)->getJson('/api/funds/savings/history/summary?type=deposit')->assertOk();
+        $this->assertSame(['entered' => 2, 'submitted' => 0, 'approved' => 0, 'rejected' => 0, 'cancel_requested' => 2, 'cancel_rejected' => 1, 'cancelled' => 1], $h->json('counts'));
+        $this->assertSame(6, $h->json('total'));
+
+        $list = $this->actingAs($this->cashier)->getJson('/api/funds/savings/history?type=deposit&event=cancelled')->assertOk();
+        $this->assertSame(1, $list->json('total'));
+        $this->assertSame($d1->txn_no, $list->json('data.0.transaction.txn_no'));
+        $this->assertSame('রহিম', $list->json('data.0.transaction.account.farmer.name_bn'));
+        $this->assertSame(0, $this->actingAs($this->cashier)->getJson('/api/funds/savings/history?type=deposit&search=নেই')->assertOk()->json('total'));
+        $this->assertStringContainsString($d2->txn_no, $this->actingAs($this->cashier)->get('/api/funds/savings/history?type=deposit&export=csv')->assertOk()->streamedContent());
+
+        // the withdrawal's own history: sent, then rejected (a guarded update, logged by hand)
+        $wh = $this->actingAs($this->cashier)->getJson('/api/funds/savings/history/summary?type=withdrawal')->assertOk();
+        $this->assertSame(1, $wh->json('counts.submitted'));
+        $this->assertSame(1, $wh->json('counts.rejected'));
+
+        $t = $this->actingAs($this->cashier)->getJson("/api/funds/savings/transactions/{$d2->id}")->assertOk();
+        $this->assertSame(['entered', 'cancel_requested', 'cancel_rejected'], array_column($t->json('timeline'), 'event'));
+        $this->assertSame('ভুল', $t->json('timeline.1.reason'));
+    }
+
     public function test_share_purchase_transfer_and_reconciliation(): void
     {
         $x = $this->member('ক');

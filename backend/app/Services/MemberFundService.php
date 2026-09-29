@@ -169,9 +169,12 @@ class MemberFundService
     public function reject(MemberTransaction $txn): void
     {
         DB::transaction(function () use ($txn) {
-            MemberTransaction::whereKey($txn->id)->where('status', 'pending')->update(['status' => 'rejected']);
-            if ($txn->pair_id) {
-                MemberTransaction::whereKey($txn->pair_id)->where('status', 'pending')->update(['status' => 'rejected']);
+            // a guarded update skips the model events, so the history is logged here
+            if (MemberTransaction::whereKey($txn->id)->where('status', 'pending')->update(['status' => 'rejected'])) {
+                AuditLogger::log($txn->auditModule(), 'update', $txn, ['status' => 'pending'], ['status' => 'rejected']);
+            }
+            if ($txn->pair_id && MemberTransaction::whereKey($txn->pair_id)->where('status', 'pending')->update(['status' => 'rejected'])) {
+                AuditLogger::log($txn->auditModule(), 'update', MemberTransaction::find($txn->pair_id), ['status' => 'pending'], ['status' => 'rejected']);
             }
         });
     }
@@ -226,7 +229,9 @@ class MemberFundService
 
     public function keep(MemberTransaction $txn): void
     {
-        MemberTransaction::whereKey($txn->id)->where('status', 'cancel_pending')->update(['status' => 'posted', 'cancel_reason' => null]);
+        if (MemberTransaction::whereKey($txn->id)->where('status', 'cancel_pending')->update(['status' => 'posted', 'cancel_reason' => null])) {
+            AuditLogger::log($txn->auditModule(), 'update', $txn, ['status' => 'cancel_pending', 'cancel_reason' => $txn->cancel_reason], ['status' => 'posted', 'cancel_reason' => null]);
+        }
     }
 
     // ---- profit & dividend ----

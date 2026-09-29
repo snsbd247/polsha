@@ -14,7 +14,7 @@ export default function ComingSoonPage({ page }: { page: SoonPage }) {
       subTitle={
         <>
           <div style={{ marginBottom: 8 }}>{page.about}</div>
-          <strong>{tx('শীঘ্রই আসছে (ফেজ {{p0}})', { p0: digits(page.phase) })}</strong>
+          <strong>{page.step ? tx('শীঘ্রই আসছে (সঞ্চয় ধাপ {{p0}})', { p0: digits(page.step) }) : tx('শীঘ্রই আসছে (ফেজ {{p0}})', { p0: digits(page.phase ?? 10) })}</strong>
         </>
       }
       extra={

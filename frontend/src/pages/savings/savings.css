@@ -1,0 +1,86 @@
+/* Savings menu screens: entries, share collection, withdrawals. */
+
+.sv-total {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 34px;
+  padding: 0 12px;
+  border-radius: 8px;
+  background: #e8f6ee;
+  color: #146c3c;
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.sv-total strong {
+  font-weight: 700;
+}
+
+.sv-head-extra {
+  margin-left: auto;
+}
+
+.sv-balance {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+  padding: 10px 14px;
+  border: 1px solid #cfe0fb;
+  border-radius: 8px;
+  background: #f3f8ff;
+  font-size: 15px;
+}
+
+.sv-balance strong {
+  color: #1769e0;
+  font-size: 17px;
+}
+
+.iv-form .ant-alert {
+  margin-top: 4px;
+}
+
+.sv-lookup-row {
+  display: flex;
+  gap: 10px;
+  padding: 16px 18px 12px;
+}
+
+.sv-lookup-row .ant-input-affix-wrapper {
+  flex: 1;
+}
+
+.sv-sub {
+  margin: 4px 18px 4px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.sv-pick .ant-table-row {
+  cursor: pointer;
+}
+
+@media (max-width: 575px) {
+  .sv-lookup-row {
+    flex-direction: column;
+  }
+
+  /* four buttons: two to a row on a phone */
+  .sv-form .iv-actions {
+    flex-wrap: wrap;
+  }
+
+  .sv-form .iv-actions .ant-btn {
+    flex: 1 1 calc(50% - 6px);
+    min-width: 0;
+  }
+
+  .sv-form .iv-actions .iv-spacer {
+    display: none;
+  }
+}

@@ -1235,5 +1235,11 @@
     "এই সেচের ধরন জমি, রেট বা ইনভয়েসে ব্যবহৃত হয়েছে; মুছে না ফেলে নিষ্ক্রিয় করুন।": "This irrigation type is used by lands, rates or invoices; make it inactive instead of deleting.",
     "কোড ২–১২টি ইংরেজি বড় হাতের অক্ষর, সংখ্যা বা হাইফেন হবে।": "The code must be 2-12 capital English letters, digits or hyphens.",
     "আসন্ন": "Upcoming",
-    "মেয়াদ শেষ": "Expired"
+    "মেয়াদ শেষ": "Expired",
+    "লেনদেনের ধরন সঠিক নয়": "Invalid transaction type",
+    "সম্পাদনকারী": "Done by",
+    "এন্ট্রি ও পোস্ট": "Entered & posted",
+    "অনুমোদনে পাঠানো": "Sent for approval",
+    "বাতিলের আবেদন": "Cancellation requested",
+    "বাতিলের আবেদন নামঞ্জুর": "Cancellation refused"
 }
