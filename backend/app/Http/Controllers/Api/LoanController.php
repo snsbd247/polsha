@@ -21,6 +21,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 class LoanController extends Controller
@@ -98,6 +99,26 @@ class LoanController extends Controller
             in_array($l->status, ['active', 'closed'], true) ? round((float) $l->amount - (float) $l->principal_paid, 2) : null));
 
         return response()->json($page->toArray() + ['totals' => ['loans' => (int) $totals->c, 'disbursed' => round((float) $totals->d, 2)]]);
+    }
+
+    /** Card figures for the loan lists: count and amount per status, principal owed, and loans with overdue instalments. */
+    public function summary(): JsonResponse
+    {
+        $by = Loan::groupBy('status')->selectRaw('status, COUNT(*) c, COALESCE(SUM(amount),0) a')->get()->keyBy('status');
+        $active = Loan::where('status', 'active');
+        $owed = (float) (clone $active)->sum('amount') - (float) DB::table('loan_installments')->whereIn('loan_id', (clone $active)->select('id'))->sum('principal_paid');
+        $overdue = DB::table('loan_installments')->whereIn('loan_id', (clone $active)->select('id'))->where('due_date', '<', now()->toDateString())
+            ->whereRaw('(principal + interest) > (principal_paid + interest_paid) + 0.004')
+            ->selectRaw('COUNT(DISTINCT loan_id) l, COALESCE(SUM(principal + interest - principal_paid - interest_paid),0) d')->first();
+        $count = fn ($s) => (int) ($by[$s]->c ?? 0);
+        $amount = fn ($s) => round((float) ($by[$s]->a ?? 0), 2);
+
+        return response()->json([
+            'total' => $by->sum('c'), 'counts' => collect(array_keys(Loan::STATUSES))->mapWithKeys(fn ($s) => [$s => $count($s)]),
+            'pending_amount' => $amount('pending'), 'approved_amount' => $amount('approved'),
+            'disbursed' => round($amount('active') + $amount('closed'), 2), 'outstanding' => round(max(0, $owed), 2),
+            'overdue_loans' => (int) $overdue->l, 'overdue_amount' => round((float) $overdue->d, 2),
+        ]);
     }
 
     public function store(Request $request): JsonResponse

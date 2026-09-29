@@ -1,0 +1,135 @@
+/* Loan screens in the approved design. */
+
+.ln-paid-line {
+  margin: -2px 0 14px;
+  padding: 9px 16px;
+  border: 1px solid #e6eaf1;
+  border-radius: 10px;
+  background: #f8fafc;
+  color: #374151;
+  font-size: 14px;
+}
+
+.ln-guarantors {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.ln-tabs-box .ln-tabs > .ant-tabs-nav {
+  margin: 0;
+  padding: 0 18px;
+}
+
+.ln-sum-row td {
+  font-weight: 700;
+  background: #f5f8fd;
+}
+
+/* hero + four figures, amounts kept on one line */
+.ln-page .id-top {
+  grid-template-columns: 1.7fr repeat(4, minmax(0, 1fr));
+}
+
+.ln-page .id-fact strong,
+.ln-receipt .id-fact strong {
+  white-space: nowrap;
+}
+
+@media (max-width: 1200px) {
+  .ln-page .id-top {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 767px) {
+  .ln-page .id-top {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* application form: the form, and the limit / schedule beside it */
+.ln-form-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.ln-guarantor-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.ln-guarantor-no {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 28px;
+  height: 32px;
+  border-radius: 6px;
+  background: #eef2f8;
+  color: #374151;
+  font-weight: 600;
+}
+
+.ln-guarantor-row .ant-form-item {
+  margin-bottom: 0;
+}
+
+.ln-g-member {
+  flex: 1;
+  min-width: 0;
+}
+
+.ln-g-relation {
+  width: 150px;
+}
+
+.ln-limit {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 18px 16px;
+}
+
+.ln-limit-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.ln-limit-table td {
+  padding: 7px 2px;
+  border-bottom: 1px solid #eef0f3;
+}
+
+.ln-limit-table td + td {
+  text-align: right;
+  font-weight: 600;
+}
+
+.ln-limit-total td {
+  border-bottom: 0;
+  color: #1769e0;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+@media (max-width: 1200px) {
+  .ln-form-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 575px) {
+  .ln-guarantor-row {
+    flex-wrap: wrap;
+  }
+
+  .ln-g-relation {
+    width: calc(100% - 80px);
+  }
+}

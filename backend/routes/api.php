@@ -418,6 +418,7 @@ Route::middleware(['auth:sanctum', 'usable'])->group(function () {
         Route::get('loans/members', [LoanController::class, 'members']);
         Route::get('loans/eligibility', [LoanController::class, 'eligibility']);
         Route::get('loans/dues', [LoanController::class, 'dues']);
+        Route::get('loans/summary', [LoanController::class, 'summary']);
         Route::get('loans/audit', [LoanController::class, 'audit']);
         Route::get('loans/payments', [LoanController::class, 'payments']);
         Route::get('loans/payments/{payment}', [LoanController::class, 'showPayment']);

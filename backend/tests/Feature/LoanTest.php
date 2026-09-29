@@ -170,6 +170,14 @@ class LoanTest extends Phase2TestCase
         $this->assertEquals(12000, $this->ledger('loans_receivable'));
         $this->assertEquals($cash - 12000, $this->ledger('cash_society'));
 
+        // the list cards: one running loan, all of it still owed, instalments already past due (dates are in the past)
+        $s = $this->actingAs($this->loanOfficer)->getJson('/api/loans/summary')->assertOk();
+        $this->assertSame(1, $s->json('counts.active'));
+        $this->assertEquals(12000, $s->json('disbursed'));
+        $this->assertEquals(12000, $s->json('outstanding'));
+        $this->assertSame(1, $s->json('overdue_loans'));
+        $this->assertGreaterThan(0, $s->json('overdue_amount'));
+
         // on time: interest then principal, no penalty
         $p1 = $this->pay($loan, '2026-02-01', 1120);
         $this->assertEquals([0, 120, 1000], [(float) $p1->penalty, (float) $p1->interest, (float) $p1->principal]);
