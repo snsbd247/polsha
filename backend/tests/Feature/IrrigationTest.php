@@ -173,6 +173,20 @@ class IrrigationTest extends Phase2TestCase
         $this->actingAs($admin)->deleteJson("/api/irrigation-types/$id")->assertOk();
     }
 
+    public function test_old_receipt_list_filters_and_summary(): void
+    {
+        $this->approvedRate();
+        $inv = $this->invoice($this->land('951'));
+        $this->collect($this->owner, [['invoice_id' => $inv->id, 'amount' => 100]], ['is_legacy' => true, 'legacy_no' => 'OLD-77']);
+        $this->collect($this->owner, [['invoice_id' => $inv->id, 'amount' => 50]]);
+
+        $this->actingAs($this->irrigation)->getJson('/api/receipts/legacy-summary')->assertOk()
+            ->assertJsonPath('count', 1)->assertJsonPath('amount', 100)->assertJsonPath('farmers', 1);
+        $this->actingAs($this->irrigation)->getJson("/api/receipts?is_legacy=1&with_invoices=1&season_id={$this->season->id}&mouza_id={$this->mouza->id}")
+            ->assertOk()->assertJsonPath('total', 1)->assertJsonPath('data.0.legacy_no', 'OLD-77')->assertJsonPath('data.0.invoices.0.id', $inv->id);
+        $this->actingAs($this->irrigation)->getJson('/api/receipts?is_legacy=1&season_id=999999')->assertJsonPath('total', 0);
+    }
+
     public function test_batch_collection_makes_one_receipt_per_farmer(): void
     {
         $this->approvedRate();

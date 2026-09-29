@@ -368,6 +368,7 @@ Route::middleware(['auth:sanctum', 'usable'])->group(function () {
     });
     Route::middleware('permission:payment.view')->group(function () {
         Route::get('receipts', [ReceiptController::class, 'index']);
+        Route::get('receipts/legacy-summary', [ReceiptController::class, 'legacySummary']);
         Route::get('receipts/dues', [ReceiptController::class, 'dues']);
         Route::get('receipts/funds', [ReceiptController::class, 'funds']);
         Route::get('receipts/{receipt}', [ReceiptController::class, 'show']);

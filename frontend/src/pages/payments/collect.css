@@ -197,3 +197,44 @@
 .cl-table .cl-pay.ant-input-number {
   width: 88px;
 }
+
+/* old receipt entry */
+.or-layout {
+  grid-template-columns: minmax(0, 1fr) 280px;
+}
+
+.or-grid4 {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  column-gap: 16px;
+}
+
+.or-grid2 {
+  display: grid;
+}
+
+.or-invoices td,
+.or-invoices th {
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.or-inv {
+  text-decoration: underline;
+}
+
+@media (max-width: 1100px) {
+  .or-grid4 {
+    grid-template-columns: 1fr 1fr;
+  }
+  .or-invoices {
+    display: block;
+    overflow-x: auto;
+  }
+}
+
+@media (max-width: 600px) {
+  .or-grid4 {
+    grid-template-columns: 1fr;
+  }
+}

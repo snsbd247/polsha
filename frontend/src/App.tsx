@@ -82,7 +82,8 @@ const FarmerStatementPage = lazy(() => import('./pages/irrigation/FarmerStatemen
 const MismatchPage = lazy(() => import('./pages/irrigation/MismatchPage'))
 const RateAuditPage = lazy(() => import('./pages/irrigation/RateAuditPage'))
 const IrrigationCollectPage = lazy(() => import('./pages/payments/IrrigationCollectPage'))
-const CollectionPage = lazy(() => import('./pages/payments/CollectionPage'))
+const OldReceiptListPage = lazy(() => import('./pages/payments/OldReceiptListPage'))
+const OldReceiptFormPage = lazy(() => import('./pages/payments/OldReceiptFormPage'))
 const ReceiptListPage = lazy(() => import('./pages/payments/ReceiptListPage'))
 const ReceiptDetailPage = lazy(() => import('./pages/payments/ReceiptDetailPage'))
 const FundAccountListPage = lazy(() => import('./pages/funds/FundAccountListPage'))
@@ -171,8 +172,10 @@ function RequireAuth({ children }: { children: ReactNode }) {
 /** Remount when the query string changes: for pages that read a ?preset once (menu items like /loans?status=pending). */
 /** The menu's Old Receipt Entry opens /payments/collect?legacy=1; the plain path is irrigation collection. */
 function CollectRoute() {
-  const { search } = useLocation()
-  return new URLSearchParams(search).get('legacy') === '1' ? <CollectionPage /> : <IrrigationCollectPage />
+  const { search, hash } = useLocation()
+  if (new URLSearchParams(search).get('legacy') !== '1') return <IrrigationCollectPage />
+  // the add form keeps the menu's exact query, so the menu still marks Old Receipt Entry
+  return hash === '#new' ? <OldReceiptFormPage /> : <OldReceiptListPage />
 }
 
 function ByQuery({ children }: { children: ReactNode }) {

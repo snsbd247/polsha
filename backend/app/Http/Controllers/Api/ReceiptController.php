@@ -38,8 +38,10 @@ class ReceiptController extends Controller
         }
         $total = (clone $q)->reorder()->where('status', '!=', 'cancelled')->sum('amount');
 
-        return response()->json($q->with(['farmer:id,farmer_code', 'creator:id,name_bn,name_en'])->orderByDesc('date')->orderByDesc('id')
-            ->paginate($this->perPage($request))->toArray()
+        $page = $q->with(['farmer:id,farmer_code', 'creator:id,name_bn,name_en'])->orderByDesc('date')->orderByDesc('id')
+            ->paginate($this->perPage($request))->toArray();
+
+        return response()->json(($request->boolean('with_invoices') ? $this->withInvoices($page) : $page)
             + ['total_amount' => round((float) $total, 2), 'methods' => Tr::map(Receipt::METHODS), 'statuses' => Tr::map(Receipt::STATUSES)]);
     }
 
@@ -208,12 +210,53 @@ class ReceiptController extends Controller
         if ($request->filled('to')) {
             $q->whereDate('date', '<=', $request->query('to'));
         }
+        // season and mouza come from the invoices a receipt paid
+        $paid = fn ($invoices) => fn ($e) => $e->from('receipt_items')->whereColumn('receipt_items.receipt_id', 'receipts.id')
+            ->where('payable_type', (new Invoice)->getMorphClass())->whereIn('payable_id', $invoices);
+        if ($request->filled('season_id')) {
+            $q->whereExists($paid(Invoice::where('season_id', $request->integer('season_id'))->select('id')));
+        }
+        if ($request->filled('mouza_id')) {
+            $q->whereExists($paid(Invoice::whereHas('land', fn ($l) => $l->withTrashed()->where('mouza_id', $request->integer('mouza_id')))->select('id')));
+        }
         if ($search = trim((string) $request->query('search'))) {
             $en = Bn::toEnDigits($search);
             $q->where(fn ($w) => $w->where('receipt_no', 'like', "%$en%")->orWhere('legacy_no', 'like', "%$en%")
-                ->orWhere('payer_name', 'like', "%$search%")->orWhere('reference', 'like', "%$en%"));
+                ->orWhere('payer_name', 'like', "%$search%")->orWhere('reference', 'like', "%$en%")
+                ->orWhereIn('farmer_id', Farmer::where('mobile', 'like', "%$en%")->select('id')));
         }
 
         return $q;
+    }
+
+    /** Old (hand-written) receipts entered into the system: count, money, farmers and the dates they cover. */
+    public function legacySummary(): JsonResponse
+    {
+        $q = Receipt::where('is_legacy', true)->where('status', '!=', 'cancelled');
+
+        return response()->json([
+            'count' => (clone $q)->count(),
+            'amount' => round((float) (clone $q)->sum('amount'), 2),
+            'farmers' => (clone $q)->distinct()->count('farmer_id'),
+            'from' => (clone $q)->min('date'),
+            'to' => (clone $q)->max('date'),
+        ]);
+    }
+
+    /** Invoices, seasons and the farmer's mobile for each receipt on a page of the list. */
+    private function withInvoices(array $page): array
+    {
+        $ids = array_column($page['data'], 'id');
+        $items = DB::table('receipt_items')->join('invoices', 'invoices.id', '=', 'receipt_items.payable_id')->leftJoin('seasons', 'seasons.id', '=', 'invoices.season_id')
+            ->where('receipt_items.payable_type', (new Invoice)->getMorphClass())->whereIn('receipt_items.receipt_id', $ids)
+            ->get(['receipt_items.receipt_id', 'invoices.id', 'invoices.invoice_no', 'seasons.name_bn as season'])->groupBy('receipt_id');
+        $mobiles = Farmer::whereIn('id', array_filter(array_column($page['data'], 'farmer_id')))->pluck('mobile', 'id');
+        $page['data'] = array_map(fn ($r) => $r + [
+            'invoices' => ($items[$r['id']] ?? collect())->map(fn ($i) => ['id' => $i->id, 'invoice_no' => $i->invoice_no])->values(),
+            'seasons' => ($items[$r['id']] ?? collect())->pluck('season')->filter()->unique()->values(),
+            'mobile' => $mobiles[$r['farmer_id']] ?? null,
+        ], $page['data']);
+
+        return $page;
     }
 }
