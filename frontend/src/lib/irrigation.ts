@@ -166,3 +166,42 @@ export function amountInWords(amount: number): string {
   const s = `${intWords(taka)} taka${paisa ? ` and ${intWords(paisa)} paisa` : ''} only`
   return s.charAt(0).toUpperCase() + s.slice(1)
 }
+
+/** One rate row with its end date, state today and the rate it replaced (from /irrigation-rates/all). */
+export type RateRow = {
+  id: number
+  season_id: number
+  season: string | null
+  irrigation_type_id: number
+  irrigation_type: string | null
+  irrigation_code: string | null
+  land_type_id: number | null
+  land_type: string
+  rate: number
+  old_rate: number | null
+  change: 'created' | 'updated' | 'no_change'
+  effective_from: string
+  effective_to: string | null
+  status: 'pending' | 'approved' | 'rejected'
+  state: 'active' | 'upcoming' | 'expired' | 'pending' | 'rejected'
+  reason: string | null
+  invoices: number
+  approval_request_id: number | null
+  created_at: string
+  creator: { name_bn: string; name_en: string | null } | null
+  approver: { name_bn: string; name_en: string | null } | null
+}
+export type RateSummary = {
+  total: number
+  active: number
+  inactive: number
+  pending: number
+  expired: number
+  created: number
+  updated: number
+  rejected: number
+  combinations: number
+  sources: number
+}
+export type RatePage = { data: RateRow[]; total: number; summary: RateSummary; states: Record<string, string> }
+export const RATE_STATE_TONE: Record<string, string> = { active: 'fl-tag-green', upcoming: 'll-blue', expired: 'fl-tag-red', pending: 'fl-tag-gold', rejected: 'fl-tag-red' }

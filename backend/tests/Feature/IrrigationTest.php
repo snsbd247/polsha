@@ -148,6 +148,31 @@ class IrrigationTest extends Phase2TestCase
         $this->actingAs($this->irrigation)->getJson("/api/irrigation/rate-audit?season_id={$this->season->id}")->assertOk()->assertJsonCount(0, 'invoice_issues');
     }
 
+    public function test_rate_history_states_and_irrigation_type_codes(): void
+    {
+        $first = $this->approvedRate(10);
+        $r = $this->actingAs($this->irrigation)->postJson('/api/irrigation-rates', [
+            'season_id' => $this->season->id, 'irrigation_type_id' => $this->deep->id, 'rate' => 12, 'effective_from' => now()->toDateString(),
+        ])->assertCreated();
+        $this->approve(IrrigationRate::find($r->json('id'))->approval_request_id);
+
+        $all = $this->actingAs($this->irrigation)->getJson("/api/irrigation-rates/all?season_id={$this->season->id}&sort=history")->assertOk()
+            ->assertJsonPath('total', 2)->assertJsonPath('summary.updated', 1)->assertJsonPath('summary.active', 1);
+        $newest = $all->json('data.0');
+        $this->assertSame(['updated', 10, 'active'], [$newest['change'], (int) $newest['old_rate'], $newest['state']]);
+        $old = collect($all->json('data'))->firstWhere('id', $first->id);
+        $this->assertSame('expired', $old['state']);
+        $this->assertSame(now()->subDay()->toDateString(), $old['effective_to']);
+        $this->actingAs($this->irrigation)->getJson('/api/irrigation-rates/all?state=active')->assertJsonPath('total', 1);
+
+        // irrigation types: a code is needed; one in use cannot be removed
+        $admin = $this->userWithRole('super_admin');
+        $this->actingAs($admin)->postJson('/api/irrigation-types', ['name_bn' => 'সোলার পাম্প'])->assertStatus(422)->assertJsonValidationErrors('code');
+        $id = $this->actingAs($admin)->postJson('/api/irrigation-types', ['name_bn' => 'সোলার পাম্প', 'code' => 'solar'])->assertCreated()->assertJsonPath('code', 'SOLAR')->json('id');
+        $this->actingAs($admin)->deleteJson("/api/irrigation-types/{$this->deep->id}")->assertStatus(422);
+        $this->actingAs($admin)->deleteJson("/api/irrigation-types/$id")->assertOk();
+    }
+
     public function test_batch_collection_makes_one_receipt_per_farmer(): void
     {
         $this->approvedRate();

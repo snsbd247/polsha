@@ -338,10 +338,12 @@ Route::middleware(['auth:sanctum', 'usable'])->group(function () {
     Route::get('irrigation-types', [IrrigationTypeController::class, 'index']);
     Route::post('irrigation-types', [IrrigationTypeController::class, 'store'])->middleware('permission:settings.admin');
     Route::put('irrigation-types/{irrigationType}', [IrrigationTypeController::class, 'update'])->middleware('permission:settings.admin');
+    Route::delete('irrigation-types/{irrigationType}', [IrrigationTypeController::class, 'destroy'])->middleware('permission:settings.admin');
     Route::middleware('permission:irrigation.view')->group(function () {
         Route::get('seasons', [SeasonController::class, 'index']);
         Route::get('seasons/{season}', [SeasonController::class, 'show'])->whereNumber('season');
         Route::get('irrigation-rates', [IrrigationRateController::class, 'index']);
+        Route::get('irrigation-rates/all', [IrrigationRateController::class, 'all']);
         Route::get('invoices/meta', [InvoiceController::class, 'meta']);
         Route::get('invoices/summary', [InvoiceController::class, 'summary']);
         Route::get('invoices', [InvoiceController::class, 'index']);

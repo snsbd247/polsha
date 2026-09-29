@@ -20,6 +20,11 @@ class IrrigationRate extends Model
 
     protected $casts = ['rate' => 'decimal:4', 'effective_from' => 'date:Y-m-d', 'approved_at' => 'datetime'];
 
+    public function invoices()
+    {
+        return $this->hasMany(Invoice::class, 'rate_id');
+    }
+
     public function season()
     {
         return $this->belongsTo(Season::class);
