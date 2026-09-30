@@ -56,7 +56,10 @@ class AssetController extends Controller
             ->paginate($this->perPage($request))->toArray() + ['totals' => [
                 'count' => (int) $totals->n, 'cost' => round((float) $totals->cost, 2), 'accumulated' => round((float) $totals->acc, 2),
                 'book_value' => round((float) $totals->cost - (float) $totals->acc, 2),
-            ]]);
+            ],
+            // every asset by status, whatever the filters (the Stock / Sales cards)
+            'status_counts' => Asset::query()->selectRaw('status, COUNT(*) n')->groupBy('status')->pluck('n', 'status'),
+        ]);
     }
 
     public function store(Request $request): JsonResponse
@@ -159,17 +162,38 @@ class AssetController extends Controller
     /** Service/repair jobs across all assets (due list). */
     public function maintenances(Request $request): JsonResponse
     {
+        $today = now()->toDateString();
         $q = AssetMaintenance::with('asset:id,asset_code,name_bn,name_en,location');
         $q->where('status', $request->query('status', 'scheduled'));
         if ($request->boolean('overdue')) {
-            $q->whereDate('due_on', '<', now()->toDateString());
+            $q->whereDate('due_on', '<', $today);
         }
         if ($request->filled('within_days')) {
             $q->whereDate('due_on', '<=', now()->addDays((int) $request->query('within_days'))->toDateString());
         }
+        if ($request->filled('kind')) {
+            $q->where('kind', $request->query('kind'));
+        }
+        if ($search = trim((string) $request->query('search'))) {
+            $en = Bn::toEnDigits($search);
+            $q->where(fn ($w) => $w->where('title', 'like', "%$search%")->orWhere('vendor', 'like', "%$search%")
+                ->orWhereHas('asset', fn ($a) => $a->where('asset_code', 'like', "%$en%")->orWhere('name_bn', 'like', "%$search%")));
+        }
+        $scheduled = fn () => AssetMaintenance::where('status', 'scheduled');
 
         return response()->json($q->orderByRaw('due_on is null')->orderBy('due_on')->orderByDesc('done_on')
-            ->paginate($this->perPage($request))->toArray());
+            ->paginate($this->perPage($request))->toArray() + [
+                // the schedule cards: open jobs, late ones, due within 30 days, and what was done this year (with its cost)
+                'counts' => [
+                    'scheduled' => $scheduled()->count(),
+                    'overdue' => $scheduled()->whereDate('due_on', '<', $today)->count(),
+                    'due_30' => $scheduled()->whereDate('due_on', '>=', $today)->whereDate('due_on', '<=', now()->addDays(30)->toDateString())->count(),
+                    'done_year' => AssetMaintenance::where('status', 'done')->whereYear('done_on', now()->year)->count(),
+                    'cost_year' => round((float) AssetMaintenance::where('status', 'done')->whereYear('done_on', now()->year)->sum('cost'), 2),
+                    'done' => AssetMaintenance::where('status', 'done')->count(),
+                    'cancelled' => AssetMaintenance::where('status', 'cancelled')->count(),
+                ],
+            ]);
     }
 
     /** Asset dashboard: register totals by status/category/condition, due maintenance, latest movements. */
@@ -206,9 +230,8 @@ class AssetController extends Controller
     public function movements(Request $request): JsonResponse
     {
         $q = AssetMovement::with(['asset:id,asset_code,name_bn,name_en,status,location', 'creator:id,name_bn,name_en', 'journal:id,voucher_no']);
-        if ($request->filled('types')) {
-            $q->whereIn('type', explode(',', (string) $request->query('types')));
-        }
+        $types = $request->filled('types') ? explode(',', (string) $request->query('types')) : array_keys(AssetMovement::TYPES);
+        $q->whereIn('type', $request->filled('type') ? [(string) $request->query('type')] : $types);
         if ($request->filled('from')) {
             $q->whereDate('date', '>=', $request->query('from'));
         }
@@ -221,8 +244,19 @@ class AssetController extends Controller
                 ->orWhere('to_location', 'like', "%$search%")->orWhere('from_location', 'like', "%$search%")->orWhere('custodian', 'like', "%$search%"));
         }
 
-        return response()->json($q->orderByDesc('date')->orderByDesc('id')->paginate($this->perPage($request))->toArray()
-            + ['types' => Tr::map(AssetMovement::TYPES)]);
+        $all = fn () => AssetMovement::whereIn('type', $types);
+
+        return response()->json($q->orderByDesc('date')->orderByDesc('id')->paginate($this->perPage($request))->toArray() + [
+            'types' => Tr::map(AssetMovement::TYPES),
+            // the cards: entries of these types (all, per type, this month, assets involved) and where assets stand now
+            'counts' => [
+                'total' => $all()->count(),
+                'month' => $all()->whereDate('date', '>=', now()->startOfMonth()->toDateString())->count(),
+                'assets' => $all()->distinct()->count('asset_id'),
+                'by_type' => $all()->selectRaw('type, COUNT(*) n')->groupBy('type')->pluck('n', 'type'),
+                'by_status' => Asset::query()->selectRaw('status, COUNT(*) n')->groupBy('status')->pluck('n', 'status'),
+            ],
+        ]);
     }
 
     public function depreciationPreview(Request $request): JsonResponse

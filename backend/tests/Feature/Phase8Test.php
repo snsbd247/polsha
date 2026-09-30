@@ -299,7 +299,14 @@ class Phase8Test extends Phase2TestCase
         $this->assertSame(1, collect($dash->json('by_status'))->firstWhere('status', 'installed')['count']);
         $this->assertSame('2026-05', $dash->json('last_depreciation'));
         $this->actingAs($officer)->getJson('/api/assets/movements?types=install,uninstall')->assertOk()->assertJsonCount(1, 'data')
-            ->assertJsonPath('data.0.to_location', 'মাঠ ১');
+            ->assertJsonPath('data.0.to_location', 'মাঠ ১')
+            ->assertJsonPath('counts.by_type.install', 1)->assertJsonPath('counts.assets', 1)->assertJsonPath('counts.by_status.installed', 1);
+        $this->actingAs($officer)->getJson('/api/assets/movements?types=install,uninstall&type=uninstall')->assertJsonCount(0, 'data');
+        // the schedule cards: one open job (the repeat), one done this year for ৳300
+        $this->actingAs($officer)->getJson('/api/assets/maintenances')->assertOk()
+            ->assertJsonPath('counts.scheduled', 1)->assertJsonPath('counts.done', 1)->assertJsonPath('counts.cost_year', 300);
+        $this->actingAs($officer)->getJson('/api/assets/maintenances?search=নেই-এমন')->assertJsonPath('total', 0);
+        $this->actingAs($officer)->getJson('/api/assets')->assertJsonPath('status_counts.installed', 1);
 
         // sale for 11,000 with book value 11,500 → loss 500, after approval
         $cash = $this->ledger('cash_society');

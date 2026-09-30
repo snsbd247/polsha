@@ -37,16 +37,23 @@ export type CombinedQuote = {
 }
 
 export const REC_STATUS_COLOR: Record<string, string> = { draft: 'gold', finalized: 'green' }
-export const ASSET_STATUS_COLOR: Record<string, string> = {
-  in_stock: 'blue',
-  installed: 'green',
-  in_repair: 'orange',
-  disposal_pending: 'gold',
-  disposed: 'default',
-  sold: 'default',
+/** fl-tag tones for the redesigned asset pages */
+export const ASSET_TONE: Record<string, string> = { in_stock: 'll-blue', installed: 'fl-tag-green', in_repair: 'll-orange', disposal_pending: 'fl-tag-gold', disposed: 'll-gray', sold: 'll-purple' }
+export const CONDITION_TONE: Record<string, string> = { good: 'fl-tag-green', fair: 'll-blue', poor: 'll-orange', damaged: 'fl-tag-red' }
+export const MAINT_TONE: Record<string, string> = { scheduled: 'll-blue', done: 'fl-tag-green', cancelled: 'll-gray' }
+export const MOVE_TONE: Record<string, string> = {
+  acquire: 'll-blue',
+  transfer: 'll-blue',
+  install: 'fl-tag-green',
+  uninstall: 'll-gray',
+  condition: 'll-purple',
+  repair: 'll-orange',
+  repaired: 'fl-tag-green',
+  dispose_request: 'fl-tag-gold',
+  dispose_rejected: 'll-gray',
+  disposed: 'fl-tag-red',
+  sold: 'll-purple',
 }
-export const CONDITION_COLOR: Record<string, string> = { good: 'green', fair: 'blue', poor: 'orange', damaged: 'red' }
-export const MAINT_STATUS_COLOR: Record<string, string> = { scheduled: 'blue', done: 'green', cancelled: 'default' }
 
 export type AssetCategory = {
   id: number

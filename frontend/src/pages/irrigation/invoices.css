@@ -56,6 +56,10 @@
   column-gap: 18px;
 }
 
+.iv-grid-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .iv-grid-3 {
   grid-template-columns: 1.3fr 1fr 1fr;
 }
@@ -195,6 +199,7 @@
 }
 
 @media (max-width: 768px) {
+  .iv-grid-2,
   .iv-grid-3,
   .iv-grid-5 {
     grid-template-columns: 1fr;

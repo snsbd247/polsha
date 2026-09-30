@@ -92,32 +92,7 @@ export default function ListFrame(props: {
 
         {props.aside && <div className="lf-aside">{props.aside}</div>}
 
-        <div className={`fl-stats ml-stats pl-stats ${props.statsClass ?? ''}`}>
-          {props.cards.map((c) => (
-            <button key={c.key} type="button" className={`fl-stat ${c.onClick ? '' : 'mz-stat'}`} style={{ ['--tint' as string]: c.tint }} onClick={c.onClick}>
-              <span className="fl-stat-icon" style={{ background: c.tint }}>
-                {c.solid ? (
-                  <span className="lf-solid" style={{ background: c.color }}>
-                    {c.solid}
-                  </span>
-                ) : c.glyph ? (
-                  <span className="lf-glyph" style={{ color: c.color }}>
-                    {c.glyph}
-                  </span>
-                ) : (
-                  <DashIcon name={c.icon} size={30} color={c.color} stroke={2.1} />
-                )}
-              </span>
-              <span className="fl-stat-body">
-                <span className="fl-stat-label">{c.label}</span>
-                <span className="fl-stat-value">
-                  {c.value === undefined ? '—' : typeof c.value === 'number' ? n0(c.value) : c.value}
-                  {c.unit && <small className="mz-unit">{c.unit}</small>}
-                </span>
-              </span>
-            </button>
-          ))}
-        </div>
+        <StatRow cards={props.cards} className={props.statsClass} />
 
         {props.above}
 
@@ -155,14 +130,45 @@ export default function ListFrame(props: {
                 <Button className="ml-edge" icon={<DoubleRightOutlined />} disabled={paging.page >= lastPage} aria-label={tx('শেষ পাতা')} onClick={() => paging.onPage(lastPage)} />
               </span>
               <span className="fl-rows">
-                {tx('প্রতি পাতায় সারি')}{' '}
-                <Select value={paging.perPage} className="fl-size" options={[10, 25, 50, 100].map((v) => ({ value: v, label: digits(v) }))} onChange={paging.onPerPage} />
+                {tx('প্রতি পাতায় সারি')} <Select value={paging.perPage} className="fl-size" options={[10, 25, 50, 100].map((v) => ({ value: v, label: digits(v) }))} onChange={paging.onPerPage} />
               </span>
             </div>
           )}
         </div>
       </div>
     </ConfigProvider>
+  )
+}
+
+/** The row of summary cards (also used on its own, e.g. by dashboards). Must sit inside an element with the `fl ml pl` classes. */
+export function StatRow({ cards, className }: { cards: StatCard[]; className?: string }) {
+  return (
+    <div className={`fl-stats ml-stats pl-stats ${className ?? ''}`}>
+      {cards.map((c) => (
+        <button key={c.key} type="button" className={`fl-stat ${c.onClick ? '' : 'mz-stat'}`} style={{ ['--tint' as string]: c.tint }} onClick={c.onClick}>
+          <span className="fl-stat-icon" style={{ background: c.tint }}>
+            {c.solid ? (
+              <span className="lf-solid" style={{ background: c.color }}>
+                {c.solid}
+              </span>
+            ) : c.glyph ? (
+              <span className="lf-glyph" style={{ color: c.color }}>
+                {c.glyph}
+              </span>
+            ) : (
+              <DashIcon name={c.icon} size={30} color={c.color} stroke={2.1} />
+            )}
+          </span>
+          <span className="fl-stat-body">
+            <span className="fl-stat-label">{c.label}</span>
+            <span className="fl-stat-value">
+              {c.value === undefined ? '—' : typeof c.value === 'number' ? n0(c.value) : c.value}
+              {c.unit && <small className="mz-unit">{c.unit}</small>}
+            </span>
+          </span>
+        </button>
+      ))}
+    </div>
   )
 }
 

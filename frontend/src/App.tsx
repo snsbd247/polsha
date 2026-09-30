@@ -132,6 +132,7 @@ const AssetMovementsPage = lazy(() => import('./pages/assets/AssetMovementsPage'
 const MaintenancePage = lazy(() => import('./pages/assets/MaintenancePage'))
 const DepreciationPage = lazy(() => import('./pages/assets/DepreciationPage'))
 const AssetCategoriesPage = lazy(() => import('./pages/assets/AssetCategoriesPage'))
+const AssetReportsPage = lazy(() => import('./pages/assets/AssetReportsPage'))
 const ReportPage = lazy(() => import('./pages/reports/ReportPage'))
 const ReportCenterPage = lazy(() => import('./pages/reports/ReportCenterPage'))
 const DeletedFarmersPage = lazy(() => import('./pages/farmers/DeletedFarmersPage'))
@@ -151,7 +152,6 @@ const REPORT_ROUTES: { path: string; title: string; keys: string[] }[] = [
   { path: 'members/voter-history', title: tx('ভোটার ইতিহাস'), keys: ['voter_lists', 'voters'] },
   { path: 'members/voter-audit', title: tx('ভোটার অডিট'), keys: ['voter_changes'] },
   { path: 'loans/guarantors', title: tx('জামিনদার'), keys: ['guarantors'] },
-  { path: 'assets/reports', title: tx('সম্পদের রিপোর্ট'), keys: ['asset_register', 'asset_by_category', 'asset_depreciation', 'asset_maintenance'] },
   { path: 'accounting/summary', title: tx('আর্থিক সারসংক্ষেপ'), keys: ['income_statement', 'balance_sheet', 'cash_flow'] },
   { path: 'accounting/source-vs-ledger', title: tx('উৎস বনাম খতিয়ান'), keys: ['source_vs_ledger'] },
   { path: 'accounting/irrigation-cash-bank', title: tx('সেচের নগদ ও ব্যাংক'), keys: ['irrigation_cash_bank'] },
@@ -359,6 +359,7 @@ export default function App() {
         <Route path="qr/history" element={<QrHistoryPage />} />
         <Route path="q/:type/:code" element={<QrResolvePage />} />
         <Route path="assets/dashboard" element={<Perm perm="asset.view"><AssetDashboardPage /></Perm>} />
+        <Route path="assets/reports" element={<Perm perm="asset.view"><AssetReportsPage /></Perm>} />
         <Route path="assets" element={<Perm perm="asset.view"><AssetListPage key="all" /></Perm>} />
         <Route path="assets/stock" element={<Perm perm="asset.view"><AssetListPage key="stock" preset="stock" /></Perm>} />
         <Route path="assets/sales" element={<Perm perm="asset.view"><AssetListPage key="disposal" preset="disposal" /></Perm>} />
