@@ -1,17 +1,39 @@
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Alert, App, Button, Card, Col, DatePicker, Descriptions, Form, Input, InputNumber, Modal, Popconfirm, Row, Select, Space, Spin, Table, Tag } from 'antd'
-import { CheckOutlined, DeleteOutlined, DisconnectOutlined, EditOutlined, LinkOutlined, PlusOutlined, ThunderboltOutlined } from '@ant-design/icons'
+import { Alert, App, Button, DatePicker, Form, Input, InputNumber, Modal, Popconfirm, Select, Space, Spin, Table, Tag } from 'antd'
+import {
+  ArrowLeftOutlined,
+  BankFilled,
+  BookFilled,
+  CalculatorOutlined,
+  CheckOutlined,
+  DeleteOutlined,
+  DisconnectOutlined,
+  EditOutlined,
+  FileTextFilled,
+  LinkOutlined,
+  PlusOutlined,
+  ThunderboltOutlined,
+  UnorderedListOutlined,
+  WarningFilled,
+} from '@ant-design/icons'
+import PageFrame from '../../components/PageFrame'
 import dayjs from 'dayjs'
 import { useAuth } from '../../auth/AuthContext'
 import { api, applyFormErrors, errorMessage } from '../../lib/api'
 import { accountFilter, accountLabel, money, useAccountOptions } from '../../lib/accounting'
 import { digits, fmtDate, fmtDateTime, toEnDigits } from '../../lib/format'
-import { REC_STATUS_COLOR } from '../../lib/phase8'
 import { required } from '../../lib/rules'
 import { nameOf, t as tx } from '../../lib/i18n'
+import { Box, Fact, KV } from '../irrigation/InvoiceDetailPage'
 import { bankLabel, periodLabel, type BankLite } from './BankReconciliationListPage'
+import '../irrigation/invoices.css'
+import '../irrigation/invoice-detail.css'
+import '../lands/land-list.css'
+import '../loans/loans.css'
+import '../cash/cash.css'
+import './accounting.css'
 
 type Person = { id: number; name_bn: string; name_en: string | null } | null
 type StmtLine = {
@@ -55,7 +77,7 @@ type View = {
 
 const signed = (v: number | string) => {
   const n = Number(v)
-  return <span style={{ color: n < 0 ? '#cf1322' : '#389e0d' }}>{money(n)}</span>
+  return <span className={n < 0 ? 'cs-out' : 'cs-in'}>{money(n)}</span>
 }
 
 /** "date, description, reference, amount" per line — dates as DD/MM/YYYY or YYYY-MM-DD. */
@@ -112,7 +134,11 @@ export default function BankReconciliationDetailPage() {
       content: tx('চূড়ান্ত করার পর মেলানো লেনদেনগুলো লক হয়ে যাবে, আর পরিবর্তন করা যাবে না।'),
       okText: tx('চূড়ান্ত করুন'),
       cancelText: tx('বাতিল'),
-      onOk: () => act(() => api.post(`/bank-reconciliations/${rec.id}/finalize`), () => tx('রিকনসিলিয়েশন চূড়ান্ত হয়েছে।')),
+      onOk: () =>
+        act(
+          () => api.post(`/bank-reconciliations/${rec.id}/finalize`),
+          () => tx('রিকনসিলিয়েশন চূড়ান্ত হয়েছে।'),
+        ),
     })
 
   const remove = async () => {
@@ -125,97 +151,130 @@ export default function BankReconciliationDetailPage() {
     }
   }
 
+  const matched = data.lines.filter((l) => l.journal_line_id).length
+  const balanced = t.difference === 0 && t.statement_gap === 0
+
   return (
-    <>
-      <div className="page-header">
-        <h2>
-          {tx('ব্যাংক রিকনসিলিয়েশন — {{p0}}', { p0: periodLabel(rec.period) })} <Tag color={REC_STATUS_COLOR[rec.status]}>{data.statuses[rec.status] ?? rec.status}</Tag>
-        </h2>
-        {draft && (
-          <Space wrap>
-            <Button icon={<PlusOutlined />} onClick={() => setAdding(true)}>
-              {tx('স্টেটমেন্ট লাইন যোগ')}
-            </Button>
-            <Button icon={<ThunderboltOutlined />} loading={busy} onClick={() => act(() => api.post(`/bank-reconciliations/${rec.id}/auto-match`), (d) => tx('{{p0}}টি লাইন স্বয়ংক্রিয়ভাবে মিলেছে।', { p0: digits(d.matched ?? 0) }))}>
-              {tx('স্বয়ংক্রিয় মিল')}
-            </Button>
-            <Button icon={<EditOutlined />} onClick={() => setEditing(true)}>
-              {tx('জের সংশোধন')}
-            </Button>
-            <Button type="primary" icon={<CheckOutlined />} disabled={t.difference !== 0 || t.statement_gap !== 0} onClick={finalize}>
-              {tx('চূড়ান্ত করুন')}
-            </Button>
-            <Popconfirm title={tx('এই রিকনসিলিয়েশন মুছে ফেলবেন?')} okText={tx('মুছুন')} cancelText={tx('না')} onConfirm={remove}>
-              <Button danger icon={<DeleteOutlined />} />
-            </Popconfirm>
-          </Space>
-        )}
+    <PageFrame
+      className="id-page ln-page"
+      crumbs={[{ label: tx('হিসাব'), to: '/accounting/summary' }, { label: tx('মাসিক ব্যাংক মিলকরণ'), to: '/accounting/bank-reconciliations' }, { label: tx('মিলকরণের বিস্তারিত') }]}
+      title={tx('মিলকরণের বিস্তারিত')}
+      actions={
+        <span className="id-actions">
+          {draft && (
+            <>
+              <Button icon={<PlusOutlined />} className="fm-history-btn" onClick={() => setAdding(true)}>
+                {tx('স্টেটমেন্ট লাইন যোগ')}
+              </Button>
+              <Button
+                icon={<ThunderboltOutlined />}
+                className="fm-history-btn"
+                loading={busy}
+                onClick={() =>
+                  act(
+                    () => api.post(`/bank-reconciliations/${rec.id}/auto-match`),
+                    (d) => tx('{{p0}}টি লাইন স্বয়ংক্রিয়ভাবে মিলেছে।', { p0: digits(d.matched ?? 0) }),
+                  )
+                }
+              >
+                {tx('স্বয়ংক্রিয় মিল')}
+              </Button>
+              <Button icon={<EditOutlined />} className="fm-history-btn" onClick={() => setEditing(true)}>
+                {tx('জের সংশোধন')}
+              </Button>
+              <Button type="primary" icon={<CheckOutlined />} disabled={!balanced} onClick={finalize}>
+                {tx('চূড়ান্ত করুন')}
+              </Button>
+              <Popconfirm title={tx('এই মিলকরণ মুছে ফেলবেন?')} okText={tx('মুছুন')} cancelText={tx('না')} onConfirm={remove}>
+                <Button danger icon={<DeleteOutlined />} aria-label={tx('মুছুন')} />
+              </Popconfirm>
+            </>
+          )}
+          <Button icon={<ArrowLeftOutlined />} className="fm-history-btn" onClick={() => navigate('/accounting/bank-reconciliations')}>
+            {tx('তালিকায় ফিরুন')}
+          </Button>
+        </span>
+      }
+    >
+      {rec.status === 'finalized' && <Alert className="id-alert" type="success" showIcon title={tx('চূড়ান্ত করেছেন {{p0}}, {{p1}}', { p0: nameOf(rec.finalizer), p1: fmtDateTime(rec.finalized_at) })} />}
+      {draft && t.statement_gap !== 0 && <Alert className="id-alert" type="warning" showIcon title={tx('প্রারম্ভিক জের + লাইনের নিট ≠ সমাপনী জের — কোনো স্টেটমেন্ট লাইন বাদ পড়েছে বা জের ভুল।')} />}
+
+      <div className="id-top">
+        <div className="id-hero">
+          <span className="id-hero-icon">
+            <BankFilled />
+          </span>
+          <div>
+            <small>{rec.bank_account.bank_name}</small>
+            <strong>{periodLabel(rec.period)}</strong>
+            <Tag className={`fl-tag ${rec.status === 'finalized' ? 'fl-tag-green' : 'fl-tag-gold'}`}>● {data.statuses[rec.status] ?? rec.status}</Tag>
+          </div>
+        </div>
+        <Fact icon={<FileTextFilled />} label={tx('স্টেটমেন্টের সমাপনী জের')} color="#1769e0" tint="#e4edfd">
+          <strong>৳ {money(t.statement_closing)}</strong>
+        </Fact>
+        <Fact icon={<BookFilled />} label={tx('সমন্বিত খাতার জের')} color="#8b3fe0" tint="#efe4fc">
+          <strong>৳ {money(t.adjusted_book)}</strong>
+        </Fact>
+        <Fact icon={balanced ? <CheckOutlined /> : <WarningFilled />} label={tx('পার্থক্য')} color={t.difference === 0 ? '#1f9d55' : '#e5383b'} tint={t.difference === 0 ? '#dcf3e5' : '#fde4e5'}>
+          <strong className={t.difference === 0 ? 'cs-in' : 'cs-out'}>৳ {money(t.difference)}</strong>
+        </Fact>
+        <Fact icon={<LinkOutlined />} label={tx('মেলানো স্টেটমেন্ট লাইন')} color="#f08c00" tint="#fdefd6">
+          <strong>
+            {digits(matched)} / {digits(data.lines.length)}
+          </strong>
+        </Fact>
       </div>
 
-      <Row gutter={16}>
-        <Col xs={24} lg={12}>
-          <Card size="small" title={tx('ব্যাংক স্টেটমেন্ট')} style={{ marginBottom: 16 }}>
-            <Descriptions column={1} size="small">
-              <Descriptions.Item label={tx('ব্যাংক হিসাব')}>{bankLabel(rec.bank_account)}</Descriptions.Item>
-              <Descriptions.Item label={tx('লেজার হিসাব')}>{accountLabel(rec.bank_account.account)}</Descriptions.Item>
-              <Descriptions.Item label={tx('প্রারম্ভিক জের')}>৳{money(t.statement_opening)}</Descriptions.Item>
-              <Descriptions.Item label={tx('স্টেটমেন্ট লাইনের নিট')}>৳{money(t.statement_lines)}</Descriptions.Item>
-              <Descriptions.Item label={tx('সমাপনী জের')}>৳{money(t.statement_closing)}</Descriptions.Item>
-              {t.statement_gap !== 0 && (
-                <Descriptions.Item label={tx('স্টেটমেন্টে অসঙ্গতি')}>
-                  <span style={{ color: '#cf1322' }}>৳{money(t.statement_gap)}</span>
-                </Descriptions.Item>
-              )}
-            </Descriptions>
-          </Card>
-        </Col>
-        <Col xs={24} lg={12}>
-          <Card size="small" title={tx('মিলকরণ')} style={{ marginBottom: 16 }}>
-            <Descriptions column={1} size="small">
-              <Descriptions.Item label={tx('খাতার জের (মাস শেষে)')}>৳{money(t.book_closing)}</Descriptions.Item>
-              <Descriptions.Item label={tx('(−) খাতায় আছে, ব্যাংকে ওঠেনি')}>৳{money(t.unmatched_book)}</Descriptions.Item>
-              <Descriptions.Item label={tx('(+) ব্যাংকে আছে, খাতায় নেই')}>৳{money(t.unmatched_bank)}</Descriptions.Item>
-              <Descriptions.Item label={tx('সমন্বিত খাতার জের')}>৳{money(t.adjusted_book)}</Descriptions.Item>
-              <Descriptions.Item label={tx('পার্থক্য')}>
-                <strong style={{ color: t.difference === 0 ? '#389e0d' : '#cf1322' }}>৳{money(t.difference)}</strong>
-              </Descriptions.Item>
-            </Descriptions>
-          </Card>
-        </Col>
-      </Row>
-      {rec.status === 'finalized' && (
-        <Alert type="success" showIcon style={{ marginBottom: 16 }} title={tx('চূড়ান্ত করেছেন {{p0}}, {{p1}}', { p0: nameOf(rec.finalizer), p1: fmtDateTime(rec.finalized_at) })} />
-      )}
-      {draft && t.statement_gap !== 0 && (
-        <Alert type="warning" showIcon style={{ marginBottom: 16 }} title={tx('প্রারম্ভিক জের + লাইনের নিট ≠ সমাপনী জের — কোনো স্টেটমেন্ট লাইন বাদ পড়েছে বা জের ভুল।')} />
-      )}
+      <div className="id-two">
+        <Box icon={<BankFilled />} title={tx('ব্যাংক স্টেটমেন্ট')}>
+          <KV
+            rows={[
+              [tx('ব্যাংক হিসাব'), bankLabel(rec.bank_account)],
+              [tx('লেজার হিসাব'), <Link to={`/accounting/ledger?account_id=${rec.bank_account.account.id}`}>{accountLabel(rec.bank_account.account)}</Link>],
+              [tx('প্রারম্ভিক জের'), `৳ ${money(t.statement_opening)}`],
+              [tx('স্টেটমেন্ট লাইনের নিট'), `৳ ${money(t.statement_lines)}`],
+              [tx('সমাপনী জের'), `৳ ${money(t.statement_closing)}`],
+              [tx('স্টেটমেন্টে অসঙ্গতি'), t.statement_gap ? <span className="cs-out">৳ {money(t.statement_gap)}</span> : '—'],
+            ]}
+          />
+        </Box>
+        <Box icon={<CalculatorOutlined />} title={tx('মিলকরণ')}>
+          <KV
+            rows={[
+              [tx('খাতার জের (মাস শেষে)'), `৳ ${money(t.book_closing)}`],
+              [tx('(−) খাতায় আছে, ব্যাংকে ওঠেনি'), `৳ ${money(t.unmatched_book)}`],
+              [tx('(+) ব্যাংকে আছে, খাতায় নেই'), `৳ ${money(t.unmatched_bank)}`],
+              [tx('সমন্বিত খাতার জের'), `৳ ${money(t.adjusted_book)}`],
+              [tx('পার্থক্য'), <strong className={t.difference === 0 ? 'cs-in' : 'cs-out'}>৳ {money(t.difference)}</strong>],
+              [tx('প্রস্তুতকারী'), nameOf(rec.creator) || '—'],
+            ]}
+          />
+        </Box>
+      </div>
 
-      <Card size="small" title={tx('স্টেটমেন্ট লাইন ({{p0}}টি)', { p0: digits(data.lines.length) })} style={{ marginBottom: 16 }}>
+      <Box icon={<UnorderedListOutlined />} title={tx('স্টেটমেন্ট লাইন ({{p0}}টি)', { p0: digits(data.lines.length) })}>
         <Table<StmtLine>
           rowKey="id"
           size="small"
+          className="id-payments"
           dataSource={data.lines}
           pagination={{ pageSize: 50, hideOnSinglePage: true }}
-          scroll={{ x: 900 }}
+          scroll={{ x: 'max-content' }}
+          locale={{ emptyText: tx('এখনও কোনো স্টেটমেন্ট লাইন নেই — "স্টেটমেন্ট লাইন যোগ" চাপুন।') }}
           columns={[
-            { title: tx('তারিখ'), dataIndex: 'date', width: 110, render: fmtDate },
-            { title: tx('বিবরণ'), dataIndex: 'description' },
-            { title: tx('রেফারেন্স'), dataIndex: 'reference', render: (v) => digits(v ?? '') },
-            { title: tx('টাকা'), dataIndex: 'amount', align: 'right', render: signed },
+            { title: tx('তারিখ'), dataIndex: 'date', render: fmtDate },
+            { title: tx('বিবরণ'), dataIndex: 'description', render: (v: string | null) => v || '—' },
+            { title: tx('রেফারেন্স'), dataIndex: 'reference', render: (v) => (v ? digits(v) : '—') },
+            { title: tx('টাকা (৳)'), dataIndex: 'amount', align: 'right', render: signed },
             {
               title: tx('মেলানো ভাউচার'),
-              render: (_, l) =>
-                l.journal_line ? (
-                  <Link to={`/accounting/journals/${l.journal_line.journal.id}`}>{digits(l.journal_line.journal.voucher_no)}</Link>
-                ) : (
-                  <Tag color="orange">{tx('মেলেনি')}</Tag>
-                ),
+              render: (_, l) => (l.journal_line ? <Link to={`/accounting/journals/${l.journal_line.journal.id}`}>{digits(l.journal_line.journal.voucher_no)}</Link> : <Tag className="fl-tag ll-orange">{tx('মেলেনি')}</Tag>),
             },
             ...(draft
               ? [
                   {
-                    title: '',
-                    width: 230,
+                    title: tx('অ্যাকশন'),
                     render: (_: unknown, l: StmtLine) =>
                       l.journal_line_id ? (
                         <Button size="small" icon={<DisconnectOutlined />} onClick={() => act(() => api.post(`/bank-reconciliations/${rec.id}/lines/${l.id}/unmatch`))}>
@@ -223,14 +282,14 @@ export default function BankReconciliationDetailPage() {
                         </Button>
                       ) : (
                         <Space size={4}>
-                          <Button size="small" icon={<LinkOutlined />} onClick={() => setMatching(l)}>
+                          <Button size="small" type="primary" icon={<LinkOutlined />} onClick={() => setMatching(l)}>
                             {tx('মেলান')}
                           </Button>
                           <Button size="small" onClick={() => setBooking(l)}>
                             {tx('খাতায় তুলুন')}
                           </Button>
                           <Popconfirm title={tx('লাইনটি মুছবেন?')} okText={tx('মুছুন')} cancelText={tx('না')} onConfirm={() => act(() => api.delete(`/bank-reconciliations/${rec.id}/lines/${l.id}`))}>
-                            <Button size="small" danger icon={<DeleteOutlined />} />
+                            <Button size="small" danger icon={<DeleteOutlined />} aria-label={tx('মুছুন')} />
                           </Popconfirm>
                         </Space>
                       ),
@@ -239,34 +298,36 @@ export default function BankReconciliationDetailPage() {
               : []),
           ]}
         />
-      </Card>
+      </Box>
 
-      <Card size="small" title={tx('খাতার লেনদেন (ব্যাংক লেজার)')}>
+      <Box icon={<BookFilled />} title={tx('খাতার লেনদেন (ব্যাংক লেজার)')} className="rc-book">
         <Table<BookLine>
           rowKey="id"
           size="small"
+          className="id-payments"
           dataSource={data.book}
           pagination={{ pageSize: 50, hideOnSinglePage: true }}
-          scroll={{ x: 800 }}
+          scroll={{ x: 'max-content' }}
+          locale={{ emptyText: tx('এই মাসে ব্যাংক লেজারে কোনো লেনদেন নেই') }}
           columns={[
-            { title: tx('তারিখ'), dataIndex: 'date', width: 110, render: fmtDate },
+            { title: tx('তারিখ'), dataIndex: 'date', render: fmtDate },
             { title: tx('ভাউচার নং'), dataIndex: 'voucher_no', render: (v: string) => digits(v) },
-            { title: tx('বিবরণ'), render: (_, b) => b.narration ?? b.remarks },
-            { title: tx('টাকা'), dataIndex: 'amount', align: 'right', render: signed },
+            { title: tx('বিবরণ'), render: (_, b) => b.narration ?? b.remarks ?? '—' },
+            { title: tx('টাকা (৳)'), dataIndex: 'amount', align: 'right', render: signed },
             {
               title: tx('অবস্থা'),
               render: (_, b) =>
                 b.matched_here ? (
-                  <Tag color="green">{tx('এই মাসে মিলেছে')}</Tag>
+                  <Tag className="fl-tag fl-tag-green">{tx('এই মাসে মিলেছে')}</Tag>
                 ) : b.reconciled ? (
-                  <Tag>{tx('আগে মিলেছে')}</Tag>
+                  <Tag className="fl-tag ll-gray">{tx('আগে মিলেছে')}</Tag>
                 ) : (
-                  <Tag color="orange">{b.earlier ? tx('আগের মাসের বকেয়া') : tx('ব্যাংকে ওঠেনি')}</Tag>
+                  <Tag className="fl-tag ll-orange">{b.earlier ? tx('আগের মাসের বকেয়া') : tx('ব্যাংকে ওঠেনি')}</Tag>
                 ),
             },
           ]}
         />
-      </Card>
+      </Box>
 
       <AddLinesModal open={adding} recId={rec.id} period={rec.period} onClose={() => setAdding(false)} onSaved={(v) => queryClient.setQueryData(key, v)} />
       <EditModal open={editing} rec={rec} onClose={() => setEditing(false)} onSaved={(v) => queryClient.setQueryData(key, v)} />
@@ -280,9 +341,14 @@ export default function BankReconciliationDetailPage() {
         line={booking}
         bankAccountId={rec.bank_account.account_id}
         onClose={() => setBooking(null)}
-        onPick={async (acc) => (await act(() => api.post(`/bank-reconciliations/${rec.id}/lines/${booking!.id}/book`, { account_id: acc }), () => tx('খাতায় ভাউচার তৈরি হয়ে লাইনটি মিলেছে।'))) && setBooking(null)}
+        onPick={async (acc) =>
+          (await act(
+            () => api.post(`/bank-reconciliations/${rec.id}/lines/${booking!.id}/book`, { account_id: acc }),
+            () => tx('খাতায় ভাউচার তৈরি হয়ে লাইনটি মিলেছে।'),
+          )) && setBooking(null)
+        }
       />
-    </>
+    </PageFrame>
   )
 }
 
@@ -450,12 +516,7 @@ function BookModal({ line, bankAccountId, onClose, onPick }: { line: StmtLine | 
           <p>
             {fmtDate(line.date)} · {line.description} · <strong>৳{money(amount)}</strong>
           </p>
-          <Alert
-            type="info"
-            showIcon
-            style={{ marginBottom: 12 }}
-            title={amount < 0 ? tx('ব্যাংক চার্জ/উত্তোলন — বাছাই করা হিসাব ডেবিট, ব্যাংক ক্রেডিট হবে।') : tx('ব্যাংক জমা/সুদ — ব্যাংক ডেবিট, বাছাই করা হিসাব ক্রেডিট হবে।')}
-          />
+          <Alert type="info" showIcon style={{ marginBottom: 12 }} title={amount < 0 ? tx('ব্যাংক চার্জ/উত্তোলন — বাছাই করা হিসাব ডেবিট, ব্যাংক ক্রেডিট হবে।') : tx('ব্যাংক জমা/সুদ — ব্যাংক ডেবিট, বাছাই করা হিসাব ক্রেডিট হবে।')} />
           <Select style={{ width: '100%' }} placeholder={tx('বিপরীত হিসাব (যেমন: ব্যাংক চার্জ, ব্যাংক সুদ)')} options={options} value={account} onChange={setAccount} showSearch={{ filterOption: accountFilter }} />
         </>
       )}

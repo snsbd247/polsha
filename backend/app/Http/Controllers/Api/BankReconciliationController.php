@@ -26,8 +26,21 @@ class BankReconciliationController extends Controller
             $q->where('status', $request->query('status'));
         }
 
-        return response()->json($q->orderByDesc('period')->orderBy('bank_account_id')->paginate($this->perPage($request))->toArray()
-            + ['statuses' => Tr::map(BankReconciliation::STATUSES)]);
+        $lastMonth = now()->subMonthNoOverflow()->format('Y-m');
+        $banks = BankAccount::where('is_active', true)->count();
+
+        return response()->json($q->orderByDesc('period')->orderBy('bank_account_id')->paginate($this->perPage($request))->toArray() + [
+            'statuses' => Tr::map(BankReconciliation::STATUSES),
+            // the cards: all, finished, still open, and how many active bank accounts have last month done
+            'counts' => [
+                'total' => BankReconciliation::count(),
+                'finalized' => BankReconciliation::where('status', 'finalized')->count(),
+                'draft' => BankReconciliation::where('status', 'draft')->count(),
+                'last_month' => $lastMonth,
+                'last_month_done' => BankReconciliation::where('period', $lastMonth)->where('status', 'finalized')->distinct()->count('bank_account_id'),
+                'banks' => $banks,
+            ],
+        ]);
     }
 
     public function store(Request $request): JsonResponse

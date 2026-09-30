@@ -1,0 +1,75 @@
+/* Accounting pages */
+.jl-narr {
+  display: inline-block;
+  max-width: 360px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: bottom;
+}
+
+.coa-name {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.coa-group > td {
+  background: #f7f9fc;
+}
+
+.ac-muted {
+  color: #6b7280;
+}
+
+.ac-strong {
+  font-weight: 700;
+}
+
+.ac-warn {
+  color: #c62828 !important;
+  font-weight: 600;
+}
+
+.hs-two > .ant-tag {
+  align-self: flex-start;
+}
+
+/* journal form: the lines table needs the wider column */
+.jf-grid {
+  grid-template-columns: minmax(0, 1.9fr) minmax(0, 1fr);
+}
+
+.jf-head {
+  grid-template-columns: 220px minmax(0, 1fr);
+}
+
+@media (max-width: 768px) {
+  .jf-head {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 1200px) {
+  .jf-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.rc-book {
+  margin-top: 16px;
+}
+
+/* ledger integrity / fund audit */
+.li-cards {
+  margin-bottom: 16px;
+}
+
+.li-box {
+  margin-bottom: 16px;
+}
+
+.li-body {
+  padding: 12px 18px 16px;
+}

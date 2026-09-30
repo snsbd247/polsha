@@ -262,6 +262,9 @@ class Phase8Test extends Phase2TestCase
         $this->actingAs($this->accountant)->postJson("/api/bank-reconciliations/{$rec->id}/finalize")->assertOk()
             ->assertJsonPath('reconciliation.status', 'finalized');
         $this->actingAs($this->accountant)->deleteJson("/api/bank-reconciliations/{$rec->id}")->assertStatus(422);
+        // the list cards count it as finished
+        $this->actingAs($this->accountant)->getJson('/api/bank-reconciliations')->assertOk()
+            ->assertJsonPath('counts.total', 1)->assertJsonPath('counts.finalized', 1)->assertJsonPath('counts.draft', 0);
     }
 
     public function test_asset_purchase_depreciation_and_sale(): void

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { Alert, Button, DatePicker, Dropdown, Empty, Form, Input, Select, Space, Table, Typography } from 'antd'
 import { DownloadOutlined, PrinterOutlined, ReloadOutlined } from '@ant-design/icons'
@@ -14,7 +14,7 @@ type Params = Record<string, string | number | undefined>
 const num = (c: ReportColumn) => c.type === 'money' || c.type === 'number' || c.type === 'decimal'
 
 /** One report from the backend registry: its filters, table, totals and summary, with print (PDF) / Excel / CSV. */
-export default function ReportView({ reportKey, initial }: { reportKey: string; initial?: Params }) {
+export default function ReportView({ reportKey, initial, onData }: { reportKey: string; initial?: Params; onData?: (r: ReportResult) => void }) {
   const { data: settings } = usePublicSettings()
   const [params, setParams] = useState<Params>(initial ?? {})
   const [form] = Form.useForm()
@@ -25,6 +25,10 @@ export default function ReportView({ reportKey, initial }: { reportKey: string; 
     retry: false,
   })
   const society = nameOf({ name_bn: settings?.society_name_bn, name_en: settings?.society_name_en })
+  // lets a surrounding page show this report's summary (e.g. as cards)
+  useEffect(() => {
+    if (data) onData?.(data)
+  }, [data, onData])
 
   const apply = (v: Record<string, unknown>) => {
     const next: Params = {}
@@ -51,15 +55,7 @@ export default function ReportView({ reportKey, initial }: { reportKey: string; 
   return (
     <>
       {data && data.filters.length > 0 && (
-        <Form
-          key={data.key}
-          form={form}
-          layout="inline"
-          className="toolbar"
-          initialValues={initialValues(data)}
-          onFinish={apply}
-          style={{ rowGap: 8, marginBottom: 12 }}
-        >
+        <Form key={data.key} form={form} layout="inline" className="toolbar" initialValues={initialValues(data)} onFinish={apply} style={{ rowGap: 8, marginBottom: 12 }}>
           {data.filters.map((f) => (
             <Form.Item key={f.name} name={f.name} label={f.label}>
               {f.type === 'period' ? (
@@ -88,9 +84,7 @@ export default function ReportView({ reportKey, initial }: { reportKey: string; 
       )}
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginBottom: 8 }}>
-        <Typography.Text type="secondary">
-          {data ? `${digits(data.subtitle)} · ${tx('মোট সারি: {{n}}', { n: digits(data.rows.length) })}` : ''}
-        </Typography.Text>
+        <Typography.Text type="secondary">{data ? `${digits(data.subtitle)} · ${tx('মোট সারি: {{n}}', { n: digits(data.rows.length) })}` : ''}</Typography.Text>
         <Space wrap>
           <Button icon={<ReloadOutlined />} onClick={() => refetch()} loading={isFetching} />
           <Button icon={<PrinterOutlined />} disabled={!data || !!data.notice} onClick={() => data && printReport(data, society)}>

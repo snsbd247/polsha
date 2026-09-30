@@ -35,8 +35,19 @@ class JournalController extends Controller
                 $q->lazy()->map(fn ($j) => [$j->voucher_no, $j->date, $types[$j->voucher_type] ?? $j->voucher_type, $j->narration, $j->amount, $statuses[$j->status] ?? $j->status]));
         }
 
-        return response()->json($q->paginate($this->perPage($request))->toArray()
-            + ['types' => Tr::map(Journal::TYPES), 'statuses' => Tr::map(Journal::STATUSES)]);
+        $month = fn () => Journal::where('date', '>=', now()->startOfMonth()->toDateString())->where('status', 'posted');
+
+        return response()->json($q->paginate($this->perPage($request))->toArray() + [
+            'types' => Tr::map(Journal::TYPES), 'statuses' => Tr::map(Journal::STATUSES),
+            // the voucher cards: all, posted this month (count and money), waiting for approval, reversed
+            'counts' => [
+                'total' => Journal::count(),
+                'month' => $month()->count(),
+                'month_amount' => round((float) $month()->sum('amount'), 2),
+                'pending' => Journal::where('status', 'pending')->count(),
+                'reversed' => Journal::where('status', 'reversed')->count(),
+            ],
+        ]);
     }
 
     public function show(Journal $journal): JsonResponse

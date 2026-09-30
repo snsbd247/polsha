@@ -134,6 +134,7 @@ const DepreciationPage = lazy(() => import('./pages/assets/DepreciationPage'))
 const AssetCategoriesPage = lazy(() => import('./pages/assets/AssetCategoriesPage'))
 const AssetReportsPage = lazy(() => import('./pages/assets/AssetReportsPage'))
 const ReportPage = lazy(() => import('./pages/reports/ReportPage'))
+const ReportHub = lazy(() => import('./components/ReportHub'))
 const ReportCenterPage = lazy(() => import('./pages/reports/ReportCenterPage'))
 const DeletedFarmersPage = lazy(() => import('./pages/farmers/DeletedFarmersPage'))
 const LedgerIntegrityPage = lazy(() => import('./pages/accounting/LedgerIntegrityPage'))
@@ -147,15 +148,13 @@ const FinancialYearPage = lazy(() => import('./pages/settings/FinancialYearPage'
 const PublicPaymentPage = lazy(() => import('./pages/PublicPaymentPage'))
 const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage'))
 
+const ACC_SECTION = { label: tx('হিসাব'), to: '/accounting/summary' }
+
 /** Menu items that are simply one or more server reports (the page shows only those the user may open). */
 const REPORT_ROUTES: { path: string; title: string; keys: string[] }[] = [
   { path: 'members/voter-history', title: tx('ভোটার ইতিহাস'), keys: ['voter_lists', 'voters'] },
   { path: 'members/voter-audit', title: tx('ভোটার অডিট'), keys: ['voter_changes'] },
   { path: 'loans/guarantors', title: tx('জামিনদার'), keys: ['guarantors'] },
-  { path: 'accounting/summary', title: tx('আর্থিক সারসংক্ষেপ'), keys: ['income_statement', 'balance_sheet', 'cash_flow'] },
-  { path: 'accounting/source-vs-ledger', title: tx('উৎস বনাম খতিয়ান'), keys: ['source_vs_ledger'] },
-  { path: 'accounting/irrigation-cash-bank', title: tx('সেচের নগদ ও ব্যাংক'), keys: ['irrigation_cash_bank'] },
-  { path: 'accounting/payment-reconciliation', title: tx('পেমেন্ট মিলকরণ'), keys: ['payment_reconciliation'] },
   {
     path: 'reports/collections',
     title: tx('আদায়ের রিপোর্ট'),
@@ -378,6 +377,10 @@ export default function App() {
           <Route key={r.path} path={r.path} element={<ReportPage key={r.path} title={r.title} keys={r.keys} />} />
         ))}
         <Route path="farmers/deleted" element={<Perm perm="farmer.view"><DeletedFarmersPage /></Perm>} />
+        <Route path="accounting/summary" element={<ReportHub key="summary" section={ACC_SECTION} title={tx('আর্থিক সারসংক্ষেপ')} reports={[{ key: 'income_statement' }, { key: 'balance_sheet' }, { key: 'cash_flow' }]} />} />
+        <Route path="accounting/source-vs-ledger" element={<ReportHub key="svl" section={ACC_SECTION} title={tx('উৎস বনাম খতিয়ান')} reports={[{ key: 'source_vs_ledger' }]} />} />
+        <Route path="accounting/irrigation-cash-bank" element={<ReportHub key="icb" section={ACC_SECTION} title={tx('সেচের নগদ ও ব্যাংক')} reports={[{ key: 'irrigation_cash_bank' }]} />} />
+        <Route path="accounting/payment-reconciliation" element={<ReportHub key="prec" section={ACC_SECTION} title={tx('পেমেন্ট মিলকরণ')} reports={[{ key: 'payment_reconciliation' }]} />} />
         <Route path="accounting/ledger-integrity" element={<Perm perm="accounting.view"><LedgerIntegrityPage /></Perm>} />
         <Route path="accounting/public-payments" element={<Perm perm="payment.view"><PublicPaymentsPage /></Perm>} />
         <Route path="audit/integrity-scan" element={<Perm perm="audit.view"><IntegrityScanPage /></Perm>} />

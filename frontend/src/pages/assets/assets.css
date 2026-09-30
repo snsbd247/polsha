@@ -183,3 +183,7 @@
 .as-report > :not(header) {
   padding: 14px 18px 18px;
 }
+
+.rh-single {
+  margin-top: 16px;
+}

@@ -52,6 +52,19 @@ class AccountingTest extends Phase2TestCase
         $this->actingAs($this->accountant)->getJson('/api/accounts')->assertOk()->assertJsonPath('types.asset', 'সম্পদ');
     }
 
+    public function test_voucher_list_counts_pending_and_posted(): void
+    {
+        $this->actingAs($this->accountant)->postJson('/api/journals', [
+            'voucher_type' => 'opening', 'date' => now()->toDateString(), 'narration' => 'প্রারম্ভিক',
+            'lines' => [['account_id' => $this->id('cash_society'), 'debit' => 500]],
+        ])->assertCreated();
+        $this->actingAs($this->accountant)->getJson('/api/journals')->assertOk()
+            ->assertJsonPath('counts.pending', 1)->assertJsonPath('counts.month', 0);
+        $this->openingCash(700);
+        $this->actingAs($this->accountant)->getJson('/api/journals')
+            ->assertJsonPath('counts.total', 2)->assertJsonPath('counts.month', 1)->assertJsonPath('counts.month_amount', 700);
+    }
+
     public function test_opening_balance_is_pending_until_manager_approves_and_auto_balances(): void
     {
         $r = $this->actingAs($this->accountant)->postJson('/api/journals', [

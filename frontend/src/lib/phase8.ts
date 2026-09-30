@@ -36,7 +36,6 @@ export type CombinedQuote = {
   modules: Record<CombinedModule, string>
 }
 
-export const REC_STATUS_COLOR: Record<string, string> = { draft: 'gold', finalized: 'green' }
 /** fl-tag tones for the redesigned asset pages */
 export const ASSET_TONE: Record<string, string> = { in_stock: 'll-blue', installed: 'fl-tag-green', in_repair: 'll-orange', disposal_pending: 'fl-tag-gold', disposed: 'll-gray', sold: 'll-purple' }
 export const CONDITION_TONE: Record<string, string> = { good: 'fl-tag-green', fair: 'll-blue', poor: 'll-orange', damaged: 'fl-tag-red' }

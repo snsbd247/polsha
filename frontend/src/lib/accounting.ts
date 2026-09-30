@@ -69,6 +69,9 @@ export const JOURNAL_STATUS: Record<string, { label: string; color: string }> = 
   reversed: { label: tx('রিভার্সড'), color: 'default' },
 }
 
+/** fl-tag tones for voucher status on the redesigned pages */
+export const JOURNAL_TONE: Record<string, string> = { pending: 'fl-tag-gold', posted: 'fl-tag-green', rejected: 'fl-tag-red', returned: 'll-orange', reversed: 'll-gray' }
+
 export const BANK_TYPE_LABEL: Record<string, string> = {
   current: tx('চলতি হিসাব'),
   savings: tx('সঞ্চয়ী হিসাব'),
@@ -104,4 +107,6 @@ export function useFunds(date?: string) {
 /** antd Select filter that matches code, Bangla and English names. */
 // Codes are shown in Bangla digits, but people type them either way.
 export const accountFilter = (input: string, option?: { label?: unknown }) =>
-  toEnDigits(String(option?.label ?? '')).toLowerCase().includes(toEnDigits(input).toLowerCase())
+  toEnDigits(String(option?.label ?? ''))
+    .toLowerCase()
+    .includes(toEnDigits(input).toLowerCase())

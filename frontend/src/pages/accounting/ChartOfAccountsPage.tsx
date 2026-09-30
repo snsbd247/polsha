@@ -1,15 +1,20 @@
 import { useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Alert, App, Button, Form, Input, Modal, Popconfirm, Select, Space, Switch, Table, Tag } from 'antd'
-import { PlusOutlined } from '@ant-design/icons'
-import { Can, useAuth } from '../../auth/AuthContext'
-import RelatedLinks from '../../components/RelatedLinks'
+import { Alert, App, Button, Form, Grid, Input, Modal, Popconfirm, Select, Space, Switch, Table, Tag } from 'antd'
+import type { ColumnsType } from 'antd/es/table'
+import { BankFilled, BookOutlined, DeleteFilled, EditFilled, FileTextFilled, PlusOutlined, RiseOutlined, SafetyCertificateFilled, SearchOutlined, TableOutlined } from '@ant-design/icons'
+import { useAuth } from '../../auth/AuthContext'
 import { api, applyFormErrors, errorMessage } from '../../lib/api'
 import { ACCOUNT_TYPE_LABEL, accountLabel, money } from '../../lib/accounting'
 import { digits } from '../../lib/format'
 import { nameOf, t as tx } from '../../lib/i18n'
 import { required } from '../../lib/rules'
+import ListFrame, { Field, n0 } from '../lands/ListFrame'
+import '../lands/land-list.css'
+import '../farmers/farmer-merge-list.css'
+import '../irrigation/invoices.css'
+import './accounting.css'
 
 type Account = {
   id: number
@@ -28,13 +33,20 @@ type Account = {
   lines_count: number
   children?: Account[]
 }
+type Filters = { search?: string; type?: string; kind?: string; active?: string }
 
+const TYPE_TONE: Record<string, string> = { asset: 'll-blue', liability: 'll-orange', equity: 'll-purple', income: 'fl-tag-green', expense: 'fl-tag-red' }
+
+/** The chart of accounts as a tree (groups show the rolled-up balance), with add / edit / remove. */
 export default function ChartOfAccountsPage() {
   const { message } = App.useApp()
   const { can } = useAuth()
+  const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const wide = Grid.useBreakpoint().lg
   const [editing, setEditing] = useState<Account | 'new' | null>(null)
-  const [search, setSearch] = useState('')
+  const [draft, setDraft] = useState<Filters>({})
+  const [filters, setFilters] = useState<Filters>({})
   const [form] = Form.useForm()
   const type = Form.useWatch('type', form)
 
@@ -65,10 +77,25 @@ export default function ChartOfAccountsPage() {
     return roots
   }, [data])
 
-  const q = search.trim().toLowerCase()
-  const flat = q ? (data ?? []).filter((a) => `${a.code} ${a.name_bn} ${a.name_en ?? ''}`.toLowerCase().includes(q)) : null
+  const postable = (data ?? []).filter((a) => a.is_postable)
+  const sumOf = (t: string) => postable.filter((a) => a.type === t).reduce((s, a) => s + Number(a.balance), 0)
+  const q = (filters.search ?? '').trim().toLowerCase()
+  const filtering = !!(q || filters.type || filters.kind || filters.active)
+  const flat = filtering
+    ? (data ?? []).filter(
+        (a) =>
+          (!q || `${a.code} ${a.name_bn} ${a.name_en ?? ''}`.toLowerCase().includes(q)) &&
+          (!filters.type || a.type === filters.type) &&
+          (!filters.kind || (filters.kind === 'group' ? !a.is_postable : filters.kind === 'fund' ? a.is_fund : a.is_postable)) &&
+          (!filters.active || String(a.is_active) === filters.active),
+      )
+    : null
 
   const groups = (data ?? []).filter((a) => !a.is_postable && (!type || a.type === type) && a.id !== (editing as Account | null)?.id)
+  const show = (f: Filters) => {
+    setDraft(f)
+    setFilters(f)
+  }
 
   const open = (a: Account | 'new', parent?: Account) => {
     setEditing(a)
@@ -102,72 +129,112 @@ export default function ChartOfAccountsPage() {
   }
 
   const sys = editing !== 'new' && editing?.is_system
+  const amt = (v: number) => (data ? `৳ ${money(v)}` : undefined)
+
+  const cards = [
+    { key: 'count', label: tx('মোট হিসাব · {{p0}}টি লেনদেনযোগ্য', { p0: n0(postable.length) }), value: data?.length, icon: '', glyph: <FileTextFilled />, color: '#1769e0', tint: '#e4edfd', onClick: () => show({}) },
+    { key: 'asset', label: tx('সম্পদ'), value: amt(sumOf('asset')), icon: '', glyph: <BankFilled />, color: '#0e9f9a', tint: '#d9f4f2', onClick: () => show({ type: 'asset' }) },
+    { key: 'liab', label: tx('দায় + মূলধন'), value: amt(sumOf('liability') + sumOf('equity')), icon: '', glyph: <SafetyCertificateFilled />, color: '#8b3fe0', tint: '#efe4fc', onClick: () => show({ type: 'liability' }) },
+    { key: 'net', label: tx('আয় − ব্যয় (চলতি)'), value: amt(sumOf('income') - sumOf('expense')), icon: '', glyph: <RiseOutlined />, color: '#1f9d55', tint: '#dcf3e5', onClick: () => show({ type: 'income' }) },
+  ]
+
+  const columns: ColumnsType<Account> = [
+    { title: tx('কোড'), dataIndex: 'code', render: (v: string, a) => <span className={a.is_postable ? 'iv-no' : 'iv-no ac-strong'}>{digits(v)}</span> },
+    {
+      title: tx('হিসাবের নাম'),
+      render: (_, a) => (
+        <span className="coa-name">
+          {a.is_postable ? (
+            <Link to={`/accounting/ledger?account_id=${a.id}`} className="fl-link">
+              {nameOf(a)}
+            </Link>
+          ) : (
+            <strong>{nameOf(a)}</strong>
+          )}
+          {a.is_fund && <Tag className="fl-tag ll-blue">{tx('নগদ/ব্যাংক')}</Tag>}
+          {!a.is_postable && <Tag className="fl-tag ll-gray">{tx('গ্রুপ')}</Tag>}
+          {!a.is_active && <Tag className="fl-tag fl-tag-red">{tx('নিষ্ক্রিয়')}</Tag>}
+        </span>
+      ),
+    },
+    { title: tx('ধরন'), dataIndex: 'type', render: (t: string) => <Tag className={`fl-tag ${TYPE_TONE[t] ?? 'll-gray'}`}>{ACCOUNT_TYPE_LABEL[t] ?? t}</Tag> },
+    { title: tx('জের (৳)'), dataIndex: 'balance', align: 'right', render: (v: number, a) => (a.is_postable ? money(v) : <strong>{money(v)}</strong>) },
+    {
+      title: tx('অ্যাকশন'),
+      width: 170,
+      align: 'center',
+      fixed: wide ? 'right' : undefined,
+      render: (_, a) => (
+        <div className="fl-actions pl-actions">
+          {a.is_postable && <Button className="fl-act pl-act" icon={<BookOutlined />} aria-label={tx('খতিয়ান')} title={tx('খতিয়ান')} onClick={() => navigate(`/accounting/ledger?account_id=${a.id}`)} />}
+          {can('accounting.edit') && (
+            <>
+              {!a.is_postable && <Button className="fl-act pl-act" icon={<PlusOutlined />} aria-label={tx('উপ-হিসাব')} title={tx('উপ-হিসাব')} onClick={() => open('new', a)} />}
+              <Button className="fl-act pl-act" icon={<EditFilled />} aria-label={tx('সম্পাদনা')} title={tx('সম্পাদনা')} onClick={() => open(a)} />
+              {!a.is_system && !a.lines_count && !a.children?.length && !a.is_fund && (
+                <Popconfirm title={tx('হিসাবটি মুছে ফেলবেন?')} okText={tx('হ্যাঁ')} cancelText={tx('না')} onConfirm={() => remove(a)}>
+                  <Button className="fl-act pl-act" danger icon={<DeleteFilled />} aria-label={tx('মুছুন')} title={tx('মুছুন')} />
+                </Popconfirm>
+              )}
+            </>
+          )}
+        </div>
+      ),
+    },
+  ]
+  const opts = (m: Record<string, string>) => [{ value: '', label: tx('সকল') }, ...Object.entries(m).map(([value, label]) => ({ value, label }))]
 
   return (
-    <>
-      <div className="page-header">
-        <h2>{tx('হিসাবের তালিকা (Chart of Accounts)')}</h2>
-        <Space wrap>
-          <RelatedLinks links={[{ to: '/accounting/trial-balance', label: tx('রেওয়ামিল') }]} />
-          <Can perm="accounting.edit">
+    <ListFrame
+      section={{ label: tx('হিসাব'), to: '/accounting/summary' }}
+      title={tx('হিসাবের তালিকা')}
+      subtitle=""
+      actions={
+        <>
+          <Button icon={<TableOutlined />} onClick={() => navigate('/accounting/trial-balance')}>
+            {tx('রেওয়ামিল')}
+          </Button>
+          {can('accounting.edit') && (
             <Button type="primary" icon={<PlusOutlined />} onClick={() => open('new')}>
               {tx('নতুন হিসাব')}
             </Button>
-          </Can>
-        </Space>
-      </div>
-      <div className="toolbar">
-        <Input.Search placeholder={tx('কোড বা নাম')} allowClear style={{ width: 260 }} onChange={(e) => setSearch(e.target.value)} />
-      </div>
+          )}
+        </>
+      }
+      cards={cards}
+      filterClass="iv-filters"
+      filters={
+        <>
+          <Field label={tx('খুঁজুন')} grow={280}>
+            <Input prefix={<SearchOutlined />} allowClear placeholder={tx('কোড বা নাম...')} value={draft.search} onChange={(e) => setDraft((d) => ({ ...d, search: e.target.value || undefined }))} onPressEnter={() => setFilters(draft)} />
+          </Field>
+          <Field label={tx('ধরন')}>
+            <Select value={draft.type ?? ''} options={opts(ACCOUNT_TYPE_LABEL)} onChange={(v) => setDraft((d) => ({ ...d, type: v || undefined }))} />
+          </Field>
+          <Field label={tx('হিসাবের রকম')}>
+            <Select value={draft.kind ?? ''} options={opts({ postable: tx('লেনদেনযোগ্য'), group: tx('গ্রুপ'), fund: tx('নগদ/ব্যাংক') })} onChange={(v) => setDraft((d) => ({ ...d, kind: v || undefined }))} />
+          </Field>
+          <Field label={tx('অবস্থা')}>
+            <Select value={draft.active ?? ''} options={opts({ true: tx('সক্রিয়'), false: tx('নিষ্ক্রিয়') })} onChange={(v) => setDraft((d) => ({ ...d, active: v || undefined }))} />
+          </Field>
+        </>
+      }
+      onSearch={() => setFilters(draft)}
+      onReset={() => show({})}
+      tableTitle={tx('{{p0}} ({{p1}})', { p0: filtering ? tx('খোঁজার ফলাফল') : tx('হিসাবের গাছ'), p1: n0(flat ? flat.length : (data?.length ?? 0)) })}
+    >
       <Table<Account>
+        className="fl-table ml-table pl-table iv-table"
         rowKey="id"
-        size="small"
         loading={isLoading}
         dataSource={flat ?? tree}
         pagination={false}
-        scroll={{ x: 800 }}
+        scroll={{ x: 'max-content' }}
         expandable={{ defaultExpandAllRows: true }}
+        rowClassName={(a) => (a.is_postable ? '' : 'coa-group')}
         key={data ? 'loaded' : 'loading'}
-        columns={[
-          { title: tx('কোড'), dataIndex: 'code', width: 140, render: digits },
-          {
-            title: tx('হিসাবের নাম'),
-            render: (_, a) => (
-              <Space size={4} wrap>
-                {a.is_postable ? <Link to={`/accounting/ledger?account_id=${a.id}`}>{nameOf(a)}</Link> : <b>{nameOf(a)}</b>}
-                {a.is_fund && <Tag color="blue">{tx('নগদ/ব্যাংক')}</Tag>}
-                {!a.is_postable && <Tag>{tx('গ্রুপ')}</Tag>}
-                {!a.is_active && <Tag color="red">{tx('নিষ্ক্রিয়')}</Tag>}
-              </Space>
-            ),
-          },
-          { title: tx('ধরন'), dataIndex: 'type', width: 130, render: (t: string) => ACCOUNT_TYPE_LABEL[t] ?? t },
-          { title: tx('জের (টাকা)'), dataIndex: 'balance', width: 150, align: 'right', render: (v: number, a) => (a.is_postable ? money(v) : <b>{money(v)}</b>) },
-          {
-            title: '',
-            width: 190,
-            render: (_, a) =>
-              can('accounting.edit') && (
-                <Space size={4}>
-                  {!a.is_postable && (
-                    <Button size="small" onClick={() => open('new', a)}>
-                      {tx('উপ-হিসাব')}
-                    </Button>
-                  )}
-                  <Button size="small" onClick={() => open(a)}>
-                    {tx('সম্পাদনা')}
-                  </Button>
-                  {!a.is_system && !a.lines_count && !a.children?.length && !a.is_fund && (
-                    <Popconfirm title={tx('হিসাবটি মুছে ফেলবেন?')} okText={tx('হ্যাঁ')} cancelText={tx('না')} onConfirm={() => remove(a)}>
-                      <Button size="small" danger>
-                        {tx('মুছুন')}
-                      </Button>
-                    </Popconfirm>
-                  )}
-                </Space>
-              ),
-          },
-        ]}
+        columns={columns}
+        locale={{ emptyText: tx('কোনো হিসাব পাওয়া যায়নি') }}
       />
 
       <Modal open={!!editing} forceRender title={editing === 'new' ? tx('নতুন হিসাব') : tx('হিসাব সম্পাদনা')} onCancel={() => setEditing(null)} onOk={save} okText={tx('সংরক্ষণ')} cancelText={tx('বাতিল')}>
@@ -201,6 +268,6 @@ export default function ChartOfAccountsPage() {
           </Form.Item>
         </Form>
       </Modal>
-    </>
+    </ListFrame>
   )
 }

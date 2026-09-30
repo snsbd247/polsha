@@ -1,15 +1,23 @@
 import { useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Alert, App, Button, Checkbox, DatePicker, Descriptions, Drawer, Form, Input, InputNumber, Modal, Select, Space, Switch, Table, Tag, Typography } from 'antd'
-import { PlusOutlined } from '@ant-design/icons'
+import { Alert, App, Button, Checkbox, DatePicker, Drawer, Form, Grid, Input, InputNumber, Modal, Select, Space, Switch, Table, Tag, Typography } from 'antd'
+import type { ColumnsType } from 'antd/es/table'
+import { BankFilled, CalendarFilled, CheckOutlined, EditFilled, FileTextFilled, PlusCircleOutlined, PlusOutlined, SafetyCertificateFilled, SearchOutlined, SwapOutlined } from '@ant-design/icons'
 import dayjs, { type Dayjs } from 'dayjs'
-import { Can, useAuth } from '../../auth/AuthContext'
+import { useAuth } from '../../auth/AuthContext'
 import FundTxnModal, { type FundTxnKind } from '../../components/FundTxnModal'
 import { api, applyFormErrors, errorMessage } from '../../lib/api'
 import { BANK_TYPE_LABEL, money, moneyOrBlank, type LedgerReport, type LedgerRow } from '../../lib/accounting'
-import { digits, fmtDate } from '../../lib/format'
+import { digits, fmtDate, toEnDigits } from '../../lib/format'
 import { nameOf, t as tx } from '../../lib/i18n'
 import { required } from '../../lib/rules'
+import ListFrame, { Field, n0 } from '../lands/ListFrame'
+import '../lands/land-list.css'
+import '../farmers/farmer-merge-list.css'
+import '../lands/land-history.css'
+import '../irrigation/invoices.css'
+import '../loans/loans.css'
+import './accounting.css'
 
 type Bank = {
   id: number
@@ -76,7 +84,13 @@ function StatementDrawer({ bank, onClose }: { bank: Bank | null; onClose: () => 
         dataSource={data?.rows}
         pagination={false}
         scroll={{ x: 640 }}
-        title={() => (data ? <span>{tx('প্রারম্ভিক জের')}: <b>{money(data.opening)}</b></span> : null)}
+        title={() =>
+          data ? (
+            <span>
+              {tx('প্রারম্ভিক জের')}: <b>{money(data.opening)}</b>
+            </span>
+          ) : null
+        }
         columns={[
           {
             title: tx('মিলেছে'),
@@ -113,26 +127,47 @@ function StatementDrawer({ bank, onClose }: { bank: Bank | null; onClose: () => 
   )
 }
 
+type Filters = { search?: string; type?: string; active?: string }
+
+/** Bank (and FDR) accounts with their balance; statement matching, transfers and deposits from each row. */
 export default function BankAccountsPage() {
   const { can } = useAuth()
   const { message } = App.useApp()
   const queryClient = useQueryClient()
+  const wide = Grid.useBreakpoint().lg
   const [editing, setEditing] = useState<Bank | 'new' | null>(null)
   const [statement, setStatement] = useState<Bank | null>(null)
   const [txn, setTxn] = useState<{ kind: FundTxnKind; fundId: number } | null>(null)
+  const [draft, setDraft] = useState<Filters>({})
+  const [filters, setFilters] = useState<Filters>({})
   const [form] = Form.useForm()
   const accountType = Form.useWatch('account_type', form)
 
   const { data, isLoading } = useQuery({ queryKey: ['bank-accounts'], queryFn: async () => (await api.get<{ data: Bank[] }>('/bank-accounts')).data.data })
+  const all = data ?? []
+  const q = toEnDigits(filters.search ?? '').toLowerCase()
+  const rows = all.filter(
+    (b) =>
+      (!q ||
+        toEnDigits(`${b.bank_name} ${b.branch_name ?? ''} ${b.account_no} ${b.account.code}`)
+          .toLowerCase()
+          .includes(q)) &&
+      (!filters.type || b.account_type === filters.type) &&
+      (!filters.active || String(b.is_active) === filters.active),
+  )
+  const sum = (list: Bank[]) => list.reduce((s, b) => s + Number(b.balance), 0)
+  const fdr = all.filter((b) => b.account_type === 'fdr')
+  const soon = dayjs().add(30, 'day').format('YYYY-MM-DD')
+  const maturing = fdr.filter((b) => b.is_active && b.fdr_maturity_date && b.fdr_maturity_date <= soon)
+  const show = (f: Filters) => {
+    setDraft(f)
+    setFilters(f)
+  }
 
   const open = (b: Bank | 'new') => {
     setEditing(b)
     form.resetFields()
-    form.setFieldsValue(
-      b === 'new'
-        ? { account_type: 'current', is_active: true }
-        : { ...b, opened_on: b.opened_on ? dayjs(b.opened_on) : null, fdr_maturity_date: b.fdr_maturity_date ? dayjs(b.fdr_maturity_date) : null },
-    )
+    form.setFieldsValue(b === 'new' ? { account_type: 'current', is_active: true } : { ...b, opened_on: b.opened_on ? dayjs(b.opened_on) : null, fdr_maturity_date: b.fdr_maturity_date ? dayjs(b.fdr_maturity_date) : null })
   }
 
   const save = async () => {
@@ -147,94 +182,143 @@ export default function BankAccountsPage() {
       else await api.put(`/bank-accounts/${(editing as Bank).id}`, payload)
       message.success(tx('সংরক্ষণ হয়েছে।'))
       setEditing(null)
-      queryClient.invalidateQueries({ queryKey: ['bank-accounts'] })
-      queryClient.invalidateQueries({ queryKey: ['funds'] })
-      queryClient.invalidateQueries({ queryKey: ['account-options'] })
-      queryClient.invalidateQueries({ queryKey: ['accounts'] })
+      for (const k of ['bank-accounts', 'funds', 'account-options', 'accounts']) queryClient.invalidateQueries({ queryKey: [k] })
     } catch (e) {
       if (!applyFormErrors(form, e)) message.error(errorMessage(e))
     }
   }
 
+  const cards = [
+    { key: 'total', label: tx('মোট ব্যাংক জের'), value: data ? `৳ ${money(sum(all))}` : undefined, icon: '', glyph: <BankFilled />, color: '#1769e0', tint: '#e4edfd', onClick: () => show({}) },
+    {
+      key: 'active',
+      label: tx('সক্রিয় হিসাব · মোট {{p0}}টি', { p0: n0(all.length) }),
+      value: data ? all.filter((b) => b.is_active).length : undefined,
+      icon: '',
+      solid: <CheckOutlined />,
+      color: '#1f9d55',
+      tint: '#dcf3e5',
+      onClick: () => show({ active: 'true' }),
+    },
+    {
+      key: 'fdr',
+      label: tx('এফডিআর · {{p0}}টি', { p0: n0(fdr.length) }),
+      value: data ? `৳ ${money(sum(fdr))}` : undefined,
+      icon: '',
+      glyph: <SafetyCertificateFilled />,
+      color: '#8b3fe0',
+      tint: '#efe4fc',
+      onClick: () => show({ type: 'fdr' }),
+    },
+    { key: 'soon', label: tx('৩০ দিনে মেয়াদপূর্তি (এফডিআর)'), value: data ? maturing.length : undefined, icon: '', glyph: <CalendarFilled />, color: '#f08c00', tint: '#fdefd6', onClick: () => show({ type: 'fdr' }) },
+  ]
+  const opts = (m: Record<string, string>) => [{ value: '', label: tx('সকল') }, ...Object.entries(m).map(([value, label]) => ({ value, label }))]
+
+  const columns: ColumnsType<Bank> = [
+    { title: tx('কোড'), render: (_, b) => <span className="iv-no">{digits(b.account.code)}</span> },
+    {
+      title: tx('ব্যাংক ও শাখা'),
+      render: (_, b) => (
+        <span className="hs-two">
+          <span className="mg-name">{b.bank_name}</span>
+          <span>{b.branch_name || '—'}</span>
+        </span>
+      ),
+    },
+    { title: tx('হিসাব নং'), dataIndex: 'account_no', render: (v: string) => <span className="iv-no">{digits(v)}</span> },
+    {
+      title: tx('ধরন'),
+      dataIndex: 'account_type',
+      render: (t: string, b) => (
+        <span className="hs-two">
+          <Tag className={`fl-tag ${t === 'fdr' ? 'll-purple' : t === 'savings' ? 'fl-tag-green' : 'll-blue'}`}>{BANK_TYPE_LABEL[t] ?? t}</Tag>
+          {t === 'fdr' && b.fdr_maturity_date && <span className={b.fdr_maturity_date <= soon ? 'ac-warn' : undefined}>{tx('মেয়াদপূর্তি: {{p0}}', { p0: fmtDate(b.fdr_maturity_date) })}</span>}
+        </span>
+      ),
+    },
+    { title: tx('জের (৳)'), dataIndex: 'balance', align: 'right', render: (v: number) => <strong>{money(v)}</strong> },
+    { title: tx('অবস্থা'), dataIndex: 'is_active', render: (v) => (v ? <Tag className="fl-tag iv-status fl-tag-green">{tx('সক্রিয়')}</Tag> : <Tag className="fl-tag iv-status ll-gray">{tx('নিষ্ক্রিয়')}</Tag>) },
+    {
+      title: tx('অ্যাকশন'),
+      width: 210,
+      align: 'center',
+      fixed: wide ? 'right' : undefined,
+      render: (_, b) => (
+        <div className="fl-actions pl-actions">
+          <Button className="fl-act pl-act" icon={<FileTextFilled />} aria-label={tx('স্টেটমেন্ট')} title={tx('স্টেটমেন্ট ও মিলকরণ')} onClick={() => setStatement(b)} />
+          {can('bank.create') && b.is_active && (
+            <>
+              <Button className="fl-act pl-act" icon={<PlusCircleOutlined />} aria-label={tx('জমা')} title={tx('জমা')} onClick={() => setTxn({ kind: 'receipt', fundId: b.account_id })} />
+              <Button className="fl-act pl-act" icon={<SwapOutlined />} aria-label={tx('স্থানান্তর')} title={tx('স্থানান্তর')} onClick={() => setTxn({ kind: 'transfer', fundId: b.account_id })} />
+            </>
+          )}
+          {can('bank.edit') && <Button className="fl-act pl-act" icon={<EditFilled />} aria-label={tx('সম্পাদনা')} title={tx('সম্পাদনা')} onClick={() => open(b)} />}
+        </div>
+      ),
+    },
+  ]
+
   return (
-    <>
-      <div className="page-header">
-        <h2>{tx('ব্যাংক হিসাব')}</h2>
-        <Can perm="bank.create">
+    <ListFrame
+      section={{ label: tx('হিসাব'), to: '/accounting/summary' }}
+      title={tx('ব্যাংক হিসাব')}
+      subtitle=""
+      actions={
+        can('bank.create') && (
           <Button type="primary" icon={<PlusOutlined />} onClick={() => open('new')}>
             {tx('নতুন ব্যাংক হিসাব')}
           </Button>
-        </Can>
-      </div>
+        )
+      }
+      cards={cards}
+      filterClass="iv-filters"
+      filters={
+        <>
+          <Field label={tx('খুঁজুন')} grow={300}>
+            <Input
+              prefix={<SearchOutlined />}
+              allowClear
+              placeholder={tx('ব্যাংক, শাখা বা হিসাব নং...')}
+              value={draft.search}
+              onChange={(e) => setDraft((d) => ({ ...d, search: e.target.value || undefined }))}
+              onPressEnter={() => setFilters(draft)}
+            />
+          </Field>
+          <Field label={tx('ধরন')}>
+            <Select value={draft.type ?? ''} options={opts(BANK_TYPE_LABEL)} onChange={(v) => setDraft((d) => ({ ...d, type: v || undefined }))} />
+          </Field>
+          <Field label={tx('অবস্থা')}>
+            <Select value={draft.active ?? ''} options={opts({ true: tx('সক্রিয়'), false: tx('নিষ্ক্রিয়') })} onChange={(v) => setDraft((d) => ({ ...d, active: v || undefined }))} />
+          </Field>
+        </>
+      }
+      onSearch={() => setFilters(draft)}
+      onReset={() => show({})}
+      tableTitle={tx('{{p0}} ({{p1}})', { p0: tx('ব্যাংক হিসাবের তালিকা'), p1: n0(rows.length) })}
+    >
       <Table<Bank>
+        className="fl-table ml-table pl-table mg-table iv-table"
         rowKey="id"
         loading={isLoading}
-        dataSource={data}
+        dataSource={rows}
         pagination={false}
-        scroll={{ x: 900 }}
-        columns={[
-          { title: tx('কোড'), width: 80, render: (_, b) => digits(b.account.code) },
-          {
-            title: tx('ব্যাংক ও শাখা'),
-            render: (_, b) => (
-              <>
-                <b>{b.bank_name}</b>
-                {b.branch_name && <Typography.Text type="secondary"> · {b.branch_name}</Typography.Text>}
-              </>
-            ),
-          },
-          { title: tx('হিসাব নং'), dataIndex: 'account_no', render: digits },
-          {
-            title: tx('ধরন'),
-            dataIndex: 'account_type',
-            render: (t: string, b) => (
-              <>
-                {BANK_TYPE_LABEL[t] ?? t}
-                {t === 'fdr' && b.fdr_maturity_date && (
-                  <Typography.Text type="secondary" style={{ display: 'block', fontSize: 12 }}>
-                    {tx('মেয়াদপূর্তি')}: {fmtDate(b.fdr_maturity_date)}
-                  </Typography.Text>
-                )}
-              </>
-            ),
-          },
-          { title: tx('জের (টাকা)'), dataIndex: 'balance', align: 'right', render: (v: number) => <b>{money(v)}</b> },
-          { title: tx('অবস্থা'), dataIndex: 'is_active', render: (v) => (v ? <Tag color="green">{tx('সক্রিয়')}</Tag> : <Tag>{tx('নিষ্ক্রিয়')}</Tag>) },
-          {
-            title: '',
-            width: 300,
-            render: (_, b) => (
-              <Space size={4} wrap>
-                <Button size="small" onClick={() => setStatement(b)}>
-                  {tx('স্টেটমেন্ট')}
-                </Button>
-                {can('bank.create') && b.is_active && (
-                  <>
-                    <Button size="small" onClick={() => setTxn({ kind: 'transfer', fundId: b.account_id })}>
-                      {tx('স্থানান্তর')}
-                    </Button>
-                    <Button size="small" onClick={() => setTxn({ kind: 'receipt', fundId: b.account_id })}>
-                      {tx('জমা')}
-                    </Button>
-                  </>
-                )}
-                {can('bank.edit') && (
-                  <Button size="small" onClick={() => open(b)}>
-                    {tx('সম্পাদনা')}
-                  </Button>
-                )}
-              </Space>
-            ),
-          },
-        ]}
+        scroll={{ x: 'max-content' }}
+        columns={columns}
+        locale={{ emptyText: tx('কোনো ব্যাংক হিসাব নেই') }}
+        summary={() =>
+          rows.length > 1 ? (
+            <Table.Summary.Row className="ln-sum-row">
+              <Table.Summary.Cell index={0} colSpan={4}>
+                {tx('মোট')}
+              </Table.Summary.Cell>
+              <Table.Summary.Cell index={4} align="right">
+                {money(sum(rows))}
+              </Table.Summary.Cell>
+              <Table.Summary.Cell index={5} colSpan={2} />
+            </Table.Summary.Row>
+          ) : null
+        }
       />
-      {data && data.length > 0 && (
-        <Descriptions size="small" style={{ marginTop: 16 }}>
-          <Descriptions.Item label={tx('মোট ব্যাংক জের')}>
-            <b>{money(data.reduce((s, b) => s + Number(b.balance), 0))}</b>
-          </Descriptions.Item>
-        </Descriptions>
-      )}
 
       <Modal open={!!editing} forceRender title={editing === 'new' ? tx('নতুন ব্যাংক হিসাব') : tx('ব্যাংক হিসাব সম্পাদনা')} onCancel={() => setEditing(null)} onOk={save} okText={tx('সংরক্ষণ')} cancelText={tx('বাতিল')}>
         {editing === 'new' && <Alert type="info" showIcon style={{ marginBottom: 12 }} title={tx('হিসাবের তালিকায় "ব্যাংক হিসাবসমূহ"-এর অধীনে স্বয়ংক্রিয়ভাবে একটি হিসাব খোলা হবে। শুরুর জের থাকলে প্রারম্ভিক জের এন্ট্রি দিন।')} />}
@@ -275,6 +359,6 @@ export default function BankAccountsPage() {
 
       <StatementDrawer bank={statement} onClose={() => setStatement(null)} />
       <FundTxnModal kind={txn?.kind ?? null} fundId={txn?.fundId} onClose={() => setTxn(null)} />
-    </>
+    </ListFrame>
   )
 }

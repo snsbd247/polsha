@@ -1,13 +1,22 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Alert, App, Button, Descriptions, Drawer, Form, Input, InputNumber, Modal, Segmented, Select, Space, Spin, Switch, Table, Tag } from 'antd'
-import { SettingOutlined } from '@ant-design/icons'
+import { Alert, App, Button, Descriptions, Drawer, Form, Grid, Input, InputNumber, Modal, Select, Space, Spin, Switch, Table, Tag } from 'antd'
+import type { ColumnsType } from 'antd/es/table'
+import { CheckOutlined, ClockCircleFilled, CloseOutlined, EyeFilled, MobileOutlined, SearchOutlined, SettingOutlined } from '@ant-design/icons'
 import { useAuth } from '../../auth/AuthContext'
 import { api, applyFormErrors, errorMessage, type Paginated } from '../../lib/api'
 import { money } from '../../lib/accounting'
 import { digits, fmtDate, fmtDateTime } from '../../lib/format'
 import { nameOf, t as tx } from '../../lib/i18n'
+import ListFrame, { Field, n0 } from '../lands/ListFrame'
+import '../lands/land-list.css'
+import '../farmers/farmer-merge-list.css'
+import '../lands/land-history.css'
+import '../irrigation/invoices.css'
+import '../irrigation/rates.css'
+import '../approvals/approvals.css'
+import './accounting.css'
 
 type Named = { id: number; name_bn: string; name_en: string | null } | null
 type Req = {
@@ -49,7 +58,6 @@ type Detail = Req & {
   funds: { id: number; code: string; name_bn: string; name_en: string | null; bank_account: { bank_name: string; account_no: string } | null }[]
 }
 
-const STATUS_COLOR: Record<string, string> = { pending: 'gold', verified: 'green', rejected: 'red' }
 const PART_LABEL: Record<keyof Parts, string> = { loan: tx('ঋণের কিস্তি'), irrigation: tx('সেচের বকেয়া'), share: tx('শেয়ার'), savings: tx('সঞ্চয়') }
 
 function DetailDrawer({ id, meta, onClose, onDone }: { id: number | null; meta?: ListResp; onClose: () => void; onDone: () => void }) {
@@ -98,12 +106,10 @@ function DetailDrawer({ id, meta, onClose, onDone }: { id: number | null; meta?:
         <Spin />
       ) : (
         <>
-          {data.duplicate_trx.length > 0 && (
-            <Alert type="warning" showIcon style={{ marginBottom: 12 }} title={tx('একই ট্রানজেকশন আইডি অন্য জমাতেও আছে: {{n}}', { n: digits(data.duplicate_trx.join(', ')) })} />
-          )}
+          {data.duplicate_trx.length > 0 && <Alert type="warning" showIcon style={{ marginBottom: 12 }} title={tx('একই ট্রানজেকশন আইডি অন্য জমাতেও আছে: {{n}}', { n: digits(data.duplicate_trx.join(', ')) })} />}
           <Descriptions column={1} size="small" bordered>
             <Descriptions.Item label={tx('অবস্থা')}>
-              <Tag color={STATUS_COLOR[data.status]}>{meta?.statuses[data.status] ?? data.status}</Tag>
+              <Tag className={`fl-tag ${STATUS_TONE[data.status] ?? 'll-gray'}`}>{meta?.statuses[data.status] ?? data.status}</Tag>
             </Descriptions.Item>
             <Descriptions.Item label={tx('কৃষক')}>
               {data.farmer ? (
@@ -139,19 +145,8 @@ function DetailDrawer({ id, meta, onClose, onDone }: { id: number | null; meta?:
           </Descriptions>
 
           {canAct && data.allocation && (
-            <Form
-              form={form}
-              layout="vertical"
-              style={{ marginTop: 16 }}
-              onFinish={verify}
-              initialValues={{ parts: data.allocation.parts, fund_account_id: data.funds.length === 1 ? data.funds[0].id : undefined }}
-            >
-              <Alert
-                type="info"
-                showIcon
-                style={{ marginBottom: 12 }}
-                title={tx('মার্চেন্ট স্টেটমেন্টে ট্রানজেকশন আইডি ও টাকা মিলিয়ে তবেই যাচাই করুন। বণ্টন কাউন্টারের মতোই (বকেয়া আগে, বাকি সঞ্চয়ে)।')}
-              />
+            <Form form={form} layout="vertical" style={{ marginTop: 16 }} onFinish={verify} initialValues={{ parts: data.allocation.parts, fund_account_id: data.funds.length === 1 ? data.funds[0].id : undefined }}>
+              <Alert type="info" showIcon style={{ marginBottom: 12 }} title={tx('মার্চেন্ট স্টেটমেন্টে ট্রানজেকশন আইডি ও টাকা মিলিয়ে তবেই যাচাই করুন। বণ্টন কাউন্টারের মতোই (বকেয়া আগে, বাকি সঞ্চয়ে)।')} />
               <Form.Item name="fund_account_id" label={tx('টাকা কোন হিসাবে এসেছে')} rules={[{ required: true, message: tx('হিসাব বাছাই করুন') }]}>
                 <Select
                   options={data.funds.map((f) => ({
@@ -192,14 +187,7 @@ function DetailDrawer({ id, meta, onClose, onDone }: { id: number | null; meta?:
               </Button>
             </Space>
           )}
-          <Modal
-            open={rejecting}
-            title={tx('জমা প্রত্যাখ্যান')}
-            onCancel={() => setRejecting(false)}
-            onOk={reject}
-            okButtonProps={{ danger: true, disabled: !reason.trim(), loading: busy }}
-            okText={tx('প্রত্যাখ্যান')}
-          >
+          <Modal open={rejecting} title={tx('জমা প্রত্যাখ্যান')} onCancel={() => setRejecting(false)} onOk={reject} okButtonProps={{ danger: true, disabled: !reason.trim(), loading: busy }} okText={tx('প্রত্যাখ্যান')}>
             <p>{tx('কারণটি প্রদানকারীকে SMS-এ জানানো হবে।')}</p>
             <Input.TextArea rows={3} maxLength={300} value={reason} onChange={(e) => setReason(e.target.value)} />
           </Modal>
@@ -258,7 +246,10 @@ function SettingsModal({ open, onClose }: { open: boolean; onClose: () => void }
             <Input.TextArea rows={3} maxLength={500} />
           </Form.Item>
           <p style={{ color: '#888', margin: 0 }}>
-            {tx('পাবলিক পাতার ঠিকানা:')} <a href="/pay" target="_blank" rel="noreferrer">{window.location.origin}/pay</a>
+            {tx('পাবলিক পাতার ঠিকানা:')}{' '}
+            <a href="/pay" target="_blank" rel="noreferrer">
+              {window.location.origin}/pay
+            </a>
           </p>
         </Form>
       )}
@@ -266,86 +257,175 @@ function SettingsModal({ open, onClose }: { open: boolean; onClose: () => void }
   )
 }
 
+const STATUS_TONE: Record<string, string> = { pending: 'fl-tag-gold', verified: 'fl-tag-green', rejected: 'fl-tag-red' }
+
 /** Mobile-money payments reported on the public /pay page, waiting for a cashier to check and book them. */
 export default function PublicPaymentsPage() {
   const { can } = useAuth()
   const queryClient = useQueryClient()
+  const wide = Grid.useBreakpoint().lg
   const [status, setStatus] = useState('pending')
-  const [method, setMethod] = useState<string>()
-  const [q, setQ] = useState('')
+  const [draft, setDraft] = useState<{ method?: string; q?: string }>({})
+  const [filters, setFilters] = useState<{ method?: string; q?: string }>({})
   const [page, setPage] = useState(1)
+  const [perPage, setPerPage] = useState(10)
   const [open, setOpen] = useState<number | null>(null)
   const [settings, setSettings] = useState(false)
-  const params = { status: status === 'all' ? undefined : status, method, q: q || undefined, page }
+  const params = { status: status === 'all' ? undefined : status, page, per_page: perPage, ...filters }
   const { data, isFetching } = useQuery({
     queryKey: ['public-payments', params],
     queryFn: async () => (await api.get<ListResp>('/public-payments', { params })).data,
     placeholderData: keepPreviousData,
   })
-  const count = (s: string) => digits(data?.counts[s]?.n ?? 0)
+  const cnt = (s: string) => (data ? Number(data.counts[s]?.n ?? 0) : undefined)
+  const amt = (s: string) => money(data?.counts[s]?.amount ?? 0)
+  const total = data?.total ?? 0
+  const from = total ? (page - 1) * perPage + 1 : 0
+  const tab = (s: string) => {
+    setStatus(s)
+    setPage(1)
+  }
+
+  const cards = [
+    { key: 'pending', label: tx('যাচাইয়ের অপেক্ষায় · ৳{{p0}}', { p0: amt('pending') }), value: cnt('pending'), icon: '', glyph: <ClockCircleFilled />, color: '#f08c00', tint: '#fdefd6', onClick: () => tab('pending') },
+    { key: 'verified', label: tx('যাচাইকৃত · ৳{{p0}}', { p0: amt('verified') }), value: cnt('verified'), icon: '', solid: <CheckOutlined />, color: '#1f9d55', tint: '#dcf3e5', onClick: () => tab('verified') },
+    { key: 'rejected', label: tx('প্রত্যাখ্যাত'), value: cnt('rejected'), icon: '', solid: <CloseOutlined />, color: '#e5383b', tint: '#fde4e5', onClick: () => tab('rejected') },
+    {
+      key: 'all',
+      label: tx('মোট অনুরোধ'),
+      value: data ? ['pending', 'verified', 'rejected'].reduce((s, k) => s + Number(data.counts[k]?.n ?? 0), 0) : undefined,
+      icon: '',
+      glyph: <MobileOutlined />,
+      color: '#1769e0',
+      tint: '#e4edfd',
+      onClick: () => tab('all'),
+    },
+  ]
+  const tabs = [
+    { key: 'pending', label: tx('যাচাইয়ের অপেক্ষায়'), n: cnt('pending') },
+    { key: 'verified', label: tx('যাচাইকৃত'), n: undefined },
+    { key: 'rejected', label: tx('প্রত্যাখ্যাত'), n: undefined },
+    { key: 'all', label: tx('সব'), n: undefined },
+  ]
+
+  const columns: ColumnsType<Req> = [
+    { title: '#', width: 44, align: 'center', render: (_, __, i) => digits(from + i) },
+    {
+      title: tx('অনুরোধ নং'),
+      dataIndex: 'request_no',
+      render: (v: string, r) => (
+        <a className="fl-link iv-no" onClick={() => setOpen(r.id)}>
+          {digits(v)}
+        </a>
+      ),
+    },
+    { title: tx('জমার সময়'), dataIndex: 'created_at', render: fmtDateTime },
+    {
+      title: tx('কৃষক'),
+      render: (_, r) =>
+        r.farmer ? (
+          <span className="hs-two">
+            <Link to={`/farmers/${r.farmer.id}`} className="mg-name">
+              {nameOf(r.farmer)}
+            </Link>
+            <span>{digits(r.farmer.farmer_code)}</span>
+          </span>
+        ) : (
+          <span className="hs-two">
+            <span className="mg-name">{r.payer_name}</span>
+            <span>{digits(r.farmer_code)}</span>
+          </span>
+        ),
+    },
+    { title: tx('মাধ্যম'), dataIndex: 'method', render: (v: string) => <Tag className="fl-tag ll-purple">{data?.methods[v] ?? v}</Tag> },
+    { title: tx('ট্রানজেকশন আইডি'), dataIndex: 'trx_id', render: (v: string) => <code>{v}</code> },
+    { title: tx('টাকা (৳)'), dataIndex: 'amount', align: 'right', render: (v: string) => <strong>{money(v)}</strong> },
+    { title: tx('অবস্থা'), dataIndex: 'status', render: (v: string) => <Tag className={`fl-tag iv-status ${STATUS_TONE[v] ?? 'll-gray'}`}>{data?.statuses[v] ?? v}</Tag> },
+    { title: tx('রশিদ'), render: (_, r) => (r.combined_payment ? <Link to={`/payments/combined/${r.combined_payment.id}`}>{digits(r.combined_payment.payment_no)}</Link> : '—') },
+    {
+      title: tx('অ্যাকশন'),
+      width: 70,
+      align: 'center',
+      fixed: wide ? 'right' : undefined,
+      render: (_, r) => <Button className="fl-act pl-act" icon={<EyeFilled />} aria-label={tx('দেখুন')} onClick={() => setOpen(r.id)} />,
+    },
+  ]
 
   return (
-    <>
-      <div className="page-header">
-        <h2>{tx('অনলাইন পেমেন্ট অনুরোধ')}</h2>
-        {can(['payment.admin', 'settings.admin']) && (
+    <ListFrame
+      section={{ label: tx('হিসাব'), to: '/accounting/summary' }}
+      title={tx('অনলাইন পেমেন্ট অনুরোধ')}
+      subtitle=""
+      actions={
+        can(['payment.admin', 'settings.admin']) && (
           <Button icon={<SettingOutlined />} onClick={() => setSettings(true)}>
             {tx('সেটিংস')}
           </Button>
-        )}
-      </div>
-      <div className="toolbar">
-        <Segmented
-          value={status}
-          onChange={(v) => {
-            setStatus(v)
-            setPage(1)
-          }}
-          options={[
-            { value: 'pending', label: `${tx('যাচাইয়ের অপেক্ষায়')} (${count('pending')})` },
-            { value: 'verified', label: `${tx('যাচাইকৃত')} (${count('verified')})` },
-            { value: 'rejected', label: `${tx('প্রত্যাখ্যাত')} (${count('rejected')})` },
-            { value: 'all', label: tx('সব') },
-          ]}
-        />
-        <Select
-          allowClear
-          placeholder={tx('মাধ্যম')}
-          style={{ width: 150 }}
-          value={method}
-          onChange={(v) => {
-            setMethod(v)
-            setPage(1)
-          }}
-          options={Object.entries(data?.methods ?? {}).map(([value, label]) => ({ value, label }))}
-        />
-        <Input.Search
-          allowClear
-          placeholder={tx('নম্বর, TrxID, আইডি বা মোবাইল')}
-          style={{ maxWidth: 280 }}
-          onSearch={(v) => {
-            setQ(v)
-            setPage(1)
-          }}
-        />
-      </div>
+        )
+      }
+      cards={cards}
+      above={
+        <div className="lk-tabs ap-tabs">
+          {tabs.map((t) => (
+            <button key={t.key} type="button" className={status === t.key ? 'on' : ''} onClick={() => tab(t.key)}>
+              {t.label}
+              {!!t.n && <span className="ap-count">{digits(t.n)}</span>}
+            </button>
+          ))}
+        </div>
+      }
+      filters={
+        <>
+          <Field label={tx('খুঁজুন')} grow={320}>
+            <Input
+              prefix={<SearchOutlined />}
+              allowClear
+              placeholder={tx('নম্বর, TrxID, আইডি বা মোবাইল...')}
+              value={draft.q}
+              onChange={(e) => setDraft((d) => ({ ...d, q: e.target.value || undefined }))}
+              onPressEnter={() => (setFilters(draft), setPage(1))}
+            />
+          </Field>
+          <Field label={tx('মাধ্যম')}>
+            <Select
+              value={draft.method ?? ''}
+              options={[{ value: '', label: tx('সকল') }, ...Object.entries(data?.methods ?? {}).map(([value, label]) => ({ value, label }))]}
+              onChange={(v) => setDraft((d) => ({ ...d, method: v || undefined }))}
+            />
+          </Field>
+        </>
+      }
+      onSearch={() => {
+        setFilters(draft)
+        setPage(1)
+      }}
+      onReset={() => {
+        setDraft({})
+        setFilters({})
+        setPage(1)
+      }}
+      tableTitle={tx('{{p0}} ({{p1}})', { p0: tabs.find((t) => t.key === status)?.label ?? '', p1: n0(total) })}
+      paging={{
+        page,
+        perPage,
+        total,
+        showing: tx('{{p0}} থেকে {{p1}} দেখানো হচ্ছে, মোট {{p2}}টি রেকর্ড', { p0: n0(from), p1: n0(Math.min(page * perPage, total)), p2: n0(total) }),
+        onPage: setPage,
+        onPerPage: (n) => {
+          setPerPage(n)
+          setPage(1)
+        },
+      }}
+    >
       <Table<Req>
+        className="fl-table ml-table pl-table mg-table iv-table"
         rowKey="id"
         loading={isFetching}
-        dataSource={data?.data}
-        scroll={{ x: 1000 }}
-        pagination={{ current: page, total: data?.total, pageSize: data?.per_page, onChange: setPage }}
-        onRow={(r) => ({ onClick: () => setOpen(r.id), style: { cursor: 'pointer' } })}
-        columns={[
-          { title: tx('অনুরোধ নং'), dataIndex: 'request_no', render: digits },
-          { title: tx('জমার সময়'), dataIndex: 'created_at', render: fmtDateTime },
-          { title: tx('কৃষক'), render: (_, r) => (r.farmer ? `${digits(r.farmer.farmer_code)} — ${nameOf(r.farmer)}` : digits(r.farmer_code)) },
-          { title: tx('মাধ্যম'), dataIndex: 'method', render: (v: string) => data?.methods[v] ?? v },
-          { title: tx('ট্রানজেকশন আইডি'), dataIndex: 'trx_id', render: (v: string) => <code>{v}</code> },
-          { title: tx('টাকা'), dataIndex: 'amount', align: 'right', render: money },
-          { title: tx('অবস্থা'), dataIndex: 'status', render: (v: string) => <Tag color={STATUS_COLOR[v]}>{data?.statuses[v] ?? v}</Tag> },
-          { title: tx('রশিদ'), render: (_, r) => (r.combined_payment ? digits(r.combined_payment.payment_no) : '') },
-        ]}
+        dataSource={data?.data ?? []}
+        scroll={{ x: 'max-content' }}
+        pagination={false}
+        columns={columns}
+        locale={{ emptyText: tx('কোনো অনুরোধ নেই') }}
       />
       <DetailDrawer
         id={open}
@@ -358,6 +438,6 @@ export default function PublicPaymentsPage() {
         }}
       />
       <SettingsModal open={settings} onClose={() => setSettings(false)} />
-    </>
+    </ListFrame>
   )
 }
