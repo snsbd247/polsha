@@ -64,6 +64,7 @@ class DemoDataService
         'member' => ['member_officer', 'ডেমো সদস্য কর্মকর্তা', 'Demo Member Officer'],
         'loan' => ['loan_officer', 'ডেমো ঋণ কর্মকর্তা', 'Demo Loan Officer'],
         'asset' => ['asset_officer', 'ডেমো সম্পদ কর্মকর্তা', 'Demo Asset Officer'],
+        'field' => ['field_collector', 'ডেমো মাঠকর্মী', 'Demo Field Collector'],
     ];
 
     /** @var array<string, User> */
@@ -473,7 +474,43 @@ class DemoDataService
         $this->distributions();
         $this->accountClosures();
         $this->pendingWithdrawals();
+        $this->fieldCollections();
         $this->monthEnds();
+    }
+
+    /**
+     * For the last two months a field collector goes round the villages with
+     * a phone every few days; the cashier receives the cash at the office
+     * about once a week. The latest collections are still in hand.
+     */
+    private function fieldCollections(): void
+    {
+        $today = Carbon::parse($this->today);
+        for ($back = 60; $back >= 1; $back -= mt_rand(2, 4)) {
+            $this->at($today->copy()->subDays($back), function () {
+                $ids = array_keys($this->farmers);
+                shuffle($ids);
+                $done = 0;
+                foreach ($ids as $fid) {
+                    if ($done >= mt_rand(3, 6)) {
+                        break;
+                    }
+                    $d = $this->api('field', 'GET', 'field/dues', ['farmer_id' => $fid]);
+                    $owed = round(($d['loan']['payable'] ?? false ? $d['loan']['due_now'] : 0) + $d['irrigation']['due'] + $d['share']['due'], 2);
+                    $amount = $owed > 0 ? min($owed, $this->money(300, 3000)) : ($d['member_active'] ? $this->money(200, 1000) : 0);
+                    if ($amount <= 0) {
+                        continue;
+                    }
+                    $this->api('field', 'POST', 'field/collect', ['farmer_id' => $fid, 'amount' => $amount]);
+                    $done++;
+                }
+            });
+        }
+        for ($back = 56; $back >= 4; $back -= mt_rand(5, 8)) {
+            $this->at($today->copy()->subDays($back), fn (string $d) => $this->tryApi('cashier', 'POST', 'field/deposits', [
+                'collector_id' => $this->users['field']->id, 'date' => $d, 'note' => $this->pick([null, 'সন্ধ্যায় গুনে জমা', 'হাটবারের আদায়']),
+            ], true));
+        }
     }
 
     private function area(): void

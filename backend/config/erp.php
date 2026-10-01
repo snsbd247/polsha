@@ -67,6 +67,7 @@ return [
         'report' => 'রিপোর্ট',
         'sms' => 'এসএমএস',
         'import' => 'ইমপোর্ট',
+        'field' => 'মাঠে আদায়',
     ],
 
     'roles' => [
@@ -82,6 +83,7 @@ return [
         'asset_officer' => ['label' => 'সম্পদ কর্মকর্তা', 'description' => 'সম্পদ ব্যবস্থাপনা'],
         'auditor' => ['label' => 'অডিটর', 'description' => 'শুধু দেখা ও এক্সপোর্ট'],
         'data_entry' => ['label' => 'ডাটা এন্ট্রি', 'description' => 'তথ্য এন্ট্রি'],
+        'field_collector' => ['label' => 'মাঠকর্মী', 'description' => 'মাঠে গিয়ে মোবাইলে আদায়; টাকা পরে অফিসে জমা'],
     ],
 
     'login' => [

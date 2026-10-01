@@ -19,7 +19,30 @@ use Illuminate\Validation\ValidationException;
  */
 class ReceiptService
 {
+    /** While set, every cash booking goes to this cash account instead of the module's own (field collections). */
+    private static ?string $cashInto = null;
+
     public function __construct(private LedgerService $ledger, private ApprovalService $approvals) {}
+
+    /**
+     * Run $fn with cash money booked into another cash account — used when a
+     * field collector takes the money, which the office has not received yet.
+     *
+     * @template T
+     *
+     * @param  callable(): T  $fn
+     * @return T
+     */
+    public static function cashInto(string $accountKey, callable $fn): mixed
+    {
+        $before = self::$cashInto;
+        self::$cashInto = $accountKey;
+        try {
+            return $fn();
+        } finally {
+            self::$cashInto = $before;
+        }
+    }
 
     /**
      * @param  array{module:string, farmer_id:?int, payer_name:string, date:string, method:string, fund_account_id?:?int, reference?:?string, remarks?:?string, is_legacy?:bool, legacy_no?:?string}  $data
@@ -136,7 +159,7 @@ class ReceiptService
     public function fund(string $module, string $method, ?int $fundId): Account
     {
         if ($method === 'cash') {
-            return Account::byKey(Receipt::CASH_ACCOUNT[$module] ?? 'cash_misc');
+            return Account::byKey(self::$cashInto ?? Receipt::CASH_ACCOUNT[$module] ?? 'cash_misc');
         }
         $fund = $fundId ? Account::with('bankAccount')->where('is_postable', true)->where('is_active', true)->find($fundId) : null;
         $isBank = $fund?->bankAccount && $fund->bankAccount->is_active;

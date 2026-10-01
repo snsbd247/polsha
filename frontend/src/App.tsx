@@ -116,6 +116,7 @@ const LoanAuditPage = lazy(() => import('./pages/loans/LoanAuditPage'))
 const VerifyReceiptPage = lazy(() => import('./pages/VerifyReceiptPage'))
 const CombinedPaymentPage = lazy(() => import('./pages/payments/CombinedPaymentPage'))
 const CombinedPaymentListPage = lazy(() => import('./pages/payments/CombinedPaymentListPage'))
+const FieldCollectPage = lazy(() => import('./pages/field/FieldCollectPage'))
 const CombinedPaymentDetailPage = lazy(() => import('./pages/payments/CombinedPaymentDetailPage'))
 const DayClosePage = lazy(() => import('./pages/cash/DayClosePage'))
 const BankReconciliationListPage = lazy(() => import('./pages/accounting/BankReconciliationListPage'))
@@ -195,6 +196,13 @@ function Perm({ perm, children }: { perm: string | string[]; children: ReactNode
   return can(perm) ? <>{children}</> : <Result status="403" title={tx('অনুমতি নেই')} subTitle={tx('এই পাতা দেখার অনুমতি আপনার নেই।')} />
 }
 
+/** A field collector only collects: they land straight on their phone screen instead of the dashboard. */
+function Home() {
+  const { can } = useAuth()
+  const fieldOnly = can('field.create') && !can(['farmer.view', 'payment.view', 'member.view', 'land.view', 'irrigation.view', 'loan.view', 'savings.view', 'accounting.view'])
+  return fieldOnly ? <Navigate to="/payments/field" replace /> : <DashboardPage />
+}
+
 export default function App() {
   return (
     <Suspense fallback={<Spin fullscreen />}>
@@ -211,7 +219,7 @@ export default function App() {
           </RequireAuth>
         }
       >
-        <Route index element={<DashboardPage />} />
+        <Route index element={<Home />} />
         <Route path="profile" element={<ProfilePage />} />
 
         <Route path="admin/users" element={<Perm perm="user.view"><UserListPage /></Perm>} />
@@ -351,6 +359,7 @@ export default function App() {
 
 
         <Route path="payments/combined" element={<Perm perm="payment.view"><CombinedPaymentListPage /></Perm>} />
+        <Route path="payments/field" element={<Perm perm={['field.create', 'field.view', 'field.approve']}><FieldCollectPage /></Perm>} />
         <Route path="payments/combined/new" element={<Perm perm="payment.create"><CombinedPaymentPage /></Perm>} />
         <Route path="payments/combined/:id" element={<Perm perm="payment.view"><CombinedPaymentDetailPage /></Perm>} />
         <Route path="cash/day-close" element={<Perm perm="cash.view"><ByQuery><DayClosePage /></ByQuery></Perm>} />

@@ -154,6 +154,10 @@ class CombinedPaymentService
             throw ValidationException::withMessages(['payment' => $payment->status === 'cancelled'
                 ? __('রশিদটি আগেই বাতিল হয়েছে।') : __('এই রশিদ বাতিলের অনুরোধ অনুমোদনের অপেক্ষায় আছে।')]);
         }
+        // its money already moved from the collector to the office cash; reversing it would leave the collector owing
+        if ($payment->field_deposit_id) {
+            throw ValidationException::withMessages(['payment' => __('এই মাঠ-আদায়ের টাকা অফিসে জমা হয়ে গেছে, তাই এই রশিদ আর বাতিল করা যাবে না।')]);
+        }
         foreach ($payment->parts as $part) {
             $src = $part->source;
             if (! $src || ! in_array($src->status, ['posted', 'active'], true)) {

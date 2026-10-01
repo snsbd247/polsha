@@ -1,0 +1,203 @@
+/* Field collection: a phone-first page — big touch targets, one column. */
+.fc-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-width: 640px;
+}
+.fc-card {
+  background: #fff;
+  border: 1px solid #e4e9f2;
+  border-radius: 12px;
+  padding: 16px;
+}
+.fc-title {
+  margin: 0 0 10px;
+  font-size: 15px;
+  color: #1c2b45;
+}
+.fc-strip {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.fc-strip > div {
+  display: flex;
+  flex-direction: column;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: #e8f6ee;
+  color: #1f6b3d;
+}
+.fc-strip > .fc-strip-hold {
+  background: #fdf1df;
+  color: #8a5300;
+}
+.fc-strip small,
+.fc-strip span {
+  font-size: 12px;
+  opacity: 0.85;
+}
+.fc-strip b {
+  font-size: 20px;
+  line-height: 1.3;
+}
+.fc-search {
+  display: flex;
+  gap: 8px;
+}
+.fc-hint {
+  margin: 10px 2px 0;
+  color: #6b7a90;
+}
+.fc-hits,
+.fc-today,
+.fc-dues,
+.fc-parts {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+}
+.fc-hits button {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 100%;
+  min-height: 56px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  border: 1px solid #dbe3f0;
+  border-radius: 10px;
+  background: #f7f9fd;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+}
+.fc-hits button:active,
+.fc-hits button:hover {
+  border-color: #1769e0;
+  background: #eef4ff;
+}
+.fc-hits small,
+.fc-farmer small,
+.fc-today small {
+  color: #6b7a90;
+}
+.fc-farmer {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+}
+.fc-farmer > div {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.fc-farmer b {
+  font-size: 17px;
+}
+.fc-dues li,
+.fc-parts li,
+.fc-today li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 0;
+  border-bottom: 1px dashed #e4e9f2;
+}
+.fc-dues small {
+  color: #6b7a90;
+  margin-left: 4px;
+}
+.fc-dues-total {
+  border-bottom: none !important;
+  font-size: 16px;
+  color: #1769e0;
+}
+.fc-label {
+  display: block;
+  margin: 14px 0 6px;
+  font-weight: 600;
+}
+.fc-amount .ant-input-number-input {
+  font-size: 22px;
+  font-weight: 600;
+  height: 52px;
+}
+.fc-split {
+  margin: 8px 2px 14px;
+  color: #3d4b63;
+  font-size: 13px;
+}
+.fc-warn {
+  color: #c2410c;
+}
+.fc-done {
+  text-align: center;
+}
+.fc-done-icon {
+  font-size: 44px;
+  color: #1f9d55;
+}
+.fc-done h3 {
+  margin: 6px 0 0;
+}
+.fc-big {
+  font-size: 30px;
+  font-weight: 700;
+  margin: 2px 0;
+}
+.fc-parts {
+  text-align: left;
+  margin-bottom: 12px;
+}
+.fc-qr {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 14px;
+  color: #6b7a90;
+}
+.fc-today li > span {
+  display: flex;
+  flex-direction: column;
+}
+.fc-today .fc-today-amt {
+  align-items: flex-end;
+  font-weight: 600;
+}
+.fc-video {
+  width: 100%;
+  border-radius: 10px;
+  background: #000;
+}
+.fc-office {
+  padding: 16px;
+  margin-top: 16px;
+}
+.fc-deposit-foot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 14px;
+}
+.fc-deposit-foot label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.fc-deposit-foot .fc-grow {
+  flex: 1;
+  min-width: 200px;
+}
+@media (max-width: 480px) {
+  .fc-strip b {
+    font-size: 17px;
+  }
+  .fc-card {
+    padding: 14px 12px;
+  }
+}

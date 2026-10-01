@@ -49,16 +49,18 @@ class RolePermissionSeeder extends Seeder
             'manager' => array_merge(
                 $p(self::OPERATIONS, ['view', 'create', 'edit', 'export', 'approve']),
                 $p(['location', 'mouza'], ['view', 'create', 'edit']),
-                ['audit.view', 'user.view', 'import.view', 'import.create'],
+                ['audit.view', 'user.view', 'import.view', 'import.create', 'field.view', 'field.approve', 'field.export'],
             ),
             'accountant' => array_merge(
                 $p(['accounting', 'cash', 'bank', 'payment'], ['view', 'create', 'edit', 'export']),
                 $p(['savings', 'share'], ['create']),
                 $p(['farmer', 'member', 'irrigation', 'savings', 'share', 'loan', 'report'], ['view', 'export']),
+                ['field.view', 'field.approve'],
             ),
             'cashier' => array_merge(
                 $p(['payment', 'cash', 'savings', 'share'], ['view', 'create']),
                 $p(['farmer', 'member', 'irrigation', 'loan'], ['view']),
+                ['field.view', 'field.approve'],
             ),
             'irrigation_officer' => array_merge(
                 $p(['irrigation', 'land'], ['view', 'create', 'edit', 'export']),
@@ -80,6 +82,8 @@ class RolePermissionSeeder extends Seeder
                 $p(['member', 'mouza', 'patwari'], ['view']),
                 ['import.view', 'import.create'],
             ),
+            // collects at the farmer's door on a phone; nothing else
+            'field_collector' => ['field.view', 'field.create'],
             default => [],
         }));
     }

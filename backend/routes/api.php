@@ -19,6 +19,7 @@ use App\Http\Controllers\Api\DuplicateController;
 use App\Http\Controllers\Api\ExportLogController;
 use App\Http\Controllers\Api\FarmerController;
 use App\Http\Controllers\Api\FarmerDocumentController;
+use App\Http\Controllers\Api\FieldCollectionController;
 use App\Http\Controllers\Api\FinancialYearController;
 use App\Http\Controllers\Api\FundController;
 use App\Http\Controllers\Api\HouseholdController;
@@ -452,6 +453,18 @@ Route::middleware(['auth:sanctum', 'usable'])->group(function () {
         Route::post('combined-payments', [CombinedPaymentController::class, 'store']);
         Route::post('combined-payments/{combinedPayment}/cancel', [CombinedPaymentController::class, 'cancel']);
     });
+    // field collection on a phone: the collector takes cash, the office receives it later
+    Route::middleware('permission:field.create')->group(function () {
+        Route::get('field/farmers', [FieldCollectionController::class, 'farmers']);
+        Route::get('field/dues', [FieldCollectionController::class, 'dues']);
+        Route::post('field/collect', [FieldCollectionController::class, 'collect'])->middleware('throttle:30,1');
+        Route::get('field/mine', [FieldCollectionController::class, 'mine']);
+    });
+    Route::middleware('permission:field.view|field.approve')->group(function () {
+        Route::get('field/collectors', [FieldCollectionController::class, 'collectors']);
+        Route::get('field/collectors/{user}', [FieldCollectionController::class, 'holding'])->whereNumber('user');
+    });
+    Route::post('field/deposits', [FieldCollectionController::class, 'deposit'])->middleware('permission:field.approve');
     Route::middleware('permission:cash.view')->group(function () {
         Route::get('day-closes', [DayCloseController::class, 'index']);
         Route::get('day-closes/summary', [DayCloseController::class, 'summary']);

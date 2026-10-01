@@ -23,7 +23,7 @@ class CombinedPayment extends Model
 
     protected $fillable = [
         'payment_no', 'farmer_id', 'member_id', 'payer_name', 'date', 'amount', 'method', 'fund_account_id', 'reference', 'remarks',
-        'allocation', 'status', 'verify_token', 'created_by', 'cancelled_at', 'cancel_reason',
+        'allocation', 'status', 'verify_token', 'created_by', 'cancelled_at', 'cancel_reason', 'field_collector_id', 'field_deposit_id',
     ];
 
     protected $casts = ['date' => 'date:Y-m-d', 'amount' => 'decimal:2', 'allocation' => 'array', 'cancelled_at' => 'datetime'];
@@ -31,6 +31,17 @@ class CombinedPayment extends Model
     public function parts()
     {
         return $this->hasMany(CombinedPaymentPart::class);
+    }
+
+    /** The field collector who took the money at the farmer's door, if not at the counter. */
+    public function fieldCollector()
+    {
+        return $this->belongsTo(User::class, 'field_collector_id')->withTrashed();
+    }
+
+    public function fieldDeposit()
+    {
+        return $this->belongsTo(FieldDeposit::class);
     }
 
     public function farmer()

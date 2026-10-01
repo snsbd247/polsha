@@ -1297,5 +1297,16 @@
     "সদস্যপ্রতি গড়": "Average per member",
     "প্রতি দেরি কিস্তিতে নির্দিষ্ট টাকা": "Fixed sum per late instalment",
     "দেরি কিস্তির উপর % (একবার)": "% of a late instalment (once)",
-    "মাসিক % (দিন হিসাবে — পুরনো নিয়ম)": "% per month, by the day (old rule)"
+    "মাসিক % (দিন হিসাবে — পুরনো নিয়ম)": "% per month, by the day (old rule)",
+    "আদায় হয়েছে — রশিদ :no": "Collected — receipt :no",
+    "এই মাঠ-আদায়ের টাকা অফিসে জমা হয়ে গেছে, তাই এই রশিদ আর বাতিল করা যাবে না।": "This field collection has already been handed in at the office, so the receipt can no longer be cancelled.",
+    "এই মাঠকর্মীর কাছে জমা দেওয়ার মতো কোনো আদায় নেই।": "This collector holds no collections to hand in.",
+    "জমার তারিখ শেষ আদায়ের তারিখের (:date) আগে হতে পারে না।": "The hand-in date cannot be before the last collection (:date).",
+    "নিজের আদায়ের টাকা নিজে জমা নেওয়া যায় না; অফিসের অন্য কেউ জমা নেবেন।": "You cannot receive your own collections; someone else at the office must.",
+    "মাঠ-আদায় জমা :no — :name (:n টি রশিদ)": "Field hand-in :no — :name (:n receipts)",
+    "মাঠকর্মী": "Field Collector",
+    "মাঠে আদায়": "Field Collection",
+    "মাঠে গিয়ে মোবাইলে আদায়; টাকা পরে অফিসে জমা": "Collects in the field on a phone; hands the cash in at the office later",
+    "৳:amount জমা নেওয়া হয়েছে — :no": "৳:amount received — :no",
+    "মাঠকর্মীর হাতে নগদ (জমা বাকি)": "Cash with field collectors"
 }

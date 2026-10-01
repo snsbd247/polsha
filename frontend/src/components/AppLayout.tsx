@@ -322,6 +322,11 @@ const GROUPS: Group[] = [
         label: m('একত্রিত পেমেন্ট', 'Combined Payment'),
         perm: 'payment.view',
       },
+      {
+        path: '/payments/field',
+        label: m('মাঠে আদায় (মোবাইল)', 'Field Collection (Mobile)'),
+        perm: ['field.create', 'field.view', 'field.approve'],
+      },
       { path: '/qr/scan', label: m('QR স্ক্যানার', 'QR Scanner') },
       { path: '/qr/history', label: m('QR স্ক্যান ইতিহাস', 'QR Scan History') },
       {
