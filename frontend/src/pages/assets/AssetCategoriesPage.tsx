@@ -8,6 +8,7 @@ import { digits } from '../../lib/format'
 import type { AssetCategory } from '../../lib/phase8'
 import { required } from '../../lib/rules'
 import { nameOf, t as tx } from '../../lib/i18n'
+import PageFrame from '../../components/PageFrame'
 
 export default function AssetCategoriesPage() {
   const { message } = App.useApp()
@@ -37,20 +38,26 @@ export default function AssetCategoriesPage() {
   }
 
   return (
-    <>
-      <div className="page-header">
-        <h2>{tx('সম্পদের শ্রেণি')}</h2>
-        <Can perm="asset.admin">
-          <Button type="primary" icon={<PlusOutlined />} onClick={() => open('new')}>
-            {tx('নতুন শ্রেণি')}
-          </Button>
-        </Can>
-      </div>
+    <PageFrame
+      className="ml pl"
+      crumbs={[{ label: tx('সম্পদ'), to: '/assets/dashboard' }, { label: tx('সম্পদ রেজিস্টার'), to: '/assets' }, { label: tx('সম্পদের শ্রেণি') }]}
+      title={tx('সম্পদের শ্রেণি')}
+      actions={
+        <span className="id-actions no-print">
+          <Can perm="asset.admin">
+            <Button type="primary" icon={<PlusOutlined />} onClick={() => open('new')}>
+              {tx('নতুন শ্রেণি')}
+            </Button>
+          </Can>
+        </span>
+      }
+    >
       <Table<AssetCategory>
         rowKey="id"
         loading={isLoading}
         dataSource={data}
         pagination={false}
+        scroll={{ x: 'max-content' }}
         columns={[
           { title: tx('কোড'), dataIndex: 'code' },
           { title: tx('নাম'), render: (_, c) => nameOf(c) },
@@ -91,6 +98,6 @@ export default function AssetCategoriesPage() {
           </Form.Item>
         </Form>
       </Modal>
-    </>
+    </PageFrame>
   )
 }

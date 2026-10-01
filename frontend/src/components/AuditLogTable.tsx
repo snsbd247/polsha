@@ -73,22 +73,29 @@ export default function AuditLogTable({
           { title: tx('বিবরণ'), dataIndex: 'description', ellipsis: true },
         ]}
       />
-      <Drawer open={!!open} onClose={() => setOpen(null)} title={tx('অডিট বিস্তারিত')} size={640}>
-        {open && (
-          <>
-            <Descriptions column={1} size="small" bordered style={{ marginBottom: 16 }}>
-              <Descriptions.Item label={tx('সময়')}>{fmtDateTime(open.created_at)}</Descriptions.Item>
-              <Descriptions.Item label={tx('ইউজার')}>{open.user?.name_bn ?? tx('সিস্টেম')}</Descriptions.Item>
-              <Descriptions.Item label={tx('মডিউল')}>{modules?.[open.module] ?? open.module}</Descriptions.Item>
-              <Descriptions.Item label={tx('কাজ')}>{ACTION_LABELS[open.action] ?? open.action}</Descriptions.Item>
-              <Descriptions.Item label={tx('রেকর্ড')}>{open.auditable_type ? `${open.auditable_type} #${open.auditable_id}` : '—'}</Descriptions.Item>
-              {open.description && <Descriptions.Item label={tx('বিবরণ')}>{open.description}</Descriptions.Item>}
-              <Descriptions.Item label="IP">{open.ip_address ?? '—'}</Descriptions.Item>
-            </Descriptions>
-            <DiffTable log={open} />
-          </>
-        )}
-      </Drawer>
+      <AuditDetailDrawer log={open} modules={modules} onClose={() => setOpen(null)} />
     </>
+  )
+}
+
+/** One audit entry: who, when, what, and the old vs new values. */
+export function AuditDetailDrawer({ log: open, modules, onClose }: { log: AuditLog | null; modules?: Record<string, string>; onClose: () => void }) {
+  return (
+    <Drawer open={!!open} onClose={onClose} title={tx('অডিট বিস্তারিত')} size={640}>
+      {open && (
+        <>
+          <Descriptions column={1} size="small" bordered style={{ marginBottom: 16 }}>
+            <Descriptions.Item label={tx('সময়')}>{fmtDateTime(open.created_at)}</Descriptions.Item>
+            <Descriptions.Item label={tx('ইউজার')}>{open.user?.name_bn ?? tx('সিস্টেম')}</Descriptions.Item>
+            <Descriptions.Item label={tx('মডিউল')}>{modules?.[open.module] ?? open.module}</Descriptions.Item>
+            <Descriptions.Item label={tx('কাজ')}>{ACTION_LABELS[open.action] ?? open.action}</Descriptions.Item>
+            <Descriptions.Item label={tx('রেকর্ড')}>{open.auditable_type ? `${open.auditable_type} #${open.auditable_id}` : '—'}</Descriptions.Item>
+            {open.description && <Descriptions.Item label={tx('বিবরণ')}>{open.description}</Descriptions.Item>}
+            <Descriptions.Item label="IP">{open.ip_address ?? '—'}</Descriptions.Item>
+          </Descriptions>
+          <DiffTable log={open} />
+        </>
+      )}
+    </Drawer>
   )
 }

@@ -11,6 +11,7 @@ import { digits, fmtDate } from '../../lib/format'
 import { HISTORY_TITLE, TXN_STATUS_COLOR, toOptions, useFundMeta, type FundKind, type FundTxn } from '../../lib/funds'
 import { downloadExport } from '../../lib/phase2'
 import { nameOf, t as tx } from '../../lib/i18n'
+import PageFrame from '../../components/PageFrame'
 
 type Resp = Paginated<FundTxn> & { total_in: number; total_out: number }
 type Params = { page: number; per_page: number; search?: string; type?: string; status?: string; method?: string; direction?: string; from?: string; to?: string }
@@ -28,26 +29,33 @@ export default function FundTxnListPage({ kind }: { kind: FundKind }) {
   })
 
   return (
-    <>
-      <div className="page-header">
-        <h2>{HISTORY_TITLE[kind]}</h2>
-        <Space wrap>
-          <RelatedLinks links={[{ to: `/funds/${kind}/accounts`, label: kind === 'share' ? tx('শেয়ার মূলধন বিবরণী') : tx('সঞ্চয় হিসাব') }, { to: `/funds/${kind}/audit`, label: kind === 'share' ? tx('শেয়ার মূলধন মিলকরণ') : tx('সঞ্চয় অডিট') }]} />
-          <Button icon={<DownloadOutlined />} onClick={() => downloadExport(`/funds/${kind}/transactions`, { ...params, page: undefined, export: 'csv' }, `${kind}-transactions.csv`).catch((e) => message.error(errorMessage(e)))}>
-            Excel
-          </Button>
-        </Space>
-      </div>
+    <PageFrame
+      className="ml pl"
+      crumbs={[{ label: tx('সঞ্চয়'), to: '/savings/accounts' }, { label: HISTORY_TITLE[kind] }]}
+      title={HISTORY_TITLE[kind]}
+      actions={
+        <span className="id-actions no-print">
+          <Space wrap>
+            <RelatedLinks
+              links={[
+                { to: `/funds/${kind}/accounts`, label: kind === 'share' ? tx('শেয়ার মূলধন বিবরণী') : tx('সঞ্চয় হিসাব') },
+                { to: `/funds/${kind}/audit`, label: kind === 'share' ? tx('শেয়ার মূলধন মিলকরণ') : tx('সঞ্চয় অডিট') },
+              ]}
+            />
+            <Button icon={<DownloadOutlined />} onClick={() => downloadExport(`/funds/${kind}/transactions`, { ...params, page: undefined, export: 'csv' }, `${kind}-transactions.csv`).catch((e) => message.error(errorMessage(e)))}>
+              Excel
+            </Button>
+          </Space>
+        </span>
+      }
+    >
       <div className="toolbar">
         <Input.Search placeholder={tx('লেনদেন নং, হিসাব নং, নাম বা রেফারেন্স')} allowClear style={{ width: 260 }} onSearch={(search) => set({ search })} />
         <Select placeholder={tx('ধরন')} allowClear style={{ width: 170 }} options={toOptions(meta.data?.types)} onChange={(type) => set({ type })} />
         <Select placeholder={tx('দিক')} allowClear style={{ width: 120 }} options={toOptions(meta.data?.directions)} onChange={(direction) => set({ direction })} />
         <Select placeholder={tx('অবস্থা')} allowClear style={{ width: 170 }} options={toOptions(meta.data?.statuses)} onChange={(status) => set({ status })} />
         <Select placeholder={tx('মাধ্যম')} allowClear style={{ width: 150 }} options={toOptions(meta.data?.methods)} onChange={(method) => set({ method })} />
-        <DatePicker.RangePicker
-          format="DD/MM/YYYY"
-          onChange={(r) => set({ from: (r?.[0] as Dayjs | null)?.format('YYYY-MM-DD'), to: (r?.[1] as Dayjs | null)?.format('YYYY-MM-DD') })}
-        />
+        <DatePicker.RangePicker format="DD/MM/YYYY" onChange={(r) => set({ from: (r?.[0] as Dayjs | null)?.format('YYYY-MM-DD'), to: (r?.[1] as Dayjs | null)?.format('YYYY-MM-DD') })} />
       </div>
       <Table<FundTxn>
         rowKey="id"
@@ -79,6 +87,6 @@ export default function FundTxnListPage({ kind }: { kind: FundKind }) {
           { title: tx('অবস্থা'), dataIndex: 'status', width: 150, render: (s: string) => <Tag color={TXN_STATUS_COLOR[s]}>{meta.data?.statuses[s] ?? s}</Tag> },
         ]}
       />
-    </>
+    </PageFrame>
   )
 }

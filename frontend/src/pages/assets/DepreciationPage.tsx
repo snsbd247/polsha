@@ -9,6 +9,7 @@ import { api, errorMessage, type Paginated } from '../../lib/api'
 import { money } from '../../lib/accounting'
 import { digits, fmtDate } from '../../lib/format'
 import { nameOf, t as tx } from '../../lib/i18n'
+import PageFrame from '../../components/PageFrame'
 
 type PreviewRow = {
   asset: { id: number; asset_code: string; name_bn: string; name_en: string | null; cost: string; accumulated_depreciation: string; book_value: number; category: { name_bn: string; name_en: string | null } | null }
@@ -61,16 +62,8 @@ export default function DepreciationPage() {
   }
 
   return (
-    <>
-      <div className="page-header">
-        <h2>{tx('সম্পদের অবচয়')}</h2>
-      </div>
-      <Alert
-        type="info"
-        showIcon
-        style={{ marginBottom: 16 }}
-        title={tx('সরল রেখা পদ্ধতি: মাসিক অবচয় = (ক্রয়মূল্য − অবশিষ্ট মূল্য) ÷ আয়ুষ্কাল (মাস)। কোনো মাস বাদ থাকলে চালানোর সময় আগের মাসগুলোও ক্রমানুসারে পোস্ট হবে।')}
-      />
+    <PageFrame className="ml pl" crumbs={[{ label: tx('সম্পদ'), to: '/assets/dashboard' }, { label: tx('সম্পদ রেজিস্টার'), to: '/assets' }, { label: tx('সম্পদের অবচয়') }]} title={tx('সম্পদের অবচয়')}>
+      <Alert type="info" showIcon style={{ marginBottom: 16 }} title={tx('সরল রেখা পদ্ধতি: মাসিক অবচয় = (ক্রয়মূল্য − অবশিষ্ট মূল্য) ÷ আয়ুষ্কাল (মাস)। কোনো মাস বাদ থাকলে চালানোর সময় আগের মাসগুলোও ক্রমানুসারে পোস্ট হবে।')} />
       <Tabs
         items={[
           {
@@ -87,9 +80,7 @@ export default function DepreciationPage() {
                       </Button>
                     </Popconfirm>
                   </Can>
-                  <span>
-                    {tx('এই মাসে বাকি: ৳{{p0}} · আগেই পোস্ট: ৳{{p1}}', { p0: money(preview.data?.total ?? 0), p1: money(preview.data?.posted ?? 0) })}
-                  </span>
+                  <span>{tx('এই মাসে বাকি: ৳{{p0}} · আগেই পোস্ট: ৳{{p1}}', { p0: money(preview.data?.total ?? 0), p1: money(preview.data?.posted ?? 0) })}</span>
                 </div>
                 <Table<PreviewRow>
                   rowKey={(r) => r.asset.id}
@@ -135,6 +126,6 @@ export default function DepreciationPage() {
           },
         ]}
       />
-    </>
+    </PageFrame>
   )
 }

@@ -1,25 +1,39 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
-import { App, Button, Form, Input, Modal, Space, Table, Tag, Tooltip } from 'antd'
-import { CopyOutlined, DeleteOutlined, EditOutlined, KeyOutlined, PlusOutlined } from '@ant-design/icons'
-import { Can, useAuth } from '../../auth/AuthContext'
+import { App, Button, Form, Grid, Input, Modal, Table, Tag, Tooltip } from 'antd'
+import type { ColumnsType } from 'antd/es/table'
+import { CopyOutlined, DeleteFilled, EditFilled, KeyOutlined, PlusOutlined, SafetyCertificateFilled, SearchOutlined, SettingFilled, TeamOutlined, UserAddOutlined } from '@ant-design/icons'
+import { useAuth } from '../../auth/AuthContext'
 import { api, applyFormErrors, errorMessage } from '../../lib/api'
-import { digits } from '../../lib/format'
+import { digits, toEnDigits } from '../../lib/format'
 import { useRoles } from '../../lib/queries'
 import { required } from '../../lib/rules'
 import type { Role } from '../../lib/types'
 import { t as tx } from '../../lib/i18n'
+import ListFrame, { Field, n0 } from '../lands/ListFrame'
+import '../lands/land-list.css'
+import '../farmers/farmer-merge-list.css'
+import '../lands/land-history.css'
+import '../irrigation/invoices.css'
+import '../accounting/accounting.css'
 
+/** Roles and what each may do: add, rename, copy or remove a role and open its permission grid. */
 export default function RoleListPage() {
   const navigate = useNavigate()
   const { can } = useAuth()
   const { message, modal } = App.useApp()
   const queryClient = useQueryClient()
+  const wide = Grid.useBreakpoint().lg
   const { data: roles, isLoading } = useRoles()
   const [editing, setEditing] = useState<Role | 'new' | null>(null)
+  const [draft, setDraft] = useState('')
+  const [search, setSearch] = useState('')
   const [form] = Form.useForm()
 
+  const all = roles ?? []
+  const q = toEnDigits(search).toLowerCase()
+  const rows = all.filter((r) => !q || `${r.label ?? ''} ${r.name} ${r.description ?? ''}`.toLowerCase().includes(q))
   const refresh = () => queryClient.invalidateQueries({ queryKey: ['roles'] })
 
   const openForm = (r: Role | 'new') => {
@@ -67,63 +81,109 @@ export default function RoleListPage() {
       },
     })
 
+  const cards = [
+    { key: 'total', label: tx('মোট রোল'), value: roles ? all.length : undefined, icon: '', glyph: <SafetyCertificateFilled />, color: '#1769e0', tint: '#e4edfd' },
+    { key: 'system', label: tx('সিস্টেম রোল'), value: roles ? all.filter((r) => r.is_system).length : undefined, icon: '', glyph: <SettingFilled />, color: '#8b3fe0', tint: '#efe4fc' },
+    { key: 'custom', label: tx('নিজস্ব রোল'), value: roles ? all.filter((r) => !r.is_system).length : undefined, icon: '', glyph: <UserAddOutlined />, color: '#f08c00', tint: '#fdefd6' },
+    {
+      key: 'users',
+      label: tx('রোল দেওয়া ইউজার'),
+      value: roles ? all.reduce((s, r) => s + Number(r.users_count), 0) : undefined,
+      icon: '',
+      glyph: <TeamOutlined />,
+      color: '#1f9d55',
+      tint: '#dcf3e5',
+      onClick: () => navigate('/admin/users'),
+    },
+  ]
+
+  const columns: ColumnsType<Role> = [
+    { title: '#', width: 44, align: 'center', render: (_, __, i) => digits(i + 1) },
+    {
+      title: tx('রোল'),
+      dataIndex: 'label',
+      render: (v: string | null, r) => (
+        <span className="hs-two">
+          <span className="mg-name">
+            {v ?? r.name} {r.is_system && <Tag className="fl-tag ll-gray">{tx('সিস্টেম')}</Tag>}
+          </span>
+          <span>{r.name}</span>
+        </span>
+      ),
+    },
+    { title: tx('বিবরণ'), dataIndex: 'description', render: (v: string | null) => <span className="jl-narr">{v || '—'}</span> },
+    { title: tx('ইউজার'), dataIndex: 'users_count', align: 'center', render: (v: number) => <Tag className={`fl-tag ${v ? 'll-blue' : 'll-gray'}`}>{digits(v)}</Tag> },
+    {
+      title: tx('অ্যাকশন'),
+      width: 210,
+      align: 'center',
+      fixed: wide ? 'right' : undefined,
+      render: (_, r) => (
+        <div className="fl-actions pl-actions">
+          <Tooltip title={tx('অনুমতি')}>
+            <Button className="fl-act pl-act" icon={<KeyOutlined />} aria-label={tx('অনুমতি')} onClick={() => navigate(`/admin/roles/${r.id}/permissions`)} />
+          </Tooltip>
+          {can('role.edit') && (
+            <Tooltip title={tx('সম্পাদনা')}>
+              <Button className="fl-act pl-act" icon={<EditFilled />} aria-label={tx('সম্পাদনা')} onClick={() => openForm(r)} />
+            </Tooltip>
+          )}
+          {can('role.create') && (
+            <Tooltip title={tx('কপি')}>
+              <Button className="fl-act pl-act" icon={<CopyOutlined />} aria-label={tx('কপি')} onClick={() => duplicate(r)} />
+            </Tooltip>
+          )}
+          {can('role.delete') && (
+            <Tooltip title={r.is_system ? tx('সিস্টেম রোল মুছা যায় না') : r.users_count ? tx('এই রোলে ইউজার আছে') : tx('মুছুন')}>
+              <Button className="fl-act pl-act" danger icon={<DeleteFilled />} aria-label={tx('মুছুন')} disabled={r.is_system || r.users_count > 0} onClick={() => remove(r)} />
+            </Tooltip>
+          )}
+        </div>
+      ),
+    },
+  ]
+
   return (
-    <>
-      <div className="page-header">
-        <h2>{tx('রোল ও অনুমতি')}</h2>
-        <Can perm="role.create">
-          <Button type="primary" icon={<PlusOutlined />} onClick={() => openForm('new')}>
-            {tx('নতুন রোল')}
+    <ListFrame
+      section={{ label: tx('প্রশাসন'), to: '/admin/users' }}
+      title={tx('রোল')}
+      subtitle=""
+      actions={
+        <>
+          <Button icon={<KeyOutlined />} onClick={() => navigate('/admin/permissions')}>
+            {tx('অনুমতি')}
           </Button>
-        </Can>
-      </div>
+          {can('role.create') && (
+            <Button type="primary" icon={<PlusOutlined />} onClick={() => openForm('new')}>
+              {tx('নতুন রোল')}
+            </Button>
+          )}
+        </>
+      }
+      cards={cards}
+      filters={
+        <Field label={tx('খুঁজুন')} grow={400}>
+          <Input prefix={<SearchOutlined />} allowClear placeholder={tx('রোলের নাম বা বিবরণ...')} value={draft} onChange={(e) => setDraft(e.target.value)} onPressEnter={() => setSearch(draft)} />
+        </Field>
+      }
+      onSearch={() => setSearch(draft)}
+      onReset={() => {
+        setDraft('')
+        setSearch('')
+      }}
+      tableTitle={tx('{{p0}} ({{p1}})', { p0: tx('রোলের তালিকা'), p1: n0(rows.length) })}
+    >
       <Table<Role>
+        className="fl-table ml-table pl-table mg-table iv-table"
         rowKey="id"
         loading={isLoading}
-        dataSource={roles}
+        dataSource={rows}
         pagination={false}
-        scroll={{ x: 700 }}
-        columns={[
-          { title: tx('রোল'), dataIndex: 'label', render: (v, r) => <Space>{v ?? r.name}{r.is_system && <Tag>{tx('সিস্টেম')}</Tag>}</Space> },
-          { title: tx('বিবরণ'), dataIndex: 'description' },
-          { title: tx('ইউজার'), dataIndex: 'users_count', render: digits, width: 90 },
-          {
-            title: '',
-            width: 200,
-            render: (_, r) => (
-              <Space>
-                <Tooltip title={tx('অনুমতি')}>
-                  <Button icon={<KeyOutlined />} onClick={() => navigate(`/admin/roles/${r.id}/permissions`)} />
-                </Tooltip>
-                {can('role.edit') && (
-                  <Tooltip title={tx('সম্পাদনা')}>
-                    <Button icon={<EditOutlined />} onClick={() => openForm(r)} />
-                  </Tooltip>
-                )}
-                {can('role.create') && (
-                  <Tooltip title={tx('কপি')}>
-                    <Button icon={<CopyOutlined />} onClick={() => duplicate(r)} />
-                  </Tooltip>
-                )}
-                {can('role.delete') && (
-                  <Tooltip title={r.is_system ? tx('সিস্টেম রোল মুছা যায় না') : r.users_count ? tx('এই রোলে ইউজার আছে') : tx('মুছুন')}>
-                    <Button danger icon={<DeleteOutlined />} disabled={r.is_system || r.users_count > 0} onClick={() => remove(r)} />
-                  </Tooltip>
-                )}
-              </Space>
-            ),
-          },
-        ]}
+        scroll={{ x: 'max-content' }}
+        columns={columns}
+        locale={{ emptyText: tx('কোনো রোল পাওয়া যায়নি') }}
       />
-      <Modal
-        open={!!editing}
-        title={editing === 'new' ? tx('নতুন রোল') : tx('রোল সম্পাদনা')}
-        onCancel={() => setEditing(null)}
-        onOk={save}
-        okText={tx('সংরক্ষণ')}
-        cancelText={tx('বাতিল')}
-        forceRender
-      >
+      <Modal open={!!editing} title={editing === 'new' ? tx('নতুন রোল') : tx('রোল সম্পাদনা')} onCancel={() => setEditing(null)} onOk={save} okText={tx('সংরক্ষণ')} cancelText={tx('বাতিল')} forceRender>
         <Form form={form} layout="vertical">
           <Form.Item name="label" label={tx('রোলের নাম')} rules={[required(tx('নাম দিন'))]}>
             <Input />
@@ -133,6 +193,6 @@ export default function RoleListPage() {
           </Form.Item>
         </Form>
       </Modal>
-    </>
+    </ListFrame>
   )
 }

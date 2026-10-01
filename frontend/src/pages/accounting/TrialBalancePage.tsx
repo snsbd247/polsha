@@ -10,6 +10,7 @@ import { ACCOUNT_TYPE_LABEL, money, moneyOrBlank } from '../../lib/accounting'
 import { digits, fmtDate } from '../../lib/format'
 import { nameOf, t as tx } from '../../lib/i18n'
 import { downloadExport } from '../../lib/phase2'
+import PageFrame from '../../components/PageFrame'
 
 type Row = { id: number; code: string; name_bn: string; name_en: string | null; type: string; debit: number; credit: number }
 type Report = { as_of: string; rows: Row[]; total_debit: number; total_credit: number; balanced: boolean }
@@ -25,21 +26,26 @@ export default function TrialBalancePage() {
   })
 
   return (
-    <>
-      <div className="page-header">
-        <h2>{tx('রেওয়ামিল (Trial Balance)')}</h2>
-        <Space wrap className="no-print">
-          <DatePicker value={asOf} format="DD/MM/YYYY" allowClear={false} onChange={(d) => d && setAsOf(d)} />
-          <Button icon={<PrinterOutlined />} onClick={() => window.print()}>
-            {tx('প্রিন্ট')}
-          </Button>
-          <Can perm="accounting.export">
-            <Button icon={<DownloadOutlined />} onClick={() => downloadExport('/accounting/trial-balance', { as_of: ymd, export: 'csv' }, `trial-balance-${ymd}.csv`).catch((e) => message.error(errorMessage(e)))}>
-              Excel
+    <PageFrame
+      className="ml pl"
+      crumbs={[{ label: tx('হিসাব'), to: '/accounting/summary' }, { label: tx('হিসাবের তালিকা'), to: '/accounting/accounts' }, { label: tx('রেওয়ামিল (Trial Balance)') }]}
+      title={tx('রেওয়ামিল (Trial Balance)')}
+      actions={
+        <span className="id-actions no-print">
+          <Space wrap className="no-print">
+            <DatePicker value={asOf} format="DD/MM/YYYY" allowClear={false} onChange={(d) => d && setAsOf(d)} />
+            <Button icon={<PrinterOutlined />} onClick={() => window.print()}>
+              {tx('প্রিন্ট')}
             </Button>
-          </Can>
-        </Space>
-      </div>
+            <Can perm="accounting.export">
+              <Button icon={<DownloadOutlined />} onClick={() => downloadExport('/accounting/trial-balance', { as_of: ymd, export: 'csv' }, `trial-balance-${ymd}.csv`).catch((e) => message.error(errorMessage(e)))}>
+                Excel
+              </Button>
+            </Can>
+          </Space>
+        </span>
+      }
+    >
       {data && (
         <Alert
           type={data.balanced ? 'success' : 'error'}
@@ -78,6 +84,6 @@ export default function TrialBalancePage() {
           ) : null
         }
       />
-    </>
+    </PageFrame>
   )
 }

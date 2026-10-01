@@ -53,11 +53,12 @@ export default function ListFrame(props: {
   cards: StatCard[]
   /** extra class on the card row, e.g. for six cards */
   statsClass?: string
-  filters: ReactNode
+  /** the filter row; leave out for a page without filters */
+  filters?: ReactNode
   /** extra class on the filter row, e.g. for a two-row layout */
   filterClass?: string
-  onSearch: () => void
-  onReset: () => void
+  onSearch?: () => void
+  onReset?: () => void
   tableTitle: string
   tableTools?: ReactNode
   above?: ReactNode
@@ -96,15 +97,17 @@ export default function ListFrame(props: {
 
         {props.above}
 
-        <div className={`dl-filters pl-filters ${props.filterClass ?? ''}`}>
-          {props.filters}
-          <div className="fl-filter-btns">
-            <Button type="primary" icon={<SearchOutlined />} onClick={props.onSearch}>
-              {tx('খুঁজুন')}
-            </Button>
-            <Button onClick={props.onReset}>{tx('রিসেট')}</Button>
+        {props.filters && (
+          <div className={`dl-filters pl-filters ${props.filterClass ?? ''}`}>
+            {props.filters}
+            <div className="fl-filter-btns">
+              <Button type="primary" icon={<SearchOutlined />} onClick={props.onSearch}>
+                {tx('খুঁজুন')}
+              </Button>
+              <Button onClick={props.onReset}>{tx('রিসেট')}</Button>
+            </div>
           </div>
-        </div>
+        )}
 
         <div className="fl-card fl-table-card">
           <div className="fl-table-head ml-table-head">

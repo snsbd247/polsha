@@ -8,6 +8,7 @@ import { APPROVAL_STATUS, digits, fmtDateTime } from '../../lib/format'
 import { useRoleLabels } from '../../lib/queries'
 import type { ApprovalRequest } from '../../lib/types'
 import { t as tx } from '../../lib/i18n'
+import PageFrame from '../../components/PageFrame'
 
 type Decision = 'approve' | 'reject' | 'return'
 
@@ -31,12 +32,7 @@ const FIELD_LABEL: Record<string, string> = {
 const fieldLabel = (k: string) => FIELD_LABEL[k] ?? tx(k)
 const VALUE_LABEL: Record<string, string> = { active: tx('সক্রিয়'), inactive: tx('নিষ্ক্রিয়'), cancelled: tx('বাতিলকৃত') }
 
-const show = (v: unknown) =>
-  v === null || v === undefined || v === ''
-    ? '—'
-    : typeof v === 'object'
-      ? digits(JSON.stringify(v))
-      : (VALUE_LABEL[String(v)] ?? digits(tx(String(v))))
+const show = (v: unknown) => (v === null || v === undefined || v === '' ? '—' : typeof v === 'object' ? digits(JSON.stringify(v)) : (VALUE_LABEL[String(v)] ?? digits(tx(String(v)))))
 
 export default function ApprovalDetailPage() {
   const { id } = useParams()
@@ -95,22 +91,26 @@ export default function ApprovalDetailPage() {
   const waitingFor = (req.steps.find((s) => s.step_no === req.current_step)?.roles ?? []).map(roleLabel).join(' / ') || tx('অনুমোদনকারী')
 
   return (
-    <>
-      <div className="page-header">
-        <h2>{req.title}</h2>
-        {req.can_act && (
-          <Space wrap>
-            <Button type="primary" onClick={() => setDecision('approve')}>
-              {tx('অনুমোদন')}
-            </Button>
-            <Button onClick={() => setDecision('return')}>{tx('ফেরত পাঠান')}</Button>
-            <Button danger onClick={() => setDecision('reject')}>
-              {tx('প্রত্যাখ্যান')}
-            </Button>
-          </Space>
-        )}
-      </div>
-
+    <PageFrame
+      className="ml pl"
+      crumbs={[{ label: tx('নগদ ও পেমেন্ট'), to: '/payments/receipts' }, { label: tx('অনুমোদন'), to: '/approvals' }, { label: req.title }]}
+      title={req.title}
+      actions={
+        <span className="id-actions no-print">
+          {req.can_act && (
+            <Space wrap>
+              <Button type="primary" onClick={() => setDecision('approve')}>
+                {tx('অনুমোদন')}
+              </Button>
+              <Button onClick={() => setDecision('return')}>{tx('ফেরত পাঠান')}</Button>
+              <Button danger onClick={() => setDecision('reject')}>
+                {tx('প্রত্যাখ্যান')}
+              </Button>
+            </Space>
+          )}
+        </span>
+      }
+    >
       {req.status === 'pending' && !req.can_act && (
         <Alert
           type="info"
@@ -134,7 +134,11 @@ export default function ApprovalDetailPage() {
               <Descriptions.Item label={tx('পাঠিয়েছেন')}>{req.requester?.name_bn}</Descriptions.Item>
               <Descriptions.Item label={tx('পাঠানোর সময়')}>{fmtDateTime(req.created_at)}</Descriptions.Item>
               <Descriptions.Item label={tx('সিদ্ধান্তের সময়')}>{fmtDateTime(req.decided_at)}</Descriptions.Item>
-              {req.amount && <Descriptions.Item label={tx('টাকার পরিমাণ')} span="filled">{tx('৳')}{' '}{digits(req.amount)}</Descriptions.Item>}
+              {req.amount && (
+                <Descriptions.Item label={tx('টাকার পরিমাণ')} span="filled">
+                  {tx('৳')} {digits(req.amount)}
+                </Descriptions.Item>
+              )}
               {req.approvable_type?.endsWith('\\Journal') && can('accounting.view') && (
                 <Descriptions.Item label={tx('সংশ্লিষ্ট ভাউচার')} span="filled">
                   <Link to={`/accounting/journals/${req.approvable_id}`}>{tx('ভাউচার দেখুন')}</Link>
@@ -196,7 +200,11 @@ export default function ApprovalDetailPage() {
                         {s.actor.name_bn} — {DECISION_LABEL[({ approved: 'approve', rejected: 'reject', returned: 'return' } as const)[s.status as 'approved'] ?? 'approve']}
                       </div>
                       <div>{fmtDateTime(s.acted_at)}</div>
-                      {s.remarks && <div>{tx('কারণ:')}{' '}{s.remarks}</div>}
+                      {s.remarks && (
+                        <div>
+                          {tx('কারণ:')} {s.remarks}
+                        </div>
+                      )}
                     </>
                   ) : (
                     tx('অপেক্ষমাণ')
@@ -226,6 +234,6 @@ export default function ApprovalDetailPage() {
           </Form.Item>
         </Form>
       </Modal>
-    </>
+    </PageFrame>
   )
 }

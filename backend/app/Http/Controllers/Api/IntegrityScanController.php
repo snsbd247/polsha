@@ -13,9 +13,15 @@ class IntegrityScanController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
+        $latest = IntegrityScan::latest('id')->first(['id', 'total_issues', 'errors', 'created_at']);
+
         return response()->json(IntegrityScan::with('creator:id,name_bn,name_en')->latest('id')
             ->select(['id', 'trigger', 'total_issues', 'errors', 'created_by', 'started_at', 'finished_at', 'created_at'])
-            ->paginate($this->perPage($request)));
+            ->paginate($this->perPage($request))->toArray() + [
+                // the cards: the newest scan's result and how many scans found serious problems
+                'latest' => $latest,
+                'counts' => ['total' => IntegrityScan::count(), 'with_errors' => IntegrityScan::where('errors', '>', 0)->count()],
+            ]);
     }
 
     public function show(IntegrityScan $integrityScan): JsonResponse

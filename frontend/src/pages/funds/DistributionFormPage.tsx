@@ -11,6 +11,7 @@ import { round2 } from '../../lib/irrigation'
 import type { FarmerBrief } from '../../lib/funds'
 import { required } from '../../lib/rules'
 import { nameOf, t as tx } from '../../lib/i18n'
+import PageFrame from '../../components/PageFrame'
 
 type PreviewRow = { member_id: number; member_no: number | string | null; member_status: string | null; farmer: FarmerBrief | null; account_no?: string; basis: number; amount: number }
 type Preview = { rows: PreviewRow[]; total_basis: number; total?: number }
@@ -73,7 +74,11 @@ function DistributionForm({ kind }: { kind: string }) {
         remarks: v.remarks,
         date: (v.date as Dayjs).format('YYYY-MM-DD'),
         ...(profit
-          ? { items: Object.entries(amounts).filter(([, a]) => a > 0).map(([member_id, amount]) => ({ member_id: Number(member_id), amount })) }
+          ? {
+              items: Object.entries(amounts)
+                .filter(([, a]) => a > 0)
+                .map(([member_id, amount]) => ({ member_id: Number(member_id), amount })),
+            }
           : { basis_date: (v.basis_date as Dayjs).format('YYYY-MM-DD'), pool_amount: v.pool_amount }),
       })
       message.success(res.data.message)
@@ -86,13 +91,18 @@ function DistributionForm({ kind }: { kind: string }) {
   }
 
   return (
-    <>
-      <div className="page-header">
-        <h2>{profit ? tx('নতুন সঞ্চয়ের মুনাফা বণ্টন') : tx('নতুন শেয়ারের লভ্যাংশ বণ্টন')}</h2>
-        <Button type="primary" icon={<SendOutlined />} loading={saving} onClick={save} disabled={total <= 0}>
-          {tx('অনুমোদনে পাঠান')}
-        </Button>
-      </div>
+    <PageFrame
+      className="ml pl"
+      crumbs={[{ label: tx('সঞ্চয়'), to: '/savings/accounts' }, { label: tx('মুনাফা ও লভ্যাংশ বণ্টন'), to: '/funds/distributions' }, { label: profit ? tx('নতুন সঞ্চয়ের মুনাফা বণ্টন') : tx('নতুন শেয়ারের লভ্যাংশ বণ্টন') }]}
+      title={profit ? tx('নতুন সঞ্চয়ের মুনাফা বণ্টন') : tx('নতুন শেয়ারের লভ্যাংশ বণ্টন')}
+      actions={
+        <span className="id-actions no-print">
+          <Button type="primary" icon={<SendOutlined />} loading={saving} onClick={save} disabled={total <= 0}>
+            {tx('অনুমোদনে পাঠান')}
+          </Button>
+        </span>
+      }
+    >
       <Alert
         type="info"
         showIcon
@@ -198,21 +208,10 @@ function DistributionForm({ kind }: { kind: string }) {
             width: 170,
             align: 'right',
             render: (_, r) =>
-              profit ? (
-                <InputNumber
-                  min={0}
-                  precision={2}
-                  size="small"
-                  style={{ width: 140 }}
-                  value={amounts[r.member_id] ?? null}
-                  onChange={(v) => setAmounts((a) => ({ ...a, [r.member_id]: v ?? 0 }))}
-                />
-              ) : (
-                money(r.amount)
-              ),
+              profit ? <InputNumber min={0} precision={2} size="small" style={{ width: 140 }} value={amounts[r.member_id] ?? null} onChange={(v) => setAmounts((a) => ({ ...a, [r.member_id]: v ?? 0 }))} /> : money(r.amount),
           },
         ]}
       />
-    </>
+    </PageFrame>
   )
 }

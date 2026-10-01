@@ -7,6 +7,7 @@ import { digits } from '../../lib/format'
 import { roleOptions, useRoles } from '../../lib/queries'
 import type { ApprovalRule } from '../../lib/types'
 import { t as tx } from '../../lib/i18n'
+import PageFrame from '../../components/PageFrame'
 
 export default function ApprovalRulesPage() {
   const { message } = App.useApp()
@@ -44,10 +45,7 @@ export default function ApprovalRulesPage() {
   }
 
   return (
-    <>
-      <div className="page-header">
-        <h2>{tx('অনুমোদনের নিয়ম')}</h2>
-      </div>
+    <PageFrame className="ml pl" crumbs={[{ label: tx('নগদ ও পেমেন্ট'), to: '/payments/receipts' }, { label: tx('অনুমোদন'), to: '/approvals' }, { label: tx('অনুমোদনের নিয়ম') }]} title={tx('অনুমোদনের নিয়ম')}>
       <Table<ApprovalRule>
         rowKey="id"
         loading={isLoading}
@@ -55,7 +53,16 @@ export default function ApprovalRulesPage() {
         pagination={false}
         scroll={{ x: 700 }}
         columns={[
-          { title: tx('কাজ'), dataIndex: 'label', render: (v, r) => <Space orientation="vertical" size={0}>{v}<code style={{ fontSize: 12 }}>{r.action_key}</code></Space> },
+          {
+            title: tx('কাজ'),
+            dataIndex: 'label',
+            render: (v, r) => (
+              <Space orientation="vertical" size={0}>
+                {v}
+                <code style={{ fontSize: 12 }}>{r.action_key}</code>
+              </Space>
+            ),
+          },
           { title: tx('চালু'), dataIndex: 'enabled', render: (v) => (v ? <Tag color="green">{tx('হ্যাঁ')}</Tag> : <Tag>{tx('না')}</Tag>) },
           {
             title: tx('ধাপ'),
@@ -81,18 +88,8 @@ export default function ApprovalRulesPage() {
               <>
                 {fields.map((f, i) => (
                   <Space key={f.key} align="baseline" style={{ display: 'flex' }}>
-                    <Form.Item
-                      name={[f.name, 'roles']}
-                      label={tx('ধাপ {{p0}}', { p0: digits(i + 1) })}
-                      rules={[{ required: true, type: 'array', min: 1, message: tx('রোল দিন') }]}
-                      style={{ minWidth: 380 }}
-                    >
-                      <Select
-                        mode="multiple"
-                        options={roleOptions(roles)}
-                        placeholder={tx('যেকোনো একজন অনুমোদন দিতে পারবেন')}
-                        showSearch={{ optionFilterProp: 'label' }}
-                      />
+                    <Form.Item name={[f.name, 'roles']} label={tx('ধাপ {{p0}}', { p0: digits(i + 1) })} rules={[{ required: true, type: 'array', min: 1, message: tx('রোল দিন') }]} style={{ minWidth: 380 }}>
+                      <Select mode="multiple" options={roleOptions(roles)} placeholder={tx('যেকোনো একজন অনুমোদন দিতে পারবেন')} showSearch={{ optionFilterProp: 'label' }} />
                     </Form.Item>
                     <MinusCircleOutlined onClick={() => remove(f.name)} aria-label={tx('ধাপ সরান')} />
                   </Space>
@@ -111,6 +108,6 @@ export default function ApprovalRulesPage() {
           </Form.Item>
         </Form>
       </Modal>
-    </>
+    </PageFrame>
   )
 }

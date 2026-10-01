@@ -29,6 +29,7 @@ import { digits, fmtDate, toEnDigits } from '../../lib/format'
 import { APPLICATION_STATUS, openProtectedFile, toOptions, useFarmerMeta } from '../../lib/phase2'
 import { required } from '../../lib/rules'
 import { nameOf, t as tx } from '../../lib/i18n'
+import PageFrame from '../../components/PageFrame'
 import './application-form.css'
 
 type Nominee = { name: string; relation: string; nid?: string | null; mobile?: string | null; share_percent: number }
@@ -267,10 +268,12 @@ export default function ApplicationFormPage() {
   // submitted / decided applications are shown read-only
   if (!editable && app) {
     return (
-      <>
-        <div className="page-header">
-          <h2>{tx('আবেদন {{p0}}', { p0: app.application_no })}</h2>
-          <Space wrap>
+      <PageFrame
+        className="ml pl"
+        crumbs={[{ label: tx('কৃষক ও সদস্য'), to: '/farmers' }, { label: tx('সদস্যপদের আবেদন'), to: '/membership/applications' }, { label: digits(app.application_no) }]}
+        title={tx('আবেদন {{p0}}', { p0: digits(app.application_no) })}
+        actions={
+          <Space wrap className="id-actions no-print">
             <Tag color={APPLICATION_STATUS[app.status]?.color}>{APPLICATION_STATUS[app.status]?.label}</Tag>
             {app.approval_request_id && (
               <Link to={`/approvals/${app.approval_request_id}`}>
@@ -282,7 +285,8 @@ export default function ApplicationFormPage() {
               {tx('আবেদনপত্র প্রিন্ট')}
             </Button>
           </Space>
-        </div>
+        }
+      >
         {app.member && (
           <Alert
             type="success"
@@ -330,7 +334,7 @@ export default function ApplicationFormPage() {
             <Descriptions.Item label={tx('এন্ট্রি করেছেন')} span="filled">{app.creator?.name_bn ?? '—'}</Descriptions.Item>
           </Descriptions>
         </Card>
-      </>
+      </PageFrame>
     )
   }
 

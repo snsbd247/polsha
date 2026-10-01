@@ -9,6 +9,7 @@ import { digits, fmtDate } from '../../lib/format'
 import { INVOICE_STATUS_COLOR, METHOD_LABEL, RECEIPT_STATUS_COLOR, RECEIPT_STATUS_LABEL, useInvoiceMeta, type Person } from '../../lib/irrigation'
 import { CULTIVATION_COLOR } from '../../lib/land'
 import { nameOf, t as tx } from '../../lib/i18n'
+import PageFrame from '../../components/PageFrame'
 
 type Inv = {
   id: number
@@ -41,20 +42,25 @@ export default function FarmerStatementPage() {
   const f = data.farmer
 
   return (
-    <>
-      <div className="page-header">
-        <h2>{tx('সেচ হিসাব বিবরণী')}</h2>
-        <Space wrap className="no-print">
-          <Button icon={<PrinterOutlined />} onClick={() => window.print()}>
-            {tx('প্রিন্ট')}
-          </Button>
-          {can('payment.create') && data.totals.due > 0 && (
-            <Button type="primary" icon={<DollarOutlined />} onClick={() => navigate(`/payments/collect?farmer_id=${f.id}`)}>
-              {tx('টাকা আদায়')}
+    <PageFrame
+      className="ml pl"
+      crumbs={[{ label: tx('সেচ'), to: '/irrigation/invoices' }, { label: tx('সেচ হিসাব বিবরণী') }]}
+      title={tx('সেচ হিসাব বিবরণী')}
+      actions={
+        <span className="id-actions no-print">
+          <Space wrap className="no-print">
+            <Button icon={<PrinterOutlined />} onClick={() => window.print()}>
+              {tx('প্রিন্ট')}
             </Button>
-          )}
-        </Space>
-      </div>
+            {can('payment.create') && data.totals.due > 0 && (
+              <Button type="primary" icon={<DollarOutlined />} onClick={() => navigate(`/payments/collect?farmer_id=${f.id}`)}>
+                {tx('টাকা আদায়')}
+              </Button>
+            )}
+          </Space>
+        </span>
+      }
+    >
       <Card style={{ marginBottom: 16 }}>
         <Descriptions column={{ xs: 1, md: 4 }} size="small">
           <Descriptions.Item label={tx('নাম')}>{can('farmer.view') ? <Link to={`/farmers/${f.id}`}>{nameOf(f)}</Link> : nameOf(f)}</Descriptions.Item>
@@ -64,7 +70,7 @@ export default function FarmerStatementPage() {
         </Descriptions>
       </Card>
       <StatementTables data={data} />
-    </>
+    </PageFrame>
   )
 }
 

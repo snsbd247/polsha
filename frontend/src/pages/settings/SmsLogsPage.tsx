@@ -8,6 +8,7 @@ import { useAuth } from '../../auth/AuthContext'
 import { api, errorMessage, type Paginated } from '../../lib/api'
 import { digits, fmtDateTime } from '../../lib/format'
 import { nameOf, t as tx } from '../../lib/i18n'
+import SettingsShell from './SettingsShell'
 
 type Log = {
   id: number
@@ -81,20 +82,24 @@ export default function SmsLogsPage() {
   }
   const tplName = (key: string | null) => {
     const t = data?.templates.find((x) => x.key === key)
-    return t ? nameOf(t) : key ?? tx('পরীক্ষা/সরাসরি')
+    return t ? nameOf(t) : (key ?? tx('পরীক্ষা/সরাসরি'))
   }
   const total = Object.values(data?.counts ?? {}).reduce((a, b) => a + b, 0)
 
   return (
-    <>
-      <div className="page-header">
-        <h2>{tx('SMS লগ')}</h2>
-        {admin && (
-          <Button icon={<SendOutlined />} loading={busy} onClick={processQueue} disabled={!data?.configured || !data?.counts.pending}>
-            {tx('অপেক্ষমাণ এসএমএস এখনই পাঠান')}
-          </Button>
-        )}
-      </div>
+    <SettingsShell
+      title={tx('SMS লগ')}
+      subtitle=""
+      extra={
+        <>
+          {admin && (
+            <Button icon={<SendOutlined />} loading={busy} onClick={processQueue} disabled={!data?.configured || !data?.counts.pending}>
+              {tx('অপেক্ষমাণ এসএমএস এখনই পাঠান')}
+            </Button>
+          )}
+        </>
+      }
+    >
       {data && !data.configured && (
         <Alert
           type="warning"
@@ -109,15 +114,13 @@ export default function SmsLogsPage() {
       )}
       <div className="toolbar">
         <Segmented
+          style={{ maxWidth: '100%', overflowX: 'auto' }}
           value={status}
           onChange={(v) => {
             setStatus(v as string)
             setPage(1)
           }}
-          options={[
-            { value: '', label: `${tx('সব')} (${digits(total)})` },
-            ...Object.entries(data?.statuses ?? {}).map(([value, label]) => ({ value, label: `${label} (${digits(data?.counts[value] ?? 0)})` })),
-          ]}
+          options={[{ value: '', label: `${tx('সব')} (${digits(total)})` }, ...Object.entries(data?.statuses ?? {}).map(([value, label]) => ({ value, label: `${label} (${digits(data?.counts[value] ?? 0)})` }))]}
         />
         <Select
           allowClear
@@ -132,6 +135,7 @@ export default function SmsLogsPage() {
         />
         <DatePicker.RangePicker
           format="DD/MM/YYYY"
+          style={{ width: '100%', maxWidth: 300 }}
           value={range}
           onChange={(v) => {
             setRange(v)
@@ -141,7 +145,7 @@ export default function SmsLogsPage() {
         <Input.Search
           allowClear
           placeholder={tx('মোবাইল বা বার্তা')}
-          style={{ width: 220 }}
+          style={{ width: 220, maxWidth: '100%' }}
           onSearch={(v) => {
             setQ(v)
             setPage(1)
@@ -153,7 +157,7 @@ export default function SmsLogsPage() {
         loading={isFetching}
         dataSource={data?.data}
         scroll={{ x: 1100 }}
-        pagination={{ current: page, total: data?.total, pageSize: data?.per_page, onChange: setPage }}
+        pagination={{ current: page, total: data?.total, pageSize: data?.per_page, onChange: setPage, size: 'small', showLessItems: true, showSizeChanger: false }}
         columns={[
           { title: tx('সময়'), dataIndex: 'created_at', width: 150, render: fmtDateTime },
           { title: tx('মোবাইল'), dataIndex: 'mobile', width: 130, render: digits },
@@ -184,6 +188,6 @@ export default function SmsLogsPage() {
           },
         ]}
       />
-    </>
+    </SettingsShell>
   )
 }

@@ -1,6 +1,14 @@
-import { Card } from 'antd'
+import type { ReactNode } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { Button } from 'antd'
+import { CloudUploadOutlined, HistoryOutlined } from '@ant-design/icons'
+import PageFrame from '../../components/PageFrame'
 import ImportWizard, { type ImportTypeKey } from '../../components/ImportWizard'
 import { t as tx } from '../../lib/i18n'
+import { Box } from '../irrigation/InvoiceDetailPage'
+import '../irrigation/invoice-detail.css'
+import '../loans/loans.css'
+import '../accounting/accounting.css'
 
 const PAGES: Record<string, { title: string; help: string[] }> = {
   savings_opening: {
@@ -13,10 +21,7 @@ const PAGES: Record<string, { title: string; help: string[] }> = {
   },
   share_opening: {
     title: tx('শেয়ারের প্রারম্ভিক ইমপোর্ট'),
-    help: [
-      tx('প্রতি সদস্যের এক সারি: সদস্য নং (বা NID / Farmer ID) ও জমা শেয়ার মূলধন।'),
-      tx('যার প্রারম্ভিক জের আগেই দেওয়া আছে বা হিসাব বন্ধ, তার সারি ভুল হিসেবে দেখাবে।'),
-    ],
+    help: [tx('প্রতি সদস্যের এক সারি: সদস্য নং (বা NID / Farmer ID) ও জমা শেয়ার মূলধন।'), tx('যার প্রারম্ভিক জের আগেই দেওয়া আছে বা হিসাব বন্ধ, তার সারি ভুল হিসেবে দেখাবে।')],
   },
   loan_opening: {
     title: tx('ঋণের প্রারম্ভিক ইমপোর্ট'),
@@ -44,16 +49,33 @@ const PAGES: Record<string, { title: string; help: string[] }> = {
   },
 }
 
+/** The page frame every import uses: breadcrumb, a link to the import audit, and the wizard in a box. */
+export function ImportFrame({ title, children }: { title: string; children: ReactNode }) {
+  const navigate = useNavigate()
+  return (
+    <PageFrame
+      className="id-page"
+      crumbs={[{ label: tx('টুলস ও ইমপোর্ট'), to: '/imports/audit' }, { label: title }]}
+      title={title}
+      actions={
+        <Button icon={<HistoryOutlined />} className="fm-history-btn" onClick={() => navigate('/imports/audit')}>
+          {tx('ইমপোর্ট অডিট')}
+        </Button>
+      }
+    >
+      <Box icon={<CloudUploadOutlined />} title={tx('Excel/CSV থেকে ইমপোর্ট')}>
+        <div className="im-body">{children}</div>
+      </Box>
+    </PageFrame>
+  )
+}
+
+/** One of the opening-balance / legacy imports, in the import frame. */
 export default function ImportTypePage({ type }: { type: ImportTypeKey }) {
   const page = PAGES[type]
   return (
-    <>
-      <div className="page-header">
-        <h2>{page.title}</h2>
-      </div>
-      <Card>
-        <ImportWizard key={type} type={type} help={page.help} />
-      </Card>
-    </>
+    <ImportFrame title={page.title}>
+      <ImportWizard key={type} type={type} help={page.help} />
+    </ImportFrame>
   )
 }

@@ -26,7 +26,15 @@ class ImportController extends Controller
             ->when($request->query('to'), fn ($q, $d) => $q->whereDate('created_at', '<=', $d))
             ->latest('id');
 
-        return response()->json($q->paginate($this->perPage($request)));
+        return response()->json($q->paginate($this->perPage($request))->toArray() + [
+            // the cards: batches, rows brought in, rows skipped, rollbacks waiting
+            'counts' => [
+                'total' => ImportBatch::count(),
+                'imported_rows' => (int) ImportBatch::where('status', '!=', 'rolled_back')->sum('imported_rows'),
+                'skipped_rows' => (int) ImportBatch::where('status', '!=', 'rolled_back')->sum('skipped_rows'),
+                'rollback_pending' => ImportBatch::where('status', 'rollback_pending')->count(),
+            ],
+        ]);
     }
 
     public function show(ImportBatch $batch): JsonResponse

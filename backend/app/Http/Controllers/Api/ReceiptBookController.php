@@ -31,6 +31,8 @@ class ReceiptBookController extends Controller
             'users' => User::where('is_active', true)->orderBy('name_bn')->get(['id', 'name_bn', 'name_en']),
             'sequences' => DB::table('sequences')->whereIn('key', ['receipt', 'combined_payment', 'loan_payment', 'public_payment'])
                 ->get(['key', 'label', 'prefix', 'next_value', 'current_year']),
+            // the cards: books per status (stock / issued / closed / lost)
+            'status_counts' => ReceiptBook::query()->selectRaw('status, COUNT(*) n')->groupBy('status')->pluck('n', 'status'),
         ]);
     }
 

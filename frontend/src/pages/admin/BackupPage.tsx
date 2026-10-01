@@ -5,6 +5,7 @@ import { CheckCircleFilled, CloseCircleFilled, CloudDownloadOutlined, DatabaseOu
 import { api, errorMessage, type Paginated } from '../../lib/api'
 import { fmtBytes, fmtDateTime } from '../../lib/format'
 import { t as tx } from '../../lib/i18n'
+import PageFrame from '../../components/PageFrame'
 
 type Backup = {
   id: number
@@ -94,13 +95,18 @@ export default function BackupPage() {
 
   const o = offsite.data
   return (
-    <>
-      <div className="page-header">
-        <h2>{tx('ব্যাকআপ')}</h2>
-        <Button type="primary" icon={<DatabaseOutlined />} loading={running} onClick={run}>
-          {tx('এখনই ব্যাকআপ নিন')}
-        </Button>
-      </div>
+    <PageFrame
+      className="ml pl"
+      crumbs={[{ label: tx('প্রশাসন'), to: '/admin/users' }, { label: tx('ব্যাকআপ') }]}
+      title={tx('ব্যাকআপ')}
+      actions={
+        <span className="id-actions no-print">
+          <Button type="primary" icon={<DatabaseOutlined />} loading={running} onClick={run}>
+            {tx('এখনই ব্যাকআপ নিন')}
+          </Button>
+        </span>
+      }
+    >
       <Alert type="info" showIcon style={{ marginBottom: 16 }} title={tx('প্রতিদিন রাত ২টায় স্বয়ংক্রিয় ব্যাকআপ হয় এবং ৩০ দিনের ব্যাকআপ রাখা হয়। গুরুত্বপূর্ণ ব্যাকআপ ডাউনলোড করে নিরাপদ জায়গায় রাখুন।')} />
 
       <Card
@@ -191,6 +197,6 @@ export default function BackupPage() {
           },
         ]}
       />
-    </>
+    </PageFrame>
   )
 }

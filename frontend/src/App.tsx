@@ -133,7 +133,6 @@ const MaintenancePage = lazy(() => import('./pages/assets/MaintenancePage'))
 const DepreciationPage = lazy(() => import('./pages/assets/DepreciationPage'))
 const AssetCategoriesPage = lazy(() => import('./pages/assets/AssetCategoriesPage'))
 const AssetReportsPage = lazy(() => import('./pages/assets/AssetReportsPage'))
-const ReportPage = lazy(() => import('./pages/reports/ReportPage'))
 const ReportHub = lazy(() => import('./components/ReportHub'))
 const ReportCenterPage = lazy(() => import('./pages/reports/ReportCenterPage'))
 const DeletedFarmersPage = lazy(() => import('./pages/farmers/DeletedFarmersPage'))
@@ -150,18 +149,22 @@ const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage'))
 
 const ACC_SECTION = { label: tx('হিসাব'), to: '/accounting/summary' }
 
+const MEMBERS_SECTION = { label: tx('কৃষক ও সদস্য'), to: '/members' }
+const REPORTS_SECTION = { label: tx('রিপোর্ট'), to: '/reports/collections' }
+
 /** Menu items that are simply one or more server reports (the page shows only those the user may open). */
-const REPORT_ROUTES: { path: string; title: string; keys: string[] }[] = [
-  { path: 'members/voter-history', title: tx('ভোটার ইতিহাস'), keys: ['voter_lists', 'voters'] },
-  { path: 'members/voter-audit', title: tx('ভোটার অডিট'), keys: ['voter_changes'] },
-  { path: 'loans/guarantors', title: tx('জামিনদার'), keys: ['guarantors'] },
+const REPORT_ROUTES: { path: string; title: string; keys: string[]; section: { label: string; to: string } }[] = [
+  { path: 'members/voter-history', title: tx('ভোটার ইতিহাস'), keys: ['voter_lists', 'voters'], section: MEMBERS_SECTION },
+  { path: 'members/voter-audit', title: tx('ভোটার অডিট'), keys: ['voter_changes'], section: MEMBERS_SECTION },
+  { path: 'loans/guarantors', title: tx('জামিনদার'), keys: ['guarantors'], section: { label: tx('ঋণ'), to: '/loans' } },
   {
     path: 'reports/collections',
     title: tx('আদায়ের রিপোর্ট'),
     keys: ['collection_daily', 'collection_by_user', 'irrigation_collection', 'loan_collection', 'savings_collection', 'combined_payments'],
+    section: REPORTS_SECTION,
   },
-  { path: 'reports/dues', title: tx('বকেয়ার রিপোর্ট'), keys: ['irrigation_due', 'loan_due'] },
-  { path: 'reports/audit', title: tx('অডিট রিপোর্ট'), keys: ['audit_activity', 'audit_summary', 'approvals', 'cancellations', 'login_history'] },
+  { path: 'reports/dues', title: tx('বকেয়ার রিপোর্ট'), keys: ['irrigation_due', 'loan_due'], section: REPORTS_SECTION },
+  { path: 'reports/audit', title: tx('অডিট রিপোর্ট'), keys: ['audit_activity', 'audit_summary', 'approvals', 'cancellations', 'login_history'], section: REPORTS_SECTION },
 ]
 
 function RequireAuth({ children }: { children: ReactNode }) {
@@ -374,7 +377,7 @@ export default function App() {
 
         <Route path="reports" element={<ReportCenterPage />} />
         {REPORT_ROUTES.map((r) => (
-          <Route key={r.path} path={r.path} element={<ReportPage key={r.path} title={r.title} keys={r.keys} />} />
+          <Route key={r.path} path={r.path} element={<ReportHub key={r.path} section={r.section} title={r.title} reports={r.keys.map((key) => ({ key }))} />} />
         ))}
         <Route path="farmers/deleted" element={<Perm perm="farmer.view"><DeletedFarmersPage /></Perm>} />
         <Route path="accounting/summary" element={<ReportHub key="summary" section={ACC_SECTION} title={tx('আর্থিক সারসংক্ষেপ')} reports={[{ key: 'income_statement' }, { key: 'balance_sheet' }, { key: 'cash_flow' }]} />} />

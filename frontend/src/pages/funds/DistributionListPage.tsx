@@ -9,6 +9,7 @@ import { money } from '../../lib/accounting'
 import { digits, fmtDate } from '../../lib/format'
 import { RUN_STATUS_COLOR, toOptions, type Person } from '../../lib/funds'
 import { nameOf, t as tx } from '../../lib/i18n'
+import PageFrame from '../../components/PageFrame'
 
 export type RunRow = {
   id: number
@@ -39,22 +40,27 @@ export default function DistributionListPage() {
   })
 
   return (
-    <>
-      <div className="page-header">
-        <h2>{tx('মুনাফা ও লভ্যাংশ বণ্টন')}</h2>
-        <Space wrap>
-          <Can perm="savings.edit">
-            <Button icon={<PlusOutlined />} onClick={() => navigate('/funds/distributions/new/profit')}>
-              {tx('সঞ্চয়ের মুনাফা')}
-            </Button>
-          </Can>
-          <Can perm="share.edit">
-            <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate('/funds/distributions/new/dividend')}>
-              {tx('শেয়ারের লভ্যাংশ')}
-            </Button>
-          </Can>
-        </Space>
-      </div>
+    <PageFrame
+      className="ml pl"
+      crumbs={[{ label: tx('সঞ্চয়'), to: '/savings/accounts' }, { label: tx('মুনাফা ও লভ্যাংশ বণ্টন') }]}
+      title={tx('মুনাফা ও লভ্যাংশ বণ্টন')}
+      actions={
+        <span className="id-actions no-print">
+          <Space wrap>
+            <Can perm="savings.edit">
+              <Button icon={<PlusOutlined />} onClick={() => navigate('/funds/distributions/new/profit')}>
+                {tx('সঞ্চয়ের মুনাফা')}
+              </Button>
+            </Can>
+            <Can perm="share.edit">
+              <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate('/funds/distributions/new/dividend')}>
+                {tx('শেয়ারের লভ্যাংশ')}
+              </Button>
+            </Can>
+          </Space>
+        </span>
+      }
+    >
       <div className="toolbar">
         <Select placeholder={tx('ধরন')} allowClear style={{ width: 180 }} options={toOptions(data?.kinds)} onChange={(kind) => set({ kind })} />
         <Select placeholder={tx('অবস্থা')} allowClear style={{ width: 180 }} options={toOptions(data?.statuses)} onChange={(status) => set({ status })} />
@@ -81,6 +87,6 @@ export default function DistributionListPage() {
           { title: tx('তৈরি করেছেন'), width: 140, render: (_, r) => nameOf(r.creator) },
         ]}
       />
-    </>
+    </PageFrame>
   )
 }

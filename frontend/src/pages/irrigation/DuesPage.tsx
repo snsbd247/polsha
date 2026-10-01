@@ -11,6 +11,7 @@ import { useInvoiceMeta } from '../../lib/irrigation'
 import { downloadExport } from '../../lib/phase2'
 import type { Mouza } from '../../lib/types'
 import { nameOf, t as tx } from '../../lib/i18n'
+import PageFrame from '../../components/PageFrame'
 
 type Row = {
   farmer_id: number
@@ -44,24 +45,22 @@ export default function DuesPage() {
   })
 
   return (
-    <>
-      <div className="page-header">
-        <h2>{tx('সেচ বকেয়া তালিকা')}</h2>
-        <Button icon={<DownloadOutlined />} onClick={() => downloadExport('/irrigation/dues', { ...params, page: undefined, export: 'csv' }, 'irrigation-dues.csv').catch((e) => message.error(errorMessage(e)))}>
-          Excel
-        </Button>
-      </div>
+    <PageFrame
+      className="ml pl"
+      crumbs={[{ label: tx('সেচ'), to: '/irrigation/invoices' }, { label: tx('সেচ বকেয়া তালিকা') }]}
+      title={tx('সেচ বকেয়া তালিকা')}
+      actions={
+        <span className="id-actions no-print">
+          <Button icon={<DownloadOutlined />} onClick={() => downloadExport('/irrigation/dues', { ...params, page: undefined, export: 'csv' }, 'irrigation-dues.csv').catch((e) => message.error(errorMessage(e)))}>
+            Excel
+          </Button>
+        </span>
+      }
+    >
       <div className="toolbar">
         <Input.Search placeholder={tx('নাম বা কৃষক আইডি')} allowClear style={{ width: 220 }} onSearch={(search) => set({ search })} />
         <Select placeholder={tx('মৌসুম')} allowClear style={{ width: 170 }} options={meta?.seasons.map((s) => ({ value: s.id, label: s.name_bn }))} onChange={(season_id) => set({ season_id })} />
-        <Select
-          placeholder={tx('মৌজা')}
-          allowClear
-          style={{ width: 170 }}
-          showSearch={{ optionFilterProp: 'label' }}
-          options={mouzas.data?.map((m) => ({ value: m.id, label: nameOf(m) }))}
-          onChange={(mouza_id) => set({ mouza_id })}
-        />
+        <Select placeholder={tx('মৌজা')} allowClear style={{ width: 170 }} showSearch={{ optionFilterProp: 'label' }} options={mouzas.data?.map((m) => ({ value: m.id, label: nameOf(m) }))} onChange={(mouza_id) => set({ mouza_id })} />
         <Checkbox onChange={(e) => set({ overdue: e.target.checked ? '1' : undefined })}>{tx('শুধু মেয়াদোত্তীর্ণ')}</Checkbox>
       </div>
       <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
@@ -125,6 +124,6 @@ export default function DuesPage() {
           },
         ]}
       />
-    </>
+    </PageFrame>
   )
 }

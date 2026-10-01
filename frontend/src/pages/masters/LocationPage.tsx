@@ -7,6 +7,7 @@ import { api, applyFormErrors, errorMessage } from '../../lib/api'
 import { required } from '../../lib/rules'
 import type { LocationItem } from '../../lib/types'
 import { t as tx } from '../../lib/i18n'
+import PageFrame from '../../components/PageFrame'
 
 const LEVELS = [
   { key: 'divisions', label: tx('বিভাগ'), parentKey: null },
@@ -48,10 +49,7 @@ function LevelColumn({
     <Card
       size="small"
       title={level.label}
-      extra={
-        can('location.create') &&
-        enabled && <Button size="small" type="link" icon={<PlusOutlined />} onClick={() => onEdit(level, null)} aria-label={tx('নতুন {{p0}}', { p0: level.label })} />
-      }
+      extra={can('location.create') && enabled && <Button size="small" type="link" icon={<PlusOutlined />} onClick={() => onEdit(level, null)} aria-label={tx('নতুন {{p0}}', { p0: level.label })} />}
       styles={{ body: { padding: 0, height: 420, overflow: 'auto' } }}
     >
       {!enabled ? (
@@ -107,8 +105,7 @@ export default function LocationPage() {
   const [editing, setEditing] = useState<{ level: Level; item: LocationItem | null } | null>(null)
   const [form] = Form.useForm()
 
-  const select = (depth: number, item: LocationItem) =>
-    setPath((p) => p.map((v, i) => (i < depth ? v : i === depth ? item.id : null)))
+  const select = (depth: number, item: LocationItem) => setPath((p) => p.map((v, i) => (i < depth ? v : i === depth ? item.id : null)))
 
   const parentOf = (levelIndex: number) => (levelIndex === 0 ? null : path[levelIndex - 1])
 
@@ -134,35 +131,16 @@ export default function LocationPage() {
   }
 
   return (
-    <>
-      <div className="page-header">
-        <h2>{tx('এলাকা')}</h2>
-      </div>
-      <Typography.Paragraph type="secondary">
-        {tx('বিভাগ → জেলা → উপজেলা → ইউনিয়ন → গ্রাম। বিভাগ ও জেলা আগে থেকেই যোগ করা আছে; সমিতির এলাকার উপজেলা, ইউনিয়ন ও গ্রাম যোগ করুন।')}
-      </Typography.Paragraph>
+    <PageFrame className="ml pl" crumbs={[{ label: tx('জমি ব্যবস্থাপনা'), to: '/lands' }, { label: tx('এলাকা') }]} title={tx('এলাকা')}>
+      <Typography.Paragraph type="secondary">{tx('বিভাগ → জেলা → উপজেলা → ইউনিয়ন → গ্রাম। বিভাগ ও জেলা আগে থেকেই যোগ করা আছে; সমিতির এলাকার উপজেলা, ইউনিয়ন ও গ্রাম যোগ করুন।')}</Typography.Paragraph>
       <Row gutter={[12, 12]}>
         {LEVELS.map((level, i) => (
           <Col key={level.key} xs={24} sm={12} lg={8} xl={Math.floor(24 / 5)} style={{ flex: '1 1 0' }}>
-            <LevelColumn
-              level={level}
-              parentId={parentOf(i)}
-              selectedId={i < 4 ? path[i] : null}
-              onSelect={(item) => select(i, item)}
-              onEdit={openEdit}
-            />
+            <LevelColumn level={level} parentId={parentOf(i)} selectedId={i < 4 ? path[i] : null} onSelect={(item) => select(i, item)} onEdit={openEdit} />
           </Col>
         ))}
       </Row>
-      <Modal
-        open={!!editing}
-        title={editing ? `${editing.level.label} ${editing.item ? tx('সম্পাদনা') : tx('যোগ করুন')}` : ''}
-        onCancel={() => setEditing(null)}
-        onOk={save}
-        okText={tx('সংরক্ষণ')}
-        cancelText={tx('বাতিল')}
-        forceRender
-      >
+      <Modal open={!!editing} title={editing ? `${editing.level.label} ${editing.item ? tx('সম্পাদনা') : tx('যোগ করুন')}` : ''} onCancel={() => setEditing(null)} onOk={save} okText={tx('সংরক্ষণ')} cancelText={tx('বাতিল')} forceRender>
         <Form form={form} layout="vertical">
           <Form.Item name="name_bn" label={tx('নাম (বাংলা)')} rules={[required(tx('নাম দিন'))]}>
             <Input />
@@ -178,6 +156,6 @@ export default function LocationPage() {
           </Form.Item>
         </Form>
       </Modal>
-    </>
+    </PageFrame>
   )
 }

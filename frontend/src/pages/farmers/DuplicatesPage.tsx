@@ -7,6 +7,7 @@ import { api, errorMessage, type Paginated } from '../../lib/api'
 import { digits } from '../../lib/format'
 import { MATCH_LABEL, type DuplicateMatch } from '../../lib/phase2'
 import { t as tx } from '../../lib/i18n'
+import PageFrame from '../../components/PageFrame'
 
 type Pair = { a: DuplicateMatch; b: DuplicateMatch; reasons: string[]; score: number }
 
@@ -14,10 +15,14 @@ function Person({ f }: { f: DuplicateMatch }) {
   return (
     <div>
       <Link to={`/farmers/${f.id}`}>{f.name_bn}</Link> <Tag>{f.farmer_code}</Tag>
-      {f.member_no && <Tag color="green">{tx('সদস্য নং')}{' '}{digits(f.member_no)}</Tag>}
+      {f.member_no && (
+        <Tag color="green">
+          {tx('সদস্য নং')} {digits(f.member_no)}
+        </Tag>
+      )}
       <div>
         <Typography.Text type="secondary">
-          {tx('পিতা:')}{' '}{f.father_name} · {f.village ?? '—'} · {digits(f.mobile) || tx('মোবাইল নেই')}
+          {tx('পিতা:')} {f.father_name} · {f.village ?? '—'} · {digits(f.mobile) || tx('মোবাইল নেই')}
           {f.nid && ` · NID ${digits(f.nid)}`}
         </Typography.Text>
       </div>
@@ -49,13 +54,8 @@ export default function DuplicatesPage() {
   }
 
   return (
-    <>
-      <div className="page-header">
-        <h2>{tx('ডুপ্লিকেট পর্যালোচনা')}</h2>
-      </div>
-      <Typography.Paragraph type="secondary">
-        {tx('একই NID, একই মোবাইল, অথবা একই গ্রামে একই নাম ও পিতার নাম (মোঃ/মোহাম্মদ, মোছাঃ/মোসাম্মৎ ইত্যাদি বানান-পার্থক্য উপেক্ষা করে) — এমন জোড়া দেখানো হচ্ছে।')}
-      </Typography.Paragraph>
+    <PageFrame className="ml pl" crumbs={[{ label: tx('কৃষক ও সদস্য'), to: '/farmers' }, { label: tx('ডুপ্লিকেট পর্যালোচনা') }]} title={tx('ডুপ্লিকেট পর্যালোচনা')}>
+      <Typography.Paragraph type="secondary">{tx('একই NID, একই মোবাইল, অথবা একই গ্রামে একই নাম ও পিতার নাম (মোঃ/মোহাম্মদ, মোছাঃ/মোসাম্মৎ ইত্যাদি বানান-পার্থক্য উপেক্ষা করে) — এমন জোড়া দেখানো হচ্ছে।')}</Typography.Paragraph>
       <Card styles={{ body: { padding: 0 } }}>
         <Table<Pair>
           rowKey={(p) => `${p.a.id}-${p.b.id}`}
@@ -68,7 +68,16 @@ export default function DuplicatesPage() {
             { title: tx('মিল'), dataIndex: 'score', width: 90, render: (s) => <Progress type="circle" size={44} percent={s} format={(p) => digits(p ?? 0)} /> },
             { title: tx('রেকর্ড ১'), render: (_, p) => <Person f={p.a} /> },
             { title: tx('রেকর্ড ২'), render: (_, p) => <Person f={p.b} /> },
-            { title: tx('যেখানে মিলেছে'), dataIndex: 'reasons', render: (r: string[]) => r.map((k) => <Tag key={k} color="orange">{MATCH_LABEL[k] ?? k}</Tag>) },
+            {
+              title: tx('যেখানে মিলেছে'),
+              dataIndex: 'reasons',
+              render: (r: string[]) =>
+                r.map((k) => (
+                  <Tag key={k} color="orange">
+                    {MATCH_LABEL[k] ?? k}
+                  </Tag>
+                )),
+            },
             {
               title: '',
               width: 220,
@@ -87,6 +96,6 @@ export default function DuplicatesPage() {
           ]}
         />
       </Card>
-    </>
+    </PageFrame>
   )
 }

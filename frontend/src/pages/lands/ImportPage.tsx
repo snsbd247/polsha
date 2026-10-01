@@ -1,6 +1,6 @@
-import { Link, useSearchParams } from 'react-router-dom'
-import { Card, Tabs } from 'antd'
+import { useSearchParams } from 'react-router-dom'
 import ImportWizard from '../../components/ImportWizard'
+import { ImportFrame } from '../imports/ImportTypePage'
 import { t as tx } from '../../lib/i18n'
 
 const TYPES = { farmers: tx('কৃষক'), lands: tx('জমি') } as const
@@ -19,23 +19,13 @@ const HELP: Record<ImportType, string[]> = {
   ],
 }
 
+/** Farmer or land import (?type=farmers|lands, one menu item each). */
 export default function ImportPage() {
-  const [search, setSearch] = useSearchParams()
-  const active = (search.get('type') as ImportType) ?? 'farmers'
-
+  const [search] = useSearchParams()
+  const active: ImportType = search.get('type') === 'lands' ? 'lands' : 'farmers'
   return (
-    <>
-      <div className="page-header">
-        <h2>Import (Excel/CSV)</h2>
-        <Link to="/imports/audit">{tx('Import-এর ইতিহাস')}</Link>
-      </div>
-      <Card>
-        <Tabs
-          activeKey={active}
-          onChange={(k) => setSearch({ type: k })}
-          items={(Object.keys(TYPES) as ImportType[]).map((t) => ({ key: t, label: `${TYPES[t]} Import`, children: <ImportWizard key={t} type={t} help={HELP[t]} /> }))}
-        />
-      </Card>
-    </>
+    <ImportFrame title={active === 'lands' ? tx('জমি ইমপোর্ট') : tx('কৃষক ইমপোর্ট')}>
+      <ImportWizard key={active} type={active} help={HELP[active]} />
+    </ImportFrame>
   )
 }

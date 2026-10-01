@@ -6,6 +6,7 @@ import { api, type Paginated } from '../lib/api'
 import { money } from '../lib/accounting'
 import { digits } from '../lib/format'
 import { nameOf, t as tx } from '../lib/i18n'
+import PageFrame from '../components/PageFrame'
 
 type Kind = 'land' | 'loan'
 type LandHit = { id: number; land_code: string; mouza: string; khatian_no: string; dag_no: string; owners: { id: number; name_bn: string }[] }
@@ -29,10 +30,7 @@ export default function RecordLookupPage({ kind, title, tab }: { kind: Kind; tit
   const open = (id: number) => navigate(`${cfg.base}/${id}${tab ? `?tab=${tab}` : ''}`)
 
   return (
-    <>
-      <div className="page-header">
-        <h2>{title}</h2>
-      </div>
+    <PageFrame className="ml pl" crumbs={[{ label: title }]} title={title}>
       <Card>
         <Input.Search placeholder={cfg.hint} allowClear enterButton={tx('খুঁজুন')} size="large" style={{ maxWidth: 520, marginBottom: 16 }} onSearch={setSearch} autoFocus />
         {search.trim() !== '' && (
@@ -62,6 +60,6 @@ export default function RecordLookupPage({ kind, title, tab }: { kind: Kind; tit
           />
         )}
       </Card>
-    </>
+    </PageFrame>
   )
 }

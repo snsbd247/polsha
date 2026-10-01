@@ -73,3 +73,150 @@
 .li-body {
   padding: 12px 18px 16px;
 }
+
+/* admin: user detail initials and the roles chosen on the user form */
+.ud-initials {
+  font-size: 26px;
+  font-weight: 700;
+}
+
+.uf-roles {
+  margin: 0;
+  padding: 6px 18px 14px;
+  list-style: none;
+}
+
+.uf-roles li {
+  display: flex;
+  flex-direction: column;
+  padding: 8px 0;
+  border-bottom: 1px solid #eef0f3;
+}
+
+.uf-roles li:last-child {
+  border-bottom: 0;
+}
+
+.uf-roles span {
+  color: #6b7280;
+  font-size: 13px;
+}
+
+/* admin: permission page */
+.pm-roles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+  padding: 16px 18px 18px;
+}
+
+.pm-roles button {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 14px 16px;
+  border: 1px solid #e4e9f2;
+  border-radius: 10px;
+  background: #fff;
+  cursor: pointer;
+  text-align: left;
+}
+
+.pm-roles button:hover {
+  border-color: #1769e0;
+  background: #f5f8fd;
+}
+
+.pm-roles button .anticon {
+  color: #1769e0;
+  font-size: 18px;
+}
+
+.pm-roles button span {
+  color: #6b7280;
+  font-size: 13px;
+}
+
+.pm-switch {
+  min-width: 200px;
+}
+
+/* admin: receipt serials */
+.rs-seq {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 22px;
+  align-items: center;
+  margin-bottom: 12px;
+  padding: 12px 16px;
+  border: 1px solid #e4e9f2;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.rs-seq-title {
+  color: #1769e0;
+  font-weight: 600;
+}
+
+.rs-note {
+  margin: 0;
+  padding: 10px 16px 14px;
+  color: #6b7280;
+}
+
+/* admin: mouza data health check tiles */
+.dh-checks {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 10px;
+  padding: 14px 18px 18px;
+}
+
+.dh-checks button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 14px;
+  border: 1px solid #e4e9f2;
+  border-left: 4px solid;
+  border-radius: 8px;
+  background: #fff;
+  cursor: pointer;
+  text-align: left;
+}
+
+.dh-checks button:disabled {
+  cursor: default;
+}
+
+.dh-checks button:not(:disabled):hover {
+  background: #f5f8fd;
+}
+
+.dh-checks button span {
+  display: flex;
+  flex-direction: column;
+}
+
+.dh-checks button strong {
+  font-weight: 500;
+}
+
+.dh-checks button small {
+  color: #6b7280;
+}
+
+.dh-checks button b {
+  font-size: 22px;
+}
+
+.im-body {
+  padding: 14px 18px 18px;
+}
+
+.dh-checks button:disabled {
+  color: inherit;
+}

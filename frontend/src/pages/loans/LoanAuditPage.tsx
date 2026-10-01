@@ -6,6 +6,7 @@ import { api } from '../../lib/api'
 import { accountLabel, money } from '../../lib/accounting'
 import { digits } from '../../lib/format'
 import { t as tx } from '../../lib/i18n'
+import PageFrame from '../../components/PageFrame'
 
 type Issue = { kind: string; loan_id?: number; payment_id?: number; ref: string; name: string | null; expected: number; actual: number | null }
 type Resp = {
@@ -26,13 +27,18 @@ export default function LoanAuditPage() {
   const ok = data && data.difference === 0 && data.issues.length === 0
 
   return (
-    <>
-      <div className="page-header">
-        <h2>{tx('ঋণ অডিট')}</h2>
-        <Button icon={<ReloadOutlined />} loading={isFetching} onClick={() => refetch()}>
-          {tx('আবার যাচাই')}
-        </Button>
-      </div>
+    <PageFrame
+      className="ml pl"
+      crumbs={[{ label: tx('ঋণ'), to: '/loans' }, { label: tx('ঋণ অডিট') }]}
+      title={tx('ঋণ অডিট')}
+      actions={
+        <span className="id-actions no-print">
+          <Button icon={<ReloadOutlined />} loading={isFetching} onClick={() => refetch()}>
+            {tx('আবার যাচাই')}
+          </Button>
+        </span>
+      }
+    >
       {data && (
         <Alert
           type={ok ? 'success' : 'error'}
@@ -89,6 +95,6 @@ export default function LoanAuditPage() {
           ]}
         />
       </Card>
-    </>
+    </PageFrame>
   )
 }

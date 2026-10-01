@@ -9,6 +9,7 @@ import { api, errorMessage, type Paginated } from '../../lib/api'
 import { digits } from '../../lib/format'
 import { MEMBER_STATUS, toOptions, useFarmerMeta, type MemberRef } from '../../lib/phase2'
 import { t as tx } from '../../lib/i18n'
+import PageFrame from '../../components/PageFrame'
 
 type Row = { id: number; code: string; head: { id: number; name_bn: string; farmer_code: string } | null; village: { name_bn: string } | null; farmers_count: number; members_count: number }
 type Detail = Row & {
@@ -43,7 +44,7 @@ function HouseholdDrawer({ id, onClose }: { id: number | null; onClose: () => vo
       {data && (
         <>
           <p>
-            {tx('খানাপ্রধান:')}{' '}<strong>{data.head?.name_bn ?? '—'}</strong>{' '}{tx('· গ্রাম:')}{' '}{data.village?.name_bn ?? '—'}
+            {tx('খানাপ্রধান:')} <strong>{data.head?.name_bn ?? '—'}</strong> {tx('· গ্রাম:')} {data.village?.name_bn ?? '—'}
           </p>
           <Table
             rowKey="id"
@@ -53,10 +54,17 @@ function HouseholdDrawer({ id, onClose }: { id: number | null; onClose: () => vo
             scroll={{ x: 560 }}
             columns={[
               { title: tx('নাম'), dataIndex: 'name_bn', render: (v, f) => <Link to={`/farmers/${f.id}`}>{v}</Link> },
-              { title: tx('সম্পর্ক'), dataIndex: 'household_relation', render: (r) => (r ? meta?.relations[r] ?? r : '—') },
+              { title: tx('সম্পর্ক'), dataIndex: 'household_relation', render: (r) => (r ? (meta?.relations[r] ?? r) : '—') },
               {
                 title: tx('সমিতির সদস্য'),
-                render: (_, f) => (f.member ? <Tag color={MEMBER_STATUS[f.member.status].color}>{tx('নং')}{' '}{digits(f.member.member_no)}</Tag> : '—'),
+                render: (_, f) =>
+                  f.member ? (
+                    <Tag color={MEMBER_STATUS[f.member.status].color}>
+                      {tx('নং')} {digits(f.member.member_no)}
+                    </Tag>
+                  ) : (
+                    '—'
+                  ),
               },
               {
                 title: '',
@@ -139,15 +147,20 @@ export default function HouseholdPage() {
   }
 
   return (
-    <>
-      <div className="page-header">
-        <h2>{tx('খানা (Household)')}</h2>
-        <Can perm="farmer.edit">
-          <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreating(true)}>
-            {tx('নতুন খানা')}
-          </Button>
-        </Can>
-      </div>
+    <PageFrame
+      className="ml pl"
+      crumbs={[{ label: tx('কৃষক ও সদস্য'), to: '/farmers' }, { label: tx('খানা (Household)') }]}
+      title={tx('খানা (Household)')}
+      actions={
+        <span className="id-actions no-print">
+          <Can perm="farmer.edit">
+            <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreating(true)}>
+              {tx('নতুন খানা')}
+            </Button>
+          </Can>
+        </span>
+      }
+    >
       <div className="toolbar">
         <Input.Search placeholder={tx('খানার কোড বা খানাপ্রধানের নাম')} allowClear style={{ width: 300 }} onSearch={(search) => setParams((p) => ({ ...p, search, page: 1 }))} />
       </div>
@@ -185,6 +198,6 @@ export default function HouseholdPage() {
           </Form.Item>
         </Form>
       </Modal>
-    </>
+    </PageFrame>
   )
 }

@@ -5,6 +5,7 @@ import { api, applyFormErrors, errorMessage } from '../lib/api'
 import type { AuthUser } from '../lib/types'
 import { digits } from '../lib/format'
 import { t as tx } from '../lib/i18n'
+import PageFrame from '../components/PageFrame'
 
 export default function ProfilePage() {
   const { user, setUser, logout } = useAuth()
@@ -32,10 +33,7 @@ export default function ProfilePage() {
   if (!user) return null
 
   return (
-    <>
-      <div className="page-header">
-        <h2>{tx('আমার প্রোফাইল')}</h2>
-      </div>
+    <PageFrame className="ml pl" crumbs={[{ label: tx('আমার প্রোফাইল') }]} title={tx('আমার প্রোফাইল')}>
       <Row gutter={[16, 16]}>
         <Col xs={24} lg={12}>
           <Card title={tx('তথ্য')}>
@@ -72,6 +70,6 @@ export default function ProfilePage() {
           </Card>
         </Col>
       </Row>
-    </>
+    </PageFrame>
   )
 }

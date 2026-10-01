@@ -39,7 +39,15 @@ class UserController extends Controller
         $sort = in_array($request->query('sort'), ['name_bn', 'username', 'last_login_at', 'created_at'], true) ? $request->query('sort') : 'id';
         $q->orderBy($sort, $request->query('order') === 'asc' ? 'asc' : 'desc');
 
-        return response()->json($q->paginate($this->perPage($request))->through(fn ($u) => $this->row($u)));
+        return response()->json($q->paginate($this->perPage($request))->through(fn ($u) => $this->row($u))->toArray() + [
+            // the user-list cards
+            'counts' => [
+                'total' => User::count(),
+                'active' => User::where('is_active', true)->count(),
+                'locked' => User::where('locked_until', '>', now())->count(),
+                'today' => User::where('last_login_at', '>=', now()->startOfDay())->count(),
+            ],
+        ]);
     }
 
     public function show(User $user): JsonResponse

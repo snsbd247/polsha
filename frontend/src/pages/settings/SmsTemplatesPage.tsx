@@ -4,6 +4,7 @@ import { Alert, App, Form, Input, Modal, Space, Switch, Table, Tag } from 'antd'
 import { api, applyFormErrors, errorMessage } from '../../lib/api'
 import { digits } from '../../lib/format'
 import { nameOf, t as tx } from '../../lib/i18n'
+import SettingsShell from './SettingsShell'
 
 type Template = { id: number; key: string; name_bn: string; name_en: string | null; body: string; variables: string[]; is_active: boolean }
 type Preview = { text: string; length: number; parts: number }
@@ -94,10 +95,7 @@ export default function SmsTemplatesPage() {
     queryFn: async () => (await api.get<Template[]>('/sms/templates')).data,
   })
   return (
-    <>
-      <div className="page-header">
-        <h2>{tx('SMS টেমপ্লেট')}</h2>
-      </div>
+    <SettingsShell title={tx('SMS টেমপ্লেট')} subtitle="">
       <p style={{ color: '#888' }}>{tx('বাংলা এসএমএসে প্রতি ৭০ অক্ষরে একটি এসএমএস ধরা হয়। {society} চলকে সমিতির নাম বসে।')}</p>
       <Table<Template>
         rowKey="id"
@@ -113,6 +111,6 @@ export default function SmsTemplatesPage() {
         ]}
       />
       <EditModal tpl={editing} onClose={() => setEditing(null)} />
-    </>
+    </SettingsShell>
   )
 }

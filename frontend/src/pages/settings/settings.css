@@ -434,3 +434,11 @@
     padding: 10px 10px 0;
   }
 }
+
+/* let the tab row scroll instead of widening the page on phones */
+.st,
+.st-panel,
+.st-body {
+  min-width: 0;
+  max-width: 100%;
+}

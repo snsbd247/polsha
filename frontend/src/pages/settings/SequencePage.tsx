@@ -5,6 +5,7 @@ import { api, applyFormErrors, errorMessage } from '../../lib/api'
 import { digits } from '../../lib/format'
 import type { Sequence } from '../../lib/types'
 import { t as tx } from '../../lib/i18n'
+import SettingsShell from './SettingsShell'
 
 export default function SequencePage() {
   const { message } = App.useApp()
@@ -35,16 +36,8 @@ export default function SequencePage() {
   }
 
   return (
-    <>
-      <div className="page-header">
-        <h2>{tx('সিরিয়াল নম্বর')}</h2>
-      </div>
-      <Alert
-        type="info"
-        showIcon
-        style={{ marginBottom: 16 }}
-        title={tx('পুরোনো সদস্য নম্বর (যেমন ১০০০১) Import-এর পর Member Number-এর \'পরবর্তী নম্বর\' সর্বোচ্চ পুরোনো নম্বর + ১ করে দিন। পরবর্তী নম্বর কমানো যায় না।')}
-      />
+    <SettingsShell title={tx('সিরিয়াল নম্বর')} subtitle="">
+      <Alert type="info" showIcon style={{ marginBottom: 16 }} title={tx("পুরোনো সদস্য নম্বর (যেমন ১০০০১) Import-এর পর Member Number-এর 'পরবর্তী নম্বর' সর্বোচ্চ পুরোনো নম্বর + ১ করে দিন। পরবর্তী নম্বর কমানো যায় না।")} />
       <Table<Sequence>
         rowKey="id"
         loading={isLoading}
@@ -69,11 +62,7 @@ export default function SequencePage() {
           <Form.Item name="pad_length" label={tx('মোট অঙ্ক (০ = যত প্রয়োজন)')}>
             <InputNumber min={0} max={10} />
           </Form.Item>
-          <Form.Item
-            name="next_value"
-            label={tx('পরবর্তী নম্বর')}
-            rules={[{ validator: (_, v) => (v >= (editing?.next_value ?? 1) ? Promise.resolve() : Promise.reject(new Error(tx('পরবর্তী নম্বর কমানো যাবে না')))) }]}
-          >
+          <Form.Item name="next_value" label={tx('পরবর্তী নম্বর')} rules={[{ validator: (_, v) => (v >= (editing?.next_value ?? 1) ? Promise.resolve() : Promise.reject(new Error(tx('পরবর্তী নম্বর কমানো যাবে না')))) }]}>
             <InputNumber min={1} style={{ width: 200 }} />
           </Form.Item>
           <Form.Item name="reset_yearly" label={tx('প্রতি বছর ১ থেকে শুরু')} valuePropName="checked">
@@ -81,6 +70,6 @@ export default function SequencePage() {
           </Form.Item>
         </Form>
       </Modal>
-    </>
+    </SettingsShell>
   )
 }

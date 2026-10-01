@@ -14,6 +14,7 @@ import { ACCOUNTS_TITLE, KIND_LABEL, toOptions, useFundMeta, type FundKind, type
 import { MEMBER_STATUS, downloadExport, type MemberStatus } from '../../lib/phase2'
 import { required } from '../../lib/rules'
 import { nameOf, t as tx } from '../../lib/i18n'
+import PageFrame from '../../components/PageFrame'
 
 type Row = {
   id: number
@@ -58,22 +59,32 @@ export default function FundAccountListPage({ kind }: { kind: FundKind }) {
   }
 
   return (
-    <>
-      <div className="page-header">
-        <h2>{ACCOUNTS_TITLE[kind]}</h2>
-        <Space wrap>
-          <RelatedLinks links={[{ to: `/funds/${kind}/transactions`, label: tx('লেনদেন') }, { to: `/funds/${kind}/audit`, label: kind === 'share' ? tx('শেয়ার মূলধন মিলকরণ') : tx('সঞ্চয় অডিট') }, { to: '/funds/distributions', label: tx('মুনাফা ও লভ্যাংশ') }]} />
-          <Button icon={<DownloadOutlined />} onClick={() => downloadExport(`/funds/${kind}/accounts`, { ...params, page: undefined, export: 'csv' }, `${kind}-accounts.csv`).catch((e) => message.error(errorMessage(e)))}>
-            Excel
-          </Button>
-          <Can perm={`${kind}.create`}>
-            <Button type="primary" icon={<PlusOutlined />} onClick={() => (form.resetFields(), setOpening(true))}>
-              {tx('নতুন {{p0}} হিসাব', { p0: KIND_LABEL[kind] })}
+    <PageFrame
+      className="ml pl"
+      crumbs={[{ label: tx('সঞ্চয়'), to: '/savings/accounts' }, { label: ACCOUNTS_TITLE[kind] }]}
+      title={ACCOUNTS_TITLE[kind]}
+      actions={
+        <span className="id-actions no-print">
+          <Space wrap>
+            <RelatedLinks
+              links={[
+                { to: `/funds/${kind}/transactions`, label: tx('লেনদেন') },
+                { to: `/funds/${kind}/audit`, label: kind === 'share' ? tx('শেয়ার মূলধন মিলকরণ') : tx('সঞ্চয় অডিট') },
+                { to: '/funds/distributions', label: tx('মুনাফা ও লভ্যাংশ') },
+              ]}
+            />
+            <Button icon={<DownloadOutlined />} onClick={() => downloadExport(`/funds/${kind}/accounts`, { ...params, page: undefined, export: 'csv' }, `${kind}-accounts.csv`).catch((e) => message.error(errorMessage(e)))}>
+              Excel
             </Button>
-          </Can>
-        </Space>
-      </div>
-
+            <Can perm={`${kind}.create`}>
+              <Button type="primary" icon={<PlusOutlined />} onClick={() => (form.resetFields(), setOpening(true))}>
+                {tx('নতুন {{p0}} হিসাব', { p0: KIND_LABEL[kind] })}
+              </Button>
+            </Can>
+          </Space>
+        </span>
+      }
+    >
       <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
         <Col xs={24} md={8}>
           <Card size="small">
@@ -155,6 +166,6 @@ export default function FundAccountListPage({ kind }: { kind: FundKind }) {
           </Form.Item>
         </Form>
       </Modal>
-    </>
+    </PageFrame>
   )
 }

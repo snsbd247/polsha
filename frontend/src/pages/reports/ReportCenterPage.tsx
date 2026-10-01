@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { t as tx } from '../../lib/i18n'
 import ReportView from '../../components/ReportView'
 import { useReportCatalog } from '../../lib/reports'
+import PageFrame from '../../components/PageFrame'
 
 /** Every report the user may open, grouped by category; picking one opens it on the right. */
 export default function ReportCenterPage() {
@@ -17,10 +18,7 @@ export default function ReportCenterPage() {
   const match = (title: string) => !q || title.toLowerCase().includes(q.toLowerCase())
 
   return (
-    <>
-      <div className="page-header">
-        <h2>{current ? current.title : tx('রিপোর্ট কেন্দ্র')}</h2>
-      </div>
+    <PageFrame className="ml pl" crumbs={[{ label: tx('রিপোর্ট'), to: '/reports/collections' }, { label: current ? current.title : tx('রিপোর্ট কেন্দ্র') }]} title={current ? current.title : tx('রিপোর্ট কেন্দ্র')}>
       <Row gutter={[16, 16]}>
         <Col xs={24} lg={6}>
           <Card size="small" styles={{ body: { maxHeight: '75vh', overflow: 'auto' } }}>
@@ -35,10 +33,7 @@ export default function ReportCenterPage() {
                   header={<b>{label}</b>}
                   dataSource={items}
                   renderItem={(r) => (
-                    <List.Item
-                      style={{ cursor: 'pointer', background: r.key === key ? 'rgba(22,119,255,0.08)' : undefined, paddingInline: 8 }}
-                      onClick={() => setSearch({ r: r.key })}
-                    >
+                    <List.Item style={{ cursor: 'pointer', background: r.key === key ? 'rgba(22,119,255,0.08)' : undefined, paddingInline: 8 }} onClick={() => setSearch({ r: r.key })}>
                       {r.title}
                     </List.Item>
                   )}
@@ -57,6 +52,6 @@ export default function ReportCenterPage() {
           )}
         </Col>
       </Row>
-    </>
+    </PageFrame>
   )
 }

@@ -26,7 +26,17 @@ class AuditLogController extends Controller
             $q->where('created_at', '<=', $request->date('to')->endOfDay());
         }
 
-        return response()->json($q->latest('id')->paginate($this->perPage($request)));
+        $today = now()->startOfDay();
+
+        return response()->json($q->latest('id')->paginate($this->perPage($request))->toArray() + [
+            // the cards: everything logged, today's entries, who worked today, and today's deletions
+            'counts' => [
+                'total' => AuditLog::count(),
+                'today' => AuditLog::where('created_at', '>=', $today)->count(),
+                'users_today' => AuditLog::where('created_at', '>=', $today)->whereNotNull('user_id')->distinct()->count('user_id'),
+                'deletes_today' => AuditLog::where('created_at', '>=', $today)->whereIn('action', ['delete', 'deleted', 'purge'])->count(),
+            ],
+        ]);
     }
 
     public function show(AuditLog $auditLog): JsonResponse
