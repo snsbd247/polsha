@@ -1,5 +1,5 @@
 :root {
-  font-family: "Inter", "Hind Siliguri", system-ui, sans-serif;
+  font-family: 'Inter', 'Hind Siliguri', system-ui, sans-serif;
 }
 
 html,
@@ -103,7 +103,7 @@ body {
 }
 
 .side-menu .ant-menu-sub.ant-menu-inline > .ant-menu-item::before {
-  content: "";
+  content: '';
   position: absolute;
   left: 35px;
   top: 0;
@@ -116,7 +116,7 @@ body {
 }
 
 .side-menu .ant-menu-sub.ant-menu-inline > .ant-menu-item::after {
-  content: "";
+  content: '';
   position: absolute;
   left: 35px;
   top: 50%;
@@ -565,4 +565,72 @@ body {
 
 .page-header h2:not(:has(.ant-tag)) {
   display: none;
+}
+
+/* the bell's dropdown: alerts first, then a link to the approvals */
+button.top-bell {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+}
+.bell-pop {
+  width: min(360px, calc(100vw - 48px));
+}
+.ant-drawer .bell-pop {
+  width: auto;
+}
+.bell-pop h4 {
+  margin: 0 0 8px;
+  font-size: 15px;
+}
+.bell-pop ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.bell-pop li a {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px;
+  margin-bottom: 6px;
+  border-radius: 8px;
+  color: inherit;
+  background: #fff7e8;
+}
+.bell-pop li.bell-danger a {
+  background: #fdecec;
+}
+.bell-pop li a > .anticon:first-child {
+  margin-top: 3px;
+  color: #f08c00;
+}
+.bell-pop li.bell-danger a > .anticon:first-child {
+  color: #e5383b;
+}
+.bell-pop .bell-text {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+.bell-pop li small {
+  color: #6b7a90;
+}
+.bell-go {
+  margin-top: 4px;
+  color: #9aa6b8;
+  font-size: 11px;
+}
+.bell-ok {
+  margin: 4px 0 10px;
+  color: #1f9d55;
+}
+.bell-approvals {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 2px 2px;
+  border-top: 1px solid #eef1f6;
 }

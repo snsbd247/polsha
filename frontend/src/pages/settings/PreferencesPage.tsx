@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { App, Button, DatePicker, Form, Input, InputNumber, Radio, Select, Spin } from 'antd'
-import { AppstoreFilled, CalculatorFilled, DesktopOutlined, EnvironmentFilled, LockFilled, SaveFilled, TeamOutlined } from '@ant-design/icons'
+import { AppstoreFilled, BellFilled, CalculatorFilled, DesktopOutlined, EnvironmentFilled, LockFilled, SaveFilled, TeamOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import { api, applyFormErrors, errorMessage } from '../../lib/api'
 import { required } from '../../lib/rules'
@@ -64,7 +64,12 @@ export default function PreferencesPage() {
               />
             </Form.Item>
             <Form.Item name="digits" label={tx('সংখ্যা দেখাবে')}>
-              <Radio.Group options={[{ value: 'bn', label: tx('বাংলা (১২৩)') }, { value: 'en', label: tx('ইংরেজি (123)') }]} />
+              <Radio.Group
+                options={[
+                  { value: 'bn', label: tx('বাংলা (১২৩)') },
+                  { value: 'en', label: tx('ইংরেজি (123)') },
+                ]}
+              />
             </Form.Item>
             <Form.Item name="page_size" label={tx('প্রতি পাতায় সারি')} extra={tx('তালিকার পাতায় একবারে কতটি সারি দেখাবে।')} className="st-last">
               <Select style={{ width: 160 }} options={[10, 25, 50, 100].map((n) => ({ value: n, label: n }))} />
@@ -126,6 +131,20 @@ export default function PreferencesPage() {
             </Form.Item>
             <Form.Item name="share_unit_price" label={tx('প্রতি শেয়ারের মূল্য')} extra={tx('সদস্যের শেয়ার মূলধনকে এই মূল্য দিয়ে ভাগ করে শেয়ারের সংখ্যা দেখানো হয়।')} className="st-last">
               <InputNumber min={0.01} prefix={tx('৳')} style={{ width: '100%' }} />
+            </Form.Item>
+          </SettingsCard>
+        </div>
+
+        <div className="st-row-bottom" style={{ marginTop: 12 }}>
+          <SettingsCard icon={<BellFilled />} title={tx('সতর্কবার্তা (উপরের ঘণ্টায়)')}>
+            <Form.Item name="alert_day_close_days" label={tx('নগদের দিন কত দিন বন্ধ না হলে')} extra={tx('নগদ লেনদেন আছে কিন্তু দিন বন্ধ হয়নি — এত দিন পার হলে সতর্কবার্তা।')} rules={[required(tx('মান দিন'))]}>
+              <InputNumber min={1} max={60} suffix={tx('দিন')} style={{ width: '100%' }} />
+            </Form.Item>
+            <Form.Item name="alert_field_cash_days" label={tx('মাঠকর্মীর হাতে টাকা কত দিন থাকলে')} extra={tx('মাঠের আদায় এত দিনেও অফিসে জমা না হলে সতর্কবার্তা।')} rules={[required(tx('মান দিন'))]}>
+              <InputNumber min={1} max={60} suffix={tx('দিন')} style={{ width: '100%' }} />
+            </Form.Item>
+            <Form.Item name="alert_approval_days" label={tx('অনুমোদন কত দিন আটকে থাকলে')} extra={tx('যিনি অনুমোদন দেবেন, তাকেই দেখানো হয়।')} rules={[required(tx('মান দিন'))]} className="st-last">
+              <InputNumber min={1} max={60} suffix={tx('দিন')} style={{ width: '100%' }} />
             </Form.Item>
           </SettingsCard>
         </div>

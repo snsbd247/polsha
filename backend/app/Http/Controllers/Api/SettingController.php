@@ -84,6 +84,9 @@ class SettingController extends Controller
         'combined_payment_order.*' => ['required', 'distinct', 'in:loan,irrigation,share'],
         'share_min_amount' => ['required', 'numeric', 'min:0'],
         'share_unit_price' => ['required', 'numeric', 'gt:0'],
+        'alert_day_close_days' => ['required', 'integer', 'min:1', 'max:60'],
+        'alert_field_cash_days' => ['required', 'integer', 'min:1', 'max:60'],
+        'alert_approval_days' => ['required', 'integer', 'min:1', 'max:60'],
     ];
 
     /** Branding, receipt/print and preference screens each save their own group. */

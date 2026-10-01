@@ -54,6 +54,10 @@ class SettingService
         'share_min_amount' => 0,
         // face value of one share; share capital ÷ this = number of shares on profiles and cards
         'share_unit_price' => 10,
+        // alerts on the bell: how many days of delay before each one shows
+        'alert_day_close_days' => 3,
+        'alert_field_cash_days' => 2,
+        'alert_approval_days' => 3,
         // SMS gateway (any HTTP API); without it messages are only logged
         'sms_enabled' => false,
         'sms_gateway_url' => '',

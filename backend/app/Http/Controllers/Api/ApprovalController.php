@@ -64,6 +64,8 @@ class ApprovalController extends Controller
             'count' => $q->count(),
             // sidebar badge on "Membership Applications"
             'applications' => $user->can('membership.view') ? \Illuminate\Support\Facades\DB::table('membership_applications')->where('status', 'pending')->count() : 0,
+            // money left unattended (the bell's alert list)
+            'alerts' => app(\App\Services\AlertService::class)->for($user),
         ]);
     }
 

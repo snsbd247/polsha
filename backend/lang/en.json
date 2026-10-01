@@ -1308,5 +1308,11 @@
     "মাঠে আদায়": "Field Collection",
     "মাঠে গিয়ে মোবাইলে আদায়; টাকা পরে অফিসে জমা": "Collects in the field on a phone; hands the cash in at the office later",
     "৳:amount জমা নেওয়া হয়েছে — :no": "৳:amount received — :no",
-    "মাঠকর্মীর হাতে নগদ (জমা বাকি)": "Cash with field collectors"
+    "মাঠকর্মীর হাতে নগদ (জমা বাকি)": "Cash with field collectors",
+    ":date থেকে (:n দিন) মাঠের আদায় অফিসে জমা পড়েনি।": "Field collections since :date (:n days) not handed in at the office.",
+    ":n টি অনুমোদন :d দিনের বেশি আটকে আছে": ":n approvals waiting more than :d days",
+    ":n দিনের নগদ হিসাব বন্ধ (দিন বন্ধ) করা হয়নি": "Cash for :n days not closed (day close)",
+    ":name-এর হাতে ৳:amount জমা হয়নি": ":name holds ৳:amount not handed in",
+    "সবচেয়ে পুরনো: :date — প্রতিদিনের নগদ গুনে দিন বন্ধ করুন।": "Oldest: :date — count the cash and close each day.",
+    "সবচেয়ে পুরনোটি :date থেকে আপনার সিদ্ধান্তের অপেক্ষায়।": "The oldest has waited for your decision since :date."
 }

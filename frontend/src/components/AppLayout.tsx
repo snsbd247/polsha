@@ -1,9 +1,8 @@
 import { Suspense, useEffect, useMemo, useState } from 'react'
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Alert, Avatar, Badge, Button, ConfigProvider, Drawer, Dropdown, Grid, Layout, Menu, Spin, Typography, type MenuProps } from 'antd'
+import { Alert, Avatar, Button, ConfigProvider, Drawer, Dropdown, Grid, Layout, Menu, Spin, Typography, type MenuProps } from 'antd'
 import {
-  BellOutlined,
   DownOutlined,
   BankFilled,
   BookFilled,
@@ -27,6 +26,7 @@ import { api } from '../lib/api'
 import { digits, fmtDate } from '../lib/format'
 import { logoUrl, usePublicSettings } from '../lib/settings'
 import { lang, nameOf, t as tx } from '../lib/i18n'
+import AlertBell, { type BellAlert } from './AlertBell'
 import GlobalSearch from './GlobalSearch'
 import LanguageToggle from './LanguageToggle'
 
@@ -755,7 +755,7 @@ export default function AppLayout() {
 
   const { data: counts } = useQuery({
     queryKey: ['approvals', 'pending-count'],
-    queryFn: async () => (await api.get<{ count: number; applications?: number }>('/approvals/pending-count')).data,
+    queryFn: async () => (await api.get<{ count: number; applications?: number; alerts?: BellAlert[] }>('/approvals/pending-count')).data,
     refetchInterval: 60_000,
   })
   const pending = counts?.count ?? 0
@@ -874,11 +874,7 @@ export default function AppLayout() {
           {isMobile ? <div style={{ flex: 1 }} /> : <GlobalSearch />}
           <div style={{ flex: 1 }} />
           <LanguageToggle signedIn />
-          <Link to="/approvals" className="top-bell" aria-label={tx('অনুমোদন')}>
-            <Badge count={pending ? digits(pending) : 0} size="small" offset={[-2, 3]}>
-              <BellOutlined />
-            </Badge>
-          </Link>
+          <AlertBell alerts={counts?.alerts ?? []} pending={pending} />
           <Dropdown
             trigger={['click']}
             menu={{

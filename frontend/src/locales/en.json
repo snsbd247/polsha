@@ -3693,5 +3693,17 @@
   "{{p0}}টি রশিদ বাতিলের অপেক্ষায় — সেগুলো এই জমায় ধরা হবে না।": "{{p0}} receipts await cancellation — they are left out of this hand-in.",
   "জমার তারিখ": "Hand-in date",
   "যেমন: সন্ধ্যায় গুনে জমা": "e.g. counted and handed in at evening",
-  "মাঠে আদায় (মোবাইল)": "Field Collection (Mobile)"
+  "মাঠে আদায় (মোবাইল)": "Field Collection (Mobile)",
+  "সতর্কবার্তা": "Alerts",
+  "সব ঠিক আছে — কোনো সতর্কবার্তা নেই।": "All good — no alerts.",
+  "আপনার অনুমোদনের অপেক্ষায় {{p0}}টি অনুরোধ": "{{p0}} requests await your approval",
+  "অনুমোদনের তালিকা": "Approval list",
+  "সতর্কবার্তা ও অনুমোদন": "Alerts and approvals",
+  "সতর্কবার্তা (উপরের ঘণ্টায়)": "Alerts (on the top bell)",
+  "নগদের দিন কত দিন বন্ধ না হলে": "Cash days left unclosed for",
+  "নগদ লেনদেন আছে কিন্তু দিন বন্ধ হয়নি — এত দিন পার হলে সতর্কবার্তা।": "Cash moved but the day was not closed — alert after this many days.",
+  "মাঠকর্মীর হাতে টাকা কত দিন থাকলে": "Cash with a field collector for",
+  "মাঠের আদায় এত দিনেও অফিসে জমা না হলে সতর্কবার্তা।": "Alert when field collections are not handed in within this many days.",
+  "অনুমোদন কত দিন আটকে থাকলে": "Approvals waiting for",
+  "যিনি অনুমোদন দেবেন, তাকেই দেখানো হয়।": "Shown to whoever has to approve."
 }
