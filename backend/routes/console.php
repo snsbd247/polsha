@@ -126,7 +126,7 @@ Artisan::command('license:status', function () {
 Schedule::call(fn () => Cache::forever('scheduler.heartbeat', now()->toIso8601String()))->everyMinute()->name('scheduler-heartbeat');
 
 // Demo data: one year of activity in every module, removable in one step.
-Artisan::command('demo:seed {--farmers=200}', function (App\Services\DemoDataService $demo) {
+Artisan::command('demo:seed {--farmers=100}', function (App\Services\DemoDataService $demo) {
     $started = microtime(true);
     $r = $demo->seed((int) $this->option('farmers'), fn (string $m) => $this->line($m));
     $this->info(sprintf('ডেমো ডাটা বসানো শেষ: %d কৃষক, %d সদস্য, %d টি কাজ, %.1f মিনিট। মুছতে: php artisan demo:purge',
