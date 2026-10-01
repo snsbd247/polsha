@@ -78,7 +78,7 @@ class Phase8Test extends Phase2TestCase
         $p = $this->actingAs($this->manager)->postJson('/api/loan-products', [
             'code' => 'AG-1', 'name_bn' => 'কৃষি ঋণ', 'category' => 'agriculture', 'max_amount' => 50000, 'savings_multiplier' => 3,
             'interest_rate' => 12, 'interest_method' => 'flat', 'frequency' => 'monthly', 'installments' => 12,
-            'penalty_rate' => 0, 'grace_days' => 5, 'guarantors_required' => 1, 'is_active' => true,
+            'penalty_type' => 'fixed', 'penalty_rate' => 0, 'grace_days' => 5, 'guarantors_required' => 1, 'is_active' => true,
         ])->assertCreated();
         $r = $this->actingAs($loanOfficer)->postJson('/api/loans', [
             'member_id' => $member->id, 'product_id' => $p->json('id'), 'applied_on' => '2026-04-20', 'amount' => 12000,

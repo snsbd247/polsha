@@ -9,7 +9,7 @@ import PageFrame from '../../components/PageFrame'
 import { api, applyFormErrors, errorMessage } from '../../lib/api'
 import { money } from '../../lib/accounting'
 import { digits } from '../../lib/format'
-import { useLoanMeta, useLoanProducts, type Eligibility, type ScheduleRow } from '../../lib/loans'
+import { penaltyText, termsText, useLoanMeta, useLoanProducts, type Eligibility, type ScheduleRow } from '../../lib/loans'
 import { required } from '../../lib/rules'
 import { nameOf, t as tx } from '../../lib/i18n'
 import SchedulePreview from './SchedulePreview'
@@ -60,12 +60,15 @@ export default function LoanFormPage() {
     queryFn: async () =>
       (
         await api.get<{ rows: ScheduleRow[]; total_interest: number }>('/loan-products/preview', {
-          params: { amount, interest_rate: product!.interest_rate, interest_method: product!.interest_method, frequency: product!.frequency, installments: product!.installments, term_months: product!.term_months ?? undefined },
+          params: { amount, interest_rate: product!.interest_rate, frequency: product!.frequency, installments: product!.installments, term_months: product!.term_months ?? undefined },
         })
       ).data,
     enabled: !!product && !!amount && amount > 0,
   })
 
+  const rows = preview.data?.rows ?? []
+  const each = rows.length ? rows[0].principal + rows[0].interest : 0
+  const interest = preview.data?.total_interest ?? 0
   const e = elig.data
   const blocked = !!e?.open_loan || (e && e.member_status !== 'active')
 
@@ -92,8 +95,8 @@ export default function LoanFormPage() {
 
   return (
     <PageFrame
-      crumbs={[{ label: tx('ঋণ'), to: '/loans' }, { label: tx('ঋণের তালিকা'), to: '/loans' }, { label: tx('ঋণের আবেদন') }]}
-      title={tx('ঋণের আবেদন')}
+      crumbs={[{ label: tx('ঋণ'), to: '/loans' }, { label: tx('নতুন ঋণ') }]}
+      title={tx('নতুন ঋণ')}
       actions={
         <Button icon={<ArrowLeftOutlined />} className="fm-history-btn" onClick={() => navigate('/loans')}>
           {tx('তালিকায় ফিরুন')}
@@ -107,8 +110,8 @@ export default function LoanFormPage() {
               <LoanMemberPicker mode="borrower" />
             </Form.Item>
             <div className="iv-grid iv-grid-3">
-              <Form.Item name="product_id" label={tx('ঋণের ধরন')} rules={[required(tx('ঋণের ধরন বাছাই করুন'))]}>
-                <Select loading={products.isFetching} placeholder={tx('ঋণের ধরন বাছাই করুন')} options={(products.data ?? []).map((p) => ({ value: p.id, label: `${p.code} — ${nameOf(p)}` }))} />
+              <Form.Item name="product_id" label={tx('ঋণের প্ল্যান')} rules={[required(tx('ঋণের প্ল্যান বাছাই করুন'))]}>
+                <Select loading={products.isFetching} placeholder={tx('ঋণের প্ল্যান বাছাই করুন')} options={(products.data ?? []).map((p) => ({ value: p.id, label: nameOf(p) }))} />
               </Form.Item>
               <Form.Item name="applied_on" label={tx('আবেদনের তারিখ')} rules={[required(tx('তারিখ দিন'))]}>
                 <DatePicker prefix={<CalendarOutlined />} format="DD/MM/YYYY" style={{ width: '100%' }} disabledDate={(d) => d.isAfter(dayjs(), 'day')} />
@@ -178,7 +181,7 @@ export default function LoanFormPage() {
               <h3>{tx('ঋণসীমা')}</h3>
             </header>
             {!e ? (
-              <p className="sv-foot-note">{tx('সদস্য ও ঋণের ধরন বাছাই করলে ঋণসীমা দেখা যাবে।')}</p>
+              <p className="sv-foot-note">{tx('সদস্য ও ঋণের প্ল্যান বাছাই করলে ঋণসীমা দেখা যাবে।')}</p>
             ) : (
               <div className="ln-limit">
                 {e.open_loan && (
@@ -226,14 +229,38 @@ export default function LoanFormPage() {
             <section className="id-box">
               <header>
                 <CalendarOutlined />
-                <h3>{tx('কিস্তির তালিকা (সম্ভাব্য)')}</h3>
+                <h3>{tx('কিস্তির হিসাব')}</h3>
               </header>
+              {rows.length > 0 && (
+                <div className="ln-limit">
+                  <table className="ln-limit-table ln-glance">
+                    <tbody>
+                      <tr>
+                        <td>{tx('প্রতি কিস্তি')}</td>
+                        <td>
+                          <strong>৳ {money(each)}</strong>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td>{tx('কিস্তি')}</td>
+                        <td>{termsText(product, meta.data?.frequencies)}</td>
+                      </tr>
+                      <tr>
+                        <td>{tx('মোট সুদ')}</td>
+                        <td>৳ {money(interest)}</td>
+                      </tr>
+                      <tr className="ln-limit-total">
+                        <td>{tx('মোট ফেরত দিতে হবে')}</td>
+                        <td>৳ {money(Number(amount) + interest)}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              )}
               <p className="sv-foot-note">
-                {tx('সুদ {{p0}}% বার্ষিক ({{p1}}), জরিমানা {{p2}}% মাসিক — ছাড় {{p3}} দিন। প্রকৃত তারিখ বিতরণের দিন থেকে গণনা হবে।', {
+                {tx('সুদ {{p0}}% বার্ষিক (ফ্ল্যাট)। দেরিতে জরিমানা: {{p1}}। প্রকৃত তারিখ বিতরণের দিন থেকে গণনা হবে।', {
                   p0: digits(Number(product.interest_rate)),
-                  p1: meta.data?.methods[product.interest_method] ?? '',
-                  p2: digits(Number(product.penalty_rate)),
-                  p3: digits(product.grace_days),
+                  p1: penaltyText(product),
                 })}
               </p>
               <div className="id-payments">

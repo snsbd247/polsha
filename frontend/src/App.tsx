@@ -114,7 +114,6 @@ const LoanPaymentDetailPage = lazy(() => import('./pages/loans/LoanPaymentDetail
 const LoanDuesPage = lazy(() => import('./pages/loans/LoanDuesPage'))
 const LoanAuditPage = lazy(() => import('./pages/loans/LoanAuditPage'))
 const VerifyReceiptPage = lazy(() => import('./pages/VerifyReceiptPage'))
-const RecordLookupPage = lazy(() => import('./pages/RecordLookupPage'))
 const CombinedPaymentPage = lazy(() => import('./pages/payments/CombinedPaymentPage'))
 const CombinedPaymentListPage = lazy(() => import('./pages/payments/CombinedPaymentListPage'))
 const CombinedPaymentDetailPage = lazy(() => import('./pages/payments/CombinedPaymentDetailPage'))
@@ -345,9 +344,9 @@ export default function App() {
         <Route path="loans/payments/:id" element={<Perm perm="loan.view"><LoanPaymentDetailPage /></Perm>} />
         <Route path="loans/dues" element={<Perm perm="loan.view"><LoanDuesPage /></Perm>} />
         <Route path="loans/audit" element={<Perm perm="loan.view"><LoanAuditPage /></Perm>} />
-        <Route path="loans/lookup" element={<Perm perm="loan.view"><RecordLookupPage key="loan" kind="loan" title={tx('ঋণের বিস্তারিত')} /></Perm>} />
-        <Route path="loans/lookup/schedule" element={<Perm perm="loan.view"><RecordLookupPage key="loan-s" kind="loan" tab="schedule" title={tx('ঋণের কিস্তিসূচি')} /></Perm>} />
-        <Route path="loans/lookup/installments" element={<Perm perm="loan.view"><RecordLookupPage key="loan-i" kind="loan" tab="payments" title={tx('ঋণের কিস্তি')} /></Perm>} />
+        {/* one loan's details, schedule and instalments are tabs of the loan page now; old links land on the list */}
+        <Route path="loans/lookup/*" element={<Navigate to="/loans" replace />} />
+        <Route path="loans/lookup" element={<Navigate to="/loans" replace />} />
         <Route path="loans/:id" element={<Perm perm="loan.view"><LoanDetailPage /></Perm>} />
 
 

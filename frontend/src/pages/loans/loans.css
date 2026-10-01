@@ -133,3 +133,68 @@
     width: calc(100% - 80px);
   }
 }
+
+/* ---- instalment collection (কিস্তি আদায়) ---- */
+.ln-collect {
+  margin-bottom: 16px;
+}
+.ln-collect-form {
+  padding: 4px 18px 18px;
+}
+.ln-collect-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  gap: 0 16px;
+}
+.ln-collect-method {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 0 12px;
+}
+.ln-due {
+  margin: 4px 0 16px;
+  padding: 14px 16px;
+  border-radius: 10px;
+  background: #f4f8ff;
+  border: 1px solid #dbe6fb;
+}
+.ln-due-sum {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  margin: 10px 0 6px;
+}
+.ln-due-sum > div {
+  display: flex;
+  flex-direction: column;
+}
+.ln-due-sum small {
+  color: #6b7a90;
+}
+.ln-due-sum b {
+  font-size: 18px;
+}
+.ln-due-sum i {
+  font-style: normal;
+  font-size: 18px;
+  color: #8a97ab;
+}
+.ln-due-total b {
+  font-size: 24px;
+  color: #1769e0;
+}
+.ln-due-note {
+  color: #6b7a90;
+}
+.ln-glance {
+  margin-bottom: 10px;
+}
+.ln-advanced {
+  margin: -4px -16px 8px;
+}
+@media (max-width: 760px) {
+  .ln-collect-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

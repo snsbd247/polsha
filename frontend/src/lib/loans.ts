@@ -1,6 +1,8 @@
 import { useQuery } from '@tanstack/react-query'
 import { api } from './api'
+import { digits } from './format'
 import type { FarmerBrief, MemberBrief, Person } from './funds'
+import { t } from './i18n'
 
 export type LoanMeta = {
   statuses: Record<string, string>
@@ -8,6 +10,8 @@ export type LoanMeta = {
   categories: Record<string, string>
   methods: Record<string, string>
   frequencies: Record<string, string>
+  penalty_types: Record<string, string>
+  penalty_labels: Record<string, string>
   buckets: Record<string, string>
   pay_methods: Record<string, string>
   max_guarantees: number
@@ -26,6 +30,7 @@ export type LoanProduct = {
   frequency: 'monthly' | 'weekly' | 'quarterly' | 'one_time'
   installments: number
   term_months: number | null
+  penalty_type: PenaltyType
   penalty_rate: string
   grace_days: number
   guarantors_required: number
@@ -104,6 +109,7 @@ export type LoanRow = {
   frequency: string
   installments: number
   term_months: number | null
+  penalty_type: PenaltyType | 'daily'
   penalty_rate: string
   grace_days: number
   limit_amount: string
@@ -138,6 +144,23 @@ export type Eligibility = {
   limit: number
   member_status: string
   open_loan: { id: number; loan_no: string; status: string } | null
+}
+
+export type PenaltyType = 'fixed' | 'percent'
+
+/** The late-payment penalty in words: "৳50 per late instalment", "2% of a late instalment (once)", or the old day-by-day rule. */
+export function penaltyText(l: { penalty_type?: string | null; penalty_rate: string | number; grace_days: number }): string {
+  const rate = Number(l.penalty_rate)
+  if (!rate) return t('জরিমানা নেই')
+  const grace = l.grace_days ? ` · ${t('ছাড় {{p0}} দিন', { p0: digits(l.grace_days) })}` : ''
+  const text = l.penalty_type === 'fixed' ? t('প্রতি দেরি কিস্তিতে ৳{{p0}}', { p0: digits(rate) }) : l.penalty_type === 'percent' ? t('দেরি কিস্তির {{p0}}% (একবার)', { p0: digits(rate) }) : t('{{p0}}%/মাস, দিন হিসাবে', { p0: digits(rate) })
+  return text + grace
+}
+
+/** Instalment count and kind in words: "12 × monthly" or "one-time — 6 months". */
+export function termsText(l: { frequency: string; installments: number | null; term_months: number | null }, frequencies?: Record<string, string>): string {
+  const kind = frequencies?.[l.frequency] ?? l.frequency
+  return l.frequency === 'one_time' ? `${kind} — ${t('{{p0}} মাস', { p0: digits(l.term_months ?? '') })}` : `${digits(l.installments ?? '')} × ${kind}`
 }
 
 export const LOAN_STATUS_COLOR: Record<string, string> = { pending: 'gold', approved: 'blue', active: 'green', closed: 'default', rejected: 'red', cancelled: 'default' }

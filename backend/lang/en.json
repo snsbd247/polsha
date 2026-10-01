@@ -1294,5 +1294,8 @@
     "সঞ্চয় জমা রিপোর্ট": "Savings Deposit Report",
     "সঞ্চয় জের রিপোর্ট": "Savings Balance Report",
     "সদস্যপদের সাথে স্বয়ংক্রিয়ভাবে খোলা": "Opened automatically with the membership",
-    "সদস্যপ্রতি গড়": "Average per member"
+    "সদস্যপ্রতি গড়": "Average per member",
+    "প্রতি দেরি কিস্তিতে নির্দিষ্ট টাকা": "Fixed sum per late instalment",
+    "দেরি কিস্তির উপর % (একবার)": "% of a late instalment (once)",
+    "মাসিক % (দিন হিসাবে — পুরনো নিয়ম)": "% per month, by the day (old rule)"
 }

@@ -38,6 +38,8 @@ class LoanController extends Controller
             'categories' => Tr::map(LoanProduct::CATEGORIES),
             'methods' => Tr::map(LoanProduct::METHODS),
             'frequencies' => Tr::map(LoanProduct::FREQUENCIES),
+            'penalty_types' => Tr::map(LoanProduct::PENALTY_TYPES),
+            'penalty_labels' => Tr::map(LoanProduct::PENALTY_LABELS),
             'buckets' => Tr::map(LoanService::BUCKETS),
             'pay_methods' => Tr::map(Receipt::METHODS),
             'max_guarantees' => (int) SettingService::get('loan_max_guarantees', 2),

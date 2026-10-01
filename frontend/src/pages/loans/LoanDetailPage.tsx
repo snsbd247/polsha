@@ -26,7 +26,7 @@ import { accountLabel, money, moneyOrBlank } from '../../lib/accounting'
 import { digits, fmtDate, fmtDateTime } from '../../lib/format'
 import type { Person } from '../../lib/funds'
 import { METHOD_LABEL } from '../../lib/irrigation'
-import { useLoanMeta, type Installment, type LoanPayment, type LoanRow, type Position, type ScheduleRow } from '../../lib/loans'
+import { penaltyText, termsText, useLoanMeta, type Installment, type LoanPayment, type LoanRow, type Position, type ScheduleRow } from '../../lib/loans'
 import { downloadExport } from '../../lib/phase2'
 import { required } from '../../lib/rules'
 import { nameOf, t as tx } from '../../lib/i18n'
@@ -56,8 +56,6 @@ type Detail = LoanRow & {
   payments: LoanPayment[]
   approval: { id: number; status: string; current_step: number; total_steps: number } | null
 }
-type StRow = { id: number | null; date: string; ref: string; label: string; disbursed: number; paid: number; penalty: number; interest: number; principal: number; balance: number }
-type Statement = { rows: StRow[]; totals: { paid: number; penalty: number; interest: number; principal: number }; closing: number }
 
 const STATE_TONE: Record<string, string> = { paid: 'fl-tag-green', overdue: 'fl-tag-red', partial: 'fl-tag-gold', due: 'll-gray' }
 const PAYMENT_TONE: Record<string, string> = { posted: 'fl-tag-green', cancel_pending: 'fl-tag-gold', cancelled: 'll-gray' }
@@ -76,13 +74,11 @@ export default function LoanDetailPage() {
 
   const { data: l, isLoading } = useQuery({ queryKey: ['loan', id], queryFn: async () => (await api.get<Detail>(`/loans/${id}`)).data })
   const disbursed = !!l?.disbursed_on
-  const st = useQuery({ queryKey: ['loan-statement', id], queryFn: async () => (await api.get<Statement>(`/loans/${id}/statement`)).data, enabled: disbursed })
   if (isLoading || !l) return <Spin />
 
   const refresh = () => {
     setModal(null)
     queryClient.invalidateQueries({ queryKey: ['loan', id] })
-    queryClient.invalidateQueries({ queryKey: ['loan-statement', id] })
     queryClient.invalidateQueries({ queryKey: ['loans'] })
   }
   const cancel = async () => {
@@ -101,10 +97,7 @@ export default function LoanDetailPage() {
   const pendingCancel = l.payments.some((x) => x.status === 'cancel_pending')
   const farmer = l.member?.farmer
   const statusLabel = meta.data?.statuses[l.status] ?? l.status
-  const terms =
-    l.frequency === 'one_time'
-      ? `${meta.data?.frequencies[l.frequency] ?? ''} — ${tx('{{p0}} মাস', { p0: digits(l.term_months ?? '') })}`
-      : `${digits(l.installments)} × ${meta.data?.frequencies[l.frequency] ?? l.frequency}`
+  const terms = termsText(l, meta.data?.frequencies)
   const late = !!p?.overdue_amount
 
   return (
@@ -209,183 +202,160 @@ export default function LoanDetailPage() {
         )}
       </div>
 
-      <div className="id-two">
-        <Box icon={<UserOutlined />} title={tx('সদস্যের তথ্য')}>
-          <KV
-            rows={[
-              [tx('সদস্যের নাম'), farmer ? <Link to={`/farmers/${farmer.id}`}>{nameOf(farmer)}</Link> : '—'],
-              [tx('সদস্য নং'), digits(l.member?.member_no ?? '—')],
-              [tx('পিতার নাম'), farmer?.father_name],
-              [tx('মোবাইল নং'), farmer?.mobile ? digits(farmer.mobile) : '—'],
-              [
-                tx('জামিনদার'),
-                l.guarantors.length ? (
-                  <span className="ln-guarantors">
-                    {l.guarantors.map((g) => (
-                      <span key={g.id}>
-                        <TeamOutlined /> {nameOf(g.member?.farmer)} ({tx('সদস্য নং')} {digits(g.member?.member_no)}){g.relation && ` — ${g.relation}`}
-                      </span>
-                    ))}
-                  </span>
-                ) : (
-                  '—'
-                ),
-              ],
-            ]}
-          />
-        </Box>
-        <Box icon={<FileTextFilled />} title={tx('ঋণের শর্ত')}>
-          <KV
-            rows={[
-              [tx('ঋণের ধরন'), nameOf(l.product)],
-              [tx('সুদ'), `${digits(Number(l.interest_rate))}% ${tx('বার্ষিক')} · ${meta.data?.methods[l.interest_method] ?? l.interest_method}`],
-              [tx('কিস্তি'), terms],
-              [tx('জরিমানা'), tx('{{p0}}%/মাস, ছাড় {{p1}} দিন', { p0: digits(Number(l.penalty_rate)), p1: digits(l.grace_days) })],
-              [tx('ঋণসীমা'), `৳ ${money(l.limit_amount)}`],
-              [tx('আবেদন'), `${fmtDate(l.applied_on)} · ${nameOf(l.creator)}`],
-              ...((disbursed
-                ? [
-                    [tx('বিতরণ'), `${fmtDate(l.disbursed_on)} · ${METHOD_LABEL[l.method ?? ''] ?? l.method ?? ''}${l.fund ? ` — ${accountLabel(l.fund)}` : ''}${l.reference ? `, ${digits(l.reference)}` : ''}`],
-                    [tx('মোট সুদ'), `৳ ${money(l.total_interest)}`],
-                    [tx('ভাউচার'), l.journal ? (can('accounting.view') ? <Link to={`/accounting/journals/${l.journal.id}`}>{digits(l.journal.voucher_no)}</Link> : digits(l.journal.voucher_no)) : '—'],
-                  ]
-                : []) as [string, React.ReactNode][]),
-              ...((l.closed_on ? [[tx('সমাপ্তির তারিখ'), fmtDate(l.closed_on)]] : []) as [string, React.ReactNode][]),
-              ...((l.purpose ? [[tx('উদ্দেশ্য'), l.purpose]] : []) as [string, React.ReactNode][]),
-              ...((l.remarks ? [[tx('মন্তব্য'), l.remarks]] : []) as [string, React.ReactNode][]),
-            ]}
-          />
-        </Box>
-      </div>
-
-      {p && (
-        <div className="ln-paid-line no-print">
-          {tx('আদায় হয়েছে')}: {tx('আসল ৳{{p0}}, সুদ ৳{{p1}}, জরিমানা ৳{{p2}}', { p0: money(p.principal_paid), p1: money(p.interest_paid), p2: money(p.penalty_paid) })}
-          {` · ${tx('পুরো ঋণ শোধে')}: ৳${money(p.payoff)} (${tx('জরিমানা ৳{{p0}}', { p0: money(p.penalty_due) })})`}
-          {p.oldest_overdue && ` · ${tx('সবচেয়ে পুরনো বকেয়া')}: ${fmtDate(p.oldest_overdue)}`}
-        </div>
-      )}
-
-      {!disbursed ? (
-        l.preview && (
-          <Box icon={<CalendarFilled />} title={tx('কিস্তির তালিকা (সম্ভাব্য)')}>
-            <div className="id-payments">
-              <SchedulePreview rows={l.preview} />
-            </div>
-          </Box>
-        )
-      ) : (
-        <Box icon={<CalendarFilled />} title={tx('কিস্তি, বিবরণী ও রশিদ')} className="ln-tabs-box">
-          <Tabs
-            className="ln-tabs"
-            defaultActiveKey={search.get('tab') ?? undefined}
-            items={[
-              {
-                key: 'schedule',
-                label: tx('কিস্তির তালিকা'),
-                children: (
-                  <Table<Installment>
-                    rowKey="id"
-                    size="small"
-                    className="id-payments"
-                    dataSource={p?.installments}
-                    pagination={false}
-                    scroll={{ x: 'max-content' }}
-                    columns={[
-                      { title: tx('কিস্তি'), dataIndex: 'seq', render: (v: number) => digits(v) },
-                      { title: tx('তারিখ'), dataIndex: 'due_date', render: fmtDate },
-                      { title: tx('আসল'), dataIndex: 'principal', align: 'right', render: money },
-                      { title: tx('সুদ'), dataIndex: 'interest', align: 'right', render: money },
-                      { title: tx('মোট'), dataIndex: 'total', align: 'right', render: money },
-                      { title: tx('আসল জমা'), dataIndex: 'principal_paid', align: 'right', render: (v) => moneyOrBlank(Number(v)) },
-                      { title: tx('সুদ জমা'), dataIndex: 'interest_paid', align: 'right', render: (v) => moneyOrBlank(Number(v)) },
-                      { title: tx('বাকি'), dataIndex: 'outstanding', align: 'right', render: (v: number) => <strong>{moneyOrBlank(v)}</strong> },
-                      { title: tx('জরিমানা'), align: 'right', render: (_, r) => moneyOrBlank(Number(r.penalty_paid) + r.penalty_due) },
-                      {
-                        title: tx('অবস্থা'),
-                        dataIndex: 'state',
-                        render: (s: string, r) => (
-                          <Tag className={`fl-tag ${STATE_TONE[s] ?? 'll-gray'}`}>
-                            {STATE_LABEL[s]}
-                            {r.paid_on && s === 'paid' ? ` ${fmtDate(r.paid_on)}` : ''}
-                          </Tag>
+      <Box icon={<FileTextFilled />} title={tx('ঋণের সব তথ্য')} className="ln-tabs-box">
+        <Tabs
+          className="ln-tabs"
+          defaultActiveKey={search.get('tab') ?? 'summary'}
+          items={[
+            {
+              key: 'summary',
+              label: tx('সারসংক্ষেপ'),
+              children: (
+                <>
+                  <div className="id-two">
+                    <Box icon={<UserOutlined />} title={tx('সদস্যের তথ্য')}>
+                      <KV
+                        rows={[
+                          [tx('সদস্যের নাম'), farmer ? <Link to={`/farmers/${farmer.id}`}>{nameOf(farmer)}</Link> : '—'],
+                          [tx('সদস্য নং'), digits(l.member?.member_no ?? '—')],
+                          [tx('পিতার নাম'), farmer?.father_name],
+                          [tx('মোবাইল নং'), farmer?.mobile ? digits(farmer.mobile) : '—'],
+                          [tx('জামিনদার'), l.guarantors.length ? l.guarantors.map((g) => nameOf(g.member?.farmer)).join(', ') : '—'],
+                        ]}
+                      />
+                    </Box>
+                    <Box icon={<FileTextFilled />} title={tx('ঋণের শর্ত')}>
+                      <KV
+                        rows={[
+                          [tx('ঋণের প্ল্যান'), nameOf(l.product)],
+                          [tx('সুদ'), `${digits(Number(l.interest_rate))}% ${tx('বার্ষিক')}${l.interest_method !== 'flat' ? ` · ${meta.data?.methods[l.interest_method] ?? l.interest_method}` : ''}`],
+                          [tx('কিস্তি'), terms],
+                          [tx('দেরিতে জরিমানা'), penaltyText(l)],
+                          [tx('ঋণসীমা'), `৳ ${money(l.limit_amount)}`],
+                          [tx('আবেদন'), `${fmtDate(l.applied_on)} · ${nameOf(l.creator)}`],
+                          ...((disbursed
+                            ? [
+                                [tx('বিতরণ'), `${fmtDate(l.disbursed_on)} · ${METHOD_LABEL[l.method ?? ''] ?? l.method ?? ''}${l.fund ? ` — ${accountLabel(l.fund)}` : ''}${l.reference ? `, ${digits(l.reference)}` : ''}`],
+                                [tx('মোট সুদ'), `৳ ${money(l.total_interest)}`],
+                                [tx('ভাউচার'), l.journal ? can('accounting.view') ? <Link to={`/accounting/journals/${l.journal.id}`}>{digits(l.journal.voucher_no)}</Link> : digits(l.journal.voucher_no) : '—'],
+                              ]
+                            : []) as [string, React.ReactNode][]),
+                          ...((l.closed_on ? [[tx('সমাপ্তির তারিখ'), fmtDate(l.closed_on)]] : []) as [string, React.ReactNode][]),
+                          ...((l.purpose ? [[tx('উদ্দেশ্য'), l.purpose]] : []) as [string, React.ReactNode][]),
+                          ...((l.remarks ? [[tx('মন্তব্য'), l.remarks]] : []) as [string, React.ReactNode][]),
+                        ]}
+                      />
+                    </Box>
+                  </div>
+                  {p && (
+                    <div className="ln-paid-line">
+                      {tx('আদায় হয়েছে')}: {tx('আসল ৳{{p0}}, সুদ ৳{{p1}}, জরিমানা ৳{{p2}}', { p0: money(p.principal_paid), p1: money(p.interest_paid), p2: money(p.penalty_paid) })}
+                      {` · ${tx('পুরো ঋণ শোধে')}: ৳${money(p.payoff)} (${tx('জরিমানা ৳{{p0}}', { p0: money(p.penalty_due) })})`}
+                      {p.oldest_overdue && ` · ${tx('সবচেয়ে পুরনো বকেয়া')}: ${fmtDate(p.oldest_overdue)}`}
+                    </div>
+                  )}
+                </>
+              ),
+            },
+            {
+              key: 'schedule',
+              label: disbursed ? tx('কিস্তিসূচি') : tx('কিস্তিসূচি (সম্ভাব্য)'),
+              children: !disbursed ? (
+                <div className="id-payments">
+                  <SchedulePreview rows={l.preview ?? []} />
+                </div>
+              ) : (
+                <Table<Installment>
+                  rowKey="id"
+                  size="small"
+                  className="id-payments"
+                  dataSource={p?.installments}
+                  pagination={false}
+                  scroll={{ x: 'max-content' }}
+                  columns={[
+                    { title: tx('কিস্তি'), dataIndex: 'seq', render: (v: number) => digits(v) },
+                    { title: tx('তারিখ'), dataIndex: 'due_date', render: fmtDate },
+                    { title: tx('আসল'), dataIndex: 'principal', align: 'right', render: money },
+                    { title: tx('সুদ'), dataIndex: 'interest', align: 'right', render: money },
+                    { title: tx('কিস্তি (মোট)'), dataIndex: 'total', align: 'right', render: money },
+                    { title: tx('জমা হয়েছে'), align: 'right', render: (_, r) => moneyOrBlank(Number(r.principal_paid) + Number(r.interest_paid)) },
+                    { title: tx('বাকি'), dataIndex: 'outstanding', align: 'right', render: (v: number) => <strong>{moneyOrBlank(v)}</strong> },
+                    { title: tx('জরিমানা'), align: 'right', render: (_, r) => moneyOrBlank(Number(r.penalty_paid) + r.penalty_due) },
+                    {
+                      title: tx('অবস্থা'),
+                      dataIndex: 'state',
+                      render: (s: string, r) => (
+                        <Tag className={`fl-tag ${STATE_TONE[s] ?? 'll-gray'}`}>
+                          {STATE_LABEL[s]}
+                          {r.paid_on && s === 'paid' ? ` ${fmtDate(r.paid_on)}` : ''}
+                        </Tag>
+                      ),
+                    },
+                  ]}
+                />
+              ),
+            },
+            {
+              key: 'payments',
+              label: tx('পরিশোধের ইতিহাস ({{p0}})', { p0: digits(l.payments.length) }),
+              children: (
+                <Table<LoanPayment>
+                  rowKey="id"
+                  size="small"
+                  className="id-payments"
+                  dataSource={l.payments}
+                  pagination={false}
+                  scroll={{ x: 'max-content' }}
+                  locale={{ emptyText: disbursed ? tx('এখনো কোনো কিস্তি জমা হয়নি') : tx('বিতরণের পর কিস্তি জমা নেওয়া যাবে') }}
+                  columns={[
+                    { title: tx('রশিদ নং'), dataIndex: 'payment_no', render: (v: string, r) => <Link to={`/loans/payments/${r.id}`}>{digits(v)}</Link> },
+                    { title: tx('তারিখ'), dataIndex: 'date', render: fmtDate },
+                    { title: tx('মোট জমা'), dataIndex: 'amount', align: 'right', render: (v: string) => <strong>{money(v)}</strong> },
+                    { title: tx('আসল'), dataIndex: 'principal', align: 'right', render: money },
+                    { title: tx('সুদ'), dataIndex: 'interest', align: 'right', render: money },
+                    { title: tx('জরিমানা'), dataIndex: 'penalty', align: 'right', render: (v: string) => moneyOrBlank(Number(v)) },
+                    { title: tx('আসল বাকি'), dataIndex: 'principal_after', align: 'right', render: money },
+                    { title: tx('অবস্থা'), dataIndex: 'status', render: (s: string) => <Tag className={`fl-tag ${PAYMENT_TONE[s] ?? 'll-gray'}`}>{meta.data?.payment_statuses[s] ?? s}</Tag> },
+                    { title: tx('এন্ট্রির সময়'), dataIndex: 'created_at', render: (v: string) => fmtDateTime(v) },
+                  ]}
+                />
+              ),
+            },
+            {
+              key: 'guarantors',
+              label: tx('জামিনদার ({{p0}})', { p0: digits(l.guarantors.length) }),
+              children: (
+                <Table<Guarantor>
+                  rowKey="id"
+                  size="small"
+                  className="id-payments"
+                  dataSource={l.guarantors}
+                  pagination={false}
+                  scroll={{ x: 'max-content' }}
+                  locale={{ emptyText: tx('কোনো জামিনদার নেই') }}
+                  columns={[
+                    { title: '#', width: 44, render: (_, __, i) => digits(i + 1) },
+                    {
+                      title: tx('জামিনদার'),
+                      render: (_, g) =>
+                        g.member?.farmer ? (
+                          <Link to={`/farmers/${g.member.farmer.id}`}>
+                            <TeamOutlined /> {nameOf(g.member.farmer)}
+                          </Link>
+                        ) : (
+                          '—'
                         ),
-                      },
-                    ]}
-                  />
-                ),
-              },
-              {
-                key: 'statement',
-                label: tx('ঋণ বিবরণী'),
-                children: (
-                  <Table<StRow>
-                    rowKey={(r) => r.ref}
-                    size="small"
-                    className="id-payments"
-                    loading={st.isFetching}
-                    dataSource={st.data?.rows}
-                    pagination={false}
-                    scroll={{ x: 'max-content' }}
-                    columns={[
-                      { title: tx('তারিখ'), dataIndex: 'date', render: fmtDate },
-                      { title: tx('রেফারেন্স'), dataIndex: 'ref', render: (v: string, r) => (r.id ? <Link to={`/loans/payments/${r.id}`}>{digits(v)}</Link> : digits(v)) },
-                      { title: tx('বিবরণ'), dataIndex: 'label' },
-                      { title: tx('বিতরণ'), dataIndex: 'disbursed', align: 'right', render: moneyOrBlank },
-                      { title: tx('পরিশোধ'), dataIndex: 'paid', align: 'right', render: moneyOrBlank },
-                      { title: tx('জরিমানা'), dataIndex: 'penalty', align: 'right', render: moneyOrBlank },
-                      { title: tx('সুদ'), dataIndex: 'interest', align: 'right', render: moneyOrBlank },
-                      { title: tx('আসল'), dataIndex: 'principal', align: 'right', render: moneyOrBlank },
-                      { title: tx('আসল বাকি'), dataIndex: 'balance', align: 'right', render: (v: number) => <strong>{money(v)}</strong> },
-                    ]}
-                    summary={() =>
-                      st.data && (
-                        <Table.Summary.Row className="ln-sum-row">
-                          <Table.Summary.Cell index={0} colSpan={4}>
-                            {tx('মোট')}
-                          </Table.Summary.Cell>
-                          {(['paid', 'penalty', 'interest', 'principal'] as const).map((k, i) => (
-                            <Table.Summary.Cell key={k} index={i + 1} align="right">
-                              {money(st.data.totals[k])}
-                            </Table.Summary.Cell>
-                          ))}
-                          <Table.Summary.Cell index={5} align="right">
-                            {money(st.data.closing)}
-                          </Table.Summary.Cell>
-                        </Table.Summary.Row>
-                      )
-                    }
-                  />
-                ),
-              },
-              {
-                key: 'payments',
-                label: tx('পরিশোধের রশিদ ({{p0}})', { p0: digits(l.payments.length) }),
-                children: (
-                  <Table<LoanPayment>
-                    rowKey="id"
-                    size="small"
-                    className="id-payments"
-                    dataSource={l.payments}
-                    pagination={false}
-                    scroll={{ x: 'max-content' }}
-                    columns={[
-                      { title: tx('রশিদ নং'), dataIndex: 'payment_no', render: (v: string, r) => <Link to={`/loans/payments/${r.id}`}>{digits(v)}</Link> },
-                      { title: tx('তারিখ'), dataIndex: 'date', render: fmtDate },
-                      { title: tx('মোট'), dataIndex: 'amount', align: 'right', render: (v: string) => <strong>{money(v)}</strong> },
-                      { title: tx('জরিমানা'), dataIndex: 'penalty', align: 'right', render: money },
-                      { title: tx('সুদ'), dataIndex: 'interest', align: 'right', render: money },
-                      { title: tx('আসল'), dataIndex: 'principal', align: 'right', render: money },
-                      { title: tx('অবস্থা'), dataIndex: 'status', render: (s: string) => <Tag className={`fl-tag ${PAYMENT_TONE[s] ?? 'll-gray'}`}>{meta.data?.payment_statuses[s] ?? s}</Tag> },
-                      { title: tx('এন্ট্রির সময়'), dataIndex: 'created_at', render: (v: string) => fmtDateTime(v) },
-                    ]}
-                  />
-                ),
-              },
-            ]}
-          />
-        </Box>
-      )}
+                    },
+                    { title: tx('সদস্য নং'), render: (_, g) => digits(g.member?.member_no ?? '—') },
+                    { title: tx('মোবাইল'), render: (_, g) => digits(g.member?.farmer?.mobile ?? '—') },
+                    { title: tx('সম্পর্ক'), dataIndex: 'relation', render: (v: string | null) => v || '—' },
+                  ]}
+                />
+              ),
+            },
+          ]}
+        />
+      </Box>
 
       <DisburseModal loan={l} open={modal === 'disburse'} onClose={() => setModal(null)} onDone={refresh} />
       <PayModal

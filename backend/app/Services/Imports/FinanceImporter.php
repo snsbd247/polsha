@@ -275,7 +275,7 @@ class FinanceImporter
         return [
             'interest_rate' => $product->interest_rate, 'interest_method' => $product->interest_method, 'frequency' => $product->frequency,
             'installments' => $product->frequency === 'one_time' ? 1 : $product->installments, 'term_months' => $product->term_months,
-            'penalty_rate' => $product->penalty_rate, 'grace_days' => $product->grace_days,
+            'penalty_type' => $product->penalty_type, 'penalty_rate' => $product->penalty_rate, 'grace_days' => $product->grace_days,
         ];
     }
 

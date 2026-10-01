@@ -58,7 +58,7 @@ class LoanTest extends Phase2TestCase
         $r = $this->actingAs($this->manager)->postJson('/api/loan-products', $overrides + [
             'code' => 'AG-1', 'name_bn' => 'কৃষি ঋণ', 'category' => 'agriculture', 'max_amount' => 50000, 'savings_multiplier' => 3,
             'interest_rate' => 12, 'interest_method' => 'flat', 'frequency' => 'monthly', 'installments' => 12,
-            'penalty_rate' => 3, 'grace_days' => 5, 'guarantors_required' => 1, 'is_active' => true,
+            'penalty_type' => 'percent', 'penalty_rate' => 3, 'grace_days' => 5, 'guarantors_required' => 1, 'is_active' => true,
         ])->assertCreated();
 
         return LoanProduct::findOrFail($r->json('id'));
@@ -182,16 +182,20 @@ class LoanTest extends Phase2TestCase
         $p1 = $this->pay($loan, '2026-02-01', 1120);
         $this->assertEquals([0, 120, 1000], [(float) $p1->penalty, (float) $p1->interest, (float) $p1->principal]);
 
-        // late: #2 due 03-01 and #3 due 04-01, grace 5 days, 3% a month by day
-        // #2: 1120 × 0.1% × 36 days = 40.32, #3: 1120 × 0.1% × 5 days = 5.60
+        // late: #2 due 03-01 and #3 due 04-01, grace 5 days, 3% of the late instalment, once each
+        // #2: 1120 × 3% = 33.60, #3: 1120 × 3% = 33.60
         $pos = app(LoanService::class)->position($loan->fresh(), '2026-04-11');
-        $this->assertEquals(45.92, $pos['penalty_due']);
+        $this->assertEquals(67.20, $pos['penalty_due']);
         $this->assertSame('31_90', $pos['bucket']); // 41 days since 03-01
+        // the same penalty however long it stays late
+        $this->assertEquals(67.20, app(LoanService::class)->position($loan->fresh(), '2026-04-30')['penalty_due']);
         $p2 = $this->pay($loan, '2026-04-11', 1000);
-        $this->assertEquals([45.92, 240, 714.08], [(float) $p2->penalty, (float) $p2->interest, (float) $p2->principal]);
-        $this->assertEquals(-45.92, $this->ledger('loan_penalty_income'));
+        $this->assertEquals([67.20, 240, 692.80], [(float) $p2->penalty, (float) $p2->interest, (float) $p2->principal]);
+        $this->assertEquals(-67.20, $this->ledger('loan_penalty_income'));
         $this->assertEquals(-360, $this->ledger('loan_interest_income'));
-        $this->assertEquals(12000 - 1000 - 714.08, $this->ledger('loans_receivable'));
+        $this->assertEquals(12000 - 1000 - 692.80, $this->ledger('loans_receivable'));
+        // #2 and #3 are still part unpaid but were already charged: no second penalty
+        $this->assertEquals(0, app(LoanService::class)->position($loan->fresh(), '2026-04-20')['penalty_due']);
 
         // an older payment cannot be cancelled while a later one stands
         $this->actingAs($this->cashier)->postJson("/api/loans/payments/{$p1->id}/cancel", ['reason' => 'ভুল'])->assertStatus(422);
@@ -259,5 +263,43 @@ class LoanTest extends Phase2TestCase
         $this->assertSame('2026-12-05', $loan2->first_due_on->toDateString());
         $this->assertCount(1, $loan2->schedule);
         $this->assertEquals(600, $loan2->total_interest);
+    }
+
+    public function test_simple_plan_form_and_fixed_penalty_once_per_late_instalment(): void
+    {
+        // only the essentials: the code is made up, interest is flat, the rest has defaults
+        $r = $this->actingAs($this->manager)->postJson('/api/loan-products', [
+            'name_bn' => 'সহজ ঋণ', 'max_amount' => 20000, 'interest_rate' => 12, 'interest_method' => 'declining',
+            'frequency' => 'monthly', 'installments' => 12, 'penalty_type' => 'fixed', 'penalty_rate' => 50,
+        ])->assertCreated();
+        $p = LoanProduct::findOrFail($r->json('id'));
+        $this->assertMatchesRegularExpression('/^LP-\d+$/', $p->code);
+        $this->assertSame('flat', $p->interest_method);
+        $this->assertSame(1, $p->guarantors_required);
+        $this->assertSame(0, $p->grace_days);
+        $this->actingAs($this->manager)->postJson('/api/loan-products', ['name_bn' => 'ভুল', 'max_amount' => 1, 'interest_rate' => 1, 'frequency' => 'monthly',
+            'installments' => 1, 'penalty_type' => 'percent', 'penalty_rate' => 150])->assertStatus(422)->assertJsonValidationErrors('penalty_rate');
+
+        $m = $this->member('করিম', 5000);
+        $loan = Loan::findOrFail($this->actingAs($this->loanOfficer)->postJson('/api/loans', [
+            'member_id' => $m->id, 'product_id' => $p->id, 'applied_on' => '2025-12-20', 'amount' => 12000,
+            'guarantors' => [['member_id' => $this->member('রহিম')->id]],
+        ])->assertCreated()->json('id'));
+        $this->assertSame('fixed', $loan->penalty_type);
+        $this->approve($loan->approval_request_id);
+        $this->actingAs($this->loanOfficer)->postJson("/api/loans/{$loan->id}/disburse", ['date' => '2026-01-01', 'method' => 'cash'])->assertOk();
+
+        // #1 due 02-01 paid on 02-01 (no grace days): no penalty; #2 and #3 late: ৳50 each, however late
+        $this->assertEquals(0, $this->pay($loan, '2026-02-01', 1120)->penalty);
+        $svc = app(LoanService::class);
+        $this->assertEquals(0, $svc->position($loan->fresh(), '2026-03-01')['penalty_due']);
+        $this->assertEquals(50, $svc->position($loan->fresh(), '2026-03-02')['penalty_due']);
+        $this->assertEquals(150, $svc->position($loan->fresh(), '2026-06-01')['penalty_due']); // #2, #3 and #4 are late by then
+        $this->assertEquals(100, $this->pay($loan, '2026-04-02', 500)->penalty);
+
+        // a loan given under the old rule keeps its day-by-day % per month
+        $loan->update(['penalty_type' => 'daily', 'penalty_rate' => 3, 'grace_days' => 5]);
+        $inst = $loan->schedule()->where('seq', 4)->first();
+        $this->assertEquals(round(1120 * 0.03 / 30 * 10, 2), $svc->newPenalty($loan->fresh(), $inst, '2026-05-16'));
     }
 }

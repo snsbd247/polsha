@@ -18,9 +18,10 @@ use Illuminate\Validation\ValidationException;
 /**
  * Loans: application → approval → disbursement → instalments → closed.
  *
- * The schedule is fixed at disbursement. Penalty is a % per month on the
- * unpaid instalment money, counted day by day once the grace days are over,
- * and stored on the instalment up to the last payment date. A payment goes to
+ * The schedule is fixed at disbursement. An instalment still unpaid after the
+ * grace days is charged a penalty once — a fixed sum or a % of what is unpaid
+ * (older loans: a % per month counted day by day) — stored on the instalment
+ * when a payment books it. A payment goes to
  * penalty first, then interest, then principal; the voucher keeps the three
  * in separate ledger accounts (penalty and interest income on receipt).
  *
@@ -166,7 +167,7 @@ class LoanService
                 'applied_on' => $data['applied_on'], 'amount' => $amount, 'purpose' => $data['purpose'] ?? null,
                 'interest_rate' => $product->interest_rate, 'interest_method' => $product->interest_method, 'frequency' => $product->frequency,
                 'installments' => $product->frequency === 'one_time' ? 1 : $product->installments, 'term_months' => $product->term_months,
-                'penalty_rate' => $product->penalty_rate, 'grace_days' => $product->grace_days, 'limit_amount' => $limit['limit'],
+                'penalty_type' => $product->penalty_type, 'penalty_rate' => $product->penalty_rate, 'grace_days' => $product->grace_days, 'limit_amount' => $limit['limit'],
                 'status' => 'pending', 'remarks' => $data['remarks'] ?? null, 'created_by' => auth()->id(),
             ]);
             foreach ($guarantors as $g) {
@@ -300,7 +301,12 @@ class LoanService
 
     // ---- position & penalty ----
 
-    /** Penalty earned on one instalment from the stored point (or grace end) up to $date. */
+    /**
+     * Penalty not yet booked on one instalment as of $date. Fixed / percent:
+     * once, as soon as the instalment is still unpaid after the grace days
+     * (penalty_to marks that it was charged). Daily (older loans): a % per
+     * month counted day by day from the stored point.
+     */
     public function newPenalty(Loan $loan, LoanInstallment $inst, string $date): float
     {
         $rate = (float) $loan->penalty_rate;
@@ -309,6 +315,14 @@ class LoanService
             return 0.0;
         }
         $start = $inst->due_date->copy()->addDays((int) $loan->grace_days);
+        $type = $loan->penalty_type ?: 'daily';
+        if ($type !== 'daily') {
+            if ($inst->penalty_to || ! Carbon::parse($date)->gt($start)) {
+                return 0.0;
+            }
+
+            return $type === 'fixed' ? round($rate, 2) : round($base * $rate / 100, 2);
+        }
         if ($inst->penalty_to && $inst->penalty_to->gt($start)) {
             $start = $inst->penalty_to->copy();
         }

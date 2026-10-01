@@ -13,7 +13,7 @@ import { t as tx } from '../../lib/i18n'
 type Loan = { id: number; loan_no: string; amount: string; applied_on: string; disbursed_on: string | null; frequency: string }
 
 /** Method + cash/bank account fields shared by disbursement and repayment. */
-function MethodFields({ open }: { open: boolean }) {
+export function MethodFields({ open }: { open: boolean }) {
   const form = Form.useFormInstance()
   const method: string = Form.useWatch('method', form) ?? 'cash'
   const funds = useQuery({ queryKey: ['loan-funds'], queryFn: async () => (await api.get<ReceiptFund[]>('/loans/funds')).data, enabled: open && method !== 'cash' })
@@ -26,9 +26,7 @@ function MethodFields({ open }: { open: boolean }) {
         <Form.Item name="fund_account_id" label={method === 'bank' ? tx('ব্যাংক হিসাব') : tx('তহবিল হিসাব')} rules={[required(tx('হিসাব বাছাই করুন'))]}>
           <Select
             loading={funds.isFetching}
-            options={(funds.data ?? [])
-              .filter((f) => (method === 'bank' ? f.kind === 'bank' : true))
-              .map((a) => ({ value: a.id, label: accountLabel(a) + (a.account_no ? ` (${digits(a.account_no)})` : '') }))}
+            options={(funds.data ?? []).filter((f) => (method === 'bank' ? f.kind === 'bank' : true)).map((a) => ({ value: a.id, label: accountLabel(a) + (a.account_no ? ` (${digits(a.account_no)})` : '') }))}
           />
         </Form.Item>
       )}
@@ -115,11 +113,7 @@ export function PayModal({ loan, open, onClose, onDone }: { loan: Loan; open: bo
     <Modal open={open} forceRender title={tx('কিস্তি জমা — {{p0}}', { p0: digits(loan.loan_no) })} onCancel={onClose} onOk={save} okText={tx('জমা নিন')} cancelText={tx('ফিরে যান')}>
       <Form form={form} layout="vertical" initialValues={{ date: dayjs(), method: 'cash' }}>
         <Form.Item name="date" label={tx('তারিখ')} rules={[required(tx('তারিখ দিন'))]}>
-          <DatePicker
-            format="DD/MM/YYYY"
-            style={{ width: '100%' }}
-            disabledDate={(d) => d.isAfter(dayjs(), 'day') || (!!loan.disbursed_on && d.isBefore(dayjs(loan.disbursed_on), 'day'))}
-          />
+          <DatePicker format="DD/MM/YYYY" style={{ width: '100%' }} disabledDate={(d) => d.isAfter(dayjs(), 'day') || (!!loan.disbursed_on && d.isBefore(dayjs(loan.disbursed_on), 'day'))} />
         </Form.Item>
         {p && (
           <Descriptions size="small" column={2} bordered style={{ marginBottom: 12 }}>

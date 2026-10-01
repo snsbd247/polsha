@@ -509,12 +509,12 @@ class DemoDataService
         $this->products['monthly'] = $this->api('manager', 'POST', 'loan-products', [
             'code' => 'DAG-'.$suffix, 'name_bn' => 'কৃষি ঋণ (মাসিক)', 'name_en' => 'Agri loan (monthly)', 'category' => 'agriculture',
             'max_amount' => 60000, 'savings_multiplier' => 3, 'interest_rate' => 12, 'interest_method' => 'flat', 'frequency' => 'monthly',
-            'installments' => 12, 'penalty_rate' => 2, 'grace_days' => 7, 'guarantors_required' => 1, 'is_active' => true,
+            'installments' => 12, 'penalty_type' => 'fixed', 'penalty_rate' => 50, 'grace_days' => 7, 'guarantors_required' => 1, 'is_active' => true,
         ])['id'];
         $this->products['season'] = $this->api('manager', 'POST', 'loan-products', [
             'code' => 'DSN-'.$suffix, 'name_bn' => 'মৌসুমি ঋণ (ফসল তোলার পর)', 'name_en' => 'Seasonal loan', 'category' => 'agriculture',
             'max_amount' => 30000, 'savings_multiplier' => 3, 'interest_rate' => 10, 'interest_method' => 'flat', 'frequency' => 'one_time',
-            'installments' => 1, 'term_months' => 6, 'penalty_rate' => 2, 'grace_days' => 15, 'guarantors_required' => 1, 'is_active' => true,
+            'installments' => 1, 'term_months' => 6, 'penalty_type' => 'percent', 'penalty_rate' => 2, 'grace_days' => 15, 'guarantors_required' => 1, 'is_active' => true,
         ])['id'];
     }
 

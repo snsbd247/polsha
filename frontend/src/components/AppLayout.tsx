@@ -276,43 +276,18 @@ const GROUPS: Group[] = [
         perm: 'loan.view',
       },
       {
-        path: '/loans?status=pending',
-        label: m('অপেক্ষমাণ ঋণ', 'Pending Loans'),
-        perm: 'loan.view',
-      },
-      {
-        path: '/loans?status=approved',
-        label: m('অনুমোদিত ঋণ', 'Approved Loans'),
-        perm: 'loan.view',
-      },
-      {
         path: '/loans/new',
-        label: m('ঋণের আবেদন', 'Loan Applications'),
+        label: m('নতুন ঋণ', 'New Loan'),
         perm: 'loan.create',
       },
       {
-        path: '/loans/products',
-        label: m('ঋণের প্ল্যান', 'Loan Plans'),
-        perm: 'loan.view',
-      },
-      {
-        path: '/loans/lookup',
-        label: m('ঋণের বিস্তারিত', 'Loan Details'),
-        perm: 'loan.view',
-      },
-      {
-        path: '/loans/lookup/schedule',
-        label: m('ঋণের কিস্তিসূচি', 'Loan Schedule'),
-        perm: 'loan.view',
-      },
-      {
-        path: '/loans/lookup/installments',
-        label: m('ঋণের কিস্তি', 'Loan Installments'),
-        perm: 'loan.view',
-      },
-      {
         path: '/loans/payments',
-        label: m('ঋণ পরিশোধ', 'Loan Payments'),
+        label: m('কিস্তি আদায়', 'Collect Instalment'),
+        perm: 'loan.view',
+      },
+      {
+        path: '/loans/dues',
+        label: m('বকেয়া ঋণ', 'Overdue Loans'),
         perm: 'loan.view',
       },
       {
@@ -321,8 +296,8 @@ const GROUPS: Group[] = [
         perm: 'loan.view',
       },
       {
-        path: '/loans/dues',
-        label: m('ঋণের বকেয়া', 'Loan Due'),
+        path: '/loans/products',
+        label: m('ঋণের প্ল্যান', 'Loan Plans'),
         perm: 'loan.view',
       },
     ],

@@ -189,7 +189,7 @@ class Phase10Test extends Phase2TestCase
         LoanProduct::create([
             'code' => 'AG-1', 'name_bn' => 'কৃষি ঋণ', 'category' => 'agriculture', 'max_amount' => 100000, 'savings_multiplier' => 0,
             'interest_rate' => 12, 'interest_method' => 'flat', 'frequency' => 'monthly', 'installments' => 12,
-            'penalty_rate' => 3, 'grace_days' => 5, 'guarantors_required' => 0, 'is_active' => true,
+            'penalty_type' => 'percent', 'penalty_rate' => 3, 'grace_days' => 5, 'guarantors_required' => 0, 'is_active' => true,
         ]);
         $batch = $this->import('loan_opening', $this->csv([
             ['সদস্য নং', 'ঋণের ধরন', 'মূল ঋণ', 'বিতরণের তারিখ', 'প্রথম কিস্তির তারিখ', 'বকেয়া আসল', 'বকেয়া সুদ', 'পুরনো ঋণ নং'],

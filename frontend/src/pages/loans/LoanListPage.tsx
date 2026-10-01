@@ -18,6 +18,8 @@ import '../farmers/farmer-merge-list.css'
 import '../lands/land-history.css'
 import '../irrigation/invoices.css'
 import '../savings/savings.css'
+import '../irrigation/rates.css'
+import '../approvals/approvals.css'
 
 type Resp = Paginated<LoanRow> & { totals: { loans: number; disbursed: number } }
 type Summary = {
@@ -77,7 +79,15 @@ export default function LoanListPage() {
     setPage(1)
   }
   const exportCsv = () => downloadExport('/loans', { ...filters, export: 'csv' }, 'loans.csv').catch((e) => message.error(errorMessage(e)))
-  const title = preset.status === 'pending' ? tx('অপেক্ষমাণ ঋণ') : preset.status === 'approved' ? tx('অনুমোদিত ঋণ (বিতরণ বাকি)') : tx('ঋণের তালিকা')
+  // one list, a tab per stage of a loan's life
+  const tabs = [
+    { key: '', label: tx('সব ঋণ'), n: s?.total },
+    { key: 'pending', label: tx('অনুমোদনের অপেক্ষায়'), n: s?.counts.pending },
+    { key: 'approved', label: tx('বিতরণ বাকি'), n: s?.counts.approved },
+    { key: 'active', label: tx('চলমান'), n: s?.counts.active },
+    { key: 'closed', label: tx('পরিশোধিত'), n: s?.counts.closed },
+  ]
+  const current = tabs.find((t) => t.key === (filters.status ?? '')) ?? { label: meta.data?.statuses[filters.status ?? ''] ?? tx('ঋণের তালিকা') }
 
   const cards = [
     { key: 'total', label: tx('মোট ঋণ'), value: s?.total, unit: tx('টি'), icon: '', glyph: <FileTextFilled />, color: '#1769e0', tint: '#e4edfd', onClick: () => show({}) },
@@ -114,7 +124,16 @@ export default function LoanListPage() {
 
   const allColumns: (ColumnsType<LoanRow>[number] & { key: string })[] = [
     { key: 'sl', title: '#', width: 44, align: 'center', render: (_, __, i) => digits(from + i) },
-    { key: 'no', title: tx('ঋণ নং'), dataIndex: 'loan_no', render: (v: string, r) => <Link to={`/loans/${r.id}`} className="fl-link iv-no">{digits(v)}</Link> },
+    {
+      key: 'no',
+      title: tx('ঋণ নং'),
+      dataIndex: 'loan_no',
+      render: (v: string, r) => (
+        <Link to={`/loans/${r.id}`} className="fl-link iv-no">
+          {digits(v)}
+        </Link>
+      ),
+    },
     {
       key: 'member',
       title: tx('সদস্যের নাম'),
@@ -176,7 +195,7 @@ export default function LoanListPage() {
   return (
     <ListFrame
       section={{ label: tx('ঋণ'), to: '/loans' }}
-      title={title}
+      title={tx('ঋণের তালিকা')}
       subtitle=""
       actions={
         <>
@@ -185,20 +204,27 @@ export default function LoanListPage() {
           </Button>
           {can('loan.create') && (
             <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate('/loans/new')}>
-              {tx('ঋণের আবেদন')}
+              {tx('নতুন ঋণ')}
             </Button>
           )}
         </>
       }
       cards={cards}
+      above={
+        <div className="lk-tabs ap-tabs">
+          {tabs.map((t) => (
+            <button key={t.key} type="button" className={(filters.status ?? '') === t.key ? 'on' : ''} onClick={() => show({ ...filters, status: t.key || undefined })}>
+              {t.label}
+              {!!t.n && <span className="ap-count">{digits(t.n)}</span>}
+            </button>
+          ))}
+        </div>
+      }
       filterClass="iv-filters"
       filters={
         <>
           <Field label={tx('খুঁজুন')} grow={320}>
             <Input prefix={<SearchOutlined />} allowClear placeholder={tx('ঋণ নং, নাম, সদস্য নং বা মোবাইল দিয়ে খুঁজুন...')} value={draft.search} onChange={(e) => set({ search: e.target.value || undefined })} onPressEnter={apply} />
-          </Field>
-          <Field label={tx('অবস্থা')}>
-            <Select value={draft.status ?? ''} options={[...all, ...Object.entries(meta.data?.statuses ?? {}).map(([value, label]) => ({ value, label }))]} onChange={(v) => set({ status: v || undefined })} />
           </Field>
           <Field label={tx('ঋণের ধরন')}>
             <Select value={draft.product_id ?? ''} options={[...all, ...(products.data ?? []).map((p) => ({ value: p.id, label: nameOf(p) }))]} onChange={(v) => set({ product_id: v === '' ? undefined : Number(v) })} />
@@ -212,8 +238,8 @@ export default function LoanListPage() {
         </>
       }
       onSearch={apply}
-      onReset={() => show(preset)}
-      tableTitle={tx('{{p0}} ({{p1}})', { p0: title, p1: n0(total) })}
+      onReset={() => show({ status: filters.status })}
+      tableTitle={tx('{{p0}} ({{p1}})', { p0: current.label, p1: n0(total) })}
       tableTools={
         <>
           <span className="sv-total">

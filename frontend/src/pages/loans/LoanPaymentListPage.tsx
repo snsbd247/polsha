@@ -12,12 +12,15 @@ import { METHOD_LABEL } from '../../lib/irrigation'
 import { useLoanMeta, type LoanPayment } from '../../lib/loans'
 import { downloadExport } from '../../lib/phase2'
 import { nameOf, t as tx } from '../../lib/i18n'
+import { useAuth } from '../../auth/AuthContext'
 import ListFrame, { Field, initials, n0 } from '../lands/ListFrame'
+import LoanCollectBox from './LoanCollectBox'
 import '../lands/land-list.css'
 import '../farmers/farmer-merge-list.css'
 import '../lands/land-history.css'
 import '../irrigation/invoices.css'
 import '../savings/savings.css'
+import './loans.css'
 
 type Totals = { amount: number; penalty: number; interest: number; principal: number }
 type Resp = Paginated<LoanPayment> & { totals: Totals }
@@ -25,12 +28,13 @@ type Filters = { search?: string; status?: string; method?: string; from?: strin
 
 const PAYMENT_TONE: Record<string, string> = { posted: 'fl-tag-green', cancel_pending: 'fl-tag-gold', cancelled: 'll-gray' }
 
-/** Every loan repayment receipt, split into principal, interest and penalty, over the chosen period. */
+/** Collect an instalment at the top; below, every repayment receipt split into principal, interest and penalty. */
 export default function LoanPaymentListPage() {
   const { message } = App.useApp()
   const navigate = useNavigate()
   const wide = Grid.useBreakpoint().lg
   const meta = useLoanMeta()
+  const { can } = useAuth()
   const [sp] = useSearchParams()
   const preset: Filters = { loan_id: Number(sp.get('loan_id')) || undefined }
   const [draft, setDraft] = useState<Filters>(preset)
@@ -73,7 +77,16 @@ export default function LoanPaymentListPage() {
 
   const allColumns: (ColumnsType<LoanPayment>[number] & { key: string })[] = [
     { key: 'sl', title: '#', width: 44, align: 'center', render: (_, __, i) => digits(from + i) },
-    { key: 'no', title: tx('রশিদ নং'), dataIndex: 'payment_no', render: (v: string, r) => <Link to={`/loans/payments/${r.id}`} className="fl-link iv-no">{digits(v)}</Link> },
+    {
+      key: 'no',
+      title: tx('রশিদ নং'),
+      dataIndex: 'payment_no',
+      render: (v: string, r) => (
+        <Link to={`/loans/payments/${r.id}`} className="fl-link iv-no">
+          {digits(v)}
+        </Link>
+      ),
+    },
     { key: 'date', title: tx('তারিখ'), dataIndex: 'date', render: fmtDate },
     { key: 'loan', title: tx('ঋণ নং'), render: (_, r) => (r.loan ? <Link to={`/loans/${r.loan.id}`}>{digits(r.loan.loan_no)}</Link> : '—') },
     {
@@ -120,19 +133,22 @@ export default function LoanPaymentListPage() {
   return (
     <ListFrame
       section={{ label: tx('ঋণ'), to: '/loans' }}
-      title={tx('ঋণ পরিশোধ')}
+      title={tx('কিস্তি আদায়')}
       subtitle=""
       cards={cards}
       filterClass="iv-filters"
       above={
-        filters.loan_id ? (
-          <div className="iv-scope">
-            {tx('একটি ঋণের পরিশোধ')}
-            <Button size="small" type="link" onClick={() => show({})}>
-              {tx('সব দেখুন')}
-            </Button>
-          </div>
-        ) : null
+        <>
+          {can(['loan.create', 'payment.create']) && <LoanCollectBox />}
+          {!!filters.loan_id && (
+            <div className="iv-scope">
+              {tx('একটি ঋণের পরিশোধ')}
+              <Button size="small" type="link" onClick={() => show({})}>
+                {tx('সব দেখুন')}
+              </Button>
+            </div>
+          )}
+        </>
       }
       filters={
         <>
