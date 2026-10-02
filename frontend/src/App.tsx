@@ -85,10 +85,10 @@ const DuesPage = lazy(() => import('./pages/irrigation/DuesPage'))
 const FarmerStatementPage = lazy(() => import('./pages/irrigation/FarmerStatementPage'))
 const MismatchPage = lazy(() => import('./pages/irrigation/MismatchPage'))
 const RateAuditPage = lazy(() => import('./pages/irrigation/RateAuditPage'))
-const IrrigationCollectPage = lazy(() => import('./pages/payments/IrrigationCollectPage'))
+const CollectHubPage = lazy(() => import('./pages/payments/PaymentHubs').then((m) => ({ default: m.CollectHubPage })))
+const ReceiptsHubPage = lazy(() => import('./pages/payments/PaymentHubs').then((m) => ({ default: m.ReceiptsHubPage })))
 const OldReceiptListPage = lazy(() => import('./pages/payments/OldReceiptListPage'))
 const OldReceiptFormPage = lazy(() => import('./pages/payments/OldReceiptFormPage'))
-const ReceiptListPage = lazy(() => import('./pages/payments/ReceiptListPage'))
 const ReceiptDetailPage = lazy(() => import('./pages/payments/ReceiptDetailPage'))
 const FundAccountListPage = lazy(() => import('./pages/funds/FundAccountListPage'))
 const FundAccountDetailPage = lazy(() => import('./pages/funds/FundAccountDetailPage'))
@@ -114,8 +114,6 @@ const LoanPaymentDetailPage = lazy(() => import('./pages/loans/LoanPaymentDetail
 const LoanDuesPage = lazy(() => import('./pages/loans/LoanDuesPage'))
 const LoanAuditPage = lazy(() => import('./pages/loans/LoanAuditPage'))
 const VerifyReceiptPage = lazy(() => import('./pages/VerifyReceiptPage'))
-const CombinedPaymentPage = lazy(() => import('./pages/payments/CombinedPaymentPage'))
-const CombinedPaymentListPage = lazy(() => import('./pages/payments/CombinedPaymentListPage'))
 const FieldCollectPage = lazy(() => import('./pages/field/FieldCollectPage'))
 const CombinedPaymentDetailPage = lazy(() => import('./pages/payments/CombinedPaymentDetailPage'))
 const DayClosePage = lazy(() => import('./pages/cash/DayClosePage'))
@@ -181,9 +179,15 @@ function RequireAuth({ children }: { children: ReactNode }) {
 /** The menu's Old Receipt Entry opens /payments/collect?legacy=1; the plain path is irrigation collection. */
 function CollectRoute() {
   const { search, hash } = useLocation()
-  if (new URLSearchParams(search).get('legacy') !== '1') return <IrrigationCollectPage />
+  if (new URLSearchParams(search).get('legacy') !== '1') return <CollectHubPage />
   // the add form keeps the menu's exact query, so the menu still marks Old Receipt Entry
   return hash === '#new' ? <OldReceiptFormPage /> : <OldReceiptListPage />
+}
+
+/** The old combined-payment form address (?farmer_id kept) opens টাকা আদায়. */
+function ToCollect() {
+  const { search } = useLocation()
+  return <Navigate to={`/payments/collect${search}`} replace />
 }
 
 function ByQuery({ children }: { children: ReactNode }) {
@@ -319,7 +323,7 @@ export default function App() {
         <Route path="irrigation/mismatch" element={<Perm perm="irrigation.view"><MismatchPage /></Perm>} />
         <Route path="irrigation/rate-audit" element={<Perm perm="irrigation.view"><RateAuditPage /></Perm>} />
         <Route path="payments/collect" element={<Perm perm="payment.create"><ByQuery><CollectRoute /></ByQuery></Perm>} />
-        <Route path="payments/receipts" element={<Perm perm="payment.view"><ReceiptListPage /></Perm>} />
+        <Route path="payments/receipts" element={<Perm perm="payment.view"><ByQuery><ReceiptsHubPage /></ByQuery></Perm>} />
         <Route path="payments/receipts/:id" element={<Perm perm="payment.view"><ReceiptDetailPage /></Perm>} />
 
         {FUND_KINDS.map((k) => [
@@ -358,9 +362,10 @@ export default function App() {
         <Route path="loans/:id" element={<Perm perm="loan.view"><LoanDetailPage /></Perm>} />
 
 
-        <Route path="payments/combined" element={<Perm perm="payment.view"><CombinedPaymentListPage /></Perm>} />
+        {/* one collection screen and one receipts page now; old links land there */}
+        <Route path="payments/combined" element={<Navigate to="/payments/receipts" replace />} />
         <Route path="payments/field" element={<Perm perm={['field.create', 'field.view', 'field.approve']}><FieldCollectPage /></Perm>} />
-        <Route path="payments/combined/new" element={<Perm perm="payment.create"><CombinedPaymentPage /></Perm>} />
+        <Route path="payments/combined/new" element={<ToCollect />} />
         <Route path="payments/combined/:id" element={<Perm perm="payment.view"><CombinedPaymentDetailPage /></Perm>} />
         <Route path="cash/day-close" element={<Perm perm="cash.view"><ByQuery><DayClosePage /></ByQuery></Perm>} />
         <Route path="accounting/bank-reconciliations" element={<Perm perm="bank.view"><BankReconciliationListPage /></Perm>} />

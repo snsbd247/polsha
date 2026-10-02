@@ -110,22 +110,28 @@ export default function FundsPage() {
       section={{ label: tx('নগদ ও পেমেন্ট'), to: '/payments/receipts' }}
       title={tx('হাতে নগদ')}
       subtitle=""
-      actions={
+      cards={cards}
+      above={
         canMove && (
-          <>
-            <Button icon={<PlusCircleOutlined />} onClick={() => setTxn({ kind: 'receipt' })}>
-              {tx('জমা')}
-            </Button>
-            <Button icon={<MinusCircleOutlined />} onClick={() => setTxn({ kind: 'payment' })}>
-              {tx('খরচ')}
-            </Button>
-            <Button type="primary" icon={<SwapOutlined />} onClick={() => setTxn({ kind: 'transfer' })}>
-              {tx('স্থানান্তর')}
-            </Button>
-          </>
+          <div className="fund-actions">
+            <button type="button" className="fund-act fund-in" onClick={() => setTxn({ kind: 'receipt' })}>
+              <PlusCircleOutlined />
+              <b>{tx('টাকা জমা')}</b>
+              <small>{tx('কোনো আয় বা টাকা এলে')}</small>
+            </button>
+            <button type="button" className="fund-act fund-out" onClick={() => setTxn({ kind: 'payment' })}>
+              <MinusCircleOutlined />
+              <b>{tx('খরচ')}</b>
+              <small>{tx('বিল, বেতন বা কোনো খরচ দিলে')}</small>
+            </button>
+            <button type="button" className="fund-act fund-move" onClick={() => setTxn({ kind: 'transfer' })}>
+              <SwapOutlined />
+              <b>{tx('স্থানান্তর')}</b>
+              <small>{tx('নগদ ব্যাংকে জমা বা ব্যাংক থেকে তোলা')}</small>
+            </button>
+          </div>
         )
       }
-      cards={cards}
       filterClass="iv-filters"
       filters={
         <>

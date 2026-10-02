@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query'
 import { App, Button, Checkbox, DatePicker, Form, Input, InputNumber, Modal, Select, Table } from 'antd'
@@ -25,7 +25,7 @@ type Filters = { season_id?: number; irrigation_type_id?: number; mouza_id?: num
 type Batch = { receipts: { id: number; receipt_no: string; farmer_id: number; amount: number }[]; total: number }
 
 /** Collect irrigation charges: find due invoices (any farmer), tick them, enter what is paid now; one receipt per farmer. */
-export default function IrrigationCollectPage() {
+export default function IrrigationCollectPage({ tabs }: { tabs?: ReactNode }) {
   const navigate = useNavigate()
   const { message } = App.useApp()
   const { user } = useAuth()
@@ -134,7 +134,15 @@ export default function IrrigationCollectPage() {
       render: (_, r) => <Checkbox checked={!!picked[r.id]} onChange={(e) => toggle(r, e.target.checked)} />,
     },
     { title: '#', width: 40, render: (_, __, i) => digits((page - 1) * 10 + i + 1) },
-    { title: tx('ইনভয়েস নং'), dataIndex: 'invoice_no', render: (v: string, r) => <Link to={`/irrigation/invoices/${r.id}`} className="fl-link">{digits(v)}</Link> },
+    {
+      title: tx('ইনভয়েস নং'),
+      dataIndex: 'invoice_no',
+      render: (v: string, r) => (
+        <Link to={`/irrigation/invoices/${r.id}`} className="fl-link">
+          {digits(v)}
+        </Link>
+      ),
+    },
     { title: tx('কৃষকের নাম'), render: (_, r) => (r.cultivator ? nameOf(r.cultivator) : '—') },
     { title: tx('মোবাইল নং'), render: (_, r) => (r.cultivator?.mobile ? digits(r.cultivator.mobile) : '—'), responsive: ['xxl'] },
     { title: tx('মৌজা'), render: (_, r) => nameOf({ name_bn: r.mouza, name_en: r.mouza_en }) || '—' },
@@ -146,21 +154,13 @@ export default function IrrigationCollectPage() {
     {
       title: tx('এখন জমা (৳)'),
       width: 120,
-      render: (_, r) => (
-        <InputNumber
-          min={0}
-          max={r.due}
-          className="cl-pay"
-          value={pay[r.id] ?? r.due}
-          disabled={!picked[r.id]}
-          onChange={(v) => setPay((p) => ({ ...p, [r.id]: Math.min(r.due, Number(v ?? 0)) }))}
-        />
-      ),
+      render: (_, r) => <InputNumber min={0} max={r.due} className="cl-pay" value={pay[r.id] ?? r.due} disabled={!picked[r.id]} onChange={(v) => setPay((p) => ({ ...p, [r.id]: Math.min(r.due, Number(v ?? 0)) }))} />,
     },
   ]
 
   return (
-    <PageFrame crumbs={[{ label: tx('সেচ'), to: '/irrigation/invoices' }, { label: tx('সেচ চার্জ আদায়') }]} title={tx('সেচ চার্জ আদায়')} subtitle={tx('কৃষকদের সেচ ইনভয়েসের টাকা আদায় করুন।')}>
+    <PageFrame crumbs={[{ label: tx('নগদ ও পেমেন্ট'), to: '/payments/receipts' }, { label: tx('টাকা আদায়') }]} title={tx('টাকা আদায়')} subtitle={tx('একসাথে অনেক কৃষকের সেচ ইনভয়েসের টাকা নিন — প্রত্যেকের আলাদা রশিদ হবে।')}>
+      {tabs}
       <div className="bi-steps">
         <div className={`bi-step bi-step-${selected.length ? 'done' : 'on'}`}>
           <span>{digits(1)}</span>
@@ -200,20 +200,44 @@ export default function IrrigationCollectPage() {
           <section className="lf-card iv-section">
             <header className="lf-card-head">
               <SearchOutlined className="iv-section-icon" />
-              <h3>{digits(1)}. {tx('খুঁজুন ও ফিল্টার')}</h3>
+              <h3>
+                {digits(1)}. {tx('খুঁজুন ও ফিল্টার')}
+              </h3>
             </header>
             <div className="lf-card-body cl-filters">
               <label>
                 <span>{tx('মৌসুম')}</span>
-                <Select allowClear placeholder={tx('সব মৌসুম')} prefix={<DashIcon name="sprout" size={16} color="#1f9d55" stroke={2.2} />} value={draft.season_id} options={meta?.seasons.map((x) => ({ value: x.id, label: x.name_bn }))} onChange={(v) => setDraft((d) => ({ ...d, season_id: v }))} />
+                <Select
+                  allowClear
+                  placeholder={tx('সব মৌসুম')}
+                  prefix={<DashIcon name="sprout" size={16} color="#1f9d55" stroke={2.2} />}
+                  value={draft.season_id}
+                  options={meta?.seasons.map((x) => ({ value: x.id, label: x.name_bn }))}
+                  onChange={(v) => setDraft((d) => ({ ...d, season_id: v }))}
+                />
               </label>
               <label>
                 <span>{tx('সেচের উৎস')}</span>
-                <Select allowClear placeholder={tx('সব উৎস')} prefix={<DashIcon name="drop" size={16} color="#1769e0" stroke={2.2} />} value={draft.irrigation_type_id} options={meta?.irrigation_types.map((t) => ({ value: t.id, label: t.name_bn }))} onChange={(v) => setDraft((d) => ({ ...d, irrigation_type_id: v }))} />
+                <Select
+                  allowClear
+                  placeholder={tx('সব উৎস')}
+                  prefix={<DashIcon name="drop" size={16} color="#1769e0" stroke={2.2} />}
+                  value={draft.irrigation_type_id}
+                  options={meta?.irrigation_types.map((t) => ({ value: t.id, label: t.name_bn }))}
+                  onChange={(v) => setDraft((d) => ({ ...d, irrigation_type_id: v }))}
+                />
               </label>
               <label>
                 <span>{tx('মৌজা')}</span>
-                <Select allowClear placeholder={tx('সব মৌজা')} prefix={<EnvironmentOutlined />} showSearch={{ optionFilterProp: 'label' }} value={draft.mouza_id} options={mouzas.data?.map((m) => ({ value: m.id, label: nameOf(m) }))} onChange={(v) => setDraft((d) => ({ ...d, mouza_id: v }))} />
+                <Select
+                  allowClear
+                  placeholder={tx('সব মৌজা')}
+                  prefix={<EnvironmentOutlined />}
+                  showSearch={{ optionFilterProp: 'label' }}
+                  value={draft.mouza_id}
+                  options={mouzas.data?.map((m) => ({ value: m.id, label: nameOf(m) }))}
+                  onChange={(v) => setDraft((d) => ({ ...d, mouza_id: v }))}
+                />
               </label>
               <label>
                 <span>{tx('কৃষকের নাম / মোবাইল')}</span>
@@ -265,7 +289,9 @@ export default function IrrigationCollectPage() {
           <section className="lf-card iv-section">
             <header className="lf-card-head">
               <FileTextFilled className="iv-section-icon" />
-              <h3>{digits(2)}. {tx('আদায়ের জন্য ইনভয়েস বাছাই')}</h3>
+              <h3>
+                {digits(2)}. {tx('আদায়ের জন্য ইনভয়েস বাছাই')}
+              </h3>
             </header>
             <Table<Row>
               className="fl-table cl-table"
@@ -284,7 +310,9 @@ export default function IrrigationCollectPage() {
           <section className="lf-card iv-section">
             <header className="lf-card-head">
               <FolderOpenFilled className="iv-section-icon" />
-              <h3>{digits(3)}. {tx('আদায়ের প্রিভিউ')}</h3>
+              <h3>
+                {digits(3)}. {tx('আদায়ের প্রিভিউ')}
+              </h3>
             </header>
             <div className="cl-preview">
               <div className="cl-total">

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { App, Button, DatePicker, Dropdown, Grid, Input, Select, Table, Tag } from 'antd'
@@ -44,7 +44,7 @@ type Filters = { search?: string; status?: string; method?: string; from?: strin
 export const COMBINED_TONE: Record<string, string> = { posted: 'fl-tag-green', cancel_pending: 'fl-tag-gold', cancelled: 'll-gray' }
 
 /** Receipts that took irrigation, loan, share and savings money in one go; the cards show how the money split (with the filters). */
-export default function CombinedPaymentListPage() {
+export default function CombinedPaymentListPage({ tabs }: { tabs?: ReactNode }) {
   const navigate = useNavigate()
   const { message } = App.useApp()
   const { can } = useAuth()
@@ -81,7 +81,16 @@ export default function CombinedPaymentListPage() {
   const all = [{ value: '', label: tx('সকল') }]
 
   const cards = [
-    { key: 'total', label: tx('মোট আদায় · {{p0}}টি রশিদ', { p0: n0(data?.valid_count ?? 0) }), value: data ? `৳ ${money(data.total_amount)}` : undefined, icon: '', glyph: <FileTextFilled />, color: '#1769e0', tint: '#e4edfd', onClick: () => show({}) },
+    {
+      key: 'total',
+      label: tx('মোট আদায় · {{p0}}টি রশিদ', { p0: n0(data?.valid_count ?? 0) }),
+      value: data ? `৳ ${money(data.total_amount)}` : undefined,
+      icon: '',
+      glyph: <FileTextFilled />,
+      color: '#1769e0',
+      tint: '#e4edfd',
+      onClick: () => show({}),
+    },
     { key: 'irrigation', label: label('irrigation', tx('সেচ')), value: data ? `৳ ${money(m.irrigation ?? 0)}` : undefined, icon: 'drop', color: '#0e9f9a', tint: '#d9f4f2' },
     { key: 'loan', label: label('loan', tx('ঋণ')), value: data ? `৳ ${money(m.loan ?? 0)}` : undefined, icon: 'bank', color: '#e5383b', tint: '#fde4e5' },
     { key: 'funds', label: `${label('savings', tx('সঞ্চয়'))} + ${label('share', tx('শেয়ার'))}`, value: data ? `৳ ${money((m.savings ?? 0) + (m.share ?? 0))}` : undefined, icon: 'piggy', color: '#1f9d55', tint: '#dcf3e5' },
@@ -89,7 +98,15 @@ export default function CombinedPaymentListPage() {
 
   const columns: ColumnsType<Row> = [
     { title: '#', width: 44, align: 'center', render: (_, __, i) => digits(from + i) },
-    { title: tx('রশিদ নং'), dataIndex: 'payment_no', render: (v: string, r) => <Link to={`/payments/combined/${r.id}`} className="fl-link iv-no">{digits(v)}</Link> },
+    {
+      title: tx('রশিদ নং'),
+      dataIndex: 'payment_no',
+      render: (v: string, r) => (
+        <Link to={`/payments/combined/${r.id}`} className="fl-link iv-no">
+          {digits(v)}
+        </Link>
+      ),
+    },
     { title: tx('তারিখ'), dataIndex: 'date', render: fmtDate },
     {
       title: tx('প্রদানকারী'),
@@ -134,12 +151,13 @@ export default function CombinedPaymentListPage() {
   return (
     <ListFrame
       section={{ label: tx('নগদ ও পেমেন্ট'), to: '/payments/receipts' }}
-      title={tx('একত্রিত পেমেন্ট')}
+      title={tx('রশিদ')}
       subtitle=""
+      above={tabs}
       actions={
         can('payment.create') && (
-          <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate('/payments/combined/new')}>
-            {tx('একত্রিত আদায়')}
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate('/payments/collect')}>
+            {tx('টাকা আদায়')}
           </Button>
         )
       }
@@ -166,7 +184,7 @@ export default function CombinedPaymentListPage() {
       }
       onSearch={apply}
       onReset={() => show({})}
-      tableTitle={tx('{{p0}} ({{p1}})', { p0: tx('একত্রিত রশিদ'), p1: n0(total) })}
+      tableTitle={tx('{{p0}} ({{p1}})', { p0: tx('সমন্বিত রশিদ'), p1: n0(total) })}
       tableTools={
         <>
           <Dropdown trigger={['click']} placement="bottomRight" menu={{ items: [{ key: 'csv', label: 'Excel (CSV)', onClick: exportCsv }] }}>

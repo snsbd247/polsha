@@ -309,17 +309,12 @@ const GROUPS: Group[] = [
     children: [
       {
         path: '/payments/collect',
-        label: m('পেমেন্ট', 'Payments'),
+        label: m('টাকা আদায়', 'Collect Money'),
         perm: 'payment.create',
       },
       {
         path: '/payments/receipts',
-        label: m('রশিদ তালিকা', 'Receipt List'),
-        perm: 'payment.view',
-      },
-      {
-        path: '/payments/combined',
-        label: m('একত্রিত পেমেন্ট', 'Combined Payment'),
+        label: m('রশিদ', 'Receipts'),
         perm: 'payment.view',
       },
       {
@@ -327,23 +322,18 @@ const GROUPS: Group[] = [
         label: m('মাঠে আদায় (মোবাইল)', 'Field Collection (Mobile)'),
         perm: ['field.create', 'field.view', 'field.approve'],
       },
-      { path: '/qr/scan', label: m('QR স্ক্যানার', 'QR Scanner') },
-      { path: '/qr/history', label: m('QR স্ক্যান ইতিহাস', 'QR Scan History') },
       {
-        path: '/accounting/ledger',
-        label: m('ক্যাশ বই', 'Cash Book'),
-        perm: ACC,
+        path: '/cash/day-close',
+        label: m('দিন বন্ধ', 'Day Close'),
+        perm: 'cash.view',
       },
       {
         path: '/accounting/funds',
         label: m('হাতে নগদ', 'Hand Cash'),
         perm: ['cash.view', 'bank.view'],
       },
-      {
-        path: '/cash/day-close?tab=register',
-        label: m('নগদ অডিট', 'Cash Audit'),
-        perm: 'cash.view',
-      },
+      { path: '/qr/scan', label: m('QR স্ক্যানার', 'QR Scanner') },
+      { path: '/qr/history', label: m('QR স্ক্যান ইতিহাস', 'QR Scan History') },
       { path: '/approvals', label: m('অনুমোদন', 'Approvals') },
     ],
   },

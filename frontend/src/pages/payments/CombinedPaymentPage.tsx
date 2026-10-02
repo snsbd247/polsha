@@ -2,10 +2,11 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Alert, App, Button, DatePicker, Form, Input, InputNumber, Radio, Select, Space, Table, Tag } from 'antd'
-import { ArrowLeftOutlined, CalendarOutlined, CheckOutlined, CloseOutlined, FileTextOutlined, PieChartOutlined, UndoOutlined, UserOutlined, WalletOutlined } from '@ant-design/icons'
+import { CalendarOutlined, CameraOutlined, CheckOutlined, EditOutlined, FileTextOutlined, PieChartOutlined, SettingOutlined, UndoOutlined, UnorderedListOutlined, UserOutlined, WalletOutlined } from '@ant-design/icons'
 import dayjs, { type Dayjs } from 'dayjs'
 import FarmerPicker from '../../components/FarmerPicker'
 import PageFrame from '../../components/PageFrame'
+import QrScanModal from '../../components/QrScanModal'
 import { api, applyFormErrors, errorMessage } from '../../lib/api'
 import { accountLabel, money } from '../../lib/accounting'
 import { digits } from '../../lib/format'
@@ -13,6 +14,7 @@ import { METHOD_LABEL, round2, type ReceiptFund } from '../../lib/irrigation'
 import { COMBINED_MODULES, MODULE_TONE, type CombinedModule, type CombinedQuote } from '../../lib/phase8'
 import { required } from '../../lib/rules'
 import { nameOf, t as tx } from '../../lib/i18n'
+import { resolveQr } from '../qr/QrScannerPage'
 import { KV } from '../irrigation/InvoiceDetailPage'
 import '../lands/land-form.css'
 import '../lands/land-list.css'
@@ -20,6 +22,7 @@ import '../irrigation/invoices.css'
 import '../irrigation/invoice-detail.css'
 import '../savings/savings.css'
 import '../loans/loans.css'
+import './collect.css'
 
 const MODULE_NAME: Record<CombinedModule, string> = { loan: tx('ঋণ'), irrigation: tx('সেচ'), share: tx('শেয়ার'), savings: tx('সঞ্চয়') }
 
@@ -39,7 +42,7 @@ function Section({ no, icon, title, children, extra }: { no: number; icon: React
 }
 
 /** One payment at the counter, split over loan instalment, irrigation dues, share and savings. */
-export default function CombinedPaymentPage() {
+export default function CombinedPaymentPage({ tabs }: { tabs?: ReactNode }) {
   const navigate = useNavigate()
   const { message } = App.useApp()
   const queryClient = useQueryClient()
@@ -50,6 +53,11 @@ export default function CombinedPaymentPage() {
   const [debounced, setDebounced] = useState<number>(0)
   const [manual, setManual] = useState<Partial<Record<CombinedModule, number>> | null>(null)
   const [saving, setSaving] = useState(false)
+  // the split is the system's until the user asks to change it
+  const [editing, setEditing] = useState(false)
+  // date, method and remarks stay folded away for the everyday cash receipt
+  const [more, setMore] = useState(false)
+  const [scan, setScan] = useState(false)
 
   useEffect(() => {
     const h = setTimeout(() => setDebounced(amount ?? 0), 300)
@@ -83,6 +91,19 @@ export default function CombinedPaymentPage() {
     setFarmerId(id)
     setAmount(null)
     setManual(null)
+    setEditing(false)
+  }
+  // a farmer card or member QR: find whose it is and pick them
+  const scanned = async (code: string, type: string | null) => {
+    setScan(false)
+    try {
+      const r = await resolveQr(type === 'member' ? 'member' : 'farmer', code, 'camera')
+      const id = Number(r.path?.match(/\/farmers\/(\d+)/)?.[1])
+      if (id) pickFarmer(id)
+      else message.warning(tx('এই QR কোনো কৃষকের নয়।'))
+    } catch (e) {
+      message.error(errorMessage(e))
+    }
   }
   const reset = () => {
     form.resetFields()
@@ -133,21 +154,25 @@ export default function CombinedPaymentPage() {
 
   return (
     <PageFrame
-      crumbs={[{ label: tx('নগদ ও পেমেন্ট'), to: '/payments/receipts' }, { label: tx('একত্রিত পেমেন্ট'), to: '/payments/combined' }, { label: tx('সমন্বিত টাকা আদায়') }]}
-      title={tx('সমন্বিত টাকা আদায়')}
+      crumbs={[{ label: tx('নগদ ও পেমেন্ট'), to: '/payments/receipts' }, { label: tx('টাকা আদায়') }]}
+      title={tx('টাকা আদায়')}
       actions={
-        <Button icon={<ArrowLeftOutlined />} className="fm-history-btn" onClick={() => navigate('/payments/combined')}>
-          {tx('তালিকায় ফিরুন')}
+        <Button icon={<UnorderedListOutlined />} className="fm-history-btn" onClick={() => navigate('/payments/receipts')}>
+          {tx('রশিদের তালিকা')}
         </Button>
       }
     >
+      {tabs}
       <div className="ln-form-grid">
         <Form form={form} layout="vertical" className="iv-form sv-form" initialValues={{ date: dayjs(), method: 'cash' }}>
           <Section no={1} icon={<UserOutlined />} title={tx('প্রদানকারী')}>
             <Form.Item label={tx('চাষি / সদস্য')} required>
-              <FarmerPicker value={farmerId} onChange={(id) => pickFarmer(id)} initialLabel={q ? `${q.farmer.name_bn} (${q.farmer.farmer_code})` : undefined} placeholder={tx('নাম, কোড, NID বা মোবাইল লিখে খুঁজুন')} />
+              <Space.Compact style={{ width: '100%' }}>
+                <FarmerPicker value={farmerId} onChange={(id) => pickFarmer(id)} initialLabel={q ? `${q.farmer.name_bn} (${q.farmer.farmer_code})` : undefined} placeholder={tx('নাম, কোড, NID বা মোবাইল লিখে খুঁজুন')} />
+                <Button icon={<CameraOutlined />} onClick={() => setScan(true)} title={tx('কার্ডের QR স্ক্যান করুন')} aria-label={tx('কার্ডের QR স্ক্যান করুন')} />
+              </Space.Compact>
             </Form.Item>
-            {!farmerId && <Alert type="info" showIcon className="sv-note" title={tx('চাষি/সদস্য বাছাই করুন। এক রশিদে ঋণের কিস্তি, সেচ চার্জ, শেয়ার ও সঞ্চয় একসাথে নেওয়া যাবে।')} />}
+            {!farmerId && <Alert type="info" showIcon className="sv-note" title={tx('কৃষক খুঁজুন বা কার্ডের QR স্ক্যান করুন — তার সব বকেয়া (ঋণের কিস্তি, সেচ বিল, শেয়ার) দেখাবে; এক রশিদেই সব নেওয়া যাবে।')} />}
             {q && !q.member_active && <Alert type="warning" showIcon className="sv-note" title={tx('সক্রিয় সদস্য না হওয়ায় শুধু সেচ চার্জ নেওয়া যাবে; বাড়তি টাকা সঞ্চয়ে রাখা যাবে না।')} />}
           </Section>
 
@@ -156,14 +181,19 @@ export default function CombinedPaymentPage() {
             icon={<PieChartOutlined />}
             title={tx('বকেয়া ও ভাগ')}
             extra={
-              manual && (
+              q &&
+              (editing ? (
                 <Space size={8}>
-                  <Tag className="fl-tag fl-tag-gold">{tx('হাতে ভাগ করা')}</Tag>
-                  <Button size="small" icon={<UndoOutlined />} onClick={() => setManual(null)}>
+                  {manual && <Tag className="fl-tag fl-tag-gold">{tx('হাতে ভাগ করা')}</Tag>}
+                  <Button size="small" icon={<UndoOutlined />} onClick={() => (setManual(null), setEditing(false))}>
                     {tx('স্বয়ংক্রিয় ভাগে ফিরুন')}
                   </Button>
                 </Space>
-              )
+              ) : (
+                <Button size="small" icon={<EditOutlined />} disabled={!amount} onClick={() => setEditing(true)}>
+                  {tx('ভাগ বদলান')}
+                </Button>
+              ))
             }
           >
             {!q ? (
@@ -199,7 +229,16 @@ export default function CombinedPaymentPage() {
                         width: 160,
                         align: 'right',
                         render: (_, { m }) => (
-                          <InputNumber min={0} max={limits[m]} precision={2} disabled={limits[m] === 0} value={parts[m] || null} placeholder="0.00" style={{ width: 140 }} onChange={(v) => setManual({ ...parts, [m]: Number(v ?? 0) })} />
+                          <InputNumber
+                            min={0}
+                            max={limits[m]}
+                            precision={2}
+                            disabled={!editing || limits[m] === 0}
+                            value={parts[m] || null}
+                            placeholder="0.00"
+                            style={{ width: 140 }}
+                            onChange={(v) => setManual({ ...parts, [m]: Number(v ?? 0) })}
+                          />
                         ),
                       },
                     ]}
@@ -210,60 +249,70 @@ export default function CombinedPaymentPage() {
             )}
           </Section>
 
-          <Section no={3} icon={<WalletOutlined />} title={tx('টাকা ও মাধ্যম')}>
-            <div className="iv-grid iv-grid-2">
-              <Form.Item label={tx('মোট টাকা (৳)')} required extra={totalDue > 0 ? tx('মোট বকেয়া ৳{{p0}}', { p0: money(totalDue) }) : undefined}>
-                <Space.Compact style={{ width: '100%' }}>
-                  <InputNumber
-                    min={0}
-                    precision={2}
-                    prefix="৳"
-                    placeholder="0.00"
-                    value={amount}
-                    disabled={!q}
-                    style={{ width: '100%' }}
-                    onChange={(v) => {
-                      setAmount(v === null ? null : Number(v))
-                      setManual(null)
-                    }}
-                  />
-                  <Button disabled={!totalDue} onClick={() => (setAmount(totalDue), setManual(null))}>
-                    {tx('সব বকেয়া')}
-                  </Button>
-                </Space.Compact>
-              </Form.Item>
+          <Section no={3} icon={<WalletOutlined />} title={tx('টাকা')}>
+            <Form.Item label={tx('কত টাকা নিলেন? (৳)')} required extra={totalDue > 0 ? tx('মোট বকেয়া ৳{{p0}}', { p0: money(totalDue) }) : undefined}>
+              <Space.Compact style={{ width: '100%' }}>
+                <InputNumber
+                  min={0}
+                  precision={2}
+                  prefix="৳"
+                  placeholder="0.00"
+                  size="large"
+                  value={amount}
+                  disabled={!q}
+                  style={{ width: '100%' }}
+                  onChange={(v) => {
+                    setAmount(v === null ? null : Number(v))
+                    setManual(null)
+                    setEditing(false)
+                  }}
+                />
+                <Button size="large" disabled={!totalDue} onClick={() => (setAmount(totalDue), setManual(null), setEditing(false))}>
+                  {tx('সব বকেয়া')}
+                </Button>
+              </Space.Compact>
+            </Form.Item>
+            <div className="cp-more-line">
+              <span>
+                <CalendarOutlined /> {date.isSame(dayjs(), 'day') ? tx('আজ') : date.format('DD/MM/YYYY')} · {method === 'cash' ? tx('নগদ') : (METHOD_LABEL[method] ?? method)}
+              </span>
+              <Button type="link" size="small" icon={<SettingOutlined />} onClick={() => setMore((x) => !x)}>
+                {more ? tx('লুকান') : tx('অন্য তারিখ / মাধ্যম / মন্তব্য')}
+              </Button>
+            </div>
+            {/* folded, not removed: the form still needs the date and method */}
+            <div style={{ display: more ? undefined : 'none' }}>
               <Form.Item name="date" label={tx('তারিখ')} rules={[required(tx('তারিখ দিন'))]}>
                 <DatePicker prefix={<CalendarOutlined />} format="DD/MM/YYYY" style={{ width: '100%' }} disabledDate={(d) => d.isAfter(dayjs())} onChange={() => setManual(null)} />
               </Form.Item>
+              <Form.Item name="method" label={tx('মাধ্যম')}>
+                <Radio.Group optionType="button" options={Object.entries(METHOD_LABEL).map(([value, l]) => ({ value, label: value === 'other' ? tx('অন্যান্য') : l }))} />
+              </Form.Item>
+              {method === 'cash' ? (
+                <Alert type="info" showIcon className="sv-note" title={tx('সেচের অংশ সেচ ক্যাশে এবং বাকি অংশ সমিতির ক্যাশে জমা হবে।')} />
+              ) : (
+                <div className="iv-grid iv-grid-2">
+                  <Form.Item name="fund_account_id" label={method === 'bank' ? tx('ব্যাংক হিসাব') : tx('যে হিসাবে জমা')} rules={[required(tx('হিসাব বাছাই করুন'))]}>
+                    <Select options={(funds.data ?? []).filter((f) => (method === 'bank' ? f.kind === 'bank' : true)).map((a) => ({ value: a.id, label: accountLabel(a) + (a.account_no ? ` (${digits(a.account_no)})` : '') }))} />
+                  </Form.Item>
+                  <Form.Item name="reference" label={tx('রেফারেন্স')} rules={[required(tx('রেফারেন্স দিন'))]} extra={tx('চেক/ডিপোজিট স্লিপ বা মোবাইল লেনদেন নম্বর')}>
+                    <Input maxLength={100} />
+                  </Form.Item>
+                </div>
+              )}
+              <Form.Item name="remarks" label={tx('মন্তব্য (ঐচ্ছিক)')} style={{ marginTop: 16 }} extra={<span className="iv-count">{tx('{{p0}}/৫০০ অক্ষর', { p0: digits(remarks?.length ?? 0) })}</span>}>
+                <Input.TextArea rows={2} maxLength={500} placeholder={tx('মন্তব্য লিখুন (যদি থাকে)...')} />
+              </Form.Item>
             </div>
-            <Form.Item name="method" label={tx('মাধ্যম')}>
-              <Radio.Group optionType="button" options={Object.entries(METHOD_LABEL).map(([value, l]) => ({ value, label: value === 'other' ? tx('অন্যান্য') : l }))} />
-            </Form.Item>
-            {method === 'cash' ? (
-              <Alert type="info" showIcon className="sv-note" title={tx('সেচের অংশ সেচ ক্যাশে এবং বাকি অংশ সমিতির ক্যাশে জমা হবে।')} />
-            ) : (
-              <div className="iv-grid iv-grid-2">
-                <Form.Item name="fund_account_id" label={method === 'bank' ? tx('ব্যাংক হিসাব') : tx('যে হিসাবে জমা')} rules={[required(tx('হিসাব বাছাই করুন'))]}>
-                  <Select options={(funds.data ?? []).filter((f) => (method === 'bank' ? f.kind === 'bank' : true)).map((a) => ({ value: a.id, label: accountLabel(a) + (a.account_no ? ` (${digits(a.account_no)})` : '') }))} />
-                </Form.Item>
-                <Form.Item name="reference" label={tx('রেফারেন্স')} rules={[required(tx('রেফারেন্স দিন'))]} extra={tx('চেক/ডিপোজিট স্লিপ বা মোবাইল লেনদেন নম্বর')}>
-                  <Input maxLength={100} />
-                </Form.Item>
-              </div>
-            )}
-            <Form.Item name="remarks" label={tx('মন্তব্য (ঐচ্ছিক)')} style={{ marginTop: 16 }} extra={<span className="iv-count">{tx('{{p0}}/৫০০ অক্ষর', { p0: digits(remarks?.length ?? 0) })}</span>}>
-              <Input.TextArea rows={2} maxLength={500} placeholder={tx('মন্তব্য লিখুন (যদি থাকে)...')} />
-            </Form.Item>
           </Section>
 
           <div className="iv-actions">
-            <Button icon={<CloseOutlined />} onClick={() => navigate('/payments/combined')}>
-              {tx('বাতিল')}
+            <Button icon={<UndoOutlined />} onClick={reset}>
+              {tx('নতুন করে শুরু')}
             </Button>
-            <Button onClick={reset}>{tx('রিসেট')}</Button>
             <span className="iv-spacer" />
             <Button type="primary" icon={<CheckOutlined />} loading={saving} disabled={!amount || gap !== 0 || !q} onClick={save}>
-              {tx('টাকা গ্রহণ ও রশিদ তৈরি')}
+              {tx('টাকা নিন ও রশিদ দিন')}
             </Button>
           </div>
         </Form>
@@ -314,6 +363,7 @@ export default function CombinedPaymentPage() {
           </section>
         </div>
       </div>
+      <QrScanModal open={scan} onClose={() => setScan(false)} onCode={scanned} />
     </PageFrame>
   )
 }

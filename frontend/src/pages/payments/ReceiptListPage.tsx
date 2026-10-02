@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { App, Button, Checkbox, DatePicker, Dropdown, Grid, Input, Select, Table, Tag } from 'antd'
@@ -39,7 +39,7 @@ type Filters = { search?: string; status?: string; method?: string; is_legacy?: 
 export const RECEIPT_TONE: Record<string, string> = { active: 'fl-tag-green', cancel_pending: 'fl-tag-gold', cancelled: 'll-gray' }
 
 /** Every money receipt (irrigation collections and old hand-written ones), with cards, filters and exports. */
-export default function ReceiptListPage() {
+export default function ReceiptListPage({ tabs }: { tabs?: ReactNode }) {
   const navigate = useNavigate()
   const { message } = App.useApp()
   const { can } = useAuth()
@@ -79,7 +79,16 @@ export default function ReceiptListPage() {
   const cards = [
     { key: 'count', label: tx('মোট রশিদ'), value: s?.count, unit: tx('টি'), icon: '', glyph: <FileTextFilled />, color: '#1769e0', tint: '#e4edfd', onClick: () => show({}) },
     { key: 'amount', label: tx('মোট আদায়'), value: s ? `৳ ${money(s.amount)}` : undefined, icon: 'cash', color: '#1f9d55', tint: '#dcf3e5', onClick: () => show({ status: 'active' }) },
-    { key: 'today', label: tx('আজকের আদায় · {{p0}}টি', { p0: n0(s?.today_count ?? 0) }), value: s ? `৳ ${money(s.today_amount)}` : undefined, icon: '', glyph: <CalendarFilled />, color: '#f08c00', tint: '#fdefd6', onClick: () => show({ from: today, to: today }) },
+    {
+      key: 'today',
+      label: tx('আজকের আদায় · {{p0}}টি', { p0: n0(s?.today_count ?? 0) }),
+      value: s ? `৳ ${money(s.today_amount)}` : undefined,
+      icon: '',
+      glyph: <CalendarFilled />,
+      color: '#f08c00',
+      tint: '#fdefd6',
+      onClick: () => show({ from: today, to: today }),
+    },
     {
       key: 'cancelled',
       label: tx('বাতিল / বাতিলের অপেক্ষায়'),
@@ -94,7 +103,16 @@ export default function ReceiptListPage() {
 
   const allColumns: (ColumnsType<Row>[number] & { key: string })[] = [
     { key: 'sl', title: '#', width: 44, align: 'center', render: (_, __, i) => digits(from + i) },
-    { key: 'no', title: tx('রশিদ নং'), dataIndex: 'receipt_no', render: (v: string, r) => <Link to={`/payments/receipts/${r.id}`} className="fl-link iv-no">{digits(v)}</Link> },
+    {
+      key: 'no',
+      title: tx('রশিদ নং'),
+      dataIndex: 'receipt_no',
+      render: (v: string, r) => (
+        <Link to={`/payments/receipts/${r.id}`} className="fl-link iv-no">
+          {digits(v)}
+        </Link>
+      ),
+    },
     { key: 'legacy', title: tx('পুরনো রশিদ নং'), dataIndex: 'legacy_no', render: (v: string | null) => (v ? digits(v) : '—') },
     { key: 'date', title: tx('তারিখ'), dataIndex: 'date', render: fmtDate },
     {
@@ -151,8 +169,9 @@ export default function ReceiptListPage() {
   return (
     <ListFrame
       section={{ label: tx('নগদ ও পেমেন্ট'), to: '/payments/receipts' }}
-      title={tx('রশিদ তালিকা')}
+      title={tx('রশিদ')}
       subtitle=""
+      above={tabs}
       actions={
         can('payment.create') && (
           <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate('/payments/collect')}>
@@ -180,11 +199,7 @@ export default function ReceiptListPage() {
             <Select value={draft.status ?? ''} options={[...all, ...Object.entries(RECEIPT_STATUS_LABEL).map(([value, label]) => ({ value, label }))]} onChange={(v) => set({ status: v || undefined })} />
           </Field>
           <Field label={tx('রশিদের ধরন')}>
-            <Select
-              value={draft.is_legacy ?? ''}
-              options={[...all, { value: '0', label: tx('সফটওয়্যারের রশিদ') }, { value: '1', label: tx('পুরনো (হাতে লেখা) রশিদ') }]}
-              onChange={(v) => set({ is_legacy: v || undefined })}
-            />
+            <Select value={draft.is_legacy ?? ''} options={[...all, { value: '0', label: tx('সফটওয়্যারের রশিদ') }, { value: '1', label: tx('পুরনো (হাতে লেখা) রশিদ') }]} onChange={(v) => set({ is_legacy: v || undefined })} />
           </Field>
         </>
       }

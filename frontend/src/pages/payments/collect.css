@@ -238,3 +238,17 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* টাকা আদায়: today + cash shown as a line; the rest folds out */
+.cp-more-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  margin: -6px 0 10px;
+  color: #3d4b63;
+}
+.sub-tabs {
+  margin-bottom: 14px;
+}

@@ -11,10 +11,7 @@ import {
   ClockCircleFilled,
   EyeFilled,
   FileTextOutlined,
-  FlagFilled,
   LockOutlined,
-  LoginOutlined,
-  LogoutOutlined,
   UnlockOutlined,
   WalletFilled,
   WarningFilled,
@@ -123,6 +120,7 @@ function CloseTab() {
   const [actual, setActual] = useState<Record<number, number | null>>({})
   const [notes, setNotes] = useState<Record<number, number | null>>({})
   const [note, setNote] = useState('')
+  const [showNotes, setShowNotes] = useState(false)
   const [saving, setSaving] = useState(false)
   const [reopening, setReopening] = useState<DayClose | null>(null)
   const ds = date.format('YYYY-MM-DD')
@@ -171,8 +169,8 @@ function CloseTab() {
   return (
     <PageFrame
       className="id-page"
-      crumbs={[{ label: tx('নগদ ও পেমেন্ট'), to: '/payments/receipts' }, { label: tx('দিন শেষের নগদ মিলান') }]}
-      title={tx('দিন শেষের নগদ মিলান')}
+      crumbs={[{ label: tx('নগদ ও পেমেন্ট'), to: '/payments/receipts' }, { label: tx('দিন বন্ধ') }]}
+      title={tx('দিন বন্ধ')}
       actions={
         <span className="id-actions cs-day-pick">
           {isFetching && <Spin size="small" />}
@@ -225,19 +223,11 @@ function CloseTab() {
       {data.pending_vouchers > 0 && <Alert className="id-alert" type="error" showIcon title={tx('এই দিনের {{p0}}টি নগদ ভাউচার অনুমোদনের অপেক্ষায় — আগে নিষ্পত্তি করুন, তারপর দিন বন্ধ করুন।', { p0: digits(data.pending_vouchers) })} />}
 
       <div className="id-top cs-facts">
-        <Fact icon={<FlagFilled />} label={tx('প্রারম্ভিক জের')} color="#1769e0" tint="#e4edfd">
-          <strong>৳ {money(data.opening)}</strong>
-        </Fact>
-        <Fact icon={<LoginOutlined />} label={tx('আদায়')} color="#1f9d55" tint="#dcf3e5">
-          <strong>৳ {money(data.collections)}</strong>
-        </Fact>
-        <Fact icon={<LogoutOutlined />} label={tx('প্রদান')} color="#e5383b" tint="#fde4e5">
-          <strong>৳ {money(data.payments)}</strong>
-        </Fact>
-        <Fact icon={<CalculatorOutlined />} label={tx('প্রত্যাশিত জের')} color="#8b3fe0" tint="#efe4fc">
+        <Fact icon={<CalculatorOutlined />} label={tx('খাতা অনুযায়ী থাকার কথা')} color="#8b3fe0" tint="#efe4fc">
           <strong>৳ {money(data.expected)}</strong>
+          <small>{tx('আগের জের ৳{{p0}} + আদায় ৳{{p1}} − প্রদান ৳{{p2}}', { p0: money(data.opening), p1: money(data.collections), p2: money(data.payments) })}</small>
         </Fact>
-        <Fact icon={<WalletFilled />} label={tx('প্রকৃত নগদ')} color="#0e9f9a" tint="#d9f4f2">
+        <Fact icon={<WalletFilled />} label={tx('গুনে পাওয়া নগদ')} color="#0e9f9a" tint="#d9f4f2">
           <strong>৳ {money(actualTotal)}</strong>
         </Fact>
         <Fact icon={difference === 0 ? <CheckOutlined /> : <WarningFilled />} label={tx('গরমিল')} color={difference === 0 ? '#1f9d55' : '#e5383b'} tint={difference === 0 ? '#dcf3e5' : '#fde4e5'}>
@@ -293,41 +283,50 @@ function CloseTab() {
         />
       </Box>
 
-      <div className="id-two">
-        <Box icon={<CalculatorOutlined />} title={tx('নোট গণনা (ঐচ্ছিক)')}>
-          <Table
-            rowKey={(d) => d}
-            size="small"
-            className="id-payments"
-            pagination={false}
-            dataSource={DENOMINATIONS}
-            columns={[
-              { title: tx('নোট/কয়েন'), render: (_, d) => `৳ ${digits(d)}` },
-              {
-                title: tx('সংখ্যা'),
-                width: 140,
-                render: (_, d) => <InputNumber min={0} precision={0} disabled={!!closed} value={notes[d]} onChange={(v) => setNotes((n) => ({ ...n, [d]: v }))} />,
-              },
-              { title: tx('টাকা (৳)'), align: 'right', render: (_, d) => money(d * Number(notes[d] ?? 0)) },
-            ]}
-            summary={() => (
-              <Table.Summary.Row className="ln-sum-row">
-                <Table.Summary.Cell index={0} colSpan={2}>
-                  {tx('মোট গণনা')}
-                </Table.Summary.Cell>
-                <Table.Summary.Cell index={1} align="right">
-                  {money(counted)}
-                </Table.Summary.Cell>
-              </Table.Summary.Row>
+      <div className={showNotes ? 'id-two' : undefined}>
+        {showNotes && (
+          <Box icon={<CalculatorOutlined />} title={tx('নোট গণনা (ঐচ্ছিক)')}>
+            <Table
+              rowKey={(d) => d}
+              size="small"
+              className="id-payments"
+              pagination={false}
+              dataSource={DENOMINATIONS}
+              columns={[
+                { title: tx('নোট/কয়েন'), render: (_, d) => `৳ ${digits(d)}` },
+                {
+                  title: tx('সংখ্যা'),
+                  width: 140,
+                  render: (_, d) => <InputNumber min={0} precision={0} disabled={!!closed} value={notes[d]} onChange={(v) => setNotes((n) => ({ ...n, [d]: v }))} />,
+                },
+                { title: tx('টাকা (৳)'), align: 'right', render: (_, d) => money(d * Number(notes[d] ?? 0)) },
+              ]}
+              summary={() => (
+                <Table.Summary.Row className="ln-sum-row">
+                  <Table.Summary.Cell index={0} colSpan={2}>
+                    {tx('মোট গণনা')}
+                  </Table.Summary.Cell>
+                  <Table.Summary.Cell index={1} align="right">
+                    {money(counted)}
+                  </Table.Summary.Cell>
+                </Table.Summary.Row>
+              )}
+            />
+            {counted > 0 && r2(counted) !== actualTotal && (
+              <div className="ln-limit">
+                <Alert type="warning" showIcon title={tx('নোট গণনার মোট (৳{{p0}}) ও খাতভিত্তিক প্রকৃত নগদের মোট (৳{{p1}}) মিলছে না।', { p0: money(counted), p1: money(actualTotal) })} />
+              </div>
             )}
-          />
-          {counted > 0 && r2(counted) !== actualTotal && (
-            <div className="ln-limit">
-              <Alert type="warning" showIcon title={tx('নোট গণনার মোট (৳{{p0}}) ও খাতভিত্তিক প্রকৃত নগদের মোট (৳{{p1}}) মিলছে না।', { p0: money(counted), p1: money(actualTotal) })} />
+          </Box>
+        )}
+        <Box icon={<LockOutlined />} title={tx('দিন বন্ধ')}>
+          {!showNotes && !closed && (
+            <div className="ln-limit" style={{ paddingBottom: 0 }}>
+              <Button type="link" icon={<CalculatorOutlined />} onClick={() => setShowNotes(true)} style={{ paddingInline: 0 }}>
+                {tx('নোট গুনে হিসাব করুন (ঐচ্ছিক)')}
+              </Button>
             </div>
           )}
-        </Box>
-        <Box icon={<LockOutlined />} title={tx('দিন বন্ধ')}>
           <div className="ln-limit">
             <Form layout="vertical">
               <Form.Item label={tx('মন্তব্য / গরমিলের কারণ')} required={hasDiff} validateStatus={hasDiff && !note.trim() ? 'error' : undefined} help={hasDiff && !note.trim() ? tx('গরমিল আছে — কারণ লিখুন।') : undefined}>
