@@ -182,49 +182,29 @@ const GROUPS: Group[] = [
         perm: 'irrigation.view',
       },
       {
+        path: '/irrigation/rates',
+        label: m('সেচের রেট', 'Irrigation Rates'),
+        perm: 'irrigation.view',
+      },
+      {
+        path: '/irrigation/invoices/bulk',
+        label: m('বিল তৈরি', 'Create Bills'),
+        perm: 'irrigation.create',
+      },
+      {
         path: '/irrigation/invoices',
         label: m('সেচ ইনভয়েস', 'Irrigation Invoices'),
         perm: 'irrigation.view',
       },
       {
-        path: '/irrigation/rates',
-        label: m('সেচের রেট', 'Irrigation Rates'),
+        path: '/irrigation/dues',
+        label: m('সেচ বকেয়া', 'Irrigation Dues'),
         perm: 'irrigation.view',
       },
       {
         path: '/payments/collect?legacy=1',
         label: m('পুরোনো রশিদ এন্ট্রি', 'Old Receipt Entry'),
         perm: 'payment.create',
-      },
-      {
-        path: '/irrigation/invoices/bulk',
-        label: m('বিলিং ভাগের প্রিভিউ', 'Billing Split Preview'),
-        perm: 'irrigation.create',
-      },
-      {
-        path: '/irrigation/lookup',
-        label: m('মৌসুম / জমির ধরন অনুসন্ধান', 'Season / Land-Type Lookup'),
-        perm: 'irrigation.view',
-      },
-      {
-        path: '/settings/irrigation-types',
-        label: m('ক্যাটাগরি', 'Categories'),
-        perm: 'settings.admin',
-      },
-      {
-        path: '/irrigation/category-rates',
-        label: m('ক্যাটাগরিভিত্তিক রেট', 'Category Rates'),
-        perm: 'irrigation.view',
-      },
-      {
-        path: '/irrigation/rate-audit',
-        label: m('রেট অডিট ইতিহাস', 'Rate Audit History'),
-        perm: 'irrigation.view',
-      },
-      {
-        path: '/irrigation/mismatch',
-        label: m('বকেয়া অমিল', 'Due Mismatch'),
-        perm: 'irrigation.view',
       },
     ],
   },
@@ -537,6 +517,16 @@ const GROUPS: Group[] = [
         path: '/cash/day-close',
         label: m('দৈনিক মিলকরণ', 'Day Reconciliation'),
         perm: 'cash.view',
+      },
+      {
+        path: '/irrigation/mismatch',
+        label: m('সেচ বকেয়া অমিল', 'Irrigation Due Mismatch'),
+        perm: 'irrigation.view',
+      },
+      {
+        path: '/irrigation/lookup',
+        label: m('মৌসুম / জমির ধরন অনুসন্ধান', 'Season / Land-Type Lookup'),
+        perm: 'irrigation.view',
       },
     ],
   },

@@ -81,6 +81,62 @@ class IrrigationService
     }
 
     /**
+     * The rates a season would take over from another: the latest approved
+     * rate of each source × land type there, beside what the target season
+     * already has (those are not copied again).
+     *
+     * @return list<array{irrigation_type_id:int, land_type_id:?int, irrigation_type:string, land_type:?string, rate:float, exists:bool}>
+     */
+    public function copyPreview(Season $from, Season $to): array
+    {
+        $taken = IrrigationRate::where('season_id', $to->id)->whereIn('status', ['approved', 'pending'])
+            ->get(['irrigation_type_id', 'land_type_id'])->map(fn ($r) => $r->irrigation_type_id.'-'.($r->land_type_id ?? 0))->flip();
+
+        return IrrigationRate::with(['irrigationType:id,name_bn', 'landType:id,name_bn'])->where('season_id', $from->id)->where('status', 'approved')
+            ->orderByDesc('effective_from')->orderByDesc('id')->get()
+            ->unique(fn ($r) => $r->irrigation_type_id.'-'.($r->land_type_id ?? 0))
+            ->map(fn (IrrigationRate $r) => [
+                'irrigation_type_id' => $r->irrigation_type_id, 'land_type_id' => $r->land_type_id,
+                'irrigation_type' => $r->irrigationType?->name_bn, 'land_type' => $r->landType?->name_bn, 'rate' => (float) $r->rate,
+                'exists' => isset($taken[$r->irrigation_type_id.'-'.($r->land_type_id ?? 0)]),
+            ])->sortBy(['irrigation_type', 'land_type'])->values()->all();
+    }
+
+    /**
+     * Copy another season's rates (with any changes) into a season. All of
+     * them go for approval together in one request, and go live together.
+     *
+     * @param  array<int, array{irrigation_type_id:int, land_type_id:?int, rate:float}>  $rows
+     * @return list<IrrigationRate>
+     */
+    public function copyRates(Season $from, Season $to, array $rows, string $effectiveFrom): array
+    {
+        $this->guardSeasonOpen($to);
+        $allowed = collect($this->copyPreview($from, $to))->reject(fn ($r) => $r['exists'])->keyBy(fn ($r) => $r['irrigation_type_id'].'-'.($r['land_type_id'] ?? 0));
+        $rows = collect($rows)->filter(fn ($r) => $allowed->has($r['irrigation_type_id'].'-'.($r['land_type_id'] ?? 0)) && (float) $r['rate'] > 0)->values();
+        if ($rows->isEmpty()) {
+            throw ValidationException::withMessages(['rows' => __('কপি করার মতো কোনো রেট নেই — এই মৌসুমে সব রেট আগে থেকেই আছে বা অনুমোদনের অপেক্ষায়।')]);
+        }
+
+        return DB::transaction(function () use ($from, $to, $rows, $effectiveFrom) {
+            $rates = $rows->map(fn ($r) => IrrigationRate::create([
+                'season_id' => $to->id, 'irrigation_type_id' => $r['irrigation_type_id'], 'land_type_id' => $r['land_type_id'] ?? null,
+                'rate' => round((float) $r['rate'], 2), 'effective_from' => $effectiveFrom, 'status' => 'pending', 'created_by' => auth()->id(),
+                'reason' => __(':season থেকে কপি', ['season' => $from->name_bn]),
+            ])->load('irrigationType:id,name_bn', 'landType:id,name_bn'));
+            $payload = ['মৌসুম' => $to->name_bn, 'কপি করা হয়েছে' => $from->name_bn, 'কার্যকর তারিখ' => date('d/m/Y', strtotime($effectiveFrom))];
+            foreach ($rates as $r) {
+                $payload[$r->irrigationType->name_bn.' — '.($r->landType?->name_bn ?? 'সব ধরনের জমি').' (প্রতি শতক)'] = (float) $r->rate;
+            }
+            // one request for all; without an approval rule the handler has already put them live
+            $request = $this->approvals->submit('irrigation.rate_batch', __('সেচের রেট (:n টি): :season', ['n' => $rates->count(), 'season' => $to->name_bn]), $to, $payload);
+            IrrigationRate::whereIn('id', $rates->pluck('id'))->where('status', 'pending')->update(['approval_request_id' => $request->id]);
+
+            return IrrigationRate::whereIn('id', $rates->pluck('id'))->get()->all();
+        });
+    }
+
+    /**
      * What a land would be billed for a season — or why it can't be.
      *
      * @return array{ok:bool, reason:?string, land_id:int, farmer_id:?int, cultivation_type:?string, area_decimal:float, rate:?float, rate_id:?int, amount:float, irrigation_type_id:?int, snapshot:array}

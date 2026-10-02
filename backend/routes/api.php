@@ -351,6 +351,7 @@ Route::middleware(['auth:sanctum', 'usable'])->group(function () {
         Route::get('seasons/{season}', [SeasonController::class, 'show'])->whereNumber('season');
         Route::get('irrigation-rates', [IrrigationRateController::class, 'index']);
         Route::get('irrigation-rates/all', [IrrigationRateController::class, 'all']);
+        Route::get('irrigation-rates/copy-preview', [IrrigationRateController::class, 'copyPreview']);
         Route::get('invoices/meta', [InvoiceController::class, 'meta']);
         Route::get('invoices/summary', [InvoiceController::class, 'summary']);
         Route::get('invoices', [InvoiceController::class, 'index']);
@@ -373,6 +374,7 @@ Route::middleware(['auth:sanctum', 'usable'])->group(function () {
         Route::put('seasons/{season}', [SeasonController::class, 'update']);
         Route::delete('seasons/{season}', [SeasonController::class, 'destroy']);
         Route::post('irrigation-rates', [IrrigationRateController::class, 'store']);
+        Route::post('irrigation-rates/copy', [IrrigationRateController::class, 'copy']);
         Route::post('invoices/{invoice}/cancel', [InvoiceController::class, 'cancel']);
     });
     Route::middleware('permission:payment.view')->group(function () {

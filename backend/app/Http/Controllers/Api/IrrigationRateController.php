@@ -178,4 +178,41 @@ class IrrigationRateController extends Controller
 
         return response()->json($this->irrigation->proposeRate($data), 201);
     }
+
+    /** What copying one season's rates into another would bring over. Without ?from, the season before the target is used. */
+    public function copyPreview(Request $request): JsonResponse
+    {
+        $data = $request->validate(['to' => ['required', 'exists:seasons,id'], 'from' => ['nullable', 'exists:seasons,id']]);
+        $to = Season::findOrFail($data['to']);
+        $from = isset($data['from']) ? Season::findOrFail($data['from'])
+            : Season::whereKeyNot($to->id)->whereHas('rates', fn ($q) => $q->where('status', 'approved'))
+                ->where('start_date', '<=', $to->start_date)->orderByDesc('start_date')->first();
+
+        return response()->json([
+            'from' => $from?->only(['id', 'name_bn', 'name_en', 'code']),
+            'to' => $to->only(['id', 'name_bn', 'name_en', 'code', 'start_date', 'status']),
+            'rows' => $from ? $this->irrigation->copyPreview($from, $to) : [],
+        ]);
+    }
+
+    /** Copy rates (with changes) into a season; one approval for all of them. */
+    public function copy(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'from_season_id' => ['required', 'exists:seasons,id', 'different:to_season_id'],
+            'to_season_id' => ['required', 'exists:seasons,id'],
+            'effective_from' => ['required', 'date'],
+            'rows' => ['required', 'array', 'min:1', 'max:200'],
+            'rows.*.irrigation_type_id' => ['required', 'integer'],
+            'rows.*.land_type_id' => ['nullable', 'integer'],
+            'rows.*.rate' => ['required', 'numeric', 'gt:0', 'max:99999999'],
+        ]);
+        $rates = $this->irrigation->copyRates(Season::findOrFail($data['from_season_id']), Season::findOrFail($data['to_season_id']), $data['rows'], $data['effective_from']);
+        $live = collect($rates)->every(fn ($r) => $r->status === 'approved');
+
+        return response()->json([
+            'count' => count($rates),
+            'message' => $live ? __(':n টি রেট চালু হয়েছে।', ['n' => count($rates)]) : __(':n টি রেট একসাথে অনুমোদনের জন্য পাঠানো হয়েছে।', ['n' => count($rates)]),
+        ], 201);
+    }
 }

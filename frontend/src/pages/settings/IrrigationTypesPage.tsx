@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { App, Button, Form, Input, InputNumber, Modal, Select, Switch, Table, Tag } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
@@ -29,7 +29,7 @@ type IrrigationType = {
 type Filters = { search?: string; status?: string; used?: string }
 
 /** Irrigation types (sources) used by rates and invoices; one in use is made inactive rather than removed. */
-export default function IrrigationTypesPage() {
+export default function IrrigationTypesPage({ tabs }: { tabs?: ReactNode } = {}) {
   const { message } = App.useApp()
   const { can } = useAuth()
   const queryClient = useQueryClient()
@@ -123,8 +123,9 @@ export default function IrrigationTypesPage() {
 
   return (
     <ListFrame
+      above={tabs}
       section={{ label: tx('সেচ'), to: '/irrigation/invoices' }}
-      title={tx('সেচের ধরন')}
+      title={tabs ? tx('সেচের রেট') : tx('সেচের ধরন')}
       subtitle={tx('রেট নির্ধারণ ও ইনভয়েস তৈরিতে ব্যবহৃত সেচের ধরন পরিচালনা করুন।')}
       actions={
         canEdit && (
@@ -139,7 +140,13 @@ export default function IrrigationTypesPage() {
       filters={
         <>
           <Field grow={520}>
-            <Input allowClear placeholder={tx('সেচের ধরনের নাম, কোড বা বিবরণ দিয়ে খুঁজুন...')} value={draft.search} onChange={(e) => setDraft((d) => ({ ...d, search: e.target.value || undefined }))} onPressEnter={() => setFilters(draft)} />
+            <Input
+              allowClear
+              placeholder={tx('সেচের ধরনের নাম, কোড বা বিবরণ দিয়ে খুঁজুন...')}
+              value={draft.search}
+              onChange={(e) => setDraft((d) => ({ ...d, search: e.target.value || undefined }))}
+              onPressEnter={() => setFilters(draft)}
+            />
           </Field>
           <Field label={tx('অবস্থা')} grow={240}>
             <Select

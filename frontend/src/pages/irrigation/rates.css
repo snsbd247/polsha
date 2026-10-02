@@ -245,3 +245,10 @@
     flex: 1;
   }
 }
+
+/* copy-rates dialog: three labelled pickers in a row */
+.cr-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}

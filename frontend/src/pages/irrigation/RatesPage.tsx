@@ -1,9 +1,9 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { Button, Input, Select, Table, Tag, Tooltip } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
-import { EditFilled, EyeFilled, PlusOutlined, PrinterOutlined, SearchOutlined } from '@ant-design/icons'
+import { CopyOutlined, EditFilled, EyeFilled, PlusOutlined, PrinterOutlined, SearchOutlined } from '@ant-design/icons'
 import { useAuth } from '../../auth/AuthContext'
 import { api } from '../../lib/api'
 import { money } from '../../lib/accounting'
@@ -12,6 +12,7 @@ import { RATE_STATE_TONE, useInvoiceMeta, type RatePage, type RateRow } from '..
 import { useLandMeta } from '../../lib/land'
 import { t as tx } from '../../lib/i18n'
 import ListFrame, { Field, n0 } from '../lands/ListFrame'
+import CopyRatesModal from './CopyRatesModal'
 import '../lands/land-list.css'
 import '../farmers/farmer-merge-list.css'
 import '../settings/land-types.css'
@@ -20,7 +21,7 @@ import './rates.css'
 type Filters = { search?: string; season_id?: number; irrigation_type_id?: number; land_type_id?: number; state?: string }
 
 /** Every irrigation rate — per season, source and land type — with its period and state. */
-export default function RatesPage() {
+export default function RatesPage({ tabs }: { tabs?: ReactNode } = {}) {
   const navigate = useNavigate()
   const { can } = useAuth()
   const [sp] = useSearchParams()
@@ -28,6 +29,7 @@ export default function RatesPage() {
   const [draft, setDraft] = useState<Filters>(init)
   const [filters, setFilters] = useState<Filters>(init)
   const [page, setPage] = useState(1)
+  const [copying, setCopying] = useState(false)
   const [perPage, setPerPage] = useState(10)
   const { data: meta } = useInvoiceMeta()
   const { data: landMeta } = useLandMeta()
@@ -46,8 +48,7 @@ export default function RatesPage() {
     setFilters(f)
     setPage(1)
   }
-  const propose = (r?: RateRow) =>
-    navigate(r ? `/irrigation/rates/new?season_id=${r.season_id}&irrigation_type_id=${r.irrigation_type_id}${r.land_type_id ? `&land_type_id=${r.land_type_id}` : ''}` : '/irrigation/rates/new')
+  const propose = (r?: RateRow) => navigate(r ? `/irrigation/rates/new?season_id=${r.season_id}&irrigation_type_id=${r.irrigation_type_id}${r.land_type_id ? `&land_type_id=${r.land_type_id}` : ''}` : '/irrigation/rates/new')
 
   const cards = [
     { key: 'total', label: tx('মোট রেট'), value: s?.total, icon: 'layers', color: '#8b3fe0', tint: '#efe4fc', onClick: () => show({}) },
@@ -97,14 +98,20 @@ export default function RatesPage() {
 
   return (
     <ListFrame
+      above={tabs}
       section={{ label: tx('সেচ'), to: '/irrigation/invoices' }}
-      title={tx('সেচের রেটের তালিকা')}
+      title={tx('সেচের রেট')}
       subtitle={tx('সেচের উৎস, মৌসুম ও জমির ধরন অনুযায়ী সেচের রেট দেখুন ও পরিচালনা করুন।')}
       actions={
         can('irrigation.edit') && (
-          <Button type="primary" icon={<PlusOutlined />} onClick={() => propose()}>
-            {tx('নতুন সেচের রেট')}
-          </Button>
+          <>
+            <Button icon={<PlusOutlined />} onClick={() => propose()}>
+              {tx('একটি রেট')}
+            </Button>
+            <Button type="primary" icon={<CopyOutlined />} onClick={() => setCopying(true)}>
+              {tx('আগের মৌসুমের রেট কপি')}
+            </Button>
+          </>
         )
       }
       cards={cards}
@@ -112,19 +119,42 @@ export default function RatesPage() {
       filters={
         <>
           <Field label={tx('খুঁজুন')} grow={300}>
-            <Input prefix={<SearchOutlined />} allowClear placeholder={tx('উৎস, মৌসুম বা জমির ধরন দিয়ে খুঁজুন...')} value={draft.search} onChange={(e) => setDraft((d) => ({ ...d, search: e.target.value || undefined }))} onPressEnter={() => show(draft)} />
+            <Input
+              prefix={<SearchOutlined />}
+              allowClear
+              placeholder={tx('উৎস, মৌসুম বা জমির ধরন দিয়ে খুঁজুন...')}
+              value={draft.search}
+              onChange={(e) => setDraft((d) => ({ ...d, search: e.target.value || undefined }))}
+              onPressEnter={() => show(draft)}
+            />
           </Field>
           <Field label={tx('মৌসুম')}>
-            <Select value={draft.season_id ?? ''} options={[{ value: '', label: tx('সব মৌসুম') }, ...(meta?.seasons ?? []).map((x) => ({ value: x.id, label: x.name_bn }))]} onChange={(v) => setDraft((d) => ({ ...d, season_id: v === '' ? undefined : Number(v) }))} />
+            <Select
+              value={draft.season_id ?? ''}
+              options={[{ value: '', label: tx('সব মৌসুম') }, ...(meta?.seasons ?? []).map((x) => ({ value: x.id, label: x.name_bn }))]}
+              onChange={(v) => setDraft((d) => ({ ...d, season_id: v === '' ? undefined : Number(v) }))}
+            />
           </Field>
           <Field label={tx('সেচের উৎস')}>
-            <Select value={draft.irrigation_type_id ?? ''} options={[{ value: '', label: tx('সব উৎস') }, ...(meta?.irrigation_types ?? []).map((t) => ({ value: t.id, label: t.name_bn }))]} onChange={(v) => setDraft((d) => ({ ...d, irrigation_type_id: v === '' ? undefined : Number(v) }))} />
+            <Select
+              value={draft.irrigation_type_id ?? ''}
+              options={[{ value: '', label: tx('সব উৎস') }, ...(meta?.irrigation_types ?? []).map((t) => ({ value: t.id, label: t.name_bn }))]}
+              onChange={(v) => setDraft((d) => ({ ...d, irrigation_type_id: v === '' ? undefined : Number(v) }))}
+            />
           </Field>
           <Field label={tx('জমির ধরন')}>
-            <Select value={draft.land_type_id ?? ''} options={[{ value: '', label: tx('সব ধরনের জমি') }, ...(landMeta?.land_types ?? []).map((t) => ({ value: t.id, label: t.name_bn }))]} onChange={(v) => setDraft((d) => ({ ...d, land_type_id: v === '' ? undefined : Number(v) }))} />
+            <Select
+              value={draft.land_type_id ?? ''}
+              options={[{ value: '', label: tx('সব ধরনের জমি') }, ...(landMeta?.land_types ?? []).map((t) => ({ value: t.id, label: t.name_bn }))]}
+              onChange={(v) => setDraft((d) => ({ ...d, land_type_id: v === '' ? undefined : Number(v) }))}
+            />
           </Field>
           <Field label={tx('অবস্থা')}>
-            <Select value={draft.state ?? ''} options={[{ value: '', label: tx('সকল') }, ...Object.entries(data?.states ?? {}).map(([value, label]) => ({ value, label }))]} onChange={(v) => setDraft((d) => ({ ...d, state: v || undefined }))} />
+            <Select
+              value={draft.state ?? ''}
+              options={[{ value: '', label: tx('সকল') }, ...Object.entries(data?.states ?? {}).map(([value, label]) => ({ value, label }))]}
+              onChange={(v) => setDraft((d) => ({ ...d, state: v || undefined }))}
+            />
           </Field>
         </>
       }
@@ -158,6 +188,7 @@ export default function RatesPage() {
         columns={columns}
         locale={{ emptyText: tx('কোনো রেট পাওয়া যায়নি') }}
       />
+      <CopyRatesModal open={copying} seasons={meta?.seasons ?? []} onClose={() => setCopying(false)} />
     </ListFrame>
   )
 }

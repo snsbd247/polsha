@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Alert, App, Button, DatePicker, Form, Input, InputNumber, Select, Spin, Tag } from 'antd'
@@ -50,7 +50,7 @@ function Section({ no, icon, title, children }: { no: number; icon: React.ReactN
 }
 
 /** Bill one plot for a season: the irrigation charge from the approved rate, extra charges and a discount. */
-export default function InvoiceFormPage() {
+export default function InvoiceFormPage({ tabs }: { tabs?: ReactNode } = {}) {
   const navigate = useNavigate()
   const { message } = App.useApp()
   const queryClient = useQueryClient()
@@ -132,15 +132,22 @@ export default function InvoiceFormPage() {
   return (
     <PageFrame
       crumbs={[{ label: tx('সেচ'), to: '/irrigation/invoices' }, { label: tx('সেচ ইনভয়েস'), to: '/irrigation/invoices' }, { label: tx('নতুন ইনভয়েস') }]}
-      title={tx('নতুন সেচ ইনভয়েস')}
-      subtitle={tx('নতুন সেচ ইনভয়েস তৈরি করতে নিচের তথ্যগুলো দিন।')}
+      title={tx('বিল তৈরি')}
+      subtitle={tx('একটি জমির সেচ বিল (ইনভয়েস) তৈরি করতে নিচের তথ্যগুলো দিন।')}
       actions={
         <Button icon={<ArrowLeftOutlined />} className="fm-history-btn" onClick={() => navigate('/irrigation/invoices')}>
           {tx('ইনভয়েস তালিকায় ফিরুন')}
         </Button>
       }
     >
-      <Form form={form} layout="vertical" className="iv-form" initialValues={{ season_id: defaultSeason, invoice_date: dayjs(), land_id: preset.data?.id }} onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLElement).tagName !== 'TEXTAREA' && e.preventDefault()}>
+      {tabs}
+      <Form
+        form={form}
+        layout="vertical"
+        className="iv-form"
+        initialValues={{ season_id: defaultSeason, invoice_date: dayjs(), land_id: preset.data?.id }}
+        onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLElement).tagName !== 'TEXTAREA' && e.preventDefault()}
+      >
         <Section no={1} icon={<UserOutlined />} title={tx('কৃষক ও জমির তথ্য')}>
           <div className="iv-grid iv-grid-3">
             <Form.Item label={tx('কৃষক বাছাই')} extra={tx('খালি রাখলে জমির বর্তমান চাষির নামে বিল হবে')}>

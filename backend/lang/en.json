@@ -1314,5 +1314,10 @@
     ":n দিনের নগদ হিসাব বন্ধ (দিন বন্ধ) করা হয়নি": "Cash for :n days not closed (day close)",
     ":name-এর হাতে ৳:amount জমা হয়নি": ":name holds ৳:amount not handed in",
     "সবচেয়ে পুরনো: :date — প্রতিদিনের নগদ গুনে দিন বন্ধ করুন।": "Oldest: :date — count the cash and close each day.",
-    "সবচেয়ে পুরনোটি :date থেকে আপনার সিদ্ধান্তের অপেক্ষায়।": "The oldest has waited for your decision since :date."
+    "সবচেয়ে পুরনোটি :date থেকে আপনার সিদ্ধান্তের অপেক্ষায়।": "The oldest has waited for your decision since :date.",
+    ":n টি রেট একসাথে অনুমোদনের জন্য পাঠানো হয়েছে।": ":n rates sent for approval together.",
+    ":n টি রেট চালু হয়েছে।": ":n rates are now live.",
+    ":season থেকে কপি": "Copied from :season",
+    "কপি করার মতো কোনো রেট নেই — এই মৌসুমে সব রেট আগে থেকেই আছে বা অনুমোদনের অপেক্ষায়।": "Nothing to copy — this season already has all these rates, or they await approval.",
+    "সেচের রেট (:n টি): :season": "Irrigation rates (:n): :season"
 }

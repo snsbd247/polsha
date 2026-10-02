@@ -7,6 +7,7 @@ use App\Approvals\DistributionRunHandler;
 use App\Approvals\FarmerMergeHandler;
 use App\Approvals\ImportRollbackHandler;
 use App\Approvals\InvoiceCancelHandler;
+use App\Approvals\IrrigationRateBatchHandler;
 use App\Approvals\IrrigationRateHandler;
 use App\Approvals\JournalHandler;
 use App\Approvals\JournalReversalHandler;
@@ -105,6 +106,7 @@ return [
         'accounting.journal' => JournalHandler::class,
         'accounting.reversal' => JournalReversalHandler::class,
         'irrigation.rate' => IrrigationRateHandler::class,
+        'irrigation.rate_batch' => IrrigationRateBatchHandler::class,
         'irrigation.invoice_cancel' => InvoiceCancelHandler::class,
         'payment.receipt_cancel' => ReceiptCancelHandler::class,
         'savings.opening' => MemberTxnHandler::class,

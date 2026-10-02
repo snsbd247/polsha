@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query'
 import { App, Button, DatePicker, Form, Input, InputNumber, Select, Table, Tag, Tooltip } from 'antd'
@@ -24,7 +24,7 @@ type Filters = { search?: string; season_id?: number; irrigation_type_id?: numbe
  * Category rates: a rate per land type × irrigation source for each season.
  * New or changed rates are proposed from the panel and bill once approved.
  */
-export default function CategoryRatesPage() {
+export default function CategoryRatesPage({ tabs }: { tabs?: ReactNode } = {}) {
   const navigate = useNavigate()
   const { message } = App.useApp()
   const { can } = useAuth()
@@ -174,8 +174,9 @@ export default function CategoryRatesPage() {
   return (
     <>
       <ListFrame
+        above={tabs}
         section={{ label: tx('সেচ'), to: '/irrigation/invoices' }}
-        title={tx('ক্যাটাগরিভিত্তিক রেট')}
+        title={tx('সেচের রেট')}
         subtitle={tx('মৌসুম, জমির ধরন ও সেচের ধরন অনুযায়ী ক্যাটাগরিভিত্তিক সেচের রেট পরিচালনা করুন।')}
         actions={
           canEdit && (
@@ -190,20 +191,43 @@ export default function CategoryRatesPage() {
         filters={
           <>
             <Field label={tx('মৌসুম')}>
-              <Select value={draft.season_id ?? ''} options={[{ value: '', label: tx('সব মৌসুম') }, ...(meta?.seasons ?? []).map((x) => ({ value: x.id, label: x.name_bn }))]} onChange={(v) => setDraft((d) => ({ ...d, season_id: v === '' ? undefined : Number(v) }))} />
+              <Select
+                value={draft.season_id ?? ''}
+                options={[{ value: '', label: tx('সব মৌসুম') }, ...(meta?.seasons ?? []).map((x) => ({ value: x.id, label: x.name_bn }))]}
+                onChange={(v) => setDraft((d) => ({ ...d, season_id: v === '' ? undefined : Number(v) }))}
+              />
             </Field>
             <Field label={tx('জমির ধরন')}>
-              <Select value={draft.land_type_id ?? ''} options={[{ value: '', label: tx('সব ধরনের জমি') }, ...(landMeta?.land_types ?? []).map((t) => ({ value: t.id, label: t.name_bn }))]} onChange={(v) => setDraft((d) => ({ ...d, land_type_id: v === '' ? undefined : Number(v) }))} />
+              <Select
+                value={draft.land_type_id ?? ''}
+                options={[{ value: '', label: tx('সব ধরনের জমি') }, ...(landMeta?.land_types ?? []).map((t) => ({ value: t.id, label: t.name_bn }))]}
+                onChange={(v) => setDraft((d) => ({ ...d, land_type_id: v === '' ? undefined : Number(v) }))}
+              />
             </Field>
             <Field label={tx('সেচের ধরন')}>
-              <Select value={draft.irrigation_type_id ?? ''} options={[{ value: '', label: tx('সব উৎস') }, ...(meta?.irrigation_types ?? []).map((t) => ({ value: t.id, label: t.name_bn }))]} onChange={(v) => setDraft((d) => ({ ...d, irrigation_type_id: v === '' ? undefined : Number(v) }))} />
+              <Select
+                value={draft.irrigation_type_id ?? ''}
+                options={[{ value: '', label: tx('সব উৎস') }, ...(meta?.irrigation_types ?? []).map((t) => ({ value: t.id, label: t.name_bn }))]}
+                onChange={(v) => setDraft((d) => ({ ...d, irrigation_type_id: v === '' ? undefined : Number(v) }))}
+              />
             </Field>
             <Field label={tx('অবস্থা')}>
-              <Select value={draft.state ?? ''} options={[{ value: '', label: tx('সকল') }, ...Object.entries(data?.states ?? {}).map(([value, label]) => ({ value, label }))]} onChange={(v) => setDraft((d) => ({ ...d, state: v || undefined }))} />
+              <Select
+                value={draft.state ?? ''}
+                options={[{ value: '', label: tx('সকল') }, ...Object.entries(data?.states ?? {}).map(([value, label]) => ({ value, label }))]}
+                onChange={(v) => setDraft((d) => ({ ...d, state: v || undefined }))}
+              />
             </Field>
             <span className="ll-break" />
             <Field grow={600}>
-              <Input prefix={<SearchOutlined />} allowClear placeholder={tx('ক্যাটাগরির নাম বা বিবরণ দিয়ে খুঁজুন...')} value={draft.search} onChange={(e) => setDraft((d) => ({ ...d, search: e.target.value || undefined }))} onPressEnter={() => show(draft)} />
+              <Input
+                prefix={<SearchOutlined />}
+                allowClear
+                placeholder={tx('ক্যাটাগরির নাম বা বিবরণ দিয়ে খুঁজুন...')}
+                value={draft.search}
+                onChange={(e) => setDraft((d) => ({ ...d, search: e.target.value || undefined }))}
+                onPressEnter={() => show(draft)}
+              />
             </Field>
           </>
         }

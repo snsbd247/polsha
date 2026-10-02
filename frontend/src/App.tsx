@@ -71,20 +71,17 @@ const TrialBalancePage = lazy(() => import('./pages/accounting/TrialBalancePage'
 const PeriodsPage = lazy(() => import('./pages/accounting/PeriodsPage'))
 const IrrigationTypesPage = lazy(() => import('./pages/settings/IrrigationTypesPage'))
 const LookupPage = lazy(() => import('./pages/irrigation/LookupPage'))
-const CategoryRatesPage = lazy(() => import('./pages/irrigation/CategoryRatesPage'))
 const RateProposePage = lazy(() => import('./pages/irrigation/RateProposePage'))
 const SeasonsPage = lazy(() => import('./pages/irrigation/SeasonsPage'))
 const SeasonFormPage = lazy(() => import('./pages/irrigation/SeasonFormPage'))
 const SeasonDetailPage = lazy(() => import('./pages/irrigation/SeasonDetailPage'))
-const RatesPage = lazy(() => import('./pages/irrigation/RatesPage'))
+const RatesHubPage = lazy(() => import('./pages/irrigation/IrrigationHubs').then((m) => ({ default: m.RatesHubPage })))
+const BillingHubPage = lazy(() => import('./pages/irrigation/IrrigationHubs').then((m) => ({ default: m.BillingHubPage })))
 const InvoiceListPage = lazy(() => import('./pages/irrigation/InvoiceListPage'))
-const InvoiceFormPage = lazy(() => import('./pages/irrigation/InvoiceFormPage'))
-const BulkInvoicePage = lazy(() => import('./pages/irrigation/BulkInvoicePage'))
 const InvoiceDetailPage = lazy(() => import('./pages/irrigation/InvoiceDetailPage'))
 const DuesPage = lazy(() => import('./pages/irrigation/DuesPage'))
 const FarmerStatementPage = lazy(() => import('./pages/irrigation/FarmerStatementPage'))
 const MismatchPage = lazy(() => import('./pages/irrigation/MismatchPage'))
-const RateAuditPage = lazy(() => import('./pages/irrigation/RateAuditPage'))
 const CollectHubPage = lazy(() => import('./pages/payments/PaymentHubs').then((m) => ({ default: m.CollectHubPage })))
 const ReceiptsHubPage = lazy(() => import('./pages/payments/PaymentHubs').then((m) => ({ default: m.ReceiptsHubPage })))
 const OldReceiptListPage = lazy(() => import('./pages/payments/OldReceiptListPage'))
@@ -182,6 +179,14 @@ function CollectRoute() {
   if (new URLSearchParams(search).get('legacy') !== '1') return <CollectHubPage />
   // the add form keeps the menu's exact query, so the menu still marks Old Receipt Entry
   return hash === '#new' ? <OldReceiptFormPage /> : <OldReceiptListPage />
+}
+
+/** The one-plot invoice form is a tab of বিল তৈরি now (?land_id kept). */
+function ToBilling() {
+  const { search } = useLocation()
+  const q = new URLSearchParams(search)
+  q.set('view', 'one')
+  return <Navigate to={`/irrigation/invoices/bulk?${q.toString()}`} replace />
 }
 
 /** The old combined-payment form address (?farmer_id kept) opens টাকা আদায়. */
@@ -310,18 +315,18 @@ export default function App() {
         <Route path="irrigation/seasons/new" element={<Perm perm="irrigation.edit"><SeasonFormPage key="new" /></Perm>} />
         <Route path="irrigation/seasons/:id" element={<Perm perm="irrigation.view"><SeasonDetailPage /></Perm>} />
         <Route path="irrigation/seasons/:id/edit" element={<Perm perm="irrigation.edit"><SeasonFormPage /></Perm>} />
-        <Route path="irrigation/rates" element={<Perm perm="irrigation.view"><RatesPage /></Perm>} />
+        <Route path="irrigation/rates" element={<Perm perm="irrigation.view"><ByQuery><RatesHubPage /></ByQuery></Perm>} />
         <Route path="irrigation/lookup" element={<Perm perm="irrigation.view"><LookupPage /></Perm>} />
-        <Route path="irrigation/category-rates" element={<Perm perm="irrigation.view"><CategoryRatesPage /></Perm>} />
+        <Route path="irrigation/category-rates" element={<Navigate to="/irrigation/rates?view=grid" replace />} />
         <Route path="irrigation/rates/new" element={<Perm perm="irrigation.edit"><RateProposePage /></Perm>} />
         <Route path="irrigation/invoices" element={<Perm perm="irrigation.view"><InvoiceListPage /></Perm>} />
-        <Route path="irrigation/invoices/new" element={<Perm perm="irrigation.create"><InvoiceFormPage /></Perm>} />
-        <Route path="irrigation/invoices/bulk" element={<Perm perm="irrigation.create"><BulkInvoicePage /></Perm>} />
+        <Route path="irrigation/invoices/new" element={<ToBilling />} />
+        <Route path="irrigation/invoices/bulk" element={<Perm perm="irrigation.create"><ByQuery><BillingHubPage /></ByQuery></Perm>} />
         <Route path="irrigation/invoices/:id" element={<Perm perm="irrigation.view"><InvoiceDetailPage /></Perm>} />
         <Route path="irrigation/dues" element={<Perm perm="irrigation.view"><DuesPage /></Perm>} />
         <Route path="irrigation/farmers/:id/statement" element={<Perm perm="irrigation.view"><FarmerStatementPage /></Perm>} />
         <Route path="irrigation/mismatch" element={<Perm perm="irrigation.view"><MismatchPage /></Perm>} />
-        <Route path="irrigation/rate-audit" element={<Perm perm="irrigation.view"><RateAuditPage /></Perm>} />
+        <Route path="irrigation/rate-audit" element={<Navigate to="/irrigation/rates?view=history" replace />} />
         <Route path="payments/collect" element={<Perm perm="payment.create"><ByQuery><CollectRoute /></ByQuery></Perm>} />
         <Route path="payments/receipts" element={<Perm perm="payment.view"><ByQuery><ReceiptsHubPage /></ByQuery></Perm>} />
         <Route path="payments/receipts/:id" element={<Perm perm="payment.view"><ReceiptDetailPage /></Perm>} />

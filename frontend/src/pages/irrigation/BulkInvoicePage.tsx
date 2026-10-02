@@ -62,7 +62,7 @@ function Row2({ k, v }: { k: string; v: ReactNode }) {
 }
 
 /** Bill many plots at once: choose season, source and mouza, load the eligible plots, tick the ones to bill. */
-export default function BulkInvoicePage() {
+export default function BulkInvoicePage({ tabs }: { tabs?: ReactNode } = {}) {
   const navigate = useNavigate()
   const { message, modal } = App.useApp()
   const queryClient = useQueryClient()
@@ -147,17 +147,12 @@ export default function BulkInvoicePage() {
     { title: tx('চাষ'), dataIndex: 'cultivation_type', render: (v: string | null) => (v ? <Tag color={CULTIVATION_COLOR[v]}>{meta.cultivation_types[v] ?? v}</Tag> : '—') },
     { title: tx('পরিমাণ (একর)'), dataIndex: 'area_decimal', align: 'right', render: (v: number) => acres(v) },
     { title: tx('রেট (৳/শতক)'), dataIndex: 'rate', align: 'right', render: (v: number | null) => (v === null ? '—' : money(v)) },
-    tab === 'skipped'
-      ? { title: tx('কারণ'), dataIndex: 'reason', render: (v: string) => <Tag color="orange">{meta.skip_reasons[v] ?? v}</Tag> }
-      : { title: tx('টাকা (৳)'), dataIndex: 'amount', align: 'right', render: money },
+    tab === 'skipped' ? { title: tx('কারণ'), dataIndex: 'reason', render: (v: string) => <Tag color="orange">{meta.skip_reasons[v] ?? v}</Tag> } : { title: tx('টাকা (৳)'), dataIndex: 'amount', align: 'right', render: money },
   ]
 
   return (
-    <PageFrame
-      crumbs={[{ label: tx('সেচ'), to: '/irrigation/invoices' }, { label: tx('একসাথে ইনভয়েস') }]}
-      title={tx('একসাথে সেচ ইনভয়েস তৈরি')}
-      subtitle={tx('একটি মৌসুম, মৌজা ও সেচের উৎসের জন্য একবারে অনেক সেচ ইনভয়েস তৈরি করুন।')}
-    >
+    <PageFrame crumbs={[{ label: tx('সেচ'), to: '/irrigation/invoices' }, { label: tx('বিল তৈরি') }]} title={tx('বিল তৈরি')} subtitle={tx('একটি মৌসুম, মৌজা ও সেচের উৎসের জন্য একবারে অনেক সেচ ইনভয়েস তৈরি করুন।')}>
+      {tabs}
       <div className="bi-steps">
         <Step no={1} label={tx('শর্ত বাছাই')} state={st(1)} />
         <Step no={2} label={tx('কৃষক ও জমি বাছাই')} state={st(2)} />
@@ -169,7 +164,9 @@ export default function BulkInvoicePage() {
         <section className="lf-card iv-section">
           <header className="lf-card-head">
             <SettingFilled className="iv-section-icon" />
-            <h3>{digits(1)}. {tx('ইনভয়েসের শর্ত বাছাই')}</h3>
+            <h3>
+              {digits(1)}. {tx('ইনভয়েসের শর্ত বাছাই')}
+            </h3>
           </header>
           <div className="lf-card-body">
             <Form
@@ -234,7 +231,9 @@ export default function BulkInvoicePage() {
       <section className="lf-card iv-section">
         <header className="lf-card-head">
           <UserOutlined className="iv-section-icon" />
-          <h3>{digits(2)}. {tx('কৃষক ও জমির রেকর্ড বাছাই')}</h3>
+          <h3>
+            {digits(2)}. {tx('কৃষক ও জমির রেকর্ড বাছাই')}
+          </h3>
         </header>
         <div className="lf-card-body">
           <div className="bi-bar">
@@ -261,11 +260,7 @@ export default function BulkInvoicePage() {
             dataSource={rows}
             columns={columns}
             scroll={{ x: 'max-content' }}
-            rowSelection={
-              tab === 'skipped'
-                ? undefined
-                : { selectedRowKeys: selected, onChange: (keys) => setSelected((cur) => [...cur.filter((k) => !rows.some((r) => r.land_id === k)), ...(keys as number[])]), columnWidth: 40 }
-            }
+            rowSelection={tab === 'skipped' ? undefined : { selectedRowKeys: selected, onChange: (keys) => setSelected((cur) => [...cur.filter((k) => !rows.some((r) => r.land_id === k)), ...(keys as number[])]), columnWidth: 40 }}
             pagination={{ defaultPageSize: 10, showSizeChanger: true, pageSizeOptions: [5, 10, 25, 50], showTotal: (t) => tx('মোট {{p0}}টি রেকর্ড ({{p1}}টি বাছাই করা)', { p0: digits(t), p1: digits(chosen.length) }) }}
             locale={{ emptyText: preview ? tx('কোনো রেকর্ড নেই') : tx('শর্ত বাছাই করে "উপযুক্ত রেকর্ড লোড করুন" চাপুন') }}
           />
