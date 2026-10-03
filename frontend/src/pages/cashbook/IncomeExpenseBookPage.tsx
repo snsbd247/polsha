@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { Alert, DatePicker, Input, Select, Table, Tag } from 'antd'
@@ -24,7 +24,7 @@ const KEY = 'income_expense_cashbook'
 const month = (): Filters => ({ from: dayjs().startOf('month').format('YYYY-MM-DD'), to: dayjs().format('YYYY-MM-DD') })
 
 /** Every income and expense line of the period, with the net surplus (or deficit). */
-export default function IncomeExpenseBookPage() {
+export default function IncomeExpenseBookPage({ tabs }: { tabs?: ReactNode }) {
   const { can } = useAuth()
   const [filters, setFilters] = useState<Filters>(month)
   const [draft, setDraft] = useState<{ from: Dayjs | null; to: Dayjs | null; search?: string; type?: string; account_id?: number }>({ from: dayjs(filters.from), to: dayjs(filters.to) })
@@ -93,7 +93,12 @@ export default function IncomeExpenseBookPage() {
       title={tx('আয়-ব্যয় নগদ বই')}
       subtitle=""
       cards={cards}
-      above={data?.truncated ? <Alert type="warning" showIcon style={{ marginBottom: 12 }} title={data.notice ?? tx('অনেক বেশি এন্ট্রি — তারিখের সীমা ছোট করুন।')} /> : undefined}
+      above={
+        <>
+          {tabs}
+          {data?.truncated ? <Alert type="warning" showIcon style={{ marginBottom: 12 }} title={data.notice ?? tx('অনেক বেশি এন্ট্রি — তারিখের সীমা ছোট করুন।')} /> : null}
+        </>
+      }
       filterClass="iv-filters"
       filters={
         <>

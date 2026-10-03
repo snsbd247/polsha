@@ -9,6 +9,7 @@ use App\Models\Journal;
 use App\Services\AccountingReportService;
 use App\Services\AuditLogger;
 use App\Services\FinancialYearService;
+use App\Services\IncomeExpenseCashBookService;
 use App\Services\LedgerService;
 use App\Support\CsvExport;
 use Illuminate\Http\Request;
@@ -37,6 +38,18 @@ class AccountingReportController extends Controller
         return response()->json(app(\App\Services\IrrigationCashStatementService::class)->build(
             $data['from'], $data['to'], isset($data['opening']) ? (float) $data['opening'] : null, $stream,
         ));
+    }
+
+    /** A fund's income-expense cash book: every cash voucher of the period on its own line, its money spread over head columns. */
+    public function incomeExpenseBook(Request $request)
+    {
+        $data = $request->validate([
+            'stream' => ['required', 'in:society,irrigation'],
+            'from' => ['required', 'date'],
+            'to' => ['required', 'date', 'after_or_equal:from'],
+        ]);
+
+        return response()->json(app(IncomeExpenseCashBookService::class)->build($data['stream'], $data['from'], $data['to']));
     }
 
     public function ledger(Request $request)

@@ -1325,5 +1325,13 @@
     "অন্য তহবিলে স্থানান্তর": "Transfer to another fund",
     "মাঠ-আদায় জমা": "Field collections handed in",
     "ব্যাংক থেকে নগদ উত্তোলন": "Cash withdrawn from the bank",
-    "নগদ ব্যাংকে জমা": "Cash deposited in the bank"
+    "নগদ ব্যাংকে জমা": "Cash deposited in the bank",
+    "অন্য তহবিল থেকে": "From other fund",
+    "অন্য তহবিলে": "To other fund",
+    "ঋণ আদায় (আসল)": "Loan collection",
+    "ঋণের সুদ ও জরিমানা": "Loan interest & penalty",
+    "বিবিধ": "Miscellaneous",
+    "ব্যাংক থেকে উত্তোলন": "Bank withdrawal",
+    "সঞ্চয়/শেয়ার ফেরত": "Deposit refund",
+    "সেচ চার্জ": "Irrigation charge"
 }

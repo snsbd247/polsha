@@ -64,7 +64,7 @@ const JournalDetailPage = lazy(() => import('./pages/accounting/JournalDetailPag
 const FundsPage = lazy(() => import('./pages/accounting/FundsPage'))
 const LedgerPage = lazy(() => import('./pages/accounting/LedgerPage'))
 const FundStatementPage = lazy(() => import('./pages/cashbook/FundStatementPage'))
-const IncomeExpenseBookPage = lazy(() => import('./pages/cashbook/IncomeExpenseBookPage'))
+const IncomeExpenseBookPage = lazy(() => import('./pages/cashbook/IncomeExpenseHub'))
 const ExportAuditPage = lazy(() => import('./pages/cashbook/ExportAuditPage'))
 const BankAccountsPage = lazy(() => import('./pages/accounting/BankAccountsPage'))
 const TrialBalancePage = lazy(() => import('./pages/accounting/TrialBalancePage'))
