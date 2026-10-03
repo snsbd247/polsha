@@ -19,6 +19,20 @@ class AccountingReportController extends Controller
     public function __construct(private AccountingReportService $reports) {}
 
     /** General ledger; the cash book is the same view on a cash-stream account. */
+    /** The irrigation fund's audit-style cash statement: income and expense heads, opening and closing fund, bank part. */
+    public function irrigationStatement(Request $request)
+    {
+        $data = $request->validate([
+            'from' => ['required', 'date'],
+            'to' => ['required', 'date', 'after_or_equal:from'],
+            'opening' => ['nullable', 'numeric', 'between:-9999999999999,9999999999999'],
+        ]);
+
+        return response()->json(app(\App\Services\IrrigationCashStatementService::class)->build(
+            $data['from'], $data['to'], isset($data['opening']) ? (float) $data['opening'] : null,
+        ));
+    }
+
     public function ledger(Request $request)
     {
         $data = $request->validate([

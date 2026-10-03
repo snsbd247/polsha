@@ -310,6 +310,7 @@ Route::middleware(['auth:sanctum', 'usable'])->group(function () {
         Route::get('accounting/periods', [AccountingReportController::class, 'periods']);
     });
     Route::get('accounting/ledger', [AccountingReportController::class, 'ledger'])->middleware('permission:accounting.view|cash.view|bank.view');
+    Route::get('cashbook/irrigation-statement', [AccountingReportController::class, 'irrigationStatement'])->middleware('permission:accounting.view|cash.view|bank.view');
     Route::middleware('permission:accounting.edit')->group(function () {
         Route::post('accounts', [AccountController::class, 'store']);
         Route::put('accounts/{account}', [AccountController::class, 'update']);

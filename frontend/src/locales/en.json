@@ -3743,5 +3743,21 @@
   "একটি জমির বিল": "Bill one plot",
   "একটি রেট": "One rate",
   "আগের মৌসুমের রেট কপি": "Copy last season's rates",
-  "এই মৌসুমে এই রেটগুলো আগে থেকেই আছে — উপরে অন্য (নতুন) মৌসুম বাছুন।": "This season already has these rates — choose another (new) season above."
+  "এই মৌসুমে এই রেটগুলো আগে থেকেই আছে — উপরে অন্য (নতুন) মৌসুম বাছুন।": "This season already has these rates — choose another (new) season above.",
+  "{{p0}} থেকে {{p1}} পর্যন্ত নগদ বিবরণী": "Cash statement from {{p0}} to {{p1}}",
+  "প্রারম্ভিক তহবিল": "Opening fund",
+  "হাতে নগদ তহবিল": "Cash in hand fund",
+  "সর্বমোট": "Grand total",
+  "ব্যাংক জমা (শেষ তারিখে)": "Bank balance (as of end date)",
+  "নগদ বিবরণী (সেচ)": "Cash Statement (Irrigation)",
+  "অডিট রিপোর্ট — আয় ও ব্যয়ের পূর্ণ বিবরণ": "Audit report — complete income and expense details",
+  "প্রারম্ভিক তহবিল (টাকা)": "Opening fund (amount)",
+  "খালি রাখলে হিসাব থেকে নিজে বসবে": "Left blank, it is taken from the books",
+  "{{p0}} - এর": "{{p0}}",
+  "নিরীক্ষা কর্মকর্তা": "Audit Officer",
+  "সভাপতি": "President",
+  "সাধারণ সম্পাদক": "Secretary",
+  "কোষাধ্যক্ষ": "Treasurer",
+  "ব্যবস্থাপনা কমিটির সদস্যদের স্বাক্ষর:": "Management committee members' signatures:",
+  "যে তারিখ পর্যন্ত": "End date"
 }

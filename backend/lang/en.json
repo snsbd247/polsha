@@ -1319,5 +1319,8 @@
     ":n টি রেট চালু হয়েছে।": ":n rates are now live.",
     ":season থেকে কপি": "Copied from :season",
     "কপি করার মতো কোনো রেট নেই — এই মৌসুমে সব রেট আগে থেকেই আছে বা অনুমোদনের অপেক্ষায়।": "Nothing to copy — this season already has all these rates, or they await approval.",
-    "সেচের রেট (:n টি): :season": "Irrigation rates (:n): :season"
+    "সেচের রেট (:n টি): :season": "Irrigation rates (:n): :season",
+    "সেচ চার্জ আদায় (বকেয়াসহ)": "Irrigation charge collection (including due)",
+    "অন্য তহবিল থেকে স্থানান্তর": "Transfer from another fund",
+    "অন্য তহবিলে স্থানান্তর": "Transfer to another fund"
 }
