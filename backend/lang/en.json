@@ -1322,5 +1322,8 @@
     "সেচের রেট (:n টি): :season": "Irrigation rates (:n): :season",
     "সেচ চার্জ আদায় (বকেয়াসহ)": "Irrigation charge collection (including due)",
     "অন্য তহবিল থেকে স্থানান্তর": "Transfer from another fund",
-    "অন্য তহবিলে স্থানান্তর": "Transfer to another fund"
+    "অন্য তহবিলে স্থানান্তর": "Transfer to another fund",
+    "মাঠ-আদায় জমা": "Field collections handed in",
+    "ব্যাংক থেকে নগদ উত্তোলন": "Cash withdrawn from the bank",
+    "নগদ ব্যাংকে জমা": "Cash deposited in the bank"
 }

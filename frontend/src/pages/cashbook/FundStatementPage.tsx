@@ -12,6 +12,8 @@ import { t as tx } from '../../lib/i18n'
 import './statement.css'
 
 type Head = { label: string; amount: number; account_ids: number[] }
+type BankRow = { id: number; account_no: string; bank_name: string; opening: number; interest: number; charges: number; deposits: number; withdrawals: number; closing: number }
+export type Stream = 'irrigation' | 'society'
 type Statement = {
   society: string | null
   from: string
@@ -24,8 +26,15 @@ type Statement = {
   opening: number
   opening_computed: number
   closing: number
-  bank_balance: number
+  bank_balance: number | null
+  banks: BankRow[]
 }
+
+const META: Record<Stream, { title: string; subtitle: string; tag: string; api: string; csvName: string }> = {
+  irrigation: { title: tx('নগদ বিবরণী (সেচ)'), subtitle: tx('অডিট রিপোর্ট — আয় ও ব্যয়ের পূর্ণ বিবরণ'), tag: tx('সেচ'), api: '/cashbook/irrigation-statement', csvName: 'irrigation' },
+  society: { title: tx('নগদ বিবরণী (সমিতি)'), subtitle: tx('অডিট রিপোর্ট — সমিতির আয় ও ব্যয়ের পূর্ণ বিবরণ'), tag: tx('সমিতি'), api: '/cashbook/society-statement', csvName: 'society' },
+}
+const BANK_COLS = ['opening', 'interest', 'charges', 'deposits', 'withdrawals', 'closing'] as const
 
 /** The financial year the society uses (July–June): the one today falls in. */
 function fiscalYear(): [Dayjs, Dayjs] {
@@ -36,18 +45,20 @@ function fiscalYear(): [Dayjs, Dayjs] {
 const sl = (n: number) => digits(String(n).padStart(2, '0'))
 
 /**
- * The irrigation cash statement as the audit sheet is laid out: income heads
- * beside expense heads for the period, the opening fund, the fund in hand at
- * the end, and how much of it is in the bank; signature lines below. Prints
+ * A fund's cash statement as the audit sheet is laid out: income heads beside
+ * expense heads for the period, the opening fund and the fund in hand at the
+ * end; signature lines below. Irrigation also shows its money in the bank;
+ * the society lists every bank account's movements over the period. Prints
  * as one page.
  */
-export default function IrrigationStatementPage() {
+export default function FundStatementPage({ stream }: { stream: Stream }) {
+  const m = META[stream]
   const [[from, to], setRange] = useState(fiscalYear)
   const [opening, setOpening] = useState<number | null>(null)
   const params = { from: from.format('YYYY-MM-DD'), to: to.format('YYYY-MM-DD'), opening: opening ?? undefined }
   const { data: s, isFetching } = useQuery({
-    queryKey: ['irrigation-statement', params],
-    queryFn: async () => (await api.get<Statement>('/cashbook/irrigation-statement', { params })).data,
+    queryKey: ['fund-statement', stream, params],
+    queryFn: async () => (await api.get<Statement>(m.api, { params })).data,
     placeholderData: (prev) => prev,
   })
 
@@ -59,25 +70,33 @@ export default function IrrigationStatementPage() {
     if (!s) return
     const q = (v: string | number) => `"${String(v).replace(/"/g, '""')}"`
     const lines = [
-      [`${s.society ?? ''} — ${period} (${tx('সেচ')})`],
+      [`${s.society ?? ''} — ${period} (${m.tag})`],
       [tx('আয়'), '', '', tx('ব্যয়'), '', ''],
       [tx('ক্রমিক'), tx('বিবরণ'), tx('টাকা'), tx('ক্রমিক'), tx('বিবরণ'), tx('টাকা')],
       ...rows.map(([i, e], k) => [i ? k + 1 : '', i?.label ?? '', i?.amount ?? '', e ? k + 1 : '', e?.label ?? '', e?.amount ?? '']),
       ['', tx('মোট আয়'), s.total_income, '', tx('মোট ব্যয়'), s.total_expense],
       ['', tx('প্রারম্ভিক তহবিল'), s.opening, '', tx('হাতে নগদ তহবিল'), s.closing],
       ['', tx('সর্বমোট'), s.opening + s.total_income, '', tx('সর্বমোট'), s.total_expense + s.closing],
-      ['', '', '', '', tx('ব্যাংক জমা (শেষ তারিখে)'), s.bank_balance],
+      ...(s.bank_balance !== null ? [['', '', '', '', tx('ব্যাংক জমা (শেষ তারিখে)'), s.bank_balance]] : []),
+      ...(s.banks.length
+        ? [
+            [],
+            [tx('ব্যাংক হিসাব')],
+            [tx('ক্রমিক'), tx('হিসাব নং'), fmtDate(s.from), tx('প্রাপ্ত সুদ'), tx('কর্তনকৃত ব্যাংক চার্জ'), tx('ব্যাংকে জমা'), tx('ব্যাংক থেকে উত্তোলন'), fmtDate(s.to)],
+            ...s.banks.map((b, k) => [k + 1, `${b.account_no} (${b.bank_name})`, ...BANK_COLS.map((f) => b[f])]),
+          ]
+        : []),
     ]
     const blob = new Blob(['﻿' + lines.map((l) => l.map(q).join(',')).join('\n')], { type: 'text/csv;charset=utf-8' })
     const a = document.createElement('a')
     a.href = URL.createObjectURL(blob)
-    a.download = `irrigation-cash-statement-${s.from}-${s.to}.csv`
+    a.download = `${m.csvName}-cash-statement-${s.from}-${s.to}.csv`
     a.click()
     URL.revokeObjectURL(a.href)
   }
 
   return (
-    <PageFrame className="cst-page" crumbs={[{ label: tx('ক্যাশ বই ও খতিয়ান'), to: '/cashbook/irrigation' }, { label: tx('নগদ বিবরণী (সেচ)') }]} title={tx('নগদ বিবরণী (সেচ)')} subtitle={tx('অডিট রিপোর্ট — আয় ও ব্যয়ের পূর্ণ বিবরণ')}>
+    <PageFrame className="cst-page" crumbs={[{ label: tx('ক্যাশ বই ও খতিয়ান'), to: '/cashbook/irrigation' }, { label: m.title }]} title={m.title} subtitle={m.subtitle}>
       <div className="cst-bar no-print">
         <label>
           {tx('শুরুর তারিখ')}
@@ -93,10 +112,10 @@ export default function IrrigationStatementPage() {
         </label>
         <span className="cst-spacer" />
         <Button icon={<FileTextOutlined />} onClick={csv} disabled={!s}>
-          CSV
+          {stream === 'society' ? 'Excel' : 'CSV'}
         </Button>
         <Button type="primary" icon={<PrinterOutlined />} onClick={() => window.print()} disabled={!s}>
-          {tx('প্রিন্ট / PDF')}
+          {stream === 'society' ? tx('প্রিন্ট') : tx('প্রিন্ট / PDF')}
         </Button>
       </div>
 
@@ -106,7 +125,7 @@ export default function IrrigationStatementPage() {
         <div className={`cst-sheet${isFetching ? ' cst-busy' : ''}`}>
           <h2>{tx('{{p0}} - এর', { p0: s.society ?? '' })}</h2>
           <p className="cst-sub">
-            {period} <b>({tx('সেচ')})</b>
+            {period} <b>({m.tag})</b>
           </p>
           <table className="cst-table">
             <thead>
@@ -156,10 +175,12 @@ export default function IrrigationStatementPage() {
                 <td colSpan={2}>{tx('সর্বমোট')} =</td>
                 <td className="cst-amt">{money(s.total_expense + s.closing)}</td>
               </tr>
-              <tr className="cst-total">
-                <td colSpan={5}>{tx('ব্যাংক জমা (শেষ তারিখে)')} =</td>
-                <td className="cst-amt">{money(s.bank_balance)}</td>
-              </tr>
+              {s.bank_balance !== null && (
+                <tr className="cst-total">
+                  <td colSpan={5}>{tx('ব্যাংক জমা (শেষ তারিখে)')} =</td>
+                  <td className="cst-amt">{money(s.bank_balance)}</td>
+                </tr>
+              )}
             </tbody>
           </table>
 
@@ -177,6 +198,48 @@ export default function IrrigationStatementPage() {
             <span>{digits(2)}.</span>
             <span>{digits(3)}.</span>
           </div>
+          {s.banks.length > 0 && (
+            <>
+              <p className="cst-committee">{tx('পর্যবেক্ষণ (ব্যাংক হিসাব): নিরীক্ষাকালে সমিতির নিচের ব্যাংক হিসাবগুলো দেখা হয়েছে।')}</p>
+              <table className="cst-table cst-banks">
+                <thead>
+                  <tr>
+                    <th className="cst-sl">{tx('ক্রমিক')}</th>
+                    <th>{tx('হিসাব নং')}</th>
+                    <th>{fmtDate(s.from)}</th>
+                    <th>{tx('প্রাপ্ত সুদ')}</th>
+                    <th>{tx('কর্তনকৃত ব্যাংক চার্জ')}</th>
+                    <th>{tx('ব্যাংকে জমা')}</th>
+                    <th>{tx('ব্যাংক থেকে উত্তোলন')}</th>
+                    <th>{fmtDate(s.to)}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {s.banks.map((b, k) => (
+                    <tr key={b.id}>
+                      <td className="cst-sl">{sl(k + 1)}</td>
+                      <td>
+                        {digits(b.account_no)} ({b.bank_name})
+                      </td>
+                      {BANK_COLS.map((f) => (
+                        <td key={f} className="cst-amt">
+                          {money(b[f])}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                  <tr className="cst-total">
+                    <td colSpan={2}>{tx('মোট')} =</td>
+                    {BANK_COLS.map((f) => (
+                      <td key={f} className="cst-amt">
+                        {money(s.banks.reduce((n, b) => n + b[f], 0))}
+                      </td>
+                    ))}
+                  </tr>
+                </tbody>
+              </table>
+            </>
+          )}
         </div>
       )}
     </PageFrame>

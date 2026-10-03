@@ -19,8 +19,14 @@ class AccountingReportController extends Controller
     public function __construct(private AccountingReportService $reports) {}
 
     /** General ledger; the cash book is the same view on a cash-stream account. */
+    /** The society fund's audit-style cash statement, with every bank account's movements below. */
+    public function societyStatement(Request $request)
+    {
+        return $this->irrigationStatement($request, 'society');
+    }
+
     /** The irrigation fund's audit-style cash statement: income and expense heads, opening and closing fund, bank part. */
-    public function irrigationStatement(Request $request)
+    public function irrigationStatement(Request $request, string $stream = 'irrigation')
     {
         $data = $request->validate([
             'from' => ['required', 'date'],
@@ -29,7 +35,7 @@ class AccountingReportController extends Controller
         ]);
 
         return response()->json(app(\App\Services\IrrigationCashStatementService::class)->build(
-            $data['from'], $data['to'], isset($data['opening']) ? (float) $data['opening'] : null,
+            $data['from'], $data['to'], isset($data['opening']) ? (float) $data['opening'] : null, $stream,
         ));
     }
 

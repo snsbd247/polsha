@@ -3759,5 +3759,13 @@
   "সাধারণ সম্পাদক": "Secretary",
   "কোষাধ্যক্ষ": "Treasurer",
   "ব্যবস্থাপনা কমিটির সদস্যদের স্বাক্ষর:": "Management committee members' signatures:",
-  "যে তারিখ পর্যন্ত": "End date"
+  "যে তারিখ পর্যন্ত": "End date",
+  "নগদ বিবরণী (সমিতি)": "Cash Statement (Society)",
+  "অডিট রিপোর্ট — সমিতির আয় ও ব্যয়ের পূর্ণ বিবরণ": "Audit report — complete society income and expense details",
+  "সমিতি": "Society",
+  "প্রাপ্ত সুদ": "Interest received",
+  "কর্তনকৃত ব্যাংক চার্জ": "Bank charge deducted",
+  "ব্যাংকে জমা": "Bank deposit",
+  "ব্যাংক থেকে উত্তোলন": "Bank withdrawal",
+  "পর্যবেক্ষণ (ব্যাংক হিসাব): নিরীক্ষাকালে সমিতির নিচের ব্যাংক হিসাবগুলো দেখা হয়েছে।": "Observation (bank accounts): the following bank accounts were observed in the society during audit."
 }

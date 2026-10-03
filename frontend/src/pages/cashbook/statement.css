@@ -64,6 +64,13 @@
   text-align: right;
   white-space: nowrap;
 }
+.cst-banks {
+  margin-top: 4px;
+  font-size: 12.5px;
+}
+.cst-banks .cst-amt {
+  width: auto;
+}
 .cst-total td {
   font-weight: 700;
   text-align: right;

@@ -46,4 +46,28 @@ class IrrigationCashStatementTest extends Phase2TestCase
         $this->assertEquals(1500, $o->json('opening_computed'));
         $this->assertEquals(2200, $o->json('closing'));
     }
+
+    public function test_society_statement_shows_bank_moves_as_heads_and_lists_the_banks(): void
+    {
+        $user = $this->userWithRole('accountant');
+        $bankAccount = Account::create(['code' => '1298', 'name_bn' => 'ব্যাংক', 'type' => 'asset', 'is_postable' => true, 'is_active' => true]);
+        BankAccount::create(['account_id' => $bankAccount->id, 'bank_name' => 'সোনালী', 'account_no' => '3665', 'account_type' => 'savings']);
+
+        $this->book('opening', '2026-06-01', [['cash_society', 2000, 0], [$bankAccount->id, 5000, 0], ['opening_balance_equity', 0, 7000]]);
+        $this->book('receipt', '2026-07-03', [['cash_society', 800, 0], ['savings_deposits', 0, 800]], 'savings');
+        $this->book('payment', '2026-07-04', [['office_expense', 300, 0], ['cash_society', 0, 300]], 'cash');
+        $this->book('contra', '2026-07-05', [[$bankAccount->id, 1000, 0], ['cash_society', 0, 1000]], 'bank');
+        $this->book('receipt', '2026-07-31', [[$bankAccount->id, 40, 0], ['other_income', 0, 40]], 'bank');
+        $this->book('payment', '2026-07-31', [['bank_charges', 15, 0], [$bankAccount->id, 0, 15]], 'bank');
+
+        $r = $this->actingAs($user)->getJson('/api/cashbook/society-statement?from=2026-07-01&to=2027-06-30')->assertOk();
+        $this->assertEquals(2000, $r->json('opening'));
+        $this->assertEquals(800, $r->json('total_income'));
+        $this->assertEquals(1300, $r->json('total_expense')); // office 300 + taken to the bank 1,000
+        $this->assertContains('নগদ ব্যাংকে জমা', collect($r->json('expense'))->pluck('label')->all());
+        $this->assertEquals(1500, $r->json('closing'));
+        $this->assertNull($r->json('bank_balance'));
+        $bank = collect($r->json('banks'))->firstWhere('account_no', '3665');
+        $this->assertEquals([5000, 40, 15, 1000, 0, 6025], [$bank['opening'], $bank['interest'], $bank['charges'], $bank['deposits'], $bank['withdrawals'], $bank['closing']]);
+    }
 }
