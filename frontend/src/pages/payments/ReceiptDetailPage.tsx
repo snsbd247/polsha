@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Alert, App, Button, Form, Input, Modal, QRCode, Spin, Table, Tag } from 'antd'
+import { Alert, App, Button, Form, Input, Modal, Spin, Table, Tag } from 'antd'
 import { ArrowLeftOutlined, BankFilled, CalendarFilled, CreditCardFilled, DatabaseFilled, FileTextFilled, PrinterOutlined, StopOutlined, UnorderedListOutlined, UserOutlined } from '@ant-design/icons'
 import PageFrame from '../../components/PageFrame'
 import { useAuth } from '../../auth/AuthContext'
@@ -9,8 +9,8 @@ import { api, applyFormErrors, errorMessage } from '../../lib/api'
 import { accountLabel, money } from '../../lib/accounting'
 import { digits, fmtDate, fmtDateTime } from '../../lib/format'
 import { METHOD_LABEL, RECEIPT_STATUS_LABEL, amountInWords, type Owner } from '../../lib/irrigation'
-import { logoUrl, type Society } from '../../lib/settings'
-import { Letterhead, ReceiptFoot, ReceiptPaper, ReceiptSign } from '../../components/PrintParts'
+import { type Society } from '../../lib/settings'
+import { ReceiptFacts, ReceiptFoot, ReceiptMeta, ReceiptPaper, ReceiptSign, ReceiptTop } from '../../components/PrintParts'
 import { required } from '../../lib/rules'
 import { nameOf, t as tx } from '../../lib/i18n'
 import { Box, Fact, KV } from '../irrigation/InvoiceDetailPage'
@@ -30,14 +30,19 @@ type Item = {
     invoice_no: string
     season: string | null
     mouza: string | null
+    mouza_en?: string | null
     dag_no: string | null
     khatian_no: string | null
     area_decimal: number
     rate: number
     amount: number
     due_after: number
-    owners: Owner[]
+    owners: (Owner & { farmer_code?: string; is_member?: boolean })[]
     cultivation_type: string
+    land_type: string | null
+    is_current: boolean
+    penalty: number
+    patwari: { name: string; mobile: string | null } | null
   } | null
 }
 type Detail = {
@@ -64,7 +69,9 @@ type Detail = {
     name_en: string | null
     father_name: string
     mobile: string | null
+    village: { name_bn: string; name_en: string | null } | null
   } | null
+  farmer_is_member: boolean | null
   fund: {
     id: number
     code: string
@@ -120,6 +127,33 @@ export default function ReceiptDetailPage() {
   const showDue = r.society.show_due !== false
   const invoices = r.items.filter((it) => it.invoice)
   const dueAfter = invoices.reduce((s, it) => s + Number(it.invoice!.due_after), 0)
+
+  // the paper receipt's lines, as the society's printed slip has them
+  const others = r.items.filter((it) => !it.invoice)
+  const uniq = (xs: string[]) => [...new Set(xs)].join(', ')
+  const tk = (v: number) => `${money(v)}৳`
+  const round4 = (v: number) => Math.round(v * 10000) / 10000
+  const seasons = uniq(invoices.map((it) => it.invoice!.season ?? '').filter(Boolean))
+  const paid = (current: boolean) => invoices.filter((it) => it.invoice!.is_current === current).reduce((n, it) => n + Number(it.amount), 0)
+  const penalty = (current: boolean) => invoices.filter((it) => it.invoice!.is_current === current).reduce((n, it) => n + Number(it.invoice!.penalty), 0)
+  const owners = [...new Map(invoices.flatMap((it) => it.invoice!.owners).map((o) => [o.id, o])).values()]
+  const otherOwners = owners.filter((o) => o.id !== r.farmer?.id)
+  const payerName = r.farmer ? `${nameOf(r.farmer)}-${digits(r.farmer.farmer_code)}` : r.payer_name
+  const payerAndOwners = otherOwners.length ? `${payerName} / ${otherOwners.map((o) => `${nameOf(o)}${o.farmer_code ? `-${digits(o.farmer_code)}` : ''}`).join(', ')}` : payerName
+  const yesNo = (v?: boolean | null) => (v ? tx('হ্যাঁ') : tx('নাই'))
+  // one word when the farmer and every owner agree, otherwise each side on its own
+  const ownersMember = otherOwners.every((o) => o.is_member)
+  const memberLine =
+    !otherOwners.length || (!!r.farmer_is_member === ownersMember && otherOwners.every((o) => !!o.is_member === ownersMember))
+      ? yesNo(r.farmer_is_member)
+      : `${tx('কৃষক')}: ${yesNo(r.farmer_is_member)}, ${tx('মালিক')}: ${yesNo(ownersMember)}`
+  const holding = uniq(
+    invoices.map((it) => {
+      const inv = it.invoice!
+      const pw = inv.patwari ? `${inv.patwari.name}-${inv.patwari.mobile ? digits(inv.patwari.mobile) : tx('মোবাইল নম্বর নেই')}` : tx('পাটোয়ারী নির্ধারিত নেই')
+      return `(${tx('খতিয়ান')}-${digits(inv.khatian_no ?? '—')}) / ${pw}`
+    }),
+  )
 
   return (
     <>
@@ -281,129 +315,53 @@ export default function ReceiptDetailPage() {
       </div>
 
       <div className="print-only">
-        <ReceiptPaper society={r.society} doc={{ type: 'receipt', id: r.id }}>
+        <ReceiptPaper society={r.society} doc={{ type: 'receipt', id: r.id }} payerCopy={tx('কৃষক কপি')}>
           {r.status === 'cancelled' && <div className="receipt-stamp">{tx('বাতিলকৃত')}</div>}
-          <div className="receipt-head">
-            {r.society.logo && <img src={logoUrl()} alt="" className="receipt-logo" />}
-            <div style={{ flex: 1, textAlign: 'center' }}>
-              <div className="receipt-society">{nameOf(r.society)}</div>
-              <Letterhead society={r.society} />
-              {r.society.address && <div style={{ whiteSpace: 'pre-line' }}>{r.society.address}</div>}
-              <div>
-                {r.society.registration_no &&
-                  tx('নিবন্ধন নং: {{p0}}', {
-                    p0: digits(r.society.registration_no),
-                  })}
-                {r.society.registration_no && r.society.phone && ' · '}
-                {r.society.phone && tx('ফোন: {{p0}}', { p0: digits(r.society.phone) })}
-              </div>
-              <div className="receipt-title">{tx('টাকার রশিদ — সেচ চার্জ')}</div>
-            </div>
-            {r.society.show_qr !== false && <QRCode value={verifyUrl} size={96} bordered={false} />}
-          </div>
-
-          <table className="receipt-meta">
-            <tbody>
-              <tr>
-                <td>
-                  {tx('রশিদ নং')}: <strong>{digits(r.receipt_no)}</strong>
-                  {r.is_legacy && r.legacy_no && (
-                    <>
-                      {' '}
-                      ({tx('পুরনো রশিদ নং')}: {digits(r.legacy_no)})
-                    </>
-                  )}
-                </td>
-                <td style={{ textAlign: 'right' }}>
-                  {tx('তারিখ')}: <strong>{fmtDate(r.date)}</strong>
-                </td>
-              </tr>
-              <tr>
-                <td colSpan={2}>
-                  {tx('প্রদানকারী')}: <strong>{r.farmer ? nameOf(r.farmer) : r.payer_name}</strong>
-                  {r.farmer && (
-                    <>
-                      {' '}
-                      ({digits(r.farmer.farmer_code)}), {tx('পিতা: {{p0}}', { p0: r.farmer.father_name })}
-                      {r.farmer.mobile && `, ${tx('মোবাইল')}: ${digits(r.farmer.mobile)}`}
-                    </>
-                  )}
-                </td>
-              </tr>
-            </tbody>
-          </table>
-
-          <table className="receipt-items">
-            <thead>
-              <tr>
-                <th>{tx('ক্রম')}</th>
-                <th>{tx('বিবরণ')}</th>
-                <th>{tx('জমি (শতক)')}</th>
-                <th>{tx('রেট')}</th>
-                <th>{tx('বিল')}</th>
-                <th>{tx('জমা')}</th>
-                {showDue && <th>{tx('অবশিষ্ট বকেয়া')}</th>}
-              </tr>
-            </thead>
-            <tbody>
-              {r.items.map((it, i) => (
-                <tr key={it.id}>
-                  <td>{digits(i + 1)}</td>
-                  <td>
-                    {it.invoice ? (
-                      <>
-                        {tx('সেচ চার্জ')} — {it.invoice.season}
-                        <br />
-                        <small>
-                          {tx('ইনভয়েস')} {digits(it.invoice.invoice_no)}; {it.invoice.mouza}, {tx('দাগ')} {digits(it.invoice.dag_no)}
-                          {it.invoice.cultivation_type !== 'own' && it.invoice.owners.length > 0 && (
-                            <>
-                              ; {tx('মালিক')}: {it.invoice.owners.map((o) => nameOf(o)).join(', ')}
-                            </>
-                          )}
-                        </small>
-                      </>
-                    ) : (
-                      it.description
-                    )}
-                  </td>
-                  <td className="num">{it.invoice ? digits(it.invoice.area_decimal) : ''}</td>
-                  <td className="num">{it.invoice ? money(it.invoice.rate) : ''}</td>
-                  <td className="num">{it.invoice ? money(it.invoice.amount) : ''}</td>
-                  <td className="num">{money(it.amount)}</td>
-                  {showDue && <td className="num">{it.invoice ? money(it.invoice.due_after) : ''}</td>}
-                </tr>
-              ))}
-            </tbody>
-            <tfoot>
-              <tr>
-                <td colSpan={5} style={{ textAlign: 'right' }}>
-                  <strong>{tx('মোট জমা')}</strong>
-                </td>
-                <td className="num">
-                  <strong>৳{money(amount)}</strong>
-                </td>
-                {showDue && <td />}
-              </tr>
-            </tfoot>
-          </table>
-
-          <div style={{ margin: '8px 0' }}>
-            {tx('কথায়')}: <strong>{amountInWords(amount)}</strong>
-          </div>
-          <div>
-            {tx('মাধ্যম')}: {METHOD_LABEL[r.method] ?? r.method}
-            {r.method !== 'cash' && r.fund && ` — ${accountLabel(r.fund)}`}
-            {r.reference && `, ${tx('রেফারেন্স')}: ${digits(r.reference)}`}
-          </div>
-          {r.remarks && (
-            <div>
-              {tx('মন্তব্য')}: {r.remarks}
-            </div>
-          )}
-
-          <ReceiptSign society={r.society} collector={nameOf(r.creator)} />
-          <ReceiptFoot society={r.society} fallback={tx('QR কোড স্ক্যান করে রশিদের সত্যতা যাচাই করুন। কম্পিউটারে তৈরি রশিদ।')} />
+          <ReceiptTop society={r.society} title={tx('সেচ চার্জ ও বিবিধ আদায় রশিদ')} qr={verifyUrl} />
+          <ReceiptMeta
+            lines={[
+              <>
+                {tx('রশিদ নং')}: {digits(r.receipt_no)}
+                {r.is_legacy && r.legacy_no && ` (${tx('পুরনো রশিদ নং')}: ${digits(r.legacy_no)})`}
+              </>,
+              seasons && (
+                <>
+                  {tx('আদায়ের তথ্য')}: {seasons}
+                </>
+              ),
+            ]}
+            date={
+              <>
+                {tx('সংগৃহীত তারিখ')}: {fmtDate(r.date)} {tx('ইং')}
+              </>
+            }
+          />
+          <ReceiptFacts
+            rows={[
+              [tx('কৃষকের নাম ও আইডি/মালিকের নাম ও আইডি'), payerAndOwners],
+              [tx('পিতা/স্বামীর নাম'), r.farmer?.father_name || '—'],
+              [tx('গ্রাম/মহল্লা/মোবাইল নং'), `${r.farmer?.village ? nameOf(r.farmer.village) : '—'}/${r.farmer?.mobile ? digits(r.farmer.mobile) : tx('নেই')}`],
+              [tx('কৃষক এবং মালিক সভ্য সদস্য'), invoices.length ? memberLine : r.farmer_is_member === null ? null : r.farmer_is_member ? tx('হ্যাঁ') : tx('নাই')],
+              [tx('মৌজা'), invoices.length ? uniq(invoices.map((it) => (it.invoice!.mouza ? nameOf({ name_bn: it.invoice!.mouza, name_en: it.invoice!.mouza_en }) : '—'))) : null],
+              [tx('জমির ধরন/ চার্জ রেট (প্রতি শতক)'), invoices.length ? uniq(invoices.map((it) => `${it.invoice!.land_type ?? '—'}/${money(it.invoice!.rate)}৳`)) : null],
+              [tx('দাগ নং'), invoices.length ? uniq(invoices.map((it) => digits(it.invoice!.dag_no ?? '—'))) : null],
+              [
+                tx('জমির পরিমাণ'),
+                invoices.length ? `${digits(round4([...new Map(invoices.map((it) => [`${it.invoice!.mouza}|${it.invoice!.dag_no}`, Number(it.invoice!.area_decimal)])).values()].reduce((n, v) => n + v, 0)))} ${tx('শতক')}` : null,
+              ],
+              [tx('চার্জের পরিমাণ (হাল)/জরিমানা'), invoices.length ? `${tk(paid(true))}/${tk(penalty(true))}` : null],
+              [tx('চার্জের পরিমাণ (বকেয়া)/জরিমানা'), invoices.length ? `${tk(paid(false))}/${tk(penalty(false))}` : null],
+              [tx('বিবিধ আদায়'), others.length ? others.map((it) => `${it.description} ${tk(Number(it.amount))}`).join(', ') : null],
+              [tx('মোট আদায়ের পরিমাণ'), <strong key="t">{tk(amount)}</strong>],
+              [tx('কথায়'), amountInWords(amount)],
+              [tx('আদায়ের পর বকেয়া'), showDue && invoices.length ? tk(dueAfter) : null],
+              [tx('মাধ্যম'), r.method !== 'cash' ? `${METHOD_LABEL[r.method] ?? r.method}${r.fund ? ` — ${accountLabel(r.fund)}` : ''}${r.reference ? `, ${tx('রেফারেন্স')}: ${digits(r.reference)}` : ''}` : null],
+              [tx('হোল্ডিং এর বিবরণ/পাটোয়ারীর নাম ও মোবা নং'), invoices.length ? holding : null],
+              [tx('মন্তব্য'), r.remarks],
+            ]}
+          />
+          <ReceiptSign society={r.society} collector={nameOf(r.creator)} left={tx('সদস্যের স্বাক্ষর/প্রদানকারীর স্বাক্ষর')} />
+          <ReceiptFoot society={r.society} fallback={tx('এটি সিস্টেম-জেনারেটেড রশিদ। অনুগ্রহ করে আপনার রেকর্ডের জন্য সংরক্ষণ করুন।')} />
         </ReceiptPaper>
       </div>
 

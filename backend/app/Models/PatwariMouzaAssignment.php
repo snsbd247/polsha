@@ -14,4 +14,9 @@ class PatwariMouzaAssignment extends Model
     {
         return $this->belongsTo(Mouza::class);
     }
+
+    public function patwari()
+    {
+        return $this->belongsTo(Patwari::class);
+    }
 }

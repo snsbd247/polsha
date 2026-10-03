@@ -357,7 +357,10 @@ class IrrigationTest extends Phase2TestCase
 
         // Each receipt keeps the due as it stood right after that payment.
         $this->actingAs($this->irrigation)->getJson('/api/receipts/'.$receipt->id)->assertOk()->assertJsonPath('items.0.invoice.due_after', 230);
-        $this->actingAs($this->irrigation)->getJson('/api/receipts/'.$second->id)->assertOk()->assertJsonPath('items.0.invoice.due_after', 0);
+        $this->actingAs($this->irrigation)->getJson('/api/receipts/'.$second->id)->assertOk()->assertJsonPath('items.0.invoice.due_after', 0)
+            // what the paper receipt prints: this season's bill, no penalty, no patwari yet, not a member
+            ->assertJsonPath('items.0.invoice.is_current', true)->assertJsonPath('items.0.invoice.penalty', 0)
+            ->assertJsonPath('items.0.invoice.patwari', null)->assertJsonPath('farmer_is_member', false);
 
         // A paid invoice can't be cancelled until its receipts are.
         $this->actingAs($this->irrigation)->postJson("/api/invoices/{$invoice->id}/cancel", ['reason' => 'ভুল'])->assertStatus(422);

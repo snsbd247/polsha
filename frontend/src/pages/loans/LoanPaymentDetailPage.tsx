@@ -11,8 +11,8 @@ import { digits, fmtDate, fmtDateTime } from '../../lib/format'
 import type { FarmerBrief, MemberBrief } from '../../lib/funds'
 import { METHOD_LABEL, amountInWords } from '../../lib/irrigation'
 import { useLoanMeta, type LoanPayment } from '../../lib/loans'
-import { logoUrl, type Society } from '../../lib/settings'
-import { Letterhead, ReceiptFoot, ReceiptPaper, ReceiptSign } from '../../components/PrintParts'
+import { type Society } from '../../lib/settings'
+import { ReceiptFacts, ReceiptFoot, ReceiptMeta, ReceiptPaper, ReceiptSign, ReceiptTop } from '../../components/PrintParts'
 import { required } from '../../lib/rules'
 import { nameOf, t as tx } from '../../lib/i18n'
 import { Box, Fact, KV } from '../irrigation/InvoiceDetailPage'
@@ -172,91 +172,40 @@ export default function LoanPaymentDetailPage() {
       </div>
 
       <div className="print-only">
-        <ReceiptPaper society={p.society} doc={{ type: "loan_payment", id: p.id }}>
+        <ReceiptPaper society={p.society} doc={{ type: 'loan_payment', id: p.id }} payerCopy={tx('সদস্য কপি')}>
           {p.status === 'cancelled' && <div className="receipt-stamp">{tx('বাতিলকৃত')}</div>}
-          <div className="receipt-head">
-            {p.society.logo && <img src={logoUrl()} alt="" className="receipt-logo" />}
-            <div style={{ flex: 1, textAlign: 'center' }}>
-              <div className="receipt-society">{nameOf(p.society)}</div>
-              <Letterhead society={p.society} />
-              {p.society.address && <div style={{ whiteSpace: 'pre-line' }}>{p.society.address}</div>}
-              <div>
-                {p.society.registration_no && tx('নিবন্ধন নং: {{p0}}', { p0: digits(p.society.registration_no) })}
-                {p.society.registration_no && p.society.phone && ' · '}
-                {p.society.phone && tx('ফোন: {{p0}}', { p0: digits(p.society.phone) })}
-              </div>
-              <div className="receipt-title">{tx('ঋণের কিস্তি জমার রশিদ')}</div>
-            </div>
-          </div>
-  
-          <table className="receipt-meta">
-            <tbody>
-              <tr>
-                <td>
-                  {tx('রশিদ নং')}: <strong>{digits(p.payment_no)}</strong>
-                </td>
-                <td style={{ textAlign: 'right' }}>
-                  {tx('তারিখ')}: <strong>{fmtDate(p.date)}</strong>
-                </td>
-              </tr>
-              <tr>
-                <td colSpan={2}>
-                  {tx('সদস্যের নাম')}: <strong>{nameOf(farmer)}</strong> ({tx('সদস্য নং')} {digits(p.loan.member?.member_no)}){farmer && `, ${tx('পিতা: {{p0}}', { p0: farmer.father_name })}`}
-                  {farmer?.mobile && `, ${tx('মোবাইল')}: ${digits(farmer.mobile)}`}
-                </td>
-              </tr>
-              <tr>
-                <td colSpan={2}>
-                  {tx('ঋণ নং')}: <strong>{digits(p.loan.loan_no)}</strong> — {nameOf(p.loan.product)}, {tx('ঋণের পরিমাণ')} ৳{money(p.loan.amount)}
-                </td>
-              </tr>
-            </tbody>
-          </table>
-  
-          <table className="receipt-items">
-            <thead>
-              <tr>
-                <th>{tx('বিবরণ')}</th>
-                <th>{tx('টাকা')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {parts.map(([label, v]) => (
-                <tr key={label}>
-                  <td>{label}</td>
-                  <td className="num">{money(v)}</td>
-                </tr>
-              ))}
-              <tr>
-                <td>
-                  <strong>{tx('মোট জমা')}</strong>
-                </td>
-                <td className="num">
-                  <strong>{money(amount)}</strong>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-  
-          <div style={{ margin: '8px 0' }}>
-            {tx('কথায়')}: <strong>{amountInWords(amount)}</strong>
-          </div>
-          <div>
-            {tx('এই জমার পর আসল বাকি')}: <strong>৳{money(p.principal_after)}</strong>
-          </div>
-          <div>
-            {tx('মাধ্যম')}: {METHOD_LABEL[p.method] ?? p.method}
-            {p.method !== 'cash' && p.fund && ` — ${accountLabel(p.fund)}`}
-            {p.reference && `, ${tx('রেফারেন্স')}: ${digits(p.reference)}`}
-          </div>
-          {p.remarks && (
-            <div>
-              {tx('মন্তব্য')}: {p.remarks}
-            </div>
-          )}
-  
+          <ReceiptTop society={p.society} title={tx('ঋণের কিস্তি জমার রশিদ')} />
+          <ReceiptMeta
+            lines={[
+              <>
+                {tx('রশিদ নং')}: {digits(p.payment_no)}
+              </>,
+              <>
+                {tx('ঋণ নং')}: {digits(p.loan.loan_no)} — {nameOf(p.loan.product)}
+              </>,
+            ]}
+            date={
+              <>
+                {tx('তারিখ')}: {fmtDate(p.date)} {tx('ইং')}
+              </>
+            }
+          />
+          <ReceiptFacts
+            rows={[
+              [tx('সদস্যের নাম ও সদস্য নং'), `${nameOf(farmer)}-${digits(p.loan.member?.member_no)}`],
+              [tx('পিতা/স্বামীর নাম'), farmer?.father_name || '—'],
+              [tx('মোবাইল নং'), farmer?.mobile ? digits(farmer.mobile) : tx('নেই')],
+              [tx('ঋণের পরিমাণ'), `${money(p.loan.amount)}৳`],
+              ...parts.map(([label, v]): [string, string] => [label, `${money(v)}৳`]),
+              [tx('মোট জমা'), <strong key="a">{money(amount)}৳</strong>],
+              [tx('কথায়'), amountInWords(amount)],
+              [tx('এই জমার পর আসল বাকি'), `${money(p.principal_after)}৳`],
+              [tx('মাধ্যম'), `${METHOD_LABEL[p.method] ?? p.method}${p.method !== 'cash' && p.fund ? ` — ${accountLabel(p.fund)}` : ''}${p.reference ? `, ${tx('রেফারেন্স')}: ${digits(p.reference)}` : ''}`],
+              [tx('মন্তব্য'), p.remarks],
+            ]}
+          />
           <ReceiptSign society={p.society} collector={nameOf(p.creator ?? null)} left={tx('সদস্যের স্বাক্ষর')} right={tx('দায়িত্বপ্রাপ্ত কর্মকর্তার স্বাক্ষর')} />
-          <ReceiptFoot society={p.society} fallback={tx('কম্পিউটারে তৈরি রশিদ।')} />
+          <ReceiptFoot society={p.society} fallback={tx('এটি সিস্টেম-জেনারেটেড রশিদ। অনুগ্রহ করে আপনার রেকর্ডের জন্য সংরক্ষণ করুন।')} />
         </ReceiptPaper>
       </div>
 

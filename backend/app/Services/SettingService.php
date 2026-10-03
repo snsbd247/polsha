@@ -86,7 +86,7 @@ class SettingService
         'receipt_footer_note' => '',
         'receipt_show_qr' => true,
         'receipt_show_due' => true,
-        'receipt_copies' => 1,
+        'receipt_copies' => 2,
         'receipt_paper' => 'a4',
         'member_card_note' => '',
         // preferences

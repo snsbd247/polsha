@@ -1,0 +1,241 @@
+/*
+ * Paper receipts, laid out like the society's printed slip: logo and name |
+ * underlined title | QR, the number and date, the facts in one ruled box,
+ * signature lines, a faint name across the paper. With two copies the payer's
+ * copy and the office copy share one A4 sheet, a dashed cut line between.
+ */
+.rc-paper {
+  position: relative;
+  max-width: 800px;
+  padding: 18px 28px 14px;
+  background: #fff;
+  color: #111;
+  border: 1px solid #d9d9d9;
+  overflow: hidden;
+  font-size: 12.5px;
+  line-height: 1.25;
+}
+.rc-sheet .rc-paper + .rc-paper {
+  margin-top: 0;
+  border-top: 1px dashed #555;
+}
+.rc-copy {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: -4px 0 4px -10px;
+  font-size: 17px;
+  font-weight: 800;
+}
+.rc-dup {
+  padding: 0 8px;
+  border: 1px dashed #000;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 600;
+}
+.rc-body {
+  position: relative;
+  z-index: 1;
+}
+.rc-watermark {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 0;
+  transform: translate(-50%, -50%) rotate(-24deg);
+  font-size: 54px;
+  font-weight: 700;
+  letter-spacing: 4px;
+  color: rgba(0, 0, 0, 0.07);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.rc-top {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr) 96px;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+.rc-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.rc-brand img {
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+  flex: none;
+}
+.rc-name {
+  font-size: 19px;
+  font-weight: 800;
+  line-height: 1.2;
+}
+.rc-addr {
+  font-size: 11px;
+  white-space: pre-line;
+}
+.rc-title {
+  text-align: center;
+  font-size: 17px;
+  font-weight: 700;
+  color: #1f4e8c;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+.rc-qr {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+.rc-qr .ant-qrcode {
+  padding: 0 !important;
+}
+.rc-qr small {
+  font-size: 10px;
+}
+
+.rc-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 12px;
+  margin-bottom: 4px;
+  font-size: 13px;
+}
+.rc-date {
+  white-space: nowrap;
+}
+
+.rc-facts {
+  padding: 6px 10px;
+  border: 1.5px solid #1f4e8c;
+}
+.rc-fact {
+  display: grid;
+  grid-template-columns: minmax(0, 44%) 10px minmax(0, 1fr);
+  column-gap: 4px;
+  font-size: 13px;
+}
+.rc-fact > b {
+  font-weight: 700;
+}
+
+.rc-sign {
+  display: flex;
+  justify-content: space-between;
+  gap: 40px;
+  margin-top: 22px;
+  font-size: 12px;
+}
+.rc-sign > div {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 230px;
+}
+.rc-sign > div:last-child {
+  align-items: flex-end;
+  text-align: right;
+}
+.rc-sign i {
+  display: block;
+  width: 100%;
+  margin-bottom: 4px;
+  border-top: 1px solid #333;
+}
+.rc-sign small {
+  font-size: 11px;
+}
+.rc-sign-img {
+  position: absolute;
+  right: 10px;
+  bottom: 30px;
+  max-height: 58px;
+  max-width: 150px;
+  object-fit: contain;
+}
+.rc-foot {
+  margin-top: 8px;
+  font-size: 10px;
+  color: #555;
+  text-align: center;
+}
+.rc-items {
+  width: 100%;
+  margin-top: 8px;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.rc-items th,
+.rc-items td {
+  border: 1px solid #1f4e8c;
+  padding: 3px 6px;
+}
+.rc-items .num {
+  text-align: right;
+  white-space: nowrap;
+}
+
+/* smaller papers */
+.rc-paper.paper-a5 {
+  max-width: 560px;
+  font-size: 12px;
+}
+.rc-paper.paper-a5 .rc-fact {
+  font-size: 12.5px;
+}
+.rc-paper.paper-thermal {
+  max-width: 300px;
+  padding: 8px;
+  font-size: 11px;
+}
+.rc-paper.paper-thermal .rc-top {
+  grid-template-columns: 1fr;
+  text-align: center;
+}
+.rc-paper.paper-thermal .rc-brand {
+  flex-direction: column;
+}
+.rc-paper.paper-thermal .rc-qr {
+  align-items: center;
+}
+.rc-paper.paper-thermal .rc-fact {
+  grid-template-columns: 1fr;
+  font-size: 11px;
+}
+.rc-paper.paper-thermal .rc-fact > b {
+  display: none;
+}
+.rc-paper.paper-thermal .rc-sign {
+  gap: 10px;
+}
+
+@media print {
+  .rc-paper {
+    border: none;
+    padding: 0 4mm;
+    max-width: none;
+  }
+  .rc-sheet .rc-paper + .rc-paper {
+    margin-top: 4mm !important;
+    padding-top: 4mm;
+    border-top: 1px dashed #555 !important;
+  }
+  /* two copies fill one A4 sheet */
+  .rc-copies-2 .rc-paper.paper-a4 {
+    break-inside: avoid;
+  }
+  .rc-paper.paper-a5 {
+    max-width: 148mm;
+  }
+  .rc-paper.paper-thermal {
+    max-width: 72mm;
+  }
+}

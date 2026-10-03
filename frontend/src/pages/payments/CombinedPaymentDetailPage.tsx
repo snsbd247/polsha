@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Alert, App, Button, Form, Input, Modal, QRCode, Spin, Table, Tag } from 'antd'
+import { Alert, App, Button, Form, Input, Modal, Spin, Table, Tag } from 'antd'
 import { AppstoreFilled, ArrowLeftOutlined, BankFilled, CalendarFilled, DatabaseFilled, FileTextFilled, PrinterOutlined, StopOutlined, UnorderedListOutlined, UserOutlined, WalletFilled } from '@ant-design/icons'
 import PageFrame from '../../components/PageFrame'
 import { useAuth } from '../../auth/AuthContext'
@@ -10,8 +10,8 @@ import { accountLabel, money } from '../../lib/accounting'
 import { digits, fmtDate, fmtDateTime } from '../../lib/format'
 import { amountInWords } from '../../lib/irrigation'
 import { MODULE_TONE, type CombinedModule } from '../../lib/phase8'
-import { logoUrl, type Society } from '../../lib/settings'
-import { Letterhead, ReceiptFoot, ReceiptPaper, ReceiptSign } from '../../components/PrintParts'
+import { type Society } from '../../lib/settings'
+import { ReceiptFacts, ReceiptFoot, ReceiptMeta, ReceiptPaper, ReceiptSign, ReceiptTop } from '../../components/PrintParts'
 import { required } from '../../lib/rules'
 import { nameOf, t as tx } from '../../lib/i18n'
 import { Box, Fact, KV } from '../irrigation/InvoiceDetailPage'
@@ -273,98 +273,35 @@ export default function CombinedPaymentDetailPage() {
       </div>
 
       <div className="print-only">
-        <ReceiptPaper society={r.society} doc={{ type: 'combined_payment', id: r.id }}>
+        <ReceiptPaper society={r.society} doc={{ type: 'combined_payment', id: r.id }} payerCopy={tx('কৃষক কপি')}>
           {r.status === 'cancelled' && <div className="receipt-stamp">{tx('বাতিলকৃত')}</div>}
-          <div className="receipt-head">
-            {r.society.logo && <img src={logoUrl()} alt="" className="receipt-logo" />}
-            <div style={{ flex: 1, textAlign: 'center' }}>
-              <div className="receipt-society">{nameOf(r.society)}</div>
-              <Letterhead society={r.society} />
-              {r.society.address && <div style={{ whiteSpace: 'pre-line' }}>{r.society.address}</div>}
-              <div>
-                {r.society.registration_no &&
-                  tx('নিবন্ধন নং: {{p0}}', {
-                    p0: digits(r.society.registration_no),
-                  })}
-                {r.society.registration_no && r.society.phone && ' · '}
-                {r.society.phone && tx('ফোন: {{p0}}', { p0: digits(r.society.phone) })}
-              </div>
-              <div className="receipt-title">{tx('সমন্বিত টাকার রশিদ')}</div>
-            </div>
-            {r.society.show_qr !== false && <QRCode value={verifyUrl} size={96} bordered={false} />}
-          </div>
-          <table className="receipt-meta">
-            <tbody>
-              <tr>
-                <td>
-                  {tx('রশিদ নং')}: <strong>{digits(r.payment_no)}</strong>
-                </td>
-                <td style={{ textAlign: 'right' }}>
-                  {tx('তারিখ')}: <strong>{fmtDate(r.date)}</strong>
-                </td>
-              </tr>
-              <tr>
-                <td colSpan={2}>
-                  {tx('প্রদানকারী')}: <strong>{r.farmer ? nameOf(r.farmer) : r.payer_name}</strong>
-                  {r.farmer && (
-                    <>
-                      {' '}
-                      ({digits(r.farmer.farmer_code)}), {tx('পিতা: {{p0}}', { p0: r.farmer.father_name })}
-                      {r.member && `, ${tx('সদস্য নং')}: ${digits(r.member.member_no)}`}
-                    </>
-                  )}
-                </td>
-              </tr>
-            </tbody>
-          </table>
-          <table className="receipt-items">
-            <thead>
-              <tr>
-                <th>{tx('ক্রম')}</th>
-                <th>{tx('খাত')}</th>
-                <th>{tx('বিবরণ')}</th>
-                <th>{tx('টাকা')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {r.parts.map((p, i) => (
-                <tr key={p.id}>
-                  <td>{digits(i + 1)}</td>
-                  <td>{r.modules[p.module] ?? p.module}</td>
-                  <td>
-                    {p.description}
-                    {p.source && <small> ({digits(p.source.no)})</small>}
-                  </td>
-                  <td className="num">{money(p.amount)}</td>
-                </tr>
-              ))}
-            </tbody>
-            <tfoot>
-              <tr>
-                <td colSpan={3} style={{ textAlign: 'right' }}>
-                  <strong>{tx('মোট জমা')}</strong>
-                </td>
-                <td className="num">
-                  <strong>৳{money(amount)}</strong>
-                </td>
-              </tr>
-            </tfoot>
-          </table>
-          <div style={{ margin: '8px 0' }}>
-            {tx('কথায়')}: <strong>{amountInWords(amount)}</strong>
-          </div>
-          <div>
-            {tx('মাধ্যম')}: {r.methods[r.method] ?? r.method}
-            {r.method !== 'cash' && r.fund && ` — ${accountLabel(r.fund)}`}
-            {r.reference && `, ${tx('রেফারেন্স')}: ${digits(r.reference)}`}
-          </div>
-          {r.remarks && (
-            <div>
-              {tx('মন্তব্য')}: {r.remarks}
-            </div>
-          )}
-          <ReceiptSign society={r.society} collector={nameOf(r.creator)} />
-          <ReceiptFoot society={r.society} fallback={tx('QR কোড স্ক্যান করে রশিদের সত্যতা যাচাই করুন। কম্পিউটারে তৈরি রশিদ।')} />
+          <ReceiptTop society={r.society} title={tx('সমন্বিত টাকার রশিদ')} qr={verifyUrl} />
+          <ReceiptMeta
+            lines={[
+              <>
+                {tx('রশিদ নং')}: {digits(r.payment_no)}
+              </>,
+            ]}
+            date={
+              <>
+                {tx('সংগৃহীত তারিখ')}: {fmtDate(r.date)} {tx('ইং')}
+              </>
+            }
+          />
+          <ReceiptFacts
+            rows={[
+              [tx('কৃষকের নাম ও আইডি'), r.farmer ? `${nameOf(r.farmer)}-${digits(r.farmer.farmer_code)}` : r.payer_name],
+              [tx('পিতা/স্বামীর নাম'), r.farmer?.father_name || null],
+              [tx('সদস্য নং'), r.member ? digits(r.member.member_no) : null],
+              ...r.parts.map((p): [string, string] => [`${r.modules[p.module] ?? p.module} — ${p.description}${p.source ? ` (${digits(p.source.no)})` : ''}`, `${money(p.amount)}৳`]),
+              [tx('মোট আদায়ের পরিমাণ'), <strong key="a">{money(amount)}৳</strong>],
+              [tx('কথায়'), amountInWords(amount)],
+              [tx('মাধ্যম'), `${r.methods[r.method] ?? r.method}${r.method !== 'cash' && r.fund ? ` — ${accountLabel(r.fund)}` : ''}${r.reference ? `, ${tx('রেফারেন্স')}: ${digits(r.reference)}` : ''}`],
+              [tx('মন্তব্য'), r.remarks],
+            ]}
+          />
+          <ReceiptSign society={r.society} collector={nameOf(r.creator)} left={tx('সদস্যের স্বাক্ষর/প্রদানকারীর স্বাক্ষর')} />
+          <ReceiptFoot society={r.society} fallback={tx('এটি সিস্টেম-জেনারেটেড রশিদ। অনুগ্রহ করে আপনার রেকর্ডের জন্য সংরক্ষণ করুন।')} />
         </ReceiptPaper>
       </div>
 

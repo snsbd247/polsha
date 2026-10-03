@@ -6,7 +6,10 @@ use App\Http\Controllers\Controller;
 use App\Models\Account;
 use App\Models\Farmer;
 use App\Models\Invoice;
+use App\Models\Member;
+use App\Models\PatwariMouzaAssignment;
 use App\Models\Receipt;
+use App\Models\Season;
 use App\Services\ReceiptService;
 use App\Services\SettingService;
 use App\Services\SmsService;
@@ -47,18 +50,31 @@ class ReceiptController extends Controller
 
     public function show(Receipt $receipt): JsonResponse
     {
-        $receipt->load(['items', 'farmer:id,farmer_code,name_bn,name_en,father_name,mobile', 'fund:id,code,name_bn,name_en',
+        $receipt->load(['items', 'farmer:id,farmer_code,name_bn,name_en,father_name,mobile,village_id', 'farmer.village:id,name_bn,name_en', 'fund:id,code,name_bn,name_en',
             'journal:id,voucher_no,status,reversed_by_id', 'journal.reversedBy:id,voucher_no', 'creator:id,name_bn,name_en', 'canceller:id,name_bn,name_en']);
         $invoices = Invoice::whereIn('id', $receipt->items->where('payable_type', (new Invoice)->getMorphClass())->pluck('payable_id'))
-            ->get()->keyBy('id');
+            ->with('land:id,mouza_id')->get()->keyBy('id');
+        // the season being billed now; any other season's bill paid here is an arrear
+        $current = Season::orderByDesc('start_date')->orderByDesc('id')->value('id');
+        // who on the receipt is a member: the farmer and each owner
+        $people = collect([$receipt->farmer_id])->merge($invoices->flatMap(fn ($i) => collect($i->snapshot['owners'] ?? [])->pluck('id')))->filter()->unique();
+        $members = Member::whereIn('farmer_id', $people)->where('status', Member::ACTIVE)->pluck('farmer_id')->flip();
+        // the patwari now looking after each mouza on the receipt
+        $patwaris = PatwariMouzaAssignment::whereNull('end_date')->whereIn('mouza_id', $invoices->pluck('land.mouza_id')->filter()->unique())
+            ->with('patwari:id,name,mobile')->get()->keyBy('mouza_id');
 
         return response()->json([
             ...$receipt->toArray(),
+            'farmer_is_member' => $receipt->farmer_id ? isset($members[$receipt->farmer_id]) : null,
             'items' => $receipt->items->map(fn ($it) => $it->toArray() + ['invoice' => ($inv = $invoices[$it->payable_id] ?? null) ? [
                 'id' => $inv->id, 'invoice_no' => $inv->invoice_no, 'season' => $inv->snapshot['season'] ?? null,
-                'mouza' => $inv->snapshot['mouza'] ?? null, 'dag_no' => $inv->snapshot['dag_no'] ?? null, 'khatian_no' => $inv->snapshot['khatian_no'] ?? null,
+                'mouza' => $inv->snapshot['mouza'] ?? null, 'mouza_en' => $inv->snapshot['mouza_en'] ?? null, 'dag_no' => $inv->snapshot['dag_no'] ?? null, 'khatian_no' => $inv->snapshot['khatian_no'] ?? null,
                 'area_decimal' => (float) $inv->area_decimal, 'rate' => (float) $inv->rate, 'amount' => (float) $inv->amount,
-                'due_after' => $it->due_after !== null ? (float) $it->due_after : $inv->dueAmount(), 'owners' => $inv->snapshot['owners'] ?? [], 'cultivation_type' => $inv->cultivation_type,
+                'due_after' => $it->due_after !== null ? (float) $it->due_after : $inv->dueAmount(), 'cultivation_type' => $inv->cultivation_type,
+                'owners' => collect($inv->snapshot['owners'] ?? [])->map(fn ($o) => $o + ['is_member' => isset($members[$o['id'] ?? 0])])->all(),
+                'land_type' => $inv->snapshot['land_type'] ?? null, 'is_current' => $inv->season_id === $current,
+                'penalty' => round(collect($inv->charges ?? [])->sum('amount'), 2),
+                'patwari' => ($pw = $patwaris[$inv->land?->mouza_id]->patwari ?? null) ? ['name' => $pw->name, 'mobile' => $pw->mobile] : null,
             ] : null])->values(),
             'verify_token' => $receipt->verify_token,
             'society' => SettingService::society(),
