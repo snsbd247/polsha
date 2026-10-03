@@ -4,7 +4,9 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Account;
+use App\Models\BankAccount;
 use App\Models\Journal;
+use App\Models\JournalLine;
 use App\Services\LedgerService;
 use App\Support\CsvExport;
 use App\Support\Tr;
@@ -37,7 +39,11 @@ class JournalController extends Controller
 
         $month = fn () => Journal::where('date', '>=', now()->startOfMonth()->toDateString())->where('status', 'posted');
 
-        return response()->json($q->paginate($this->perPage($request))->toArray() + [
+        $page = $q->paginate($this->perPage($request));
+        $summaries = $this->summaries($page->getCollection());
+        $page->getCollection()->each(fn ($j) => $j->setAttribute('summary', $summaries[$j->id] ?? null));
+
+        return response()->json($page->toArray() + [
             'types' => Tr::map(Journal::TYPES), 'statuses' => Tr::map(Journal::STATUSES),
             // the voucher cards: all, posted this month (count and money), waiting for approval, reversed
             'counts' => [
@@ -92,7 +98,7 @@ class JournalController extends Controller
     private function validated(Request $request): array
     {
         return $request->validate([
-            'voucher_type' => ['required', Rule::in(['journal', 'opening'])],
+            'voucher_type' => ['required', Rule::in(['journal', 'opening', 'payment', 'receipt', 'contra'])],
             'date' => ['required', 'date'],
             'narration' => ['nullable', 'string', 'max:500'],
             'lines' => ['required', 'array', 'min:1', 'max:100'],
@@ -114,5 +120,36 @@ class JournalController extends Controller
         }
 
         return $lines;
+    }
+
+    /**
+     * What each voucher did, in plain words: money in to a cash or bank
+     * account for some heads, money out of one, a move between them, or an
+     * adjustment that touches no money at all.
+     *
+     * @return array<int, string>
+     */
+    private function summaries($journals): array
+    {
+        $en = app()->getLocale() === 'en';
+        $name = fn ($a) => $en && $a->name_en ? $a->name_en : $a->name_bn;
+        $banks = BankAccount::pluck('account_id')->flip();
+        $isFund = fn ($a) => str_starts_with((string) $a->key, 'cash_') || isset($banks[$a->id]);
+        $lines = JournalLine::with('account:id,key,name_bn,name_en')->whereIn('journal_id', $journals->pluck('id'))->get()->groupBy('journal_id');
+        $out = [];
+        foreach ($lines as $jid => $ls) {
+            $funds = $ls->filter(fn ($l) => $l->account && $isFund($l->account));
+            $others = $ls->reject(fn ($l) => $l->account && $isFund($l->account));
+            $list = fn ($c) => $c->map(fn ($l) => $name($l->account))->unique()->take(3)->implode(', ');
+            $net = round($funds->sum(fn ($l) => (float) $l->debit - (float) $l->credit), 2);
+            $out[$jid] = match (true) {
+                $funds->isEmpty() => __('সমন্বয় — :a', ['a' => $list($ls)]),
+                $others->isEmpty() => __('স্থানান্তর — :from থেকে :to', ['from' => $list($funds->filter(fn ($l) => $l->credit > 0)), 'to' => $list($funds->filter(fn ($l) => $l->debit > 0))]),
+                $net > 0 => __('টাকা এলো — :heads (জমা: :fund)', ['heads' => $list($others), 'fund' => $list($funds)]),
+                default => __('টাকা গেল — :heads (:fund থেকে)', ['heads' => $list($others), 'fund' => $list($funds)]),
+            };
+        }
+
+        return $out;
     }
 }

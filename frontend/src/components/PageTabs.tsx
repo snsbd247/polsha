@@ -46,21 +46,68 @@ const GROUPS: Tab[][] = [
     { path: '/lands/lookup', label: tx('জমির প্রোফাইল'), perm: 'land.view' },
     { path: '/lands/lookup/history', label: tx('জমির ইতিহাস'), perm: 'land.view' },
   ],
+  // accounting
+  [
+    { path: '/accounting/journals', label: tx('ভাউচার'), perm: 'accounting.view' },
+    { path: '/accounting/journals/new', label: tx('জার্নাল এন্ট্রি'), perm: 'accounting.create' },
+    { path: '/accounting/journals/new?type=opening', label: tx('প্রারম্ভিক নগদ জের'), perm: 'accounting.create' },
+  ],
+  [
+    { path: '/accounting/bank-reconciliations', label: tx('মাসিক ব্যাংক মিলকরণ'), perm: 'bank.view' },
+    { path: '/accounting/payment-reconciliation', label: tx('পেমেন্ট মিলকরণ'), perm: 'payment.view' },
+    { path: '/funds/share/audit', label: tx('শেয়ার মূলধন মিলকরণ'), perm: 'share.view' },
+    { path: '/accounting/source-vs-ledger', label: tx('উৎস বনাম খতিয়ান'), perm: 'accounting.view' },
+    { path: '/accounting/ledger-integrity', label: tx('লেজার সঠিকতা'), perm: 'accounting.view' },
+  ],
+  [
+    { path: '/accounting/bank-accounts', label: tx('ব্যাংক হিসাব'), perm: 'bank.view' },
+    { path: '/accounting/irrigation-cash-bank', label: tx('সেচের নগদ ও ব্যাংক'), perm: ['accounting.view', 'cash.view', 'bank.view'] },
+  ],
+  [
+    { path: '/accounting/public-payments', label: tx('অনলাইন পেমেন্ট অনুরোধ'), perm: 'payment.view' },
+    { path: '/accounting/payment-reconciliation', label: tx('পেমেন্ট মিলকরণ'), perm: 'payment.view' },
+  ],
+  // assets
+  [
+    { path: '/assets', label: tx('সম্পদ রেজিস্টার'), perm: 'asset.view' },
+    { path: '/assets/stock', label: tx('স্টক'), perm: 'asset.view' },
+    { path: '/assets/sales', label: tx('বিক্রয়'), perm: 'asset.view' },
+  ],
+  [
+    { path: '/assets/transfers', label: tx('সম্পদ স্থানান্তর'), perm: 'asset.view' },
+    { path: '/assets/installations', label: tx('স্থাপন'), perm: 'asset.view' },
+    { path: '/assets/repairs', label: tx('মেরামত'), perm: 'asset.view' },
+    { path: '/assets/maintenances', label: tx('মেরামত সূচি'), perm: 'asset.view' },
+  ],
+  [
+    { path: '/qr/scan', label: tx('QR স্ক্যানার') },
+    { path: '/qr/history', label: tx('QR ইতিহাস') },
+  ],
 ]
+
+/** A tab's path may carry a query (?type=opening): it is the page only when those values are in the address too. */
+function matches(tabPath: string, here: string, params: URLSearchParams): boolean {
+  const [path, query] = tabPath.split('?')
+  if (path !== here) return false
+  return !query || [...new URLSearchParams(query)].every(([k, v]) => params.get(k) === v)
+}
 
 /** The tabs of the group the current page belongs to; nothing on any other page. */
 export default function PageTabs() {
-  const { pathname } = useLocation()
+  const { pathname, search } = useLocation()
   const navigate = useNavigate()
   const { can } = useAuth()
   const here = pathname.replace(/\/+$/, '') || '/'
-  const group = GROUPS.find((g) => g.some((t) => t.path === here))
-  const tabs = group?.filter((t) => !t.perm || (Array.isArray(t.perm) ? t.perm.some((p) => can(p)) : can(t.perm))) ?? []
+  const params = new URLSearchParams(search)
+  const group = GROUPS.find((g) => g.some((t) => matches(t.path, here, params)))
+  const tabs = group?.filter((t) => !t.perm || can(t.perm)) ?? []
   if (tabs.length < 2) return null
+  // the most specific tab wins: /new?type=opening over /new
+  const active = tabs.filter((t) => matches(t.path, here, params)).sort((a, b) => b.path.length - a.path.length)[0]?.path
   return (
     <div className="lk-tabs ap-tabs sub-tabs page-tabs no-print">
       {tabs.map((t) => (
-        <button key={t.path} type="button" className={t.path === here ? 'on' : ''} onClick={() => t.path !== here && navigate(t.path)}>
+        <button key={t.path} type="button" className={t.path === active ? 'on' : ''} onClick={() => t.path !== active && navigate(t.path)}>
           {t.label}
         </button>
       ))}

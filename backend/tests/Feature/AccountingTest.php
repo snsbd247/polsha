@@ -46,6 +46,24 @@ class AccountingTest extends Phase2TestCase
         return $journal->fresh();
     }
 
+    public function test_simple_expense_entry_goes_for_approval_as_a_payment_voucher(): void
+    {
+        $this->openingCash(5000);
+        $r = $this->actingAs($this->accountant)->postJson('/api/journals', [
+            'voucher_type' => 'payment', 'date' => now()->toDateString(), 'narration' => 'খরচ — অফিস খরচ',
+            'lines' => [['account_id' => $this->id('office_expense'), 'debit' => 700], ['account_id' => $this->id('cash_society'), 'credit' => 700]],
+        ])->assertCreated()->assertJsonPath('status', 'pending');
+        $journal = Journal::find($r->json('id'));
+        $this->assertSame('payment', $journal->voucher_type);
+        $this->approve($this->manager, $journal->approval_request_id);
+        $this->assertSame('posted', $journal->fresh()->status);
+        $this->assertEquals(4300, app(\App\Services\LedgerService::class)->balance($this->id('cash_society')));
+        // anything else is still refused
+        $this->actingAs($this->accountant)->postJson('/api/journals', [
+            'voucher_type' => 'salary', 'date' => now()->toDateString(), 'lines' => [['account_id' => $this->id('office_expense'), 'debit' => 1]],
+        ])->assertStatus(422);
+    }
+
     public function test_seeded_chart_and_cash_streams_exist(): void
     {
         foreach (['cash_irrigation', 'cash_society', 'cash_misc', 'admission_fee_income', 'opening_balance_equity', 'bank_group'] as $key) {

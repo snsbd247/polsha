@@ -2,7 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Alert, App, Button, DatePicker, Form, Input, InputNumber, Select, Spin } from 'antd'
-import { AppstoreOutlined, ArrowLeftOutlined, CalculatorOutlined, CalendarOutlined, CloseOutlined, DollarOutlined, EnvironmentOutlined, SaveOutlined } from '@ant-design/icons'
+import { AppstoreOutlined, ArrowLeftOutlined, CalculatorOutlined, CalendarOutlined, CloseOutlined, DollarOutlined, DownOutlined, EnvironmentOutlined, SaveOutlined, UpOutlined } from '@ant-design/icons'
 import dayjs, { type Dayjs } from 'dayjs'
 import PageFrame from '../../components/PageFrame'
 import { api, applyFormErrors, errorMessage } from '../../lib/api'
@@ -60,6 +60,8 @@ export default function AssetFormPage() {
   const openingDep: number | undefined = Form.useWatch('opening_depreciation', form)
   const remarks: string | undefined = Form.useWatch('remarks', form)
   const category = meta.data?.categories.find((c) => c.id === categoryId)
+  // the optional details stay folded on a new asset; editing shows them all
+  const [more, setMore] = useState(isEdit)
 
   useEffect(() => {
     if (existing.data) form.setFieldsValue(existing.data)
@@ -117,7 +119,7 @@ export default function AssetFormPage() {
               <Form.Item name="name_bn" label={tx('নাম (বাংলা)')} rules={[required(tx('নাম দিন'))]}>
                 <Input maxLength={200} placeholder={tx('যেমন: গভীর নলকূপ পাম্প')} />
               </Form.Item>
-              <Form.Item name="name_en" label={tx('নাম (ইংরেজি)')}>
+              <Form.Item hidden={!more} name="name_en" label={tx('নাম (ইংরেজি)')}>
                 <Input maxLength={200} placeholder="e.g. Deep tube-well pump" />
               </Form.Item>
             </div>
@@ -130,22 +132,22 @@ export default function AssetFormPage() {
                   options={(meta.data?.categories ?? []).filter((c) => c.is_active || c.id === existing.data?.category_id).map((c) => ({ value: c.id, label: `${c.code} — ${nameOf(c)}` }))}
                 />
               </Form.Item>
-              <Form.Item name="brand_model" label={tx('ব্র্যান্ড / মডেল')}>
+              <Form.Item hidden={!more} name="brand_model" label={tx('ব্র্যান্ড / মডেল')}>
                 <Input maxLength={150} />
               </Form.Item>
-              <Form.Item name="serial_no" label={tx('সিরিয়াল নম্বর')}>
+              <Form.Item hidden={!more} name="serial_no" label={tx('সিরিয়াল নম্বর')}>
                 <Input maxLength={100} />
               </Form.Item>
             </div>
             <div className="iv-grid iv-grid-2">
-              <Form.Item name="supplier" label={tx('সরবরাহকারী')}>
+              <Form.Item hidden={!more} name="supplier" label={tx('সরবরাহকারী')}>
                 <Input maxLength={150} />
               </Form.Item>
-              <Form.Item name="mouza_id" label={tx('মৌজা')}>
+              <Form.Item hidden={!more} name="mouza_id" label={tx('মৌজা')}>
                 <Select allowClear showSearch={{ optionFilterProp: 'label' }} loading={mouzas.isLoading} placeholder={tx('মৌজা বাছাই করুন')} options={(mouzas.data ?? []).map((m) => ({ value: m.id, label: nameOf(m) }))} />
               </Form.Item>
             </div>
-            <Form.Item name="remarks" label={tx('মন্তব্য (ঐচ্ছিক)')} extra={<span className="iv-count">{tx('{{p0}}/৫০০ অক্ষর', { p0: digits(remarks?.length ?? 0) })}</span>}>
+            <Form.Item hidden={!more} name="remarks" label={tx('মন্তব্য (ঐচ্ছিক)')} extra={<span className="iv-count">{tx('{{p0}}/৫০০ অক্ষর', { p0: digits(remarks?.length ?? 0) })}</span>}>
               <Input.TextArea rows={2} maxLength={500} />
             </Form.Item>
             {isEdit && <Alert type="info" showIcon className="sv-note" title={tx('অবস্থান, দায়িত্বপ্রাপ্ত ও অবস্থা বদলাতে সম্পদের পাতার "স্থানান্তর/অবস্থা" ব্যবহার করুন — এতে ইতিহাস থাকে। মূল্য ও তারিখ বদলানো যায় না।')} />}
@@ -181,10 +183,10 @@ export default function AssetFormPage() {
                 </Form.Item>
               </div>
               <div className="iv-grid iv-grid-2">
-                <Form.Item name="salvage_value" label={tx('অবশিষ্ট মূল্য (৳)')} extra={category ? tx('খালি রাখলে শ্রেণির হার: {{p0}}%', { p0: digits(Number(category.salvage_percent)) }) : undefined}>
+                <Form.Item hidden={!more} name="salvage_value" label={tx('অবশিষ্ট মূল্য (৳)')} extra={category ? tx('খালি রাখলে শ্রেণির হার: {{p0}}%', { p0: digits(Number(category.salvage_percent)) }) : undefined}>
                   <InputNumber min={0} precision={2} style={{ width: '100%' }} prefix="৳" placeholder="0.00" />
                 </Form.Item>
-                <Form.Item name="life_months" label={tx('আয়ুষ্কাল (মাস)')} extra={category ? tx('খালি রাখলে শ্রেণির আয়ুষ্কাল: {{p0}} মাস', { p0: digits(category.life_months) }) : undefined}>
+                <Form.Item hidden={!more} name="life_months" label={tx('আয়ুষ্কাল (মাস)')} extra={category ? tx('খালি রাখলে শ্রেণির আয়ুষ্কাল: {{p0}} মাস', { p0: digits(category.life_months) }) : undefined}>
                   <InputNumber min={1} max={1200} style={{ width: '100%' }} />
                 </Form.Item>
               </div>
@@ -212,7 +214,7 @@ export default function AssetFormPage() {
                     </Form.Item>
                   )}
                   {method !== 'cash' && (
-                    <Form.Item name="reference" label={tx('রেফারেন্স')}>
+                    <Form.Item hidden={!more} name="reference" label={tx('রেফারেন্স')}>
                       <Input maxLength={100} />
                     </Form.Item>
                   )}
@@ -233,6 +235,11 @@ export default function AssetFormPage() {
             </Section>
           )}
 
+          <button type="button" className={`lf-more-toggle${more ? ' on' : ''}`} onClick={() => setMore((m) => !m)}>
+            {more ? <UpOutlined /> : <DownOutlined />}
+            {tx('আরও তথ্য (ঐচ্ছিক)')}
+            <small>{tx('ইংরেজি নাম, ব্র্যান্ড, সিরিয়াল, সরবরাহকারী, মৌজা, মন্তব্য, অবশিষ্ট মূল্য ও আয়ুষ্কাল (খালি রাখলে শ্রেণি থেকে), রেফারেন্স')}</small>
+          </button>
           <div className="iv-actions">
             <Button icon={<CloseOutlined />} onClick={() => navigate(back)}>
               {tx('বাতিল')}

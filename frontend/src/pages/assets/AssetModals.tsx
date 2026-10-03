@@ -132,7 +132,10 @@ export function MovementModal({ asset, type, onClose, onDone }: ModalProps & { t
     const v = await form.validateFields().catch(() => null)
     if (!v) return
     try {
-      await api.post(`/assets/${asset.id}/movements`, { ...v, type, date: (v.date as Dayjs).format('YYYY-MM-DD') })
+      const { job, back_on, ...move } = v
+      await api.post(`/assets/${asset.id}/movements`, { ...move, type, date: (v.date as Dayjs).format('YYYY-MM-DD') })
+      // sending for repair also puts the job on the repair schedule, so finishing it later records the cost
+      if (type === 'repair' && job) await api.post(`/assets/${asset.id}/maintenances`, { kind: 'repair', title: job, due_on: (back_on as Dayjs | undefined)?.format('YYYY-MM-DD') })
       message.success(tx('সংরক্ষণ হয়েছে।'))
       form.resetFields()
       onClose()
@@ -161,6 +164,16 @@ export function MovementModal({ asset, type, onClose, onDone }: ModalProps & { t
           <Form.Item name="condition" label={tx('অবস্থা')} rules={type === 'condition' ? [required(tx('অবস্থা বাছাই করুন'))] : []}>
             <Select options={toOptions(meta.data?.conditions)} />
           </Form.Item>
+        )}
+        {type === 'repair' && (
+          <>
+            <Form.Item name="job" label={tx('কী মেরামত')} rules={[required(tx('কাজের বিবরণ লিখুন'))]}>
+              <Input maxLength={200} placeholder={tx('যেমন: মোটর রিওয়াইন্ডিং')} />
+            </Form.Item>
+            <Form.Item name="back_on" label={tx('কবে ফেরত আসার কথা')}>
+              <DatePicker format="DD/MM/YYYY" style={{ width: '100%' }} />
+            </Form.Item>
+          </>
         )}
         <Form.Item name="note" label={tx('নোট')}>
           <Input.TextArea rows={2} maxLength={500} />

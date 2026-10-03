@@ -28,6 +28,7 @@ import { digits, fmtDate } from '../../lib/format'
 import { METHOD_LABEL } from '../../lib/irrigation'
 import { ASSET_TONE, CONDITION_TONE, MAINT_TONE, MOVE_TONE, useAssetMeta } from '../../lib/phase8'
 import { nameOf, t as tx } from '../../lib/i18n'
+import dayjs from 'dayjs'
 import { Box, Fact, KV } from '../irrigation/InvoiceDetailPage'
 import { ALLOWED, CompleteModal, DisposeModal, LIVE, MOVE_LABEL, MovementModal, ScheduleModal, journalLink, type Depreciation, type Detail, type Maintenance, type Movement, type MoveType } from './AssetModals'
 import '../irrigation/invoices.css'
@@ -46,6 +47,8 @@ export default function AssetDetailPage() {
   const [move, setMove] = useState<MoveType | null>(null)
   const [scheduling, setScheduling] = useState(false)
   const [completing, setCompleting] = useState<Maintenance | null>(null)
+  // finishing a repair from the top button also brings the asset back from repair
+  const [finishing, setFinishing] = useState(false)
   const [disposing, setDisposing] = useState(false)
   const { message } = App.useApp()
   const { data: a, isLoading, isError } = useQuery({ queryKey: ['asset', id], queryFn: async () => (await api.get<Detail>(`/assets/${id}`)).data, retry: false })
@@ -81,11 +84,39 @@ export default function AssetDetailPage() {
         <span className="id-actions">
           {live && can('asset.edit') && (
             <>
-              <Dropdown trigger={['click']} menu={{ items: moves.map((t) => ({ key: t, label: MOVE_LABEL[t], onClick: () => setMove(t) })) }}>
-                <Button type="primary" icon={<SwapOutlined />}>
-                  {tx('চলাচল / অবস্থা')} <DownOutlined />
+              {/* the everyday moves as buttons, the rest under "more" */}
+              {moves.includes('repaired') && (
+                <Button
+                  type="primary"
+                  icon={<ToolOutlined />}
+                  onClick={() => {
+                    const job = a.maintenances.find((m) => m.kind === 'repair' && m.status === 'scheduled')
+                    if (job) {
+                      setFinishing(true)
+                      setCompleting(job)
+                    } else setMove('repaired')
+                  }}
+                >
+                  {MOVE_LABEL.repaired}
                 </Button>
-              </Dropdown>
+              )}
+              {moves.includes('transfer') && (
+                <Button type="primary" icon={<SwapOutlined />} onClick={() => setMove('transfer')}>
+                  {MOVE_LABEL.transfer}
+                </Button>
+              )}
+              {moves.includes('repair') && (
+                <Button icon={<ToolOutlined />} className="fm-history-btn" onClick={() => setMove('repair')}>
+                  {MOVE_LABEL.repair}
+                </Button>
+              )}
+              {moves.some((t) => !['transfer', 'repair', 'repaired'].includes(t)) && (
+                <Dropdown trigger={['click']} menu={{ items: moves.filter((t) => !['transfer', 'repair', 'repaired'].includes(t)).map((t) => ({ key: t, label: MOVE_LABEL[t], onClick: () => setMove(t) })) }}>
+                  <Button className="fm-history-btn">
+                    {tx('আরও')} <DownOutlined />
+                  </Button>
+                </Dropdown>
+              )}
               <Button icon={<ToolOutlined />} className="fm-history-btn" onClick={() => setScheduling(true)}>
                 {tx('সার্ভিস/মেরামত নির্ধারণ')}
               </Button>
@@ -277,7 +308,20 @@ export default function AssetDetailPage() {
 
       <MovementModal asset={a} type={move} onClose={() => setMove(null)} onDone={refresh} />
       <ScheduleModal asset={a} open={scheduling} onClose={() => setScheduling(false)} onDone={refresh} />
-      <CompleteModal job={completing} onClose={() => setCompleting(null)} onDone={refresh} />
+      <CompleteModal
+        job={completing}
+        onClose={() => {
+          setCompleting(null)
+          setFinishing(false)
+        }}
+        onDone={async () => {
+          if (finishing && a.status === 'in_repair') {
+            await api.post(`/assets/${a.id}/movements`, { type: 'repaired', date: dayjs().format('YYYY-MM-DD'), note: tx('মেরামত শেষে ফেরত এসেছে') }).catch((e) => message.error(errorMessage(e)))
+          }
+          setFinishing(false)
+          refresh()
+        }}
+      />
       <DisposeModal asset={a} open={disposing} onClose={() => setDisposing(false)} onDone={refresh} />
     </PageFrame>
   )

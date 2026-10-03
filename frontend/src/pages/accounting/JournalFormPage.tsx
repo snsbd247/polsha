@@ -5,6 +5,8 @@ import { Alert, App, Button, DatePicker, Form, Input, InputNumber, Select, Table
 import { ArrowLeftOutlined, CalculatorOutlined, CalendarOutlined, CloseOutlined, DeleteOutlined, FileTextOutlined, PlusOutlined, SendOutlined, UnorderedListOutlined } from '@ant-design/icons'
 import dayjs, { type Dayjs } from 'dayjs'
 import PageFrame from '../../components/PageFrame'
+import SubTabs, { useView } from '../../components/SubTabs'
+import SimpleEntryForm from './SimpleEntryForm'
 import { api, applyFormErrors, errorMessage } from '../../lib/api'
 import { accountFilter, accountLabel, money, useAccountOptions } from '../../lib/accounting'
 import { digits } from '../../lib/format'
@@ -45,6 +47,8 @@ export default function JournalFormPage() {
   const [form] = Form.useForm()
   const [saving, setSaving] = useState(false)
   const { data: accounts } = useAccountOptions()
+  // a new journal starts as a simple entry; the full debit/credit form is the other tab
+  const view = useView('simple')
 
   const existing = useQuery({
     queryKey: ['journal', id],
@@ -123,170 +127,191 @@ export default function JournalFormPage() {
     return frame(<Alert type="warning" showIcon title={tx('শুধু ফেরত আসা ভাউচার সংশোধন করা যায়।')} />)
   }
 
+  const entryTabs =
+    !id && !opening ? (
+      <SubTabs
+        items={[
+          { key: 'simple', label: tx('সহজ এন্ট্রি') },
+          { key: 'detailed', label: tx('বিস্তারিত এন্ট্রি (ডেবিট-ক্রেডিট)') },
+        ]}
+      />
+    ) : null
+  if (!id && !opening && view === 'simple') {
+    return frame(
+      <>
+        {entryTabs}
+        <SimpleEntryForm />
+      </>,
+    )
+  }
+
   return frame(
-    <div className="ln-form-grid jf-grid">
-      <Form form={form} layout="vertical" className="iv-form sv-form">
-        <Section no={1} icon={<FileTextOutlined />} title={tx('ভাউচারের তথ্য')}>
-          <div className="iv-grid jf-head">
-            <Form.Item name="date" label={tx('তারিখ')} rules={[required(tx('তারিখ দিন'))]}>
-              <DatePicker prefix={<CalendarOutlined />} format="DD/MM/YYYY" style={{ width: '100%' }} />
-            </Form.Item>
-            <Form.Item name="narration" label={tx('বিবরণ')}>
-              <Input maxLength={500} placeholder={tx('যেমন: অফিস ভাড়া পরিশোধ — সেপ্টেম্বর')} />
-            </Form.Item>
-          </div>
-        </Section>
+    <>
+      {entryTabs}
+      <div className="ln-form-grid jf-grid">
+        <Form form={form} layout="vertical" className="iv-form sv-form">
+          <Section no={1} icon={<FileTextOutlined />} title={tx('ভাউচারের তথ্য')}>
+            <div className="iv-grid jf-head">
+              <Form.Item name="date" label={tx('তারিখ')} rules={[required(tx('তারিখ দিন'))]}>
+                <DatePicker prefix={<CalendarOutlined />} format="DD/MM/YYYY" style={{ width: '100%' }} />
+              </Form.Item>
+              <Form.Item name="narration" label={tx('বিবরণ')}>
+                <Input maxLength={500} placeholder={tx('যেমন: অফিস ভাড়া পরিশোধ — সেপ্টেম্বর')} />
+              </Form.Item>
+            </div>
+          </Section>
 
-        <Section no={2} icon={<UnorderedListOutlined />} title={tx('ডেবিট ও ক্রেডিট লাইন')}>
-          <Form.List
-            name="lines"
-            rules={[
-              {
-                validator: async (_, v: Line[]) => {
-                  if (!v?.length) throw new Error(tx('অন্তত একটি লাইন দিন'))
+          <Section no={2} icon={<UnorderedListOutlined />} title={tx('ডেবিট ও ক্রেডিট লাইন')}>
+            <Form.List
+              name="lines"
+              rules={[
+                {
+                  validator: async (_, v: Line[]) => {
+                    if (!v?.length) throw new Error(tx('অন্তত একটি লাইন দিন'))
+                  },
                 },
-              },
-            ]}
-          >
-            {(fields, { add, remove }, { errors }) => (
-              <>
-                <div className="id-payments">
-                  <Table
-                    size="small"
-                    pagination={false}
-                    rowKey="key"
-                    dataSource={fields}
-                    scroll={{ x: 'max-content' }}
-                    columns={[
-                      { title: '#', width: 40, align: 'center', render: (_, __, i) => digits(i + 1) },
-                      {
-                        title: tx('হিসাব'),
-                        render: (_, f) => (
-                          <Form.Item name={[f.name, 'account_id']} rules={[required(tx('হিসাব নির্বাচন করুন'))]} style={{ margin: 0 }}>
-                            <Select options={options} showSearch={{ filterOption: accountFilter }} style={{ minWidth: 200 }} placeholder={tx('হিসাব বাছাই করুন')} />
-                          </Form.Item>
-                        ),
-                      },
-                      {
-                        title: tx('ডেবিট (৳)'),
-                        width: 125,
-                        render: (_, f) => (
-                          <Form.Item name={[f.name, 'debit']} style={{ margin: 0 }}>
-                            <InputNumber min={0} precision={2} placeholder="0.00" style={{ width: '100%' }} onChange={(v) => v && form.setFieldValue(['lines', f.name, 'credit'], null)} />
-                          </Form.Item>
-                        ),
-                      },
-                      {
-                        title: tx('ক্রেডিট (৳)'),
-                        width: 125,
-                        render: (_, f) => (
-                          <Form.Item name={[f.name, 'credit']} style={{ margin: 0 }}>
-                            <InputNumber min={0} precision={2} placeholder="0.00" style={{ width: '100%' }} onChange={(v) => v && form.setFieldValue(['lines', f.name, 'debit'], null)} />
-                          </Form.Item>
-                        ),
-                      },
-                      {
-                        title: tx('মন্তব্য'),
-                        width: 140,
-                        render: (_, f) => (
-                          <Form.Item name={[f.name, 'remarks']} style={{ margin: 0 }}>
-                            <Input maxLength={255} />
-                          </Form.Item>
-                        ),
-                      },
-                      {
-                        title: '',
-                        width: 44,
-                        render: (_, f) => <Button type="text" danger icon={<DeleteOutlined />} aria-label={tx('মুছুন')} disabled={fields.length <= 1} onClick={() => remove(f.name)} />,
-                      },
-                    ]}
-                    summary={() => (
-                      <Table.Summary.Row className="ln-sum-row">
-                        <Table.Summary.Cell index={0} colSpan={2} align="right">
-                          {tx('মোট')}
-                        </Table.Summary.Cell>
-                        <Table.Summary.Cell index={2} align="right">
-                          {money(dr)}
-                        </Table.Summary.Cell>
-                        <Table.Summary.Cell index={3} align="right">
-                          {money(cr)}
-                        </Table.Summary.Cell>
-                        <Table.Summary.Cell index={4} colSpan={2}>
-                          {diff === 0 ? (
-                            <span className="cs-in">{tx('মিলেছে')}</span>
-                          ) : opening ? (
-                            <span className="ac-muted">{tx('সমন্বয়: {{p0}}', { p0: money(Math.abs(diff)) })}</span>
-                          ) : (
-                            <span className="cs-out">{tx('পার্থক্য: {{p0}}', { p0: money(Math.abs(diff)) })}</span>
-                          )}
-                        </Table.Summary.Cell>
-                      </Table.Summary.Row>
-                    )}
-                  />
-                </div>
-                <Form.ErrorList errors={errors} />
-                <Button className="iv-add" icon={<PlusOutlined />} style={{ marginTop: 10 }} onClick={() => add({})}>
-                  {tx('লাইন যোগ করুন')}
-                </Button>
-              </>
-            )}
-          </Form.List>
-        </Section>
+              ]}
+            >
+              {(fields, { add, remove }, { errors }) => (
+                <>
+                  <div className="id-payments">
+                    <Table
+                      size="small"
+                      pagination={false}
+                      rowKey="key"
+                      dataSource={fields}
+                      scroll={{ x: 'max-content' }}
+                      columns={[
+                        { title: '#', width: 40, align: 'center', render: (_, __, i) => digits(i + 1) },
+                        {
+                          title: tx('হিসাব'),
+                          render: (_, f) => (
+                            <Form.Item name={[f.name, 'account_id']} rules={[required(tx('হিসাব নির্বাচন করুন'))]} style={{ margin: 0 }}>
+                              <Select options={options} showSearch={{ filterOption: accountFilter }} style={{ minWidth: 200 }} placeholder={tx('হিসাব বাছাই করুন')} />
+                            </Form.Item>
+                          ),
+                        },
+                        {
+                          title: tx('ডেবিট (৳)'),
+                          width: 125,
+                          render: (_, f) => (
+                            <Form.Item name={[f.name, 'debit']} style={{ margin: 0 }}>
+                              <InputNumber min={0} precision={2} placeholder="0.00" style={{ width: '100%' }} onChange={(v) => v && form.setFieldValue(['lines', f.name, 'credit'], null)} />
+                            </Form.Item>
+                          ),
+                        },
+                        {
+                          title: tx('ক্রেডিট (৳)'),
+                          width: 125,
+                          render: (_, f) => (
+                            <Form.Item name={[f.name, 'credit']} style={{ margin: 0 }}>
+                              <InputNumber min={0} precision={2} placeholder="0.00" style={{ width: '100%' }} onChange={(v) => v && form.setFieldValue(['lines', f.name, 'debit'], null)} />
+                            </Form.Item>
+                          ),
+                        },
+                        {
+                          title: tx('মন্তব্য'),
+                          width: 140,
+                          render: (_, f) => (
+                            <Form.Item name={[f.name, 'remarks']} style={{ margin: 0 }}>
+                              <Input maxLength={255} />
+                            </Form.Item>
+                          ),
+                        },
+                        {
+                          title: '',
+                          width: 44,
+                          render: (_, f) => <Button type="text" danger icon={<DeleteOutlined />} aria-label={tx('মুছুন')} disabled={fields.length <= 1} onClick={() => remove(f.name)} />,
+                        },
+                      ]}
+                      summary={() => (
+                        <Table.Summary.Row className="ln-sum-row">
+                          <Table.Summary.Cell index={0} colSpan={2} align="right">
+                            {tx('মোট')}
+                          </Table.Summary.Cell>
+                          <Table.Summary.Cell index={2} align="right">
+                            {money(dr)}
+                          </Table.Summary.Cell>
+                          <Table.Summary.Cell index={3} align="right">
+                            {money(cr)}
+                          </Table.Summary.Cell>
+                          <Table.Summary.Cell index={4} colSpan={2}>
+                            {diff === 0 ? (
+                              <span className="cs-in">{tx('মিলেছে')}</span>
+                            ) : opening ? (
+                              <span className="ac-muted">{tx('সমন্বয়: {{p0}}', { p0: money(Math.abs(diff)) })}</span>
+                            ) : (
+                              <span className="cs-out">{tx('পার্থক্য: {{p0}}', { p0: money(Math.abs(diff)) })}</span>
+                            )}
+                          </Table.Summary.Cell>
+                        </Table.Summary.Row>
+                      )}
+                    />
+                  </div>
+                  <Form.ErrorList errors={errors} />
+                  <Button className="iv-add" icon={<PlusOutlined />} style={{ marginTop: 10 }} onClick={() => add({})}>
+                    {tx('লাইন যোগ করুন')}
+                  </Button>
+                </>
+              )}
+            </Form.List>
+          </Section>
 
-        <div className="iv-actions">
-          <Button icon={<CloseOutlined />} onClick={() => navigate(id ? `/accounting/journals/${id}` : '/accounting/journals')}>
-            {tx('বাতিল')}
-          </Button>
-          <span className="iv-spacer" />
-          <Button type="primary" icon={<SendOutlined />} loading={saving} onClick={save} disabled={!opening && diff !== 0}>
-            {tx('অনুমোদনের জন্য পাঠান')}
-          </Button>
-        </div>
-      </Form>
-
-      <div className="ln-side">
-        <section className="id-box">
-          <header>
-            <CalculatorOutlined />
-            <h3>{tx('ভাউচারের হিসাব')}</h3>
-          </header>
-          <div className="ln-limit">
-            <table className="ln-limit-table">
-              <tbody>
-                <tr>
-                  <td>{tx('লাইন')}</td>
-                  <td>{digits(filled)}</td>
-                </tr>
-                <tr>
-                  <td>{tx('মোট ডেবিট')}</td>
-                  <td>৳ {money(dr)}</td>
-                </tr>
-                <tr>
-                  <td>{tx('মোট ক্রেডিট')}</td>
-                  <td>৳ {money(cr)}</td>
-                </tr>
-                <tr className="ln-limit-total">
-                  <td>{opening ? tx('প্রারম্ভিক জের সমন্বয়') : tx('পার্থক্য')}</td>
-                  <td className={diff === 0 || opening ? undefined : 'cs-out'}>৳ {money(Math.abs(diff))}</td>
-                </tr>
-              </tbody>
-            </table>
-            {!opening && diff !== 0 && <Alert type="warning" showIcon title={tx('ডেবিট ও ক্রেডিট সমান না হলে পাঠানো যাবে না।')} />}
-            {!opening && diff === 0 && dr > 0 && <Alert type="success" showIcon title={tx('ডেবিট ও ক্রেডিট মিলেছে।')} />}
+          <div className="iv-actions">
+            <Button icon={<CloseOutlined />} onClick={() => navigate(id ? `/accounting/journals/${id}` : '/accounting/journals')}>
+              {tx('বাতিল')}
+            </Button>
+            <span className="iv-spacer" />
+            <Button type="primary" icon={<SendOutlined />} loading={saving} onClick={save} disabled={!opening && diff !== 0}>
+              {tx('অনুমোদনের জন্য পাঠান')}
+            </Button>
           </div>
-        </section>
-        <section className="id-box">
-          <header>
-            <FileTextOutlined />
-            <h3>{tx('নিয়ম')}</h3>
-          </header>
-          <p className="sv-foot-note">
-            {opening
-              ? tx('চালুর দিনের নগদ, ব্যাংক, পাওনা ও দেনার জের দিন। পার্থক্যটুকু স্বয়ংক্রিয়ভাবে "প্রারম্ভিক জের সমন্বয়" হিসাবে যাবে। ম্যানেজারের অনুমোদনের পর পোস্ট হবে।')
-              : tx('মোট ডেবিট ও মোট ক্রেডিট সমান হতে হবে। ম্যানেজারের অনুমোদনের পর পোস্ট হবে।')}
-          </p>
-        </section>
+        </Form>
+
+        <div className="ln-side">
+          <section className="id-box">
+            <header>
+              <CalculatorOutlined />
+              <h3>{tx('ভাউচারের হিসাব')}</h3>
+            </header>
+            <div className="ln-limit">
+              <table className="ln-limit-table">
+                <tbody>
+                  <tr>
+                    <td>{tx('লাইন')}</td>
+                    <td>{digits(filled)}</td>
+                  </tr>
+                  <tr>
+                    <td>{tx('মোট ডেবিট')}</td>
+                    <td>৳ {money(dr)}</td>
+                  </tr>
+                  <tr>
+                    <td>{tx('মোট ক্রেডিট')}</td>
+                    <td>৳ {money(cr)}</td>
+                  </tr>
+                  <tr className="ln-limit-total">
+                    <td>{opening ? tx('প্রারম্ভিক জের সমন্বয়') : tx('পার্থক্য')}</td>
+                    <td className={diff === 0 || opening ? undefined : 'cs-out'}>৳ {money(Math.abs(diff))}</td>
+                  </tr>
+                </tbody>
+              </table>
+              {!opening && diff !== 0 && <Alert type="warning" showIcon title={tx('ডেবিট ও ক্রেডিট সমান না হলে পাঠানো যাবে না।')} />}
+              {!opening && diff === 0 && dr > 0 && <Alert type="success" showIcon title={tx('ডেবিট ও ক্রেডিট মিলেছে।')} />}
+            </div>
+          </section>
+          <section className="id-box">
+            <header>
+              <FileTextOutlined />
+              <h3>{tx('নিয়ম')}</h3>
+            </header>
+            <p className="sv-foot-note">
+              {opening
+                ? tx('চালুর দিনের নগদ, ব্যাংক, পাওনা ও দেনার জের দিন। পার্থক্যটুকু স্বয়ংক্রিয়ভাবে "প্রারম্ভিক জের সমন্বয়" হিসাবে যাবে। ম্যানেজারের অনুমোদনের পর পোস্ট হবে।')
+                : tx('মোট ডেবিট ও মোট ক্রেডিট সমান হতে হবে। ম্যানেজারের অনুমোদনের পর পোস্ট হবে।')}
+            </p>
+          </section>
+        </div>
       </div>
-    </div>,
+    </>,
   )
 }

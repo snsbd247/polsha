@@ -20,6 +20,7 @@ import './accounting.css'
 
 type Row = {
   id: number
+  summary?: string | null
   voucher_no: string
   voucher_type: string
   date: string
@@ -99,7 +100,17 @@ export default function JournalListPage() {
     },
     { title: tx('তারিখ'), dataIndex: 'date', render: fmtDate },
     { title: tx('ধরন'), dataIndex: 'voucher_type', render: (t: string) => <Tag className={`fl-tag ${TYPE_TONE[t] ?? 'll-gray'}`}>{VOUCHER_TYPE_LABEL[t] ?? t}</Tag> },
-    { title: tx('বিবরণ'), dataIndex: 'narration', render: (v: string | null) => <span className="jl-narr">{v || '—'}</span> },
+    {
+      title: tx('বিবরণ'),
+      dataIndex: 'narration',
+      // what the voucher did, in plain words, under its own narration
+      render: (v: string | null, j: Row) => (
+        <span className="jl-narr">
+          {v || '—'}
+          {j.summary && <small className="jl-sum">{j.summary}</small>}
+        </span>
+      ),
+    },
     { title: tx('পরিমাণ (৳)'), dataIndex: 'amount', align: 'right', render: (v: number) => <strong>{money(v)}</strong> },
     { title: tx('অবস্থা'), dataIndex: 'status', render: (s: string) => <Tag className={`fl-tag iv-status ${JOURNAL_TONE[s] ?? 'll-gray'}`}>{JOURNAL_STATUS[s]?.label ?? s}</Tag> },
     {
