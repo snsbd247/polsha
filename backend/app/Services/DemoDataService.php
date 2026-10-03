@@ -259,7 +259,7 @@ class DemoDataService
         }
         // the admin also enters old-book members and the demo area, and brings the paper records in through Import
         $this->users['admin']->givePermissionTo(['member.admin', 'member.view', 'location.create', 'mouza.create', 'farmer.view', 'farmer.delete',
-            'farmer.create', 'land.create', 'land.view', 'savings.create', 'share.create', 'loan.create', 'irrigation.create', 'payment.create']);
+            'farmer.create', 'farmer.edit', 'land.create', 'land.edit', 'land.view', 'savings.create', 'share.create', 'loan.create', 'irrigation.create', 'payment.create']);
         // the accountant prepares year-end distributions and account closings; the manager approves them
         $this->users['accountant']->givePermissionTo(['savings.view', 'share.view', 'savings.edit', 'share.edit']);
     }
@@ -308,10 +308,10 @@ class DemoDataService
     }
 
     /** Like api(), for steps the real data may refuse (a scan of an unknown code, a month that cannot close yet); the run goes on. */
-    private function tryApi(string $as, string $method, string $uri, array $data = [], bool $quiet = false): ?array
+    private function tryApi(string $as, string $method, string $uri, array $data = [], bool $quiet = false, array $files = []): ?array
     {
         try {
-            return $this->api($as, $method, $uri, $data);
+            return $this->api($as, $method, $uri, $data, $files);
         } catch (RuntimeException $e) {
             $quiet || ($this->log)('  (বাদ গেল) '.Str::limit($e->getMessage(), 220));
 
@@ -476,7 +476,89 @@ class DemoDataService
         $this->pendingWithdrawals();
         $this->fieldCollections();
         $this->monthEnds();
+        $this->recent();
+        $this->extras();
     }
+    /**
+     * The last ten days are busy, so every screen that opens on "this month"
+     * or "today" has something on it even early in a month: deposits, share
+     * buys, combined payments, office costs, a withdrawal now and then, two
+     * new loans (the one applied for today still waits for approval).
+     */
+    private function recent(): void
+    {
+        $today = Carbon::parse($this->today);
+        for ($back = 9; $back >= 0; $back--) {
+            $day = $today->copy()->subDays($back);
+            $this->at($day, function (string $d) use ($back) {
+                $members = array_values($this->members);
+                shuffle($members);
+                foreach (array_slice($members, 0, mt_rand(4, 7)) as $memberId) {
+                    $this->moneyIn($memberId, 'savings', $d, $this->money(200, 2000));
+                }
+                $this->moneyIn($members[0] ?? 0, 'share', $d, (int) ($this->unit * mt_rand(5, 25)));
+                for ($k = mt_rand(2, 3); $k > 0; $k--) {
+                    $this->combined($d);
+                }
+                if ($back % 2 === 0) {
+                    $this->expense('cash_society', $this->pick(['office_expense', 'other_expense']), $this->money(300, 1500), $this->pick(['অফিসের চা-নাস্তা ও আপ্যায়ন', 'স্টেশনারি কেনা', 'যাতায়াত খরচ']), $d);
+                }
+                if ($back % 3 === 0) {
+                    $this->expense('cash_irrigation', 'other_expense', $this->money(500, 2500), $this->pick(['ড্রেন পরিষ্কারের শ্রমিক মজুরি', 'পাম্পের যন্ত্রাংশ মেরামত', 'নালা মেরামতের মজুরি']), $d);
+                    $this->withdrawal($d);
+                }
+            });
+        }
+        $this->at($today->copy()->subDays(6), fn (string $d) => $this->loan($d, 'monthly'));
+        $this->at($today, fn (string $d) => $this->loan($d, 'monthly'));
+    }
+
+    /**
+     * Records no money passes through: scanned papers on farmers and lands,
+     * notes on lands, remarks on approvals, receipt prints (one a reprint),
+     * and a pair of look-alike farmers marked "not the same person".
+     */
+    private function extras(): void
+    {
+        $this->at(Carbon::parse($this->today)->subDays(3), function () {
+            $pdf = function (string $name): UploadedFile {
+                $path = tempnam(sys_get_temp_dir(), 'demo-doc');
+                file_put_contents($path, "%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 300 200]>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF\n");
+
+                return new UploadedFile($path, $name, 'application/pdf', null, true);
+            };
+            $farmers = array_keys($this->farmers);
+            foreach (array_slice($farmers, 0, 12) as $i => $fid) {
+                $type = ['nid_front', 'nid_back', 'photo', 'land_deed'][$i % 4];
+                $this->tryApi('admin', 'POST', "farmers/$fid/documents", ['type' => $type, 'remarks' => $type === 'land_deed' ? 'মূল দলিলের স্ক্যান কপি' : null], false, ['file' => $pdf("$type-$fid.pdf")]);
+            }
+            $lands = Land::whereIn('id', Land::query()->latest('id')->limit(40)->pluck('id'))->inRandomOrder()->limit(12)->pluck('id')->all();
+            foreach ($lands as $i => $lid) {
+                $type = ['khatian', 'map', 'mutation', 'deed'][$i % 4];
+                $this->tryApi('admin', 'POST', "lands/$lid/documents", ['type' => $type, 'title' => ['খতিয়ানের সার্টিফাইড কপি', 'দাগের নকশা (মৌজা ম্যাপ)', 'নামজারি খতিয়ান', 'রেজিস্ট্রি দলিল'][$i % 4]], false, ['file' => $pdf("$type-$lid.pdf")]);
+                if ($i % 2 === 0) {
+                    $this->tryApi('admin', 'POST', "lands/$lid/notes", ['note' => $this->pick(['আইলের সীমানা নিয়ে প্রতিবেশীর সাথে কথা হয়েছে — মিটমাট', 'বর্ষায় নিচু অংশে পানি জমে', 'নালার পাশের জমি, সেচ সহজ', 'মালিক বিদেশে, ভাই দেখাশোনা করেন'])]);
+                }
+            }
+            foreach (ApprovalRequest::latest('id')->limit(8)->get() as $k => $req) {
+                $this->tryApi($k % 2 ? 'manager' : 'accountant', 'POST', "approvals/{$req->id}/comments", ['body' => $this->pick(['কাগজপত্র দেখা হয়েছে, ঠিক আছে।', 'জামিনদারের সম্মতিপত্র ফাইলে রাখা হয়েছে।', 'সভাপতির সাথে কথা বলে সিদ্ধান্ত।', 'পরের সভায় জানানো হবে।'])], true);
+            }
+            foreach (Receipt::latest('id')->limit(10)->pluck('id') as $k => $rid) {
+                $this->tryApi('cashier', 'POST', 'print-logs', ['document_type' => 'receipt', 'document_id' => $rid], true);
+                if ($k === 0) {
+                    $this->tryApi('cashier', 'POST', 'print-logs', ['document_type' => 'receipt', 'document_id' => $rid], true); // a reprint
+                }
+            }
+            foreach (MemberTransaction::latest('id')->limit(5)->pluck('id') as $tid) {
+                $this->tryApi('cashier', 'POST', 'print-logs', ['document_type' => 'member_transaction', 'document_id' => $tid], true);
+            }
+            $pair = $this->tryApi('admin', 'GET', 'farmers/duplicates', [], true)['data'][0] ?? null;
+            if ($pair && isset($pair['a']['id'], $pair['b']['id'])) {
+                $this->tryApi('admin', 'POST', 'farmers-duplicates/dismiss', ['a' => $pair['a']['id'], 'b' => $pair['b']['id']], true);
+            }
+        });
+    }
+
 
     /**
      * For the last two months a field collector goes round the villages with
@@ -501,8 +583,10 @@ class DemoDataService
                     if ($amount <= 0) {
                         continue;
                     }
-                    $this->api('field', 'POST', 'field/collect', ['farmer_id' => $fid, 'amount' => $amount]);
-                    $done++;
+                    // a member whose account was closed meanwhile is skipped, as the collector would
+                    if ($this->tryApi('field', 'POST', 'field/collect', ['farmer_id' => $fid, 'amount' => $amount], true)) {
+                        $done++;
+                    }
                 }
             });
         }
@@ -1208,7 +1292,9 @@ class DemoDataService
     /** A member pays a round sum at the counter; the system splits it over dues. */
     private function combined(string $date): void
     {
-        $fid = Member::whereIn('id', array_values($this->members))->where('status', Member::ACTIVE)->inRandomOrder()->value('farmer_id');
+        // not a member whose account is closed or closing: the counter would refuse the money
+        $fid = Member::whereIn('id', array_values($this->members))->where('status', Member::ACTIVE)
+            ->whereDoesntHave('accounts', fn ($q) => $q->where('status', '!=', 'active'))->inRandomOrder()->value('farmer_id');
         if (! $fid) {
             return;
         }
