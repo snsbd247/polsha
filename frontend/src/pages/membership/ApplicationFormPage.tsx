@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { flushSync } from 'react-dom'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Alert, App, Button, Card, ConfigProvider, DatePicker, Descriptions, Form, Input, InputNumber, Popconfirm, Radio, Select, Space, Spin, Tag, Upload } from 'antd'
@@ -6,6 +7,7 @@ import {
   ArrowLeftOutlined,
   CheckCircleFilled,
   CloseOutlined,
+  DownOutlined,
   EyeOutlined,
   FileTextFilled,
   HomeOutlined,
@@ -16,6 +18,7 @@ import {
   RightOutlined,
   SaveFilled,
   TeamOutlined,
+  UpOutlined,
   UploadOutlined,
   WarningFilled,
 } from '@ant-design/icons'
@@ -30,7 +33,12 @@ import { APPLICATION_STATUS, openProtectedFile, toOptions, useFarmerMeta } from 
 import { required } from '../../lib/rules'
 import { nameOf, t as tx } from '../../lib/i18n'
 import PageFrame from '../../components/PageFrame'
+import { ReceiptFacts, ReceiptFoot, ReceiptMeta, ReceiptPaper, ReceiptSign, ReceiptTop } from '../../components/PrintParts'
+import { money as tk } from '../../lib/accounting'
+import { amountInWords } from '../../lib/irrigation'
+import type { Society } from '../../lib/settings'
 import './application-form.css'
+import '../farmers/farmer-form.css'
 
 type Nominee = { name: string; relation: string; nid?: string | null; mobile?: string | null; share_percent: number }
 type Application = {
@@ -58,6 +66,8 @@ type Application = {
   approval_request: { id: number; current_step: number; total_steps: number; status: string } | null
   has_form_scan: boolean
   has_signature: boolean
+  share_unit_price?: number
+  paid?: { fee_voucher: string | null; share_txn: { id: number; txn_no: string; amount: string; date: string } | null; society: Society } | null
   creator: { name_bn: string } | null
 }
 type FarmerInfo = {
@@ -131,6 +141,8 @@ export default function ApplicationFormPage() {
   const { data: meta } = useFarmerMeta()
   const [files, setFiles] = useState<Partial<Record<FileSlot, File>>>({})
   const [saving, setSaving] = useState(false)
+  const [more, setMore] = useState(false)
+  const [printReceipt, setPrintReceipt] = useState(false)
 
   const { data: app, isLoading } = useQuery({
     queryKey: ['membership-applications', id],
@@ -143,7 +155,7 @@ export default function ApplicationFormPage() {
   })
 
   const editable = isNew || (app && EDITABLE.includes(app.status) && can(['membership.create', 'membership.edit']))
-  const defaultFee = app ? Number(app.default_fee) : defaults?.admission_fee ?? 0
+  const defaultFee = app ? Number(app.default_fee) : (defaults?.admission_fee ?? 0)
   const unit = defaults?.share_unit_price ?? 10
 
   const initialFarmer = sp.get('farmer') ? Number(sp.get('farmer')) : undefined
@@ -170,6 +182,7 @@ export default function ApplicationFormPage() {
       nominees: a.nominees.map((n) => ({ ...n, share_percent: Number(n.share_percent) })),
     })
   useEffect(() => {
+    if (app && (app.proposer || app.seconder || app.resolution_no || app.remarks || app.has_form_scan || app.has_signature || app.status === 'returned')) setMore(true)
     if (app) loadApp(app)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [app])
@@ -224,10 +237,7 @@ export default function ApplicationFormPage() {
     delete payload.nominees
     delete payload.membership_type
     Object.entries(payload).forEach(([k, val]) => val !== undefined && val !== null && fd.append(k, String(val)))
-    fd.append(
-      'nominees',
-      JSON.stringify((v.nominees as Nominee[]).map((n) => ({ ...n, nid: n.nid ? toEnDigits(n.nid) : null, mobile: n.mobile ? toEnDigits(n.mobile) : null }))),
-    )
+    fd.append('nominees', JSON.stringify((v.nominees as Nominee[]).map((n) => ({ ...n, nid: n.nid ? toEnDigits(n.nid) : null, mobile: n.mobile ? toEnDigits(n.mobile) : null }))))
     Object.entries(files).forEach(([slot, file]) => file && fd.append(slot, file))
 
     setSaving(true)
@@ -269,7 +279,7 @@ export default function ApplicationFormPage() {
   if (!editable && app) {
     return (
       <PageFrame
-        className="ml pl"
+        className={`ml pl${printReceipt ? ' ma-printing' : ''}`}
         crumbs={[{ label: tx('কৃষক ও সদস্য'), to: '/farmers' }, { label: tx('সদস্যপদের আবেদন'), to: '/membership/applications' }, { label: digits(app.application_no) }]}
         title={tx('আবেদন {{p0}}', { p0: digits(app.application_no) })}
         actions={
@@ -281,9 +291,27 @@ export default function ApplicationFormPage() {
                 {app.approval_request?.status === 'pending' && tx(' (ধাপ {{p0}}/{{p1}})', { p0: digits(app.approval_request.current_step), p1: digits(app.approval_request.total_steps) })}
               </Link>
             )}
-            <Button onClick={() => window.print()} className="no-print">
+            <Button
+              onClick={() => {
+                flushSync(() => setPrintReceipt(false))
+                window.print()
+              }}
+              className="no-print"
+            >
               {tx('আবেদনপত্র প্রিন্ট')}
             </Button>
+            {app.paid && (app.fee_status === 'paid' ? Number(app.admission_fee) : 0) + Number(app.paid.share_txn?.amount ?? 0) > 0 && (
+              <Button
+                type="primary"
+                onClick={() => {
+                  flushSync(() => setPrintReceipt(true))
+                  window.print()
+                }}
+                className="no-print"
+              >
+                {tx('ভর্তি রশিদ প্রিন্ট')}
+              </Button>
+            )}
           </Space>
         }
       >
@@ -294,13 +322,13 @@ export default function ApplicationFormPage() {
             style={{ marginBottom: 16 }}
             title={
               <>
-                {tx('সদস্যপদ অনুমোদিত — সদস্য নং')}{' '}<strong>{digits(app.member.member_no)}</strong>।{' '}
-                <Link to={`/farmers/${app.farmer_id}`}>{tx('প্রোফাইল দেখুন')}</Link>
+                {tx('সদস্যপদ অনুমোদিত — সদস্য নং')} <strong>{digits(app.member.member_no)}</strong>। <Link to={`/farmers/${app.farmer_id}`}>{tx('প্রোফাইল দেখুন')}</Link>
               </>
             }
           />
         )}
-        <Card>
+        {printReceipt && app.paid && <AdmissionReceipt app={app} />}
+        <Card className={printReceipt ? 'no-print' : ''}>
           <Descriptions bordered size="small" column={{ xs: 1, md: 2 }}>
             <Descriptions.Item label={tx('কৃষক')}>
               <Link to={`/farmers/${app.farmer.id}`}>{app.farmer.name_bn}</Link> ({app.farmer.farmer_code})
@@ -308,8 +336,12 @@ export default function ApplicationFormPage() {
             <Descriptions.Item label={tx('পিতা')}>{app.farmer.father_name}</Descriptions.Item>
             <Descriptions.Item label={tx('আবেদনের তারিখ')}>{fmtDate(app.applied_on)}</Descriptions.Item>
             <Descriptions.Item label={tx('ভর্তি ফি')}>
-              {tx('৳')}{' '}{digits(Number(app.admission_fee))} ({app.fee_status === 'paid' ? tx('পরিশোধিত') : tx('বাকি')})
-              {Number(app.admission_fee) !== Number(app.default_fee) && <div>{tx('নির্ধারিত ৳')}{' '}{digits(Number(app.default_fee))}{' '}{tx('— কারণ:')}{' '}{app.fee_override_reason}</div>}
+              {tx('৳')} {digits(Number(app.admission_fee))} ({app.fee_status === 'paid' ? tx('পরিশোধিত') : tx('বাকি')})
+              {Number(app.admission_fee) !== Number(app.default_fee) && (
+                <div>
+                  {tx('নির্ধারিত ৳')} {digits(Number(app.default_fee))} {tx('— কারণ:')} {app.fee_override_reason}
+                </div>
+              )}
             </Descriptions.Item>
             <Descriptions.Item label={tx('প্রস্তাবক')}>{app.proposer?.farmer.name_bn ?? '—'}</Descriptions.Item>
             <Descriptions.Item label={tx('সমর্থক')}>{app.seconder?.farmer.name_bn ?? '—'}</Descriptions.Item>
@@ -323,15 +355,27 @@ export default function ApplicationFormPage() {
                 </div>
               ))}
             </Descriptions.Item>
-            <Descriptions.Item label={tx('মন্তব্য')} span="filled">{app.remarks || '—'}</Descriptions.Item>
+            <Descriptions.Item label={tx('মন্তব্য')} span="filled">
+              {app.remarks || '—'}
+            </Descriptions.Item>
             <Descriptions.Item label={tx('সংযুক্তি')} span="filled">
               <Space>
-                {app.has_form_scan && <Button size="small" onClick={() => openProtectedFile(`/membership-applications/${app.id}/file/form_scan`)}>{tx('আবেদনপত্রের স্ক্যান')}</Button>}
-                {app.has_signature && <Button size="small" onClick={() => openProtectedFile(`/membership-applications/${app.id}/file/signature`)}>{tx('স্বাক্ষর/টিপসই')}</Button>}
+                {app.has_form_scan && (
+                  <Button size="small" onClick={() => openProtectedFile(`/membership-applications/${app.id}/file/form_scan`)}>
+                    {tx('আবেদনপত্রের স্ক্যান')}
+                  </Button>
+                )}
+                {app.has_signature && (
+                  <Button size="small" onClick={() => openProtectedFile(`/membership-applications/${app.id}/file/signature`)}>
+                    {tx('স্বাক্ষর/টিপসই')}
+                  </Button>
+                )}
                 {!app.has_form_scan && !app.has_signature && '—'}
               </Space>
             </Descriptions.Item>
-            <Descriptions.Item label={tx('এন্ট্রি করেছেন')} span="filled">{app.creator?.name_bn ?? '—'}</Descriptions.Item>
+            <Descriptions.Item label={tx('এন্ট্রি করেছেন')} span="filled">
+              {app.creator?.name_bn ?? '—'}
+            </Descriptions.Item>
           </Descriptions>
         </Card>
       </PageFrame>
@@ -373,7 +417,7 @@ export default function ApplicationFormPage() {
           <p>{tx('সদস্যপদের আবেদন ফর্ম পূরণ করুন। কৃষকের তথ্য সদস্যপদের রেকর্ডের সাথে যুক্ত হবে।')}</p>
         </div>
 
-        {app?.status === 'returned' && <Alert type="warning" showIcon style={{ marginBottom: 12 }} title={tx('আবেদনটি সংশোধনের জন্য ফেরত এসেছে। কারণ দেখতে \'অনুমোদনের অবস্থা\' খুলুন, সংশোধন করে আবার পাঠান।')} />}
+        {app?.status === 'returned' && <Alert type="warning" showIcon style={{ marginBottom: 12 }} title={tx("আবেদনটি সংশোধনের জন্য ফেরত এসেছে। কারণ দেখতে 'অনুমোদনের অবস্থা' খুলুন, সংশোধন করে আবার পাঠান।")} />}
 
         <ol className="ma-steps">
           {steps.map((s, i) => (
@@ -387,7 +431,19 @@ export default function ApplicationFormPage() {
           ))}
         </ol>
 
-        <Form form={form} layout="vertical" requiredMark={(label, { required: r }) => (r ? <>{label} <span className="ma-req">*</span></> : label)}>
+        <Form
+          form={form}
+          layout="vertical"
+          requiredMark={(label, { required: r }) =>
+            r ? (
+              <>
+                {label} <span className="ma-req">*</span>
+              </>
+            ) : (
+              label
+            )
+          }
+        >
           <div className="ma-grid">
             <div className="ma-main">
               <Section
@@ -443,8 +499,8 @@ export default function ApplicationFormPage() {
                 <div className="ma-details">
                   <div className="ma-details-left">
                     <div className="ma-g2">
-                      <Form.Item name="membership_type" label={tx('সদস্যপদের ধরন')} rules={[required(tx('ধরন বাছাই করুন'))]}>
-                        <Select options={[{ value: 'general', label: tx('সাধারণ সদস্য') }]} />
+                      <Form.Item name="membership_type" hidden>
+                        <Input />
                       </Form.Item>
                       <Form.Item name="applied_on" label={tx('আবেদনের তারিখ')} rules={[required(tx('তারিখ দিন'))]}>
                         <DatePicker format="DD-MM-YYYY" style={{ width: '100%' }} disabledDate={(d) => d.isAfter(dayjs(), 'day')} />
@@ -477,7 +533,12 @@ export default function ApplicationFormPage() {
                       </div>
                     </div>
                     <Form.Item name="fee_status" label={tx('ফি পরিশোধ')} className="ma-last">
-                      <Radio.Group options={[{ value: 'paid', label: tx('পরিশোধিত') }, { value: 'due', label: tx('বাকি') }]} />
+                      <Radio.Group
+                        options={[
+                          { value: 'paid', label: tx('পরিশোধিত') },
+                          { value: 'due', label: tx('বাকি') },
+                        ]}
+                      />
                     </Form.Item>
                   </div>
                   <div className="ma-details-right">
@@ -485,7 +546,7 @@ export default function ApplicationFormPage() {
                       <span>{tx('প্রস্তাবিত সদস্য নং')}</span>
                       <Input disabled value={tx('অনুমোদনের পর স্বয়ংক্রিয়ভাবে হবে')} />
                     </div>
-                    <div className="ma-g3">
+                    <div className="ma-g3" hidden={!more}>
                       <Form.Item name="occupation" label={tx('পেশা')}>
                         <Select allowClear placeholder={tx('বাছাই করুন')} options={toOptions(meta?.occupations)} />
                       </Form.Item>
@@ -496,14 +557,22 @@ export default function ApplicationFormPage() {
                         <Select allowClear placeholder={tx('বাছাই করুন')} options={toOptions(meta?.blood_groups)} />
                       </Form.Item>
                     </div>
-                    <Form.Item name="remarks" label={tx('মন্তব্য')} className="ma-last">
+                    <Form.Item name="remarks" label={tx('মন্তব্য')} className="ma-last" hidden={!more}>
                       <Input.TextArea rows={3} maxLength={300} showCount placeholder={tx('অতিরিক্ত তথ্য লিখুন...')} />
                     </Form.Item>
                   </div>
                 </div>
               </Section>
 
-              <Section icon={<TeamOutlined />} title={tx('৩. নমিনি ও প্রস্তাবক')} extra={<span className={`ma-pill ${Math.abs(shareTotal - 100) < 0.001 ? 'green' : 'red'}`}>{tx('মোট')}{' '}{digits(shareTotal)}%</span>}>
+              <Section
+                icon={<TeamOutlined />}
+                title={more ? tx('৩. নমিনি ও প্রস্তাবক') : tx('৩. নমিনি')}
+                extra={
+                  <span className={`ma-pill ${Math.abs(shareTotal - 100) < 0.001 ? 'green' : 'red'}`}>
+                    {tx('মোট')} {digits(shareTotal)}%
+                  </span>
+                }
+              >
                 <Form.List name="nominees">
                   {(fields, { add, remove }) => (
                     <>
@@ -533,7 +602,7 @@ export default function ApplicationFormPage() {
                     </>
                   )}
                 </Form.List>
-                <div className="ma-g4 ma-proposer">
+                <div className="ma-g4 ma-proposer" hidden={!more}>
                   <Form.Item name="proposer_member_id" label={tx('প্রস্তাবক (সদস্য)')}>
                     <FarmerPicker type="active_member" valueField="member_id" placeholder={tx('ঐচ্ছিক')} initialLabel={app?.proposer?.farmer.name_bn} />
                   </Form.Item>
@@ -549,15 +618,56 @@ export default function ApplicationFormPage() {
                 </div>
               </Section>
 
-              <Section icon={<FileTextFilled />} title={tx('৪. সহায়ক ডকুমেন্ট')}>
-                <div className="ma-tiles">
-                  <UploadTile label={tx('NID কার্ড (সামনে)')} accept=".jpg,.jpeg,.png,.pdf" file={files.nid_front} onFile={hasDoc('nid_front')} adds onPick={setFile('nid_front')} onClear={() => setFile('nid_front')()} hint={tx('JPG, PNG বা PDF (সর্বোচ্চ ৫MB)')} />
-                  <UploadTile label={tx('NID কার্ড (পেছনে)')} accept=".jpg,.jpeg,.png,.pdf" file={files.nid_back} onFile={hasDoc('nid_back')} adds onPick={setFile('nid_back')} onClear={() => setFile('nid_back')()} hint={tx('JPG, PNG বা PDF (সর্বোচ্চ ৫MB)')} />
-                  <UploadTile label={tx('সদস্যপদ ফর্ম (স্বাক্ষরিত)')} accept=".jpg,.jpeg,.png,.pdf" file={files.form_scan} onFile={!!app?.has_form_scan} onPick={setFile('form_scan')} onClear={() => setFile('form_scan')()} hint={tx('JPG, PNG বা PDF (সর্বোচ্চ ৫MB)')} />
-                  <UploadTile label={tx('ছবি')} accept="image/png,image/jpeg" file={files.photo} onFile={!!f?.photo_url} onPick={setFile('photo')} onClear={() => setFile('photo')()} hint={tx('JPG বা PNG (সর্বোচ্চ ২MB)')} />
-                  <UploadTile label={tx('স্বাক্ষর / টিপসই')} accept="image/png,image/jpeg" file={files.signature} onFile={!!app?.has_signature} onPick={setFile('signature')} onClear={() => setFile('signature')()} hint={tx('JPG বা PNG (সর্বোচ্চ ২MB)')} />
-                </div>
-              </Section>
+              <button type="button" className={`ff-more-toggle${more ? ' on' : ''}`} onClick={() => setMore((m) => !m)}>
+                {more ? <UpOutlined /> : <DownOutlined />}
+                {tx('আরও তথ্য (ঐচ্ছিক)')}
+                <small>{tx('পেশা, শিক্ষা, রক্তের গ্রুপ, মন্তব্য, প্রস্তাবক ও সমর্থক, সভার সিদ্ধান্ত, ডকুমেন্ট')}</small>
+              </button>
+              <div hidden={!more}>
+                <Section icon={<FileTextFilled />} title={tx('৪. সহায়ক ডকুমেন্ট')}>
+                  <div className="ma-tiles">
+                    <UploadTile
+                      label={tx('NID কার্ড (সামনে)')}
+                      accept=".jpg,.jpeg,.png,.pdf"
+                      file={files.nid_front}
+                      onFile={hasDoc('nid_front')}
+                      adds
+                      onPick={setFile('nid_front')}
+                      onClear={() => setFile('nid_front')()}
+                      hint={tx('JPG, PNG বা PDF (সর্বোচ্চ ৫MB)')}
+                    />
+                    <UploadTile
+                      label={tx('NID কার্ড (পেছনে)')}
+                      accept=".jpg,.jpeg,.png,.pdf"
+                      file={files.nid_back}
+                      onFile={hasDoc('nid_back')}
+                      adds
+                      onPick={setFile('nid_back')}
+                      onClear={() => setFile('nid_back')()}
+                      hint={tx('JPG, PNG বা PDF (সর্বোচ্চ ৫MB)')}
+                    />
+                    <UploadTile
+                      label={tx('সদস্যপদ ফর্ম (স্বাক্ষরিত)')}
+                      accept=".jpg,.jpeg,.png,.pdf"
+                      file={files.form_scan}
+                      onFile={!!app?.has_form_scan}
+                      onPick={setFile('form_scan')}
+                      onClear={() => setFile('form_scan')()}
+                      hint={tx('JPG, PNG বা PDF (সর্বোচ্চ ৫MB)')}
+                    />
+                    <UploadTile label={tx('ছবি')} accept="image/png,image/jpeg" file={files.photo} onFile={!!f?.photo_url} onPick={setFile('photo')} onClear={() => setFile('photo')()} hint={tx('JPG বা PNG (সর্বোচ্চ ২MB)')} />
+                    <UploadTile
+                      label={tx('স্বাক্ষর / টিপসই')}
+                      accept="image/png,image/jpeg"
+                      file={files.signature}
+                      onFile={!!app?.has_signature}
+                      onPick={setFile('signature')}
+                      onClear={() => setFile('signature')()}
+                      hint={tx('JPG বা PNG (সর্বোচ্চ ২MB)')}
+                    />
+                  </div>
+                </Section>
+              </div>
             </div>
 
             <aside className="ma-side">
@@ -639,5 +749,56 @@ export default function ApplicationFormPage() {
         </Form>
       </div>
     </ConfigProvider>
+  )
+}
+
+/** What a new member paid on admission — the fee and the first shares — as one paper receipt. */
+function AdmissionReceipt({ app }: { app: Application }) {
+  const paid = app.paid!
+  const fee = app.fee_status === 'paid' ? Number(app.admission_fee) : 0
+  const shares = Number(paid.share_txn?.amount ?? 0)
+  const total = fee + shares
+  return (
+    <div className="print-only">
+      <ReceiptPaper society={paid.society} payerCopy={tx('সদস্য কপি')}>
+        <ReceiptTop society={paid.society} title={tx('সদস্যপদ ভর্তির রশিদ')} />
+        <ReceiptMeta
+          lines={[
+            <>
+              {tx('আবেদন নং')}: {digits(app.application_no)}
+            </>,
+            app.member && (
+              <>
+                {tx('সদস্য নং')}: {digits(app.member.member_no)}
+              </>
+            ),
+          ]}
+          date={
+            <>
+              {tx('তারিখ')}: {fmtDate(paid.share_txn?.date ?? app.applied_on)} {tx('ইং')}
+            </>
+          }
+        />
+        <ReceiptFacts
+          rows={[
+            [tx('সদস্যের নাম ও কৃষক আইডি'), `${app.farmer.name_bn}-${digits(app.farmer.farmer_code)}`],
+            [tx('পিতা/স্বামীর নাম'), app.farmer.father_name],
+            [tx('ভর্তি ফি'), app.fee_status === 'paid' ? `${tk(fee)}৳` : tx('বাকি')],
+            [tx('প্রাথমিক শেয়ার'), paid.share_txn ? `${digits(app.initial_shares ?? 0)} × ${tk(app.share_unit_price ?? 0)}৳ = ${tk(shares)}৳` : null],
+            [tx('মোট জমা'), <strong key="t">{tk(total)}৳</strong>],
+            [tx('কথায়'), amountInWords(total)],
+            [
+              tx('ভাউচার / লেনদেন নং'),
+              [paid.fee_voucher, paid.share_txn?.txn_no]
+                .filter(Boolean)
+                .map((x) => digits(x!))
+                .join(', ') || null,
+            ],
+          ]}
+        />
+        <ReceiptSign society={paid.society} left={tx('সদস্যের স্বাক্ষর')} right={tx('দায়িত্বপ্রাপ্ত কর্মকর্তার স্বাক্ষর')} />
+        <ReceiptFoot society={paid.society} fallback={tx('এটি সিস্টেম-জেনারেটেড রশিদ। অনুগ্রহ করে আপনার রেকর্ডের জন্য সংরক্ষণ করুন।')} />
+      </ReceiptPaper>
+    </div>
   )
 }

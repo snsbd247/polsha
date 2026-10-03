@@ -776,3 +776,15 @@
     grid-template-columns: 1fr 1fr;
   }
 }
+
+/* the optional parts, folded until asked for */
+.ma [hidden] {
+  display: none !important;
+}
+@media print {
+  .ma-printing .fl-crumb,
+  .ma-printing .fl-head,
+  .ma-printing .ant-alert {
+    display: none !important;
+  }
+}

@@ -5,7 +5,9 @@ namespace Tests\Feature;
 use App\Models\Account;
 use App\Models\AccountingPeriod;
 use App\Models\ApprovalRequest;
+use App\Models\Farmer;
 use App\Models\Journal;
+use App\Models\MemberAccount;
 use App\Models\User;
 use App\Services\SettingService;
 
@@ -252,5 +254,27 @@ class AccountingTest extends Phase2TestCase
         $this->assertNotNull($journal);
         $this->assertEquals(500, $journal->amount);
         $this->artisan('accounting:post-admission-fees')->expectsOutput('Posted 0, skipped 1.')->assertSuccessful();
+    }
+
+    public function test_paid_application_brings_its_first_shares_in_on_approval(): void
+    {
+        SettingService::setMany(['share_unit_price' => 10]);
+        $shareOf = fn (Farmer $f) => MemberAccount::where('kind', 'share')->whereHas('member', fn ($m) => $m->where('farmer_id', $f->id))->firstOrFail();
+
+        $farmer = $this->makeFarmer();
+        $res = $this->actingAs($this->officer)->postJson('/api/membership-applications',
+            $this->applicationPayload($farmer, ['initial_shares' => 12, 'submit' => true]))->assertCreated();
+        $this->approveBothSteps(ApprovalRequest::findOrFail($res->json('approval_request_id'))->id);
+        $this->assertEquals(120, (float) $shareOf($farmer)->balance);
+        // the application shows both payments for its receipt
+        $this->actingAs($this->officer)->getJson('/api/membership-applications/'.$res->json('id'))->assertOk()
+            ->assertJsonPath('paid.share_txn.amount', '120.00');
+
+        // a fee still due brings no shares in
+        $other = $this->makeFarmer();
+        $res = $this->actingAs($this->officer)->postJson('/api/membership-applications',
+            $this->applicationPayload($other, ['initial_shares' => 5, 'fee_status' => 'due', 'submit' => true]))->assertCreated();
+        $this->approveBothSteps(ApprovalRequest::findOrFail($res->json('approval_request_id'))->id);
+        $this->assertEquals(0, (float) $shareOf($other)->balance);
     }
 }

@@ -34,6 +34,7 @@ import { nameOf, t as tx } from '../../lib/i18n'
 import { DashIcon } from '../dashboard/DashIcons'
 import '../farmers/farmer-list.css'
 import './member-list.css'
+import PageTabs from '../../components/PageTabs'
 
 type ListRef = { id: number; title: string; cutoff_date: string; eligible_count: number; ineligible_count: number }
 type Row = {
@@ -116,8 +117,7 @@ export default function VoterListPage() {
     setRange(null)
     setParams((p) => ({ page: 1, per_page: p.per_page, list_id: p.list_id }))
   }
-  const exportCsv = (eligible: '1' | '0') =>
-    list && downloadExport(`/voter-lists/${list.id}/export`, { eligible }, eligible === '1' ? 'voters.csv' : 'voter-audit.csv').catch((e) => message.error(errorMessage(e)))
+  const exportCsv = (eligible: '1' | '0') => list && downloadExport(`/voter-lists/${list.id}/export`, { eligible }, eligible === '1' ? 'voters.csv' : 'voter-audit.csv').catch((e) => message.error(errorMessage(e)))
 
   /** Printable voter list with a signature column, as used at the meeting. */
   const print = async () => {
@@ -127,9 +127,7 @@ export default function VoterListPage() {
       const r = await api.get<{ items: Paginated<PrintItem> }>(`/voter-lists/${list.id}`, { params: { eligible: 1, per_page: 10000 } })
       const w = window.open('', '_blank', 'width=900,height=700')
       if (!w) return
-      const body = r.data.items.data
-        .map((i) => `<tr><td>${esc(digits(i.serial))}</td><td>${esc(digits(i.member_no))}</td><td>${esc(i.name)}</td><td>${esc(i.father_name)}</td><td>${esc(i.village)}</td><td></td></tr>`)
-        .join('')
+      const body = r.data.items.data.map((i) => `<tr><td>${esc(digits(i.serial))}</td><td>${esc(digits(i.member_no))}</td><td>${esc(i.name)}</td><td>${esc(i.father_name)}</td><td>${esc(i.village)}</td><td></td></tr>`).join('')
       w.document.write(
         `<html><head><title>${esc(list.title)}</title><style>body{font-family:sans-serif;margin:16px}h2,h3,p{text-align:center;margin:4px 0}table{width:100%;border-collapse:collapse;margin-top:12px;font-size:13px}th,td{border:1px solid #444;padding:5px 6px;text-align:left}td:last-child{width:130px}</style></head><body>` +
           `<h2>${esc(nameOf({ name_bn: settings?.society_name_bn, name_en: settings?.society_name_en }))}</h2><h3>${esc(list.title)}</h3><p>${esc(tx('কাট-অফ তারিখ'))}: ${esc(fmtDate(list.cutoff_date))} · ${esc(tx('মোট ভোটার'))}: ${esc(digits(list.eligible_count))}</p>` +
@@ -179,7 +177,15 @@ export default function VoterListPage() {
       render: (_, r) => (r.photo_url ? <ProtectedImage url={r.photo_url} size={34} shape="square" /> : <span className="ml-initials">{initials(nameOf({ name_bn: r.name, name_en: r.name_en }))}</span>),
     },
     { key: 'serial', title: tx('ভোটার নং'), dataIndex: 'serial', width: 92, render: (v) => (v ? <span className="fl-link">{digits(v)}</span> : '—') },
-    { key: 'name', title: tx('ভোটারের নাম'), render: (_, r) => <Link to={`/farmers/${r.farmer_id}`} className="fl-name">{nameOf({ name_bn: r.name, name_en: r.name_en })}</Link> },
+    {
+      key: 'name',
+      title: tx('ভোটারের নাম'),
+      render: (_, r) => (
+        <Link to={`/farmers/${r.farmer_id}`} className="fl-name">
+          {nameOf({ name_bn: r.name, name_en: r.name_en })}
+        </Link>
+      ),
+    },
     { key: 'father', title: tx('পিতার নাম'), dataIndex: 'father_name' },
     { key: 'mobile', title: tx('মোবাইল'), dataIndex: 'mobile', render: (v) => digits(v) || '—' },
     { key: 'nid', title: 'NID', dataIndex: 'nid', render: (v) => digits(v) || '—' },
@@ -249,6 +255,7 @@ export default function VoterListPage() {
           <RightOutlined className="fl-crumb-sep" />
           <span>{tx('ভোটার তালিকা')}</span>
         </nav>
+        <PageTabs />
 
         <div className="fl-head">
           <div>
@@ -426,8 +433,7 @@ export default function VoterListPage() {
               <Button className="ml-edge" icon={<DoubleRightOutlined />} disabled={params.page >= lastPage} aria-label={tx('শেষ পাতা')} onClick={() => setParams((p) => ({ ...p, page: lastPage }))} />
             </span>
             <span className="fl-rows">
-              {tx('প্রতি পাতায় সারি')}{' '}
-              <Select value={params.per_page} className="fl-size" options={[10, 25, 50, 100].map((v) => ({ value: v, label: digits(v) }))} onChange={(per_page) => setParams((p) => ({ ...p, per_page, page: 1 }))} />
+              {tx('প্রতি পাতায় সারি')} <Select value={params.per_page} className="fl-size" options={[10, 25, 50, 100].map((v) => ({ value: v, label: digits(v) }))} onChange={(per_page) => setParams((p) => ({ ...p, per_page, page: 1 }))} />
             </span>
           </div>
         </div>

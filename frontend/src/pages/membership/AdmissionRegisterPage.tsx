@@ -10,6 +10,7 @@ import { digits, fmtDate } from '../../lib/format'
 import { downloadExport } from '../../lib/phase2'
 import { usePublicSettings } from '../../lib/settings'
 import { t as tx } from '../../lib/i18n'
+import PageTabs from '../../components/PageTabs'
 
 type Row = {
   id: number
@@ -65,9 +66,12 @@ export default function AdmissionRegisterPage() {
           </Button>
         </Space>
       </div>
+      <PageTabs />
       <div className="print-only" style={{ textAlign: 'center', marginBottom: 12 }}>
         <h2 style={{ margin: 0 }}>{settings?.society_name_bn}</h2>
-        <div>{tx('সদস্য ভর্তি রেজিস্টার')}{' '}{range.from && `(${fmtDate(range.from)} — ${fmtDate(range.to)})`}</div>
+        <div>
+          {tx('সদস্য ভর্তি রেজিস্টার')} {range.from && `(${fmtDate(range.from)} — ${fmtDate(range.to)})`}
+        </div>
       </div>
       <Table<Row>
         rowKey="id"
@@ -93,7 +97,16 @@ export default function AdmissionRegisterPage() {
           { title: tx('নাম'), dataIndex: 'name', render: (v, r) => <Link to={`/farmers/${r.farmer_id}`}>{v}</Link> },
           { title: tx('পিতা'), dataIndex: 'father_name' },
           { title: tx('ঠিকানা'), dataIndex: 'address' },
-          { title: tx('ভর্তির তারিখ'), dataIndex: 'admitted_on', render: (v, r) => <>{fmtDate(v)}{r.is_legacy && <Tag style={{ marginInlineStart: 4 }}>{tx('পুরোনো')}</Tag>}</> },
+          {
+            title: tx('ভর্তির তারিখ'),
+            dataIndex: 'admitted_on',
+            render: (v, r) => (
+              <>
+                {fmtDate(v)}
+                {r.is_legacy && <Tag style={{ marginInlineStart: 4 }}>{tx('পুরোনো')}</Tag>}
+              </>
+            ),
+          },
           { title: tx('ভর্তি ফি'), dataIndex: 'admission_fee', render: (v) => (v ? tx('৳ {{p0}}', { p0: digits(Number(v)) }) : '—') },
           { title: tx('প্রাথমিক শেয়ার'), dataIndex: 'initial_shares', render: (v) => (v ? digits(v) : '—') },
           { title: tx('নমিনি'), dataIndex: 'nominees' },

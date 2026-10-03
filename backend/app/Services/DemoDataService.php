@@ -23,6 +23,7 @@ use App\Models\Loan;
 use App\Models\Member;
 use App\Models\MemberAccount;
 use App\Models\MemberTransaction;
+use App\Models\MembershipApplication;
 use App\Models\Receipt;
 use App\Models\Sequence;
 use App\Models\SmsLog;
@@ -990,7 +991,10 @@ class DemoDataService
                         $memberId = Member::where('farmer_id', $fid)->value('id');
                         $this->members[$fid] = $memberId;
                         $this->openAccounts($memberId, $d);
-                        $this->moneyIn($memberId, 'share', $d, (int) ($shares * $this->unit));
+                        // a paid fee brings the first shares in with the approval; a due one buys them now
+                        if (MembershipApplication::whereKey($app['id'])->value('fee_status') !== 'paid') {
+                            $this->moneyIn($memberId, 'share', $d, (int) ($shares * $this->unit));
+                        }
                         $this->moneyIn($memberId, 'savings', $d, $this->money(300, 2000));
                     } else {
                         $this->api('manager', 'POST', "approvals/{$app['approval_request_id']}/decide", [

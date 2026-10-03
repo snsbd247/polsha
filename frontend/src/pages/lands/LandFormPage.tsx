@@ -8,6 +8,7 @@ import {
   ArrowLeftOutlined,
   CloudUploadOutlined,
   DeleteOutlined,
+  DownOutlined,
   EyeFilled,
   FileImageFilled,
   FilePdfFilled,
@@ -17,6 +18,7 @@ import {
   RightOutlined,
   SaveFilled,
   SearchOutlined,
+  UpOutlined,
 } from '@ant-design/icons'
 import dayjs, { type Dayjs } from 'dayjs'
 import FarmerPicker from '../../components/FarmerPicker'
@@ -58,8 +60,6 @@ type Pending = { key: string; file: File; type: string }
 /** a row of the documents table: a file waiting to be uploaded, or one already saved */
 type DocRow = { key: string; name: string; mime: string | null; type: string; pending?: Pending; doc?: Doc }
 
-const SQFT_PER_ACRE = 43560
-
 export default function LandFormPage() {
   const { id } = useParams()
   const { data: existing, isLoading } = useQuery({
@@ -91,7 +91,12 @@ function PersonCard({ farmerId, tone }: { farmerId?: number | null; tone: 'blue'
     enabled: !!farmerId,
   })
   if (!farmerId) return <div className={`lf-person lf-person-${tone} lf-person-empty`}>{tx('এখনো কাউকে বাছাই করা হয়নি')}</div>
-  if (!p) return <div className={`lf-person lf-person-${tone}`}><Spin size="small" /></div>
+  if (!p)
+    return (
+      <div className={`lf-person lf-person-${tone}`}>
+        <Spin size="small" />
+      </div>
+    )
   return (
     <div className={`lf-person lf-person-${tone}`}>
       <ProtectedImage url={p.photo_url} size={56} shape="square" />
@@ -171,8 +176,8 @@ function LandForm({ id, existing }: { id?: string; existing?: LandDetail }) {
       existing
         ? {
             ...existing,
-            area: Number((existing.area_decimal / 100).toFixed(4)),
-            irrigable_area: existing.irrigable_decimal != null ? Number((existing.irrigable_decimal / 100).toFixed(4)) : undefined,
+            area: Number(existing.area_decimal),
+            irrigable_area: existing.irrigable_decimal != null ? Number(existing.irrigable_decimal) : undefined,
             ownership: existing.owners.length > 1 ? 'joint' : 'single',
           }
         : {
@@ -194,6 +199,7 @@ function LandForm({ id, existing }: { id?: string; existing?: LandDetail }) {
   const joint: { farmer_id?: number; share_percent?: number }[] | undefined = Form.useWatch('joint', form)
   const cultivatorId: number | undefined = Form.useWatch('cultivator_id', form)
   const isBorga: boolean | undefined = Form.useWatch('is_borga', form)
+  const [more, setMore] = useState(isEdit)
 
   const mouzaOptions = (mouzas.data ?? [])
     .filter((m) => (!union || m.union_id === union) && (!upazila || m.upazila_id === upazila) && (!district || (places.data?.upazilas ?? []).some((u) => u.id === m.upazila_id && u.district_id === district)))
@@ -245,7 +251,7 @@ function LandForm({ id, existing }: { id?: string; existing?: LandDetail }) {
       khatian_no: v.khatian_no,
       dag_no: v.dag_no,
       area: v.area,
-      area_unit: 'acre',
+      area_unit: 'decimal',
       irrigable_area: v.irrigable_area ?? null,
       land_type_id: v.land_type_id,
       irrigation_type_id: v.irrigation_type_id ?? null,
@@ -388,102 +394,10 @@ function LandForm({ id, existing }: { id?: string; existing?: LandDetail }) {
                     ]}
                   />
                 </Form.Item>
-                <Form.Item name="status" label={tx('অবস্থা')} rules={[{ required: true }]}>
-                  <Select options={Object.entries(meta?.statuses ?? {}).map(([value, label]) => ({ value, label }))} />
+                <Form.Item name="area" label={tx('মোট পরিমাণ (শতক)')} rules={[required(tx('পরিমাণ দিন'))]} extra={area ? tx('= {{p0}} একর', { p0: digits((area / 100).toFixed(2)) }) : undefined}>
+                  <InputNumber min={0.01} step={1} style={{ width: '100%' }} />
                 </Form.Item>
-                <Form.Item name="remarks" label={tx('মন্তব্য')} className="lf-span-2">
-                  <Input.TextArea rows={1} autoSize={{ minRows: 1, maxRows: 3 }} />
-                </Form.Item>
-              </div>
-            </Section>
-
-            <Section icon="mapPin" color="#1769e0" title={tx('অবস্থানের তথ্য')}>
-              <div className="lf-grid lf-grid-3">
-                <Form.Item label={tx('জেলা')} required>
-                  <Select
-                    value={district}
-                    placeholder={tx('বাছাই করুন')}
-                    options={(places.data?.districts ?? []).map((d) => ({ value: d.id, label: d.name_bn }))}
-                    onChange={(v) => {
-                      setDistrict(v)
-                      setUpazila(undefined)
-                      setUnion(undefined)
-                    }}
-                  />
-                </Form.Item>
-                <Form.Item label={tx('উপজেলা')} required>
-                  <Select
-                    value={upazila}
-                    placeholder={tx('বাছাই করুন')}
-                    options={upazilaOptions.map((u) => ({ value: u.id, label: u.name_bn }))}
-                    onChange={(v) => {
-                      setUpazila(v)
-                      setUnion(undefined)
-                    }}
-                  />
-                </Form.Item>
-                <Form.Item label={tx('ইউনিয়ন')} required>
-                  <LevelSelect index={3} parentId={upazila} value={union} onChange={setUnion} placeholder={tx('বাছাই করুন')} />
-                </Form.Item>
-                <Form.Item name="village_id" label={tx('গ্রাম')}>
-                  <Select
-                    allowClear
-                    disabled={!mouzaId}
-                    placeholder={mouzaId ? tx('বাছাই করুন') : tx('আগে মৌজা বাছাই করুন')}
-                    options={(mouza.data?.villages ?? []).map((vl) => ({ value: vl.id, label: vl.name_bn }))}
-                  />
-                </Form.Item>
-                <Form.Item label={tx('পাটোয়ারী')}>
-                  <Select
-                    disabled
-                    value={mouza.data?.patwaris.length ? mouza.data.patwaris.map((p) => p.id) : undefined}
-                    mode="multiple"
-                    maxTagCount="responsive"
-                    placeholder={mouzaId ? tx('এই মৌজায় পাটোয়ারী নেই') : tx('মৌজা থেকে আসবে')}
-                    options={(mouza.data?.patwaris ?? []).map((p) => ({ value: p.id, label: p.name }))}
-                  />
-                </Form.Item>
-                <div className="lf-coords">
-                  <Form.Item name="latitude" label={tx('অক্ষাংশ (Latitude)')}>
-                    <InputNumber min={-90} max={90} step={0.0001} style={{ width: '100%' }} placeholder="24.0023" />
-                  </Form.Item>
-                  <Tooltip title={tx('এখানকার অবস্থান নিন (মাঠে দাঁড়িয়ে)')}>
-                    <Button type="text" className="lf-locate" icon={<AimOutlined />} aria-label={tx('অবস্থান নিন')} onClick={locate} />
-                  </Tooltip>
-                  <Form.Item name="longitude" label={tx('দ্রাঘিমাংশ (Longitude)')}>
-                    <InputNumber min={-180} max={180} step={0.0001} style={{ width: '100%' }} placeholder="90.4267" />
-                  </Form.Item>
-                  <Tooltip title={tx('এখানকার অবস্থান নিন (মাঠে দাঁড়িয়ে)')}>
-                    <Button type="text" className="lf-locate" icon={<AimOutlined />} aria-label={tx('অবস্থান নিন')} onClick={locate} />
-                  </Tooltip>
-                </div>
-                <Form.Item name="location_note" label={tx('ঠিকানা / অবস্থানের বিবরণ')} className="lf-span-2">
-                  <Input.TextArea rows={2} maxLength={300} placeholder={tx('যেমন: শিবপুর বাজারের পূর্ব পাশে, রাস্তার ধারে')} />
-                </Form.Item>
-              </div>
-            </Section>
-          </div>
-
-          <div className="lf-row lf-row-2">
-            <Section icon="bars" color="#1769e0" title={tx('পরিমাণের বিবরণ')}>
-              <div className="lf-grid lf-grid-2">
-                <Form.Item name="area" label={tx('মোট পরিমাণ (একর)')} rules={[required(tx('পরিমাণ দিন'))]}>
-                  <InputNumber min={0.0001} step={0.01} style={{ width: '100%' }} />
-                </Form.Item>
-                <Form.Item label={tx('মোট পরিমাণ (বর্গফুট)')}>
-                  <Input disabled value={area ? digits(Math.round(area * SQFT_PER_ACRE).toLocaleString('en-IN')) : ''} />
-                </Form.Item>
-                <Form.Item
-                  name="irrigable_area"
-                  label={tx('সেচকৃত জমি (একর)')}
-                  rules={[{ validator: (_, v) => (v == null || !area || v <= area ? Promise.resolve() : Promise.reject(new Error(tx('মোট পরিমাণের বেশি হতে পারে না')))) }]}
-                >
-                  <InputNumber min={0} step={0.01} style={{ width: '100%' }} />
-                </Form.Item>
-                <Form.Item label={tx('সেচহীন জমি (একর)')}>
-                  <Input disabled value={area && irrigable != null ? digits(Math.max(0, area - irrigable).toFixed(2)) : ''} />
-                </Form.Item>
-                <Form.Item name="irrigation_type_id" label={tx('সেচের ধরন')} className="lf-span-2" extra={tx('সেচের রেট এই ধরন অনুযায়ী ঠিক হয়')}>
+                <Form.Item name="irrigation_type_id" label={tx('সেচের ধরন')} extra={tx('সেচের রেট এই ধরন অনুযায়ী ঠিক হয়')}>
                   <Select allowClear placeholder={tx('বাছাই করুন')} options={meta?.irrigation_types.map((t) => ({ value: t.id, label: t.name_bn }))} />
                 </Form.Item>
               </div>
@@ -539,7 +453,9 @@ function LandForm({ id, existing }: { id?: string; existing?: LandDetail }) {
                 </Form.Item>
               )}
             </Section>
+          </div>
 
+          <div className="lf-row lf-row-3">
             <Section icon="userCheck" color="#f08c00" title={tx('বর্তমান চাষির তথ্য')}>
               {isEdit ? (
                 <div className="lf-readonly">
@@ -548,23 +464,15 @@ function LandForm({ id, existing }: { id?: string; existing?: LandDetail }) {
                 </div>
               ) : (
                 <>
-                  <Form.Item
-                    name="cultivator_id"
-                    label={tx('চাষি')}
-                    extra={tx('খালি রাখলে পরে জমির প্রোফাইল থেকে দেওয়া যাবে। বর্গা না হলে চাষিকে মালিকদের একজন হতে হবে।')}
-                  >
+                  <Form.Item name="cultivator_id" label={tx('চাষি')} extra={tx('খালি রাখলে পরে জমির প্রোফাইল থেকে দেওয়া যাবে। বর্গা না হলে চাষিকে মালিকদের একজন হতে হবে।')}>
                     <PickRow />
                   </Form.Item>
                   <PersonCard farmerId={cultivatorId} tone="green" />
-                  {cultivatorId && !isBorga && !selectedOwnerIds.includes(cultivatorId) && (
-                    <Alert className="lf-warn" type="warning" showIcon title={tx('এই চাষি মালিক নন — নিচে "বর্গা / লিজ" হ্যাঁ করুন।')} />
-                  )}
+                  {cultivatorId && !isBorga && !selectedOwnerIds.includes(cultivatorId) && <Alert className="lf-warn" type="warning" showIcon title={tx('এই চাষি মালিক নন — নিচে "বর্গা / লিজ" হ্যাঁ করুন।')} />}
                 </>
               )}
             </Section>
-          </div>
 
-          <div className="lf-row lf-row-3">
             <Section icon="share" color="#6d4ae6" title={tx('বর্গা / লিজ (প্রযোজ্য হলে)')}>
               {isEdit ? (
                 <div className="lf-readonly">
@@ -581,8 +489,14 @@ function LandForm({ id, existing }: { id?: string; existing?: LandDetail }) {
                     />
                   </Form.Item>
                   <Form.Item name="borga_type" label={tx('ধরন')}>
-                      <Select disabled={!isBorga} options={[{ value: 'borga', label: meta?.cultivation_types.borga ?? tx('বর্গা') }, { value: 'lease', label: meta?.cultivation_types.lease ?? tx('লিজ') }]} />
-                    </Form.Item>
+                    <Select
+                      disabled={!isBorga}
+                      options={[
+                        { value: 'borga', label: meta?.cultivation_types.borga ?? tx('বর্গা') },
+                        { value: 'lease', label: meta?.cultivation_types.lease ?? tx('লিজ') },
+                      ]}
+                    />
+                  </Form.Item>
                   <Form.Item name="borga_share" label={tx('ফসলের অংশ (%)')}>
                     <InputNumber disabled={!isBorga} min={0} max={100} style={{ width: '100%' }} placeholder="0" />
                   </Form.Item>
@@ -595,85 +509,173 @@ function LandForm({ id, existing }: { id?: string; existing?: LandDetail }) {
                 </div>
               )}
             </Section>
+          </div>
 
-            <Section icon="file" color="#e0383e" title={tx('জমির ডকুমেন্ট')}>
-              <div className="lf-docs">
-                <Upload.Dragger
-                  multiple
-                  showUploadList={false}
-                  accept=".pdf,.jpg,.jpeg,.png"
-                  beforeUpload={(file, list) => {
-                    if (file === list[0]) addFiles(list as unknown as File[])
-                    return false
-                  }}
-                  className="lf-drop"
-                >
-                  <CloudUploadOutlined className="lf-drop-icon" />
-                  <p>
-                    {tx('ফাইল এখানে টেনে আনুন অথবা')} <a>{tx('ক্লিক করে আপলোড করুন')}</a>
-                  </p>
-                  <small>{tx('PDF, JPG, PNG (প্রতিটি সর্বোচ্চ ৫ MB)')}</small>
-                </Upload.Dragger>
-                <Table
-                  className="lf-doc-table"
-                  size="small"
-                  rowKey="key"
-                  pagination={false}
-                  dataSource={docRows}
-                  locale={{ emptyText: tx('কোনো ডকুমেন্ট নেই') }}
-                  columns={[
-                    { title: '#', width: 30, render: (_, __, i) => digits(i + 1) },
-                    {
-                      title: tx('ডকুমেন্টের নাম'),
-                      render: (_, r) =>
-                        r.pending ? (
-                          <Select
-                            size="small"
-                            className="lf-doc-type"
-                            value={r.type}
-                            options={Object.entries(meta?.document_types ?? {}).map(([value, label]) => ({ value, label }))}
-                            onChange={(t) => setPending((p) => p.map((x) => (x.key === r.key ? { ...x, type: t } : x)))}
-                          />
-                        ) : (
-                          r.name
+          <button type="button" className={`lf-more-toggle${more ? ' on' : ''}`} onClick={() => setMore((m) => !m)}>
+            {more ? <UpOutlined /> : <DownOutlined />}
+            {tx('আরও তথ্য (ঐচ্ছিক)')}
+            <small>{tx('অবস্থান (জেলা থেকে GPS), সেচকৃত জমি, অবস্থা, মন্তব্য, ডকুমেন্ট')}</small>
+          </button>
+          <div hidden={!more}>
+            <div className="lf-row lf-row-1">
+              <Section icon="mapPin" color="#1769e0" title={tx('অবস্থানের তথ্য')}>
+                <div className="lf-grid lf-grid-3">
+                  <Form.Item label={tx('জেলা')} required>
+                    <Select
+                      value={district}
+                      placeholder={tx('বাছাই করুন')}
+                      options={(places.data?.districts ?? []).map((d) => ({ value: d.id, label: d.name_bn }))}
+                      onChange={(v) => {
+                        setDistrict(v)
+                        setUpazila(undefined)
+                        setUnion(undefined)
+                      }}
+                    />
+                  </Form.Item>
+                  <Form.Item label={tx('উপজেলা')} required>
+                    <Select
+                      value={upazila}
+                      placeholder={tx('বাছাই করুন')}
+                      options={upazilaOptions.map((u) => ({ value: u.id, label: u.name_bn }))}
+                      onChange={(v) => {
+                        setUpazila(v)
+                        setUnion(undefined)
+                      }}
+                    />
+                  </Form.Item>
+                  <Form.Item label={tx('ইউনিয়ন')} required>
+                    <LevelSelect index={3} parentId={upazila} value={union} onChange={setUnion} placeholder={tx('বাছাই করুন')} />
+                  </Form.Item>
+                  <Form.Item name="village_id" label={tx('গ্রাম')}>
+                    <Select allowClear disabled={!mouzaId} placeholder={mouzaId ? tx('বাছাই করুন') : tx('আগে মৌজা বাছাই করুন')} options={(mouza.data?.villages ?? []).map((vl) => ({ value: vl.id, label: vl.name_bn }))} />
+                  </Form.Item>
+                  <Form.Item label={tx('পাটোয়ারী')}>
+                    <Select
+                      disabled
+                      value={mouza.data?.patwaris.length ? mouza.data.patwaris.map((p) => p.id) : undefined}
+                      mode="multiple"
+                      maxTagCount="responsive"
+                      placeholder={mouzaId ? tx('এই মৌজায় পাটোয়ারী নেই') : tx('মৌজা থেকে আসবে')}
+                      options={(mouza.data?.patwaris ?? []).map((p) => ({ value: p.id, label: p.name }))}
+                    />
+                  </Form.Item>
+                  <div className="lf-coords">
+                    <Form.Item name="latitude" label={tx('অক্ষাংশ (Latitude)')}>
+                      <InputNumber min={-90} max={90} step={0.0001} style={{ width: '100%' }} placeholder="24.0023" />
+                    </Form.Item>
+                    <Tooltip title={tx('এখানকার অবস্থান নিন (মাঠে দাঁড়িয়ে)')}>
+                      <Button type="text" className="lf-locate" icon={<AimOutlined />} aria-label={tx('অবস্থান নিন')} onClick={locate} />
+                    </Tooltip>
+                    <Form.Item name="longitude" label={tx('দ্রাঘিমাংশ (Longitude)')}>
+                      <InputNumber min={-180} max={180} step={0.0001} style={{ width: '100%' }} placeholder="90.4267" />
+                    </Form.Item>
+                    <Tooltip title={tx('এখানকার অবস্থান নিন (মাঠে দাঁড়িয়ে)')}>
+                      <Button type="text" className="lf-locate" icon={<AimOutlined />} aria-label={tx('অবস্থান নিন')} onClick={locate} />
+                    </Tooltip>
+                  </div>
+                  <Form.Item name="location_note" label={tx('ঠিকানা / অবস্থানের বিবরণ')} className="lf-span-2">
+                    <Input.TextArea rows={2} maxLength={300} placeholder={tx('যেমন: শিবপুর বাজারের পূর্ব পাশে, রাস্তার ধারে')} />
+                  </Form.Item>
+                </div>
+              </Section>
+
+              <Section icon="bars" color="#1769e0" title={tx('অন্যান্য তথ্য')}>
+                <div className="lf-grid lf-grid-2">
+                  <Form.Item name="irrigable_area" label={tx('সেচকৃত জমি (শতক)')} rules={[{ validator: (_, v) => (v == null || !area || v <= area ? Promise.resolve() : Promise.reject(new Error(tx('মোট পরিমাণের বেশি হতে পারে না')))) }]}>
+                    <InputNumber min={0} step={1} style={{ width: '100%' }} />
+                  </Form.Item>
+                  <Form.Item label={tx('সেচহীন জমি (শতক)')}>
+                    <Input disabled value={area && irrigable != null ? digits(Math.max(0, area - irrigable).toFixed(2)) : ''} />
+                  </Form.Item>
+                  <Form.Item name="status" label={tx('অবস্থা')} rules={[{ required: true }]}>
+                    <Select options={Object.entries(meta?.statuses ?? {}).map(([value, label]) => ({ value, label }))} />
+                  </Form.Item>
+                  <Form.Item name="remarks" label={tx('মন্তব্য')} className="lf-span-2">
+                    <Input.TextArea rows={1} autoSize={{ minRows: 1, maxRows: 3 }} />
+                  </Form.Item>
+                </div>
+              </Section>
+            </div>
+            <div className="lf-row">
+              <Section icon="file" color="#e0383e" title={tx('জমির ডকুমেন্ট')}>
+                <div className="lf-docs">
+                  <Upload.Dragger
+                    multiple
+                    showUploadList={false}
+                    accept=".pdf,.jpg,.jpeg,.png"
+                    beforeUpload={(file, list) => {
+                      if (file === list[0]) addFiles(list as unknown as File[])
+                      return false
+                    }}
+                    className="lf-drop"
+                  >
+                    <CloudUploadOutlined className="lf-drop-icon" />
+                    <p>
+                      {tx('ফাইল এখানে টেনে আনুন অথবা')} <a>{tx('ক্লিক করে আপলোড করুন')}</a>
+                    </p>
+                    <small>{tx('PDF, JPG, PNG (প্রতিটি সর্বোচ্চ ৫ MB)')}</small>
+                  </Upload.Dragger>
+                  <Table
+                    className="lf-doc-table"
+                    size="small"
+                    rowKey="key"
+                    pagination={false}
+                    dataSource={docRows}
+                    locale={{ emptyText: tx('কোনো ডকুমেন্ট নেই') }}
+                    columns={[
+                      { title: '#', width: 30, render: (_, __, i) => digits(i + 1) },
+                      {
+                        title: tx('ডকুমেন্টের নাম'),
+                        render: (_, r) =>
+                          r.pending ? (
+                            <Select
+                              size="small"
+                              className="lf-doc-type"
+                              value={r.type}
+                              options={Object.entries(meta?.document_types ?? {}).map(([value, label]) => ({ value, label }))}
+                              onChange={(t) => setPending((p) => p.map((x) => (x.key === r.key ? { ...x, type: t } : x)))}
+                            />
+                          ) : (
+                            r.name
+                          ),
+                      },
+                      { title: tx('ফাইল'), width: 44, align: 'center', render: (_, r) => (r.mime?.includes('pdf') ? <FilePdfFilled className="lf-pdf" /> : <FileImageFilled className="lf-img" />) },
+                      {
+                        title: tx('অ্যাকশন'),
+                        width: 70,
+                        align: 'center',
+                        render: (_, r) => (
+                          <span className="lf-doc-actions">
+                            <Button
+                              type="text"
+                              size="small"
+                              icon={<EyeFilled />}
+                              aria-label={tx('দেখুন')}
+                              onClick={() => (r.pending ? window.open(URL.createObjectURL(r.pending.file), '_blank', 'noopener') : openProtectedFile(`/lands/${id}/documents/${r.doc!.id}`).catch((e) => message.error(errorMessage(e))))}
+                            />
+                            <Button
+                              type="text"
+                              size="small"
+                              danger
+                              icon={<DeleteOutlined />}
+                              aria-label={tx('মুছুন')}
+                              onClick={() =>
+                                r.pending
+                                  ? setPending((p) => p.filter((x) => x.key !== r.key))
+                                  : api
+                                      .delete(`/lands/${id}/documents/${r.doc!.id}`)
+                                      .then(() => setDocs((d) => d.filter((x) => x.id !== r.doc!.id)))
+                                      .catch((e) => message.error(errorMessage(e)))
+                              }
+                            />
+                          </span>
                         ),
-                    },
-                    { title: tx('ফাইল'), width: 44, align: 'center', render: (_, r) => (r.mime?.includes('pdf') ? <FilePdfFilled className="lf-pdf" /> : <FileImageFilled className="lf-img" />) },
-                    {
-                      title: tx('অ্যাকশন'),
-                      width: 70,
-                      align: 'center',
-                      render: (_, r) => (
-                        <span className="lf-doc-actions">
-                          <Button
-                            type="text"
-                            size="small"
-                            icon={<EyeFilled />}
-                            aria-label={tx('দেখুন')}
-                            onClick={() => (r.pending ? window.open(URL.createObjectURL(r.pending.file), '_blank', 'noopener') : openProtectedFile(`/lands/${id}/documents/${r.doc!.id}`).catch((e) => message.error(errorMessage(e))))}
-                          />
-                          <Button
-                            type="text"
-                            size="small"
-                            danger
-                            icon={<DeleteOutlined />}
-                            aria-label={tx('মুছুন')}
-                            onClick={() =>
-                              r.pending
-                                ? setPending((p) => p.filter((x) => x.key !== r.key))
-                                : api
-                                    .delete(`/lands/${id}/documents/${r.doc!.id}`)
-                                    .then(() => setDocs((d) => d.filter((x) => x.id !== r.doc!.id)))
-                                    .catch((e) => message.error(errorMessage(e)))
-                            }
-                          />
-                        </span>
-                      ),
-                    },
-                  ]}
-                />
-              </div>
-            </Section>
+                      },
+                    ]}
+                  />
+                </div>
+              </Section>
+            </div>
           </div>
 
           <div className="lf-actions">
@@ -705,7 +707,15 @@ function LandForm({ id, existing }: { id?: string; existing?: LandDetail }) {
             pagination={false}
             dataSource={matches ?? []}
             columns={[
-              { title: 'Land ID', dataIndex: 'land_code', render: (v, m) => <a href={`/lands/${m.id}`} target="_blank" rel="noreferrer">{v}</a> },
+              {
+                title: 'Land ID',
+                dataIndex: 'land_code',
+                render: (v, m) => (
+                  <a href={`/lands/${m.id}`} target="_blank" rel="noreferrer">
+                    {v}
+                  </a>
+                ),
+              },
               { title: tx('পরিমাণ'), dataIndex: 'area_decimal', render: (v) => tx('{{p0}} শতক', { p0: digits(Number(v)) }) },
               { title: tx('মালিক'), render: (_, m) => m.owners.map((o) => o.farmer.name_bn).join(', ') },
             ]}

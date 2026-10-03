@@ -33,6 +33,7 @@ import '../farmers/farmer-list.css'
 import '../membership/member-list.css'
 import '../farmers/deleted-farmers.css'
 import './patwari-list.css'
+import PageTabs from '../../components/PageTabs'
 
 type Row = Mouza & { district: string | null; patwari: string | null; farmers_count: number; lands_count: number; land_acre: number }
 type Place = { id: number; name_bn: string; district_id?: number }
@@ -132,7 +133,10 @@ export default function MouzaPage() {
       const w = window.open('', '_blank', 'width=1000,height=700')
       if (!w) return
       const body = all
-        .map((m, i) => `<tr><td>${esc(digits(i + 1))}</td><td>${esc(digits(m.jl_no))}</td><td>${esc(nameOf(m))}</td><td>${esc(m.district)}</td><td>${esc(m.upazila?.name_bn)}</td><td>${esc(m.patwari ?? '—')}</td><td>${esc(n0(m.farmers_count))}</td><td>${esc(n0(m.lands_count))}</td><td>${esc(acres(m.land_acre))}</td><td>${esc(m.is_active ? tx('সক্রিয়') : tx('নিষ্ক্রিয়'))}</td></tr>`)
+        .map(
+          (m, i) =>
+            `<tr><td>${esc(digits(i + 1))}</td><td>${esc(digits(m.jl_no))}</td><td>${esc(nameOf(m))}</td><td>${esc(m.district)}</td><td>${esc(m.upazila?.name_bn)}</td><td>${esc(m.patwari ?? '—')}</td><td>${esc(n0(m.farmers_count))}</td><td>${esc(n0(m.lands_count))}</td><td>${esc(acres(m.land_acre))}</td><td>${esc(m.is_active ? tx('সক্রিয়') : tx('নিষ্ক্রিয়'))}</td></tr>`,
+        )
         .join('')
       w.document.write(
         `<html><head><title>${esc(tx('মৌজা তালিকা'))}</title><style>body{font-family:sans-serif;margin:16px}h2,h3{text-align:center;margin:4px 0}table{width:100%;border-collapse:collapse;margin-top:12px;font-size:12.5px}th,td{border:1px solid #444;padding:5px 6px;text-align:left}</style></head><body>` +
@@ -159,7 +163,15 @@ export default function MouzaPage() {
   const allColumns: (ColumnsType<Row>[number] & { key: string })[] = [
     { key: 'sl', title: '#', width: 44, align: 'center', render: (_, __, i) => digits(from + i) },
     { key: 'code', title: tx('মৌজা কোড'), dataIndex: 'jl_no', width: 92, render: (v) => digits(v) },
-    { key: 'name', title: tx('মৌজার নাম'), render: (_, m) => <a className="fl-name" onClick={() => setViewing(m)}>{nameOf(m)}</a> },
+    {
+      key: 'name',
+      title: tx('মৌজার নাম'),
+      render: (_, m) => (
+        <a className="fl-name" onClick={() => setViewing(m)}>
+          {nameOf(m)}
+        </a>
+      ),
+    },
     { key: 'district', title: tx('জেলা'), dataIndex: 'district', render: (v) => v || '—' },
     { key: 'upazila', title: tx('উপজেলা'), render: (_, m) => m.upazila?.name_bn ?? '—' },
     { key: 'patwari', title: tx('পাটোয়ারী'), dataIndex: 'patwari', render: (v) => v || '—' },
@@ -209,6 +221,7 @@ export default function MouzaPage() {
           <RightOutlined className="fl-crumb-sep" />
           <span>{tx('মৌজা ব্যবস্থাপনা')}</span>
         </nav>
+        <PageTabs />
 
         <div className="fl-head">
           <div>
@@ -249,14 +262,7 @@ export default function MouzaPage() {
         <div className="dl-filters pl-filters">
           <div className="fl-field dl-search">
             <span className="ml-hidden">.</span>
-            <Input
-              prefix={<SearchOutlined />}
-              allowClear
-              placeholder={tx('মৌজার নাম বা কোড দিয়ে খুঁজুন...')}
-              value={draft.search}
-              onChange={(e) => setDraft((d) => ({ ...d, search: e.target.value || undefined }))}
-              onPressEnter={apply}
-            />
+            <Input prefix={<SearchOutlined />} allowClear placeholder={tx('মৌজার নাম বা কোড দিয়ে খুঁজুন...')} value={draft.search} onChange={(e) => setDraft((d) => ({ ...d, search: e.target.value || undefined }))} onPressEnter={apply} />
           </div>
           <div className="fl-field">
             <span>{tx('জেলা')}</span>
@@ -345,8 +351,7 @@ export default function MouzaPage() {
               <Button className="ml-edge" icon={<DoubleRightOutlined />} disabled={params.page >= lastPage} aria-label={tx('শেষ পাতা')} onClick={() => setParams((p) => ({ ...p, page: lastPage }))} />
             </span>
             <span className="fl-rows">
-              {tx('প্রতি পাতায় সারি')}{' '}
-              <Select value={params.per_page} className="fl-size" options={[10, 25, 50, 100].map((n) => ({ value: n, label: digits(n) }))} onChange={(per_page) => setParams((p) => ({ ...p, per_page, page: 1 }))} />
+              {tx('প্রতি পাতায় সারি')} <Select value={params.per_page} className="fl-size" options={[10, 25, 50, 100].map((n) => ({ value: n, label: digits(n) }))} onChange={(per_page) => setParams((p) => ({ ...p, per_page, page: 1 }))} />
             </span>
           </div>
         </div>
@@ -394,7 +399,11 @@ export default function MouzaPage() {
                 <Descriptions.Item label={tx('জেলা')}>{viewing.district ?? '—'}</Descriptions.Item>
                 <Descriptions.Item label={tx('উপজেলা')}>{viewing.upazila?.name_bn ?? '—'}</Descriptions.Item>
                 <Descriptions.Item label={tx('ইউনিয়ন')}>{viewing.union?.name_bn ?? '—'}</Descriptions.Item>
-                <Descriptions.Item label={tx('গ্রাম')}>{viewing.villages?.map((v) => <Tag key={v.id}>{v.name_bn}</Tag>)}</Descriptions.Item>
+                <Descriptions.Item label={tx('গ্রাম')}>
+                  {viewing.villages?.map((v) => (
+                    <Tag key={v.id}>{v.name_bn}</Tag>
+                  ))}
+                </Descriptions.Item>
                 <Descriptions.Item label={tx('পাটোয়ারী')}>{viewing.patwari ?? '—'}</Descriptions.Item>
                 <Descriptions.Item label={tx('মোট কৃষক')}>{n0(viewing.farmers_count)}</Descriptions.Item>
                 <Descriptions.Item label={tx('মোট জমির রেকর্ড')}>{n0(viewing.lands_count)}</Descriptions.Item>

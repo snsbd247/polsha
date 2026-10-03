@@ -432,3 +432,23 @@
   gap: 6px;
   margin-right: 12px;
 }
+
+/* three steps, one on screen at a time */
+.lt-steps.lt-steps-3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.lt-steps-3 .lt-step {
+  cursor: pointer;
+}
+.lt-step-nav {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 4px;
+}
+.lt-step-gap {
+  flex: 1;
+}
+.lt [hidden] {
+  display: none !important;
+}

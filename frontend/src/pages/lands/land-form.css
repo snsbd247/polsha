@@ -414,3 +414,31 @@
   margin-left: 3px;
   color: #e0383e;
 }
+
+/* the optional part of the land form, folded until asked for */
+.lf-more-toggle {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  width: 100%;
+  margin-bottom: 14px;
+  padding: 10px 14px;
+  border: 1px dashed #b9c6db;
+  border-radius: 8px;
+  background: #f7f9fc;
+  color: #1769e0;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+.lf-more-toggle small {
+  color: #6b7280;
+  font-weight: 400;
+}
+.lf-more-toggle.on {
+  border-style: solid;
+}
+.lf-form [hidden] {
+  display: none !important;
+}

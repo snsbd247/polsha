@@ -16,6 +16,7 @@ import { DashIcon } from '../dashboard/DashIcons'
 import './farmer-list.css'
 import '../membership/member-list.css'
 import './deleted-farmers.css'
+import PageTabs from '../../components/PageTabs'
 
 type Named = { id: number; name_bn: string; name_en: string | null } | null
 type Row = {
@@ -182,6 +183,7 @@ export default function DeletedFarmersPage() {
           <RightOutlined className="fl-crumb-sep" />
           <span>{tx('মুছে ফেলা কৃষক')}</span>
         </nav>
+        <PageTabs />
 
         <div className="fl-head">
           <div>
@@ -189,12 +191,7 @@ export default function DeletedFarmersPage() {
             <p>{tx('সিস্টেম থেকে মুছে ফেলা কৃষকদের তালিকা। বিস্তারিত দেখা ও প্রয়োজনে পুনরুদ্ধার করা যাবে।')}</p>
           </div>
           <div className="fl-head-btns">
-            <Dropdown
-              trigger={['click']}
-              placement="bottomRight"
-              disabled={!can('farmer.export')}
-              menu={{ items: [{ key: 'excel', label: tx('Excel (CSV)'), onClick: exportCsv }] }}
-            >
+            <Dropdown trigger={['click']} placement="bottomRight" disabled={!can('farmer.export')} menu={{ items: [{ key: 'excel', label: tx('Excel (CSV)'), onClick: exportCsv }] }}>
               <Button icon={<DownloadOutlined />}>
                 {tx('এক্সপোর্ট')} <DownOutlined className="fl-caret" />
               </Button>
@@ -293,8 +290,7 @@ export default function DeletedFarmersPage() {
               <Button className="ml-edge" icon={<DoubleRightOutlined />} disabled={params.page >= lastPage} aria-label={tx('শেষ পাতা')} onClick={() => setParams((p) => ({ ...p, page: lastPage }))} />
             </span>
             <span className="fl-rows">
-              {tx('প্রতি পাতায় সারি')}{' '}
-              <Select value={params.per_page} className="fl-size" options={[10, 25, 50, 100].map((v) => ({ value: v, label: digits(v) }))} onChange={(per_page) => setParams((p) => ({ ...p, per_page, page: 1 }))} />
+              {tx('প্রতি পাতায় সারি')} <Select value={params.per_page} className="fl-size" options={[10, 25, 50, 100].map((v) => ({ value: v, label: digits(v) }))} onChange={(per_page) => setParams((p) => ({ ...p, per_page, page: 1 }))} />
             </span>
           </div>
         </div>

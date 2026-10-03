@@ -33,6 +33,7 @@ import { nameOf, t as tx } from '../../lib/i18n'
 import { DashIcon } from '../dashboard/DashIcons'
 import '../farmers/farmer-list.css'
 import './member-list.css'
+import PageTabs from '../../components/PageTabs'
 
 type Row = {
   id: number
@@ -161,8 +162,26 @@ export default function MemberListPage() {
       width: 58,
       render: (_, m) => (m.photo_url ? <ProtectedImage url={m.photo_url} size={34} shape="square" /> : <span className="ml-initials">{initials(nameOf(m.farmer))}</span>),
     },
-    { key: 'member_no', title: tx('সদস্য নং'), dataIndex: 'member_no', width: 96, render: (v, m) => <Link to={`/farmers/${m.farmer.id}`} className="fl-link">{digits(v)}</Link> },
-    { key: 'name', title: tx('সদস্যের পুরো নাম'), render: (_, m) => <Link to={`/farmers/${m.farmer.id}`} className="fl-name">{nameOf(m.farmer)}</Link> },
+    {
+      key: 'member_no',
+      title: tx('সদস্য নং'),
+      dataIndex: 'member_no',
+      width: 96,
+      render: (v, m) => (
+        <Link to={`/farmers/${m.farmer.id}`} className="fl-link">
+          {digits(v)}
+        </Link>
+      ),
+    },
+    {
+      key: 'name',
+      title: tx('সদস্যের পুরো নাম'),
+      render: (_, m) => (
+        <Link to={`/farmers/${m.farmer.id}`} className="fl-name">
+          {nameOf(m.farmer)}
+        </Link>
+      ),
+    },
     { key: 'father', title: tx('পিতার নাম'), render: (_, m) => m.farmer.father_name },
     { key: 'mobile', title: tx('মোবাইল'), render: (_, m) => digits(m.farmer.mobile) || '—' },
     { key: 'nid', title: 'NID', render: (_, m) => digits(m.farmer.nid) || '—' },
@@ -232,6 +251,7 @@ export default function MemberListPage() {
           <RightOutlined className="fl-crumb-sep" />
           <span>{tx('সদস্য তালিকা')}</span>
         </nav>
+        <PageTabs />
 
         <div className="fl-head">
           <div>
@@ -385,8 +405,7 @@ export default function MemberListPage() {
               <Button className="ml-edge" icon={<DoubleRightOutlined />} disabled={params.page >= lastPage} aria-label={tx('শেষ পাতা')} onClick={() => setParams((p) => ({ ...p, page: lastPage }))} />
             </span>
             <span className="fl-rows">
-              {tx('প্রতি পাতায় সারি')}{' '}
-              <Select value={params.per_page} className="fl-size" options={[10, 25, 50, 100].map((v) => ({ value: v, label: digits(v) }))} onChange={(per_page) => setParams((p) => ({ ...p, per_page, page: 1 }))} />
+              {tx('প্রতি পাতায় সারি')} <Select value={params.per_page} className="fl-size" options={[10, 25, 50, 100].map((v) => ({ value: v, label: digits(v) }))} onChange={(per_page) => setParams((p) => ({ ...p, per_page, page: 1 }))} />
             </span>
           </div>
         </div>

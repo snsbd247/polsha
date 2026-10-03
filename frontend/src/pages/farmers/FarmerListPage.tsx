@@ -37,6 +37,7 @@ import type { Mouza } from '../../lib/types'
 import { DashIcon } from '../dashboard/DashIcons'
 import DeleteFarmerModal from './DeleteFarmerModal'
 import './farmer-list.css'
+import PageTabs from '../../components/PageTabs'
 
 type Filters = { search?: string; mouza_id?: number; member_status?: string; occupation?: string; land_owner?: string; is_active?: string; union_id?: number; village_id?: number }
 type Params = Filters & { page: number; per_page: number; type?: string }
@@ -122,8 +123,27 @@ export default function FarmerListPage() {
   const allColumns: (ColumnsType<FarmerRow>[number] & { key: string })[] = [
     { key: 'sl', title: '#', width: 46, align: 'center', render: (_, __, i) => digits(from + i) },
     { key: 'photo', title: tx('ছবি'), width: 62, render: (_, f) => <ProtectedImage url={f.photo_url} size={36} shape="square" /> },
-    { key: 'code', title: 'Farmer ID', dataIndex: 'farmer_code', width: 96, render: (v, f) => <Link to={`/farmers/${f.id}`} className="fl-link">{v}</Link> },
-    { key: 'name', title: tx('নাম'), dataIndex: 'name_bn', render: (_, f) => <Link to={`/farmers/${f.id}`} className="fl-name">{nameOf(f)}</Link> },
+    {
+      key: 'code',
+      title: 'Farmer ID',
+      dataIndex: 'farmer_code',
+      width: 96,
+      render: (v, f) => (
+        <Link to={`/farmers/${f.id}`} className="fl-link">
+          {v}
+        </Link>
+      ),
+    },
+    {
+      key: 'name',
+      title: tx('নাম'),
+      dataIndex: 'name_bn',
+      render: (_, f) => (
+        <Link to={`/farmers/${f.id}`} className="fl-name">
+          {nameOf(f)}
+        </Link>
+      ),
+    },
     { key: 'father', title: tx('পিতার নাম'), dataIndex: 'father_name' },
     { key: 'mobile', title: tx('মোবাইল'), dataIndex: 'mobile', render: (v) => digits(v) || '—' },
     { key: 'nid', title: 'NID', dataIndex: 'nid', render: (v) => digits(v) || '—' },
@@ -164,14 +184,7 @@ export default function FarmerListPage() {
     can('farmer.export') && { key: 'excel', icon: <DownloadOutlined />, label: 'Excel', onClick: exportCsv },
   ].filter(Boolean) as { key: string; label: string; onClick: () => void }[]
 
-  const pageSizeSelect = (
-    <Select
-      value={params.per_page}
-      className="fl-size"
-      options={[10, 25, 50, 100].map((v) => ({ value: v, label: digits(v) }))}
-      onChange={(per_page) => setParams((p) => ({ ...p, per_page, page: 1 }))}
-    />
-  )
+  const pageSizeSelect = <Select value={params.per_page} className="fl-size" options={[10, 25, 50, 100].map((v) => ({ value: v, label: digits(v) }))} onChange={(per_page) => setParams((p) => ({ ...p, per_page, page: 1 }))} />
 
   const printCards = () => {
     const el = document.getElementById('fl-bulk-cards')
@@ -198,245 +211,246 @@ export default function FarmerListPage() {
   return (
     // the approved design uses a blue accent on this page, whatever the brand colour
     <ConfigProvider theme={{ token: { colorPrimary: '#1769e0', colorLink: '#1769e0' } }}>
-    <div className="fl">
-      <nav className="fl-crumb">
-        <Link to="/" aria-label={tx('ড্যাশবোর্ড')}>
-          <HomeOutlined />
-        </Link>
-        <RightOutlined className="fl-crumb-sep" />
-        <Link to="/farmers">{tx('কৃষক ও সদস্য')}</Link>
-        <RightOutlined className="fl-crumb-sep" />
-        <span>{tx('কৃষক তালিকা')}</span>
-      </nav>
+      <div className="fl">
+        <nav className="fl-crumb">
+          <Link to="/" aria-label={tx('ড্যাশবোর্ড')}>
+            <HomeOutlined />
+          </Link>
+          <RightOutlined className="fl-crumb-sep" />
+          <Link to="/farmers">{tx('কৃষক ও সদস্য')}</Link>
+          <RightOutlined className="fl-crumb-sep" />
+          <span>{tx('কৃষক তালিকা')}</span>
+        </nav>
+        <PageTabs />
 
-      <div className="fl-head">
-        <div>
-          <h1>{tx('কৃষক')}</h1>
-          <p>{tx('কৃষকের তথ্য, সদস্যপদের অবস্থা পরিচালনা করুন এবং সম্পূর্ণ বিবরণ দেখুন।')}</p>
-        </div>
-        <div className="fl-head-btns">
-          {can('farmer.create') && (
-            <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate('/farmers/new')}>
-              {tx('কৃষক যোগ করুন')}
-            </Button>
-          )}
-          {can('import.create') && (
-            <Button icon={<UploadOutlined />} onClick={() => navigate('/imports?type=farmers')}>
-              {tx('ইমপোর্ট')}
-            </Button>
-          )}
-          <Button icon={<IdcardOutlined />} onClick={() => setCardsOpen(true)} disabled={!rows.length}>
-            {tx('বাল্ক কার্ড')}
-          </Button>
-          <Dropdown menu={{ items: moreItems }} trigger={['click']} placement="bottomRight">
-            <Button>
-              {tx('আরও')} <DownOutlined className="fl-caret" />
-            </Button>
-          </Dropdown>
-        </div>
-      </div>
-
-      <div className="fl-stats">
-        {cards.map((c) => (
-          <button
-            key={c.key}
-            type="button"
-            className="fl-stat"
-            style={{ ['--tint' as string]: c.tint }}
-            onClick={() => (c.type ? navigate(`/farmers?type=${c.type}`) : c.status ? apply({ member_status: c.status }) : c.key === 'total' ? reset() : undefined)}
-          >
-            <span className="fl-stat-icon" style={{ background: c.tint }}>
-              <DashIcon name={c.icon} size={30} color={c.color} stroke={2.1} />
-            </span>
-            <span className="fl-stat-body">
-              <span className="fl-stat-label">{c.label}</span>
-              <span className="fl-stat-row">
-                <span className="fl-stat-value">{c.value}</span>
-                {c.pill && <span className={`fl-pill ${c.tone}`}>{c.pill}</span>}
-                {c.unit && <span className="fl-stat-unit">{c.unit}</span>}
-              </span>
-            </span>
-          </button>
-        ))}
-      </div>
-
-      <div className="fl-card fl-filters">
-        <div className="fl-filter-row">
-          <label className="fl-field fl-field-search">
-            <span>{tx('খুঁজুন')}</span>
-            <Input
-              prefix={<SearchOutlined />}
-              allowClear
-              placeholder={tx('নাম, মোবাইল, NID, সদস্য নং...')}
-              value={draft.search}
-              onChange={(e) => setDraft((d) => ({ ...d, search: e.target.value || undefined }))}
-              onPressEnter={() => apply()}
-            />
-          </label>
-          <label className="fl-field">
-            <span>{tx('মৌজা')}</span>
-            <Select
-              showSearch
-              optionFilterProp="label"
-              value={draft.mouza_id ?? ''}
-              options={[{ value: '', label: tx('সকল মৌজা') }, ...mouzaOptions]}
-              onChange={(v) => setDraft((d) => ({ ...d, mouza_id: v === '' ? undefined : Number(v) }))}
-            />
-          </label>
-          <label className="fl-field">
-            <span>{tx('সদস্য অবস্থা')}</span>
-            <Select
-              value={draft.member_status ?? ''}
-              options={[
-                { value: '', label: tx('সকল') },
-                { value: 'active', label: tx('সক্রিয় সদস্য') },
-                { value: 'inactive', label: tx('নিষ্ক্রিয় সদস্য') },
-                { value: 'cancelled', label: tx('বাতিল সদস্য') },
-                { value: 'pending', label: tx('অপেক্ষমাণ') },
-                { value: 'non_member', label: tx('সদস্য নন') },
-              ]}
-              onChange={(v) => setDraft((d) => ({ ...d, member_status: v || undefined }))}
-            />
-          </label>
-          <label className="fl-field">
-            <span>{tx('পেশা')}</span>
-            <Select value={draft.occupation ?? ''} options={[{ value: '', label: tx('সকল') }, ...toOptions(meta?.occupations)]} onChange={(v) => setDraft((d) => ({ ...d, occupation: v || undefined }))} />
-          </label>
-          <label className="fl-field">
-            <span>{tx('জমির মালিক?')}</span>
-            <Select
-              value={draft.land_owner ?? ''}
-              options={[
-                { value: '', label: tx('সকল') },
-                { value: 'yes', label: tx('হ্যাঁ') },
-                { value: 'no', label: tx('না') },
-              ]}
-              onChange={(v) => setDraft((d) => ({ ...d, land_owner: v || undefined }))}
-            />
-          </label>
-          <div className="fl-filter-btns">
-            <Button type="primary" icon={<SearchOutlined />} onClick={() => apply()}>
-              {tx('খুঁজুন')}
-            </Button>
-            <Button onClick={reset}>{tx('রিসেট')}</Button>
+        <div className="fl-head">
+          <div>
+            <h1>{tx('কৃষক')}</h1>
+            <p>{tx('কৃষকের তথ্য, সদস্যপদের অবস্থা পরিচালনা করুন এবং সম্পূর্ণ বিবরণ দেখুন।')}</p>
           </div>
-        </div>
-        {moreOpen && (
-          <div className="fl-filter-row fl-filter-more">
-            <label className="fl-field fl-field-loc">
-              <span>{tx('এলাকা')}</span>
-              <LocationCascader
-                value={path}
-                onChange={(v) => {
-                  setPath(v)
-                  setDraft((d) => ({ ...d, union_id: v[4] ? undefined : v[3], village_id: v[4] }))
-                }}
-              />
-            </label>
-            <label className="fl-field">
-              <span>{tx('কৃষকের অবস্থা')}</span>
-              <Select
-                value={draft.is_active ?? ''}
-                options={[
-                  { value: '', label: tx('সকল') },
-                  { value: '1', label: tx('সক্রিয়') },
-                  { value: '0', label: tx('নিষ্ক্রিয়') },
-                ]}
-                onChange={(v) => setDraft((d) => ({ ...d, is_active: v || undefined }))}
-              />
-            </label>
-          </div>
-        )}
-        <button type="button" className="fl-more" onClick={() => setMoreOpen((o) => !o)}>
-          {moreOpen ? tx('কম ফিল্টার') : tx('আরও ফিল্টার')} {moreOpen ? <UpOutlined /> : <DownOutlined />}
-        </button>
-      </div>
-
-      <div className="fl-card fl-table-card">
-        <div className="fl-table-head">
-          <h3>{tx('কৃষক তালিকা ({{p0}})', { p0: n0(total) })}</h3>
-          <div className="fl-table-tools">
-            {can('farmer.export') && (
-              <Button icon={<DownloadOutlined />} className="fl-export" onClick={exportCsv}>
-                {tx('এক্সপোর্ট')}
+          <div className="fl-head-btns">
+            {can('farmer.create') && (
+              <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate('/farmers/new')}>
+                {tx('কৃষক যোগ করুন')}
               </Button>
             )}
-            <Dropdown
-              trigger={['click']}
-              placement="bottomRight"
-              popupRender={() => (
-                <div className="fl-colmenu">
-                  {hideable.map((c) => (
-                    <Checkbox key={c.key} checked={!hidden.includes(c.key)} onChange={(e) => setHidden((h) => (e.target.checked ? h.filter((k) => k !== c.key) : [...h, c.key]))}>
-                      {c.title as string}
-                    </Checkbox>
-                  ))}
-                </div>
-              )}
-            >
-              <Button icon={<InsertRowRightOutlined />}>
-                {tx('কলাম')} <DownOutlined className="fl-caret" />
+            {can('import.create') && (
+              <Button icon={<UploadOutlined />} onClick={() => navigate('/imports?type=farmers')}>
+                {tx('ইমপোর্ট')}
+              </Button>
+            )}
+            <Button icon={<IdcardOutlined />} onClick={() => setCardsOpen(true)} disabled={!rows.length}>
+              {tx('বাল্ক কার্ড')}
+            </Button>
+            <Dropdown menu={{ items: moreItems }} trigger={['click']} placement="bottomRight">
+              <Button>
+                {tx('আরও')} <DownOutlined className="fl-caret" />
               </Button>
             </Dropdown>
           </div>
         </div>
 
-        <Table<FarmerRow>
-          className="fl-table"
-          rowKey="id"
-          loading={isFetching}
-          dataSource={rows}
-          scroll={{ x: 1100 }}
-          pagination={false}
-          rowSelection={{ selectedRowKeys: selected, onChange: (keys) => setSelected(keys as number[]), columnWidth: 44 }}
-          columns={columns}
-        />
-
-        <div className="fl-foot">
-          <span className="fl-showing">{tx('{{p0}} থেকে {{p1}} দেখানো হচ্ছে, মোট {{p2}} জন কৃষক', { p0: n0(from), p1: n0(to), p2: n0(total) })}</span>
-          <Pagination
-            className="fl-pager"
-            current={params.page}
-            pageSize={params.per_page}
-            total={total}
-            showSizeChanger={false}
-            showLessItems
-            itemRender={(page, type, el) => (type === 'page' ? <a>{digits(page)}</a> : el)}
-            onChange={(page) => setParams((p) => ({ ...p, page }))}
-          />
-          <span className="fl-rows">
-            {tx('প্রতি পাতায় সারি')} {pageSizeSelect}
-          </span>
-        </div>
-      </div>
-
-      <Modal
-        open={cardsOpen}
-        onCancel={() => setCardsOpen(false)}
-        title={selected.length ? tx('নির্বাচিত {{p0}} জনের কার্ড', { p0: digits(cardRows.length) }) : tx('এই পাতার {{p0}} জনের কার্ড', { p0: digits(cardRows.length) })}
-        width={860}
-        footer={
-          <Button type="primary" icon={<PrinterOutlined />} onClick={printCards}>
-            {tx('সব প্রিন্ট')}
-          </Button>
-        }
-      >
-        <div id="fl-bulk-cards" className="fl-bulk-cards">
-          {cardRows.map((f) => (
-            <QrLabel
-              key={f.id}
-              type="farmer"
-              code={f.farmer_code}
-              title={nameOf(f)}
-              subtitle={f.member ? tx('সদস্য নং') + ' ' + digits(f.member.member_no) : f.mouza || undefined}
-              heading={f.member ? society : undefined}
-              note={f.member ? settings?.member_card_note : undefined}
-            />
+        <div className="fl-stats">
+          {cards.map((c) => (
+            <button
+              key={c.key}
+              type="button"
+              className="fl-stat"
+              style={{ ['--tint' as string]: c.tint }}
+              onClick={() => (c.type ? navigate(`/farmers?type=${c.type}`) : c.status ? apply({ member_status: c.status }) : c.key === 'total' ? reset() : undefined)}
+            >
+              <span className="fl-stat-icon" style={{ background: c.tint }}>
+                <DashIcon name={c.icon} size={30} color={c.color} stroke={2.1} />
+              </span>
+              <span className="fl-stat-body">
+                <span className="fl-stat-label">{c.label}</span>
+                <span className="fl-stat-row">
+                  <span className="fl-stat-value">{c.value}</span>
+                  {c.pill && <span className={`fl-pill ${c.tone}`}>{c.pill}</span>}
+                  {c.unit && <span className="fl-stat-unit">{c.unit}</span>}
+                </span>
+              </span>
+            </button>
           ))}
         </div>
-      </Modal>
-      <DeleteFarmerModal farmer={deleting} onClose={() => setDeleting(null)} />
-    </div>
+
+        <div className="fl-card fl-filters">
+          <div className="fl-filter-row">
+            <label className="fl-field fl-field-search">
+              <span>{tx('খুঁজুন')}</span>
+              <Input
+                prefix={<SearchOutlined />}
+                allowClear
+                placeholder={tx('নাম, মোবাইল, NID, সদস্য নং...')}
+                value={draft.search}
+                onChange={(e) => setDraft((d) => ({ ...d, search: e.target.value || undefined }))}
+                onPressEnter={() => apply()}
+              />
+            </label>
+            <label className="fl-field">
+              <span>{tx('মৌজা')}</span>
+              <Select
+                showSearch
+                optionFilterProp="label"
+                value={draft.mouza_id ?? ''}
+                options={[{ value: '', label: tx('সকল মৌজা') }, ...mouzaOptions]}
+                onChange={(v) => setDraft((d) => ({ ...d, mouza_id: v === '' ? undefined : Number(v) }))}
+              />
+            </label>
+            <label className="fl-field">
+              <span>{tx('সদস্য অবস্থা')}</span>
+              <Select
+                value={draft.member_status ?? ''}
+                options={[
+                  { value: '', label: tx('সকল') },
+                  { value: 'active', label: tx('সক্রিয় সদস্য') },
+                  { value: 'inactive', label: tx('নিষ্ক্রিয় সদস্য') },
+                  { value: 'cancelled', label: tx('বাতিল সদস্য') },
+                  { value: 'pending', label: tx('অপেক্ষমাণ') },
+                  { value: 'non_member', label: tx('সদস্য নন') },
+                ]}
+                onChange={(v) => setDraft((d) => ({ ...d, member_status: v || undefined }))}
+              />
+            </label>
+            <label className="fl-field">
+              <span>{tx('পেশা')}</span>
+              <Select value={draft.occupation ?? ''} options={[{ value: '', label: tx('সকল') }, ...toOptions(meta?.occupations)]} onChange={(v) => setDraft((d) => ({ ...d, occupation: v || undefined }))} />
+            </label>
+            <label className="fl-field">
+              <span>{tx('জমির মালিক?')}</span>
+              <Select
+                value={draft.land_owner ?? ''}
+                options={[
+                  { value: '', label: tx('সকল') },
+                  { value: 'yes', label: tx('হ্যাঁ') },
+                  { value: 'no', label: tx('না') },
+                ]}
+                onChange={(v) => setDraft((d) => ({ ...d, land_owner: v || undefined }))}
+              />
+            </label>
+            <div className="fl-filter-btns">
+              <Button type="primary" icon={<SearchOutlined />} onClick={() => apply()}>
+                {tx('খুঁজুন')}
+              </Button>
+              <Button onClick={reset}>{tx('রিসেট')}</Button>
+            </div>
+          </div>
+          {moreOpen && (
+            <div className="fl-filter-row fl-filter-more">
+              <label className="fl-field fl-field-loc">
+                <span>{tx('এলাকা')}</span>
+                <LocationCascader
+                  value={path}
+                  onChange={(v) => {
+                    setPath(v)
+                    setDraft((d) => ({ ...d, union_id: v[4] ? undefined : v[3], village_id: v[4] }))
+                  }}
+                />
+              </label>
+              <label className="fl-field">
+                <span>{tx('কৃষকের অবস্থা')}</span>
+                <Select
+                  value={draft.is_active ?? ''}
+                  options={[
+                    { value: '', label: tx('সকল') },
+                    { value: '1', label: tx('সক্রিয়') },
+                    { value: '0', label: tx('নিষ্ক্রিয়') },
+                  ]}
+                  onChange={(v) => setDraft((d) => ({ ...d, is_active: v || undefined }))}
+                />
+              </label>
+            </div>
+          )}
+          <button type="button" className="fl-more" onClick={() => setMoreOpen((o) => !o)}>
+            {moreOpen ? tx('কম ফিল্টার') : tx('আরও ফিল্টার')} {moreOpen ? <UpOutlined /> : <DownOutlined />}
+          </button>
+        </div>
+
+        <div className="fl-card fl-table-card">
+          <div className="fl-table-head">
+            <h3>{tx('কৃষক তালিকা ({{p0}})', { p0: n0(total) })}</h3>
+            <div className="fl-table-tools">
+              {can('farmer.export') && (
+                <Button icon={<DownloadOutlined />} className="fl-export" onClick={exportCsv}>
+                  {tx('এক্সপোর্ট')}
+                </Button>
+              )}
+              <Dropdown
+                trigger={['click']}
+                placement="bottomRight"
+                popupRender={() => (
+                  <div className="fl-colmenu">
+                    {hideable.map((c) => (
+                      <Checkbox key={c.key} checked={!hidden.includes(c.key)} onChange={(e) => setHidden((h) => (e.target.checked ? h.filter((k) => k !== c.key) : [...h, c.key]))}>
+                        {c.title as string}
+                      </Checkbox>
+                    ))}
+                  </div>
+                )}
+              >
+                <Button icon={<InsertRowRightOutlined />}>
+                  {tx('কলাম')} <DownOutlined className="fl-caret" />
+                </Button>
+              </Dropdown>
+            </div>
+          </div>
+
+          <Table<FarmerRow>
+            className="fl-table"
+            rowKey="id"
+            loading={isFetching}
+            dataSource={rows}
+            scroll={{ x: 1100 }}
+            pagination={false}
+            rowSelection={{ selectedRowKeys: selected, onChange: (keys) => setSelected(keys as number[]), columnWidth: 44 }}
+            columns={columns}
+          />
+
+          <div className="fl-foot">
+            <span className="fl-showing">{tx('{{p0}} থেকে {{p1}} দেখানো হচ্ছে, মোট {{p2}} জন কৃষক', { p0: n0(from), p1: n0(to), p2: n0(total) })}</span>
+            <Pagination
+              className="fl-pager"
+              current={params.page}
+              pageSize={params.per_page}
+              total={total}
+              showSizeChanger={false}
+              showLessItems
+              itemRender={(page, type, el) => (type === 'page' ? <a>{digits(page)}</a> : el)}
+              onChange={(page) => setParams((p) => ({ ...p, page }))}
+            />
+            <span className="fl-rows">
+              {tx('প্রতি পাতায় সারি')} {pageSizeSelect}
+            </span>
+          </div>
+        </div>
+
+        <Modal
+          open={cardsOpen}
+          onCancel={() => setCardsOpen(false)}
+          title={selected.length ? tx('নির্বাচিত {{p0}} জনের কার্ড', { p0: digits(cardRows.length) }) : tx('এই পাতার {{p0}} জনের কার্ড', { p0: digits(cardRows.length) })}
+          width={860}
+          footer={
+            <Button type="primary" icon={<PrinterOutlined />} onClick={printCards}>
+              {tx('সব প্রিন্ট')}
+            </Button>
+          }
+        >
+          <div id="fl-bulk-cards" className="fl-bulk-cards">
+            {cardRows.map((f) => (
+              <QrLabel
+                key={f.id}
+                type="farmer"
+                code={f.farmer_code}
+                title={nameOf(f)}
+                subtitle={f.member ? tx('সদস্য নং') + ' ' + digits(f.member.member_no) : f.mouza || undefined}
+                heading={f.member ? society : undefined}
+                note={f.member ? settings?.member_card_note : undefined}
+              />
+            ))}
+          </div>
+        </Modal>
+        <DeleteFarmerModal farmer={deleting} onClose={() => setDeleting(null)} />
+      </div>
     </ConfigProvider>
   )
 }

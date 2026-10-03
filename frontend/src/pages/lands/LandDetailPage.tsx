@@ -17,6 +17,7 @@ import {
   StarFilled,
   SwapOutlined,
   UserOutlined,
+  UserSwitchOutlined,
   UploadOutlined,
 } from '@ant-design/icons'
 import dayjs, { type Dayjs } from 'dayjs'
@@ -34,6 +35,7 @@ import { required } from '../../lib/rules'
 import type { AuditLog } from '../../lib/types'
 import { nameOf, t as tx } from '../../lib/i18n'
 import './land-profile.css'
+import PageTabs from '../../components/PageTabs'
 
 type Named = { id: number; name_bn: string; name_en: string | null } | null
 type Period = { id: number; farmer_id: number; farmer: { id: number; farmer_code: string; name_bn: string; father_name: string }; start_date: string; end_date: string | null; remarks: string | null }
@@ -105,7 +107,13 @@ function PersonCard({ title, p, tag, tagClass, extra }: { title: string; p: Pers
       <SectionTitle icon={<UserOutlined />}>{title}</SectionTitle>
       {p ? (
         <div className="lp-person-body">
-          {p.photo_url ? <ProtectedImage url={p.photo_url} size={62} shape="square" /> : <span className="lp-avatar"><UserOutlined /></span>}
+          {p.photo_url ? (
+            <ProtectedImage url={p.photo_url} size={62} shape="square" />
+          ) : (
+            <span className="lp-avatar">
+              <UserOutlined />
+            </span>
+          )}
           <div className="lp-person-info">
             <div className="lp-person-name">
               <Link to={`/farmers/${p.id}`}>{nameOf(p)}</Link>
@@ -216,7 +224,11 @@ export default function LandDetailPage() {
   const [saving, setSaving] = useState(false)
   const [form] = Form.useForm()
 
-  const { data: land, isLoading, error } = useQuery({
+  const {
+    data: land,
+    isLoading,
+    error,
+  } = useQuery({
     queryKey: ['lands', id],
     queryFn: async () => (await api.get<LandDetail>(`/lands/${id}`)).data,
     enabled: !!id,
@@ -398,9 +410,17 @@ export default function LandDetailPage() {
               {tx('জমি সম্পাদনা')}
             </Button>
           )}
-          <Button icon={<SwapOutlined />} onClick={() => setTab('ownership')}>
-            {tx('হস্তান্তরের ইতিহাস')}
-          </Button>
+          {/* the two everyday changes to a plot, straight from its page */}
+          {can('land.edit') && (
+            <Button icon={<SwapOutlined />} onClick={() => navigate(`/lands/transfers/new?land_id=${id}`)}>
+              {tx('মালিকানা হস্তান্তর')}
+            </Button>
+          )}
+          {can('land.edit') && (
+            <Button icon={<UserSwitchOutlined />} onClick={() => open('cultivation')}>
+              {land.cultivation ? tx('চাষি পরিবর্তন') : tx('চাষি দিন')}
+            </Button>
+          )}
           <Button icon={<PrinterFilled />} onClick={() => window.print()}>
             {tx('প্রিন্ট')}
           </Button>
@@ -409,9 +429,8 @@ export default function LandDetailPage() {
             placement="bottomRight"
             menu={{
               items: [
+                { key: 'history', label: tx('হস্তান্তরের ইতিহাস'), onClick: () => setTab('ownership') },
                 can('irrigation.create') && { key: 'invoice', label: tx('সেচ ইনভয়েস'), onClick: () => navigate(`/irrigation/invoices/new?land_id=${id}`) },
-                can('land.edit') && { key: 'transfer', label: tx('মালিকানা হস্তান্তর'), onClick: () => navigate(`/lands/transfers/new?land_id=${id}`) },
-                can('land.edit') && { key: 'cultivation', label: land.cultivation ? tx('চাষি পরিবর্তন') : tx('চাষি দিন'), onClick: () => open('cultivation') },
                 can('land.edit') && land.cultivation && { key: 'end', label: tx('চাষ শেষ'), onClick: () => open('end') },
                 can('land.delete') && { type: 'divider' as const },
                 can('land.delete') && { key: 'delete', danger: true, label: tx('মুছুন'), onClick: removeLand },
@@ -433,13 +452,19 @@ export default function LandDetailPage() {
     <ConfigProvider theme={{ token: { colorPrimary: '#1769e0', colorLink: '#1769e0' } }}>
       <div className="lp">
         <h1 className="lp-title">{tx('জমির প্রোফাইল')}</h1>
+        <PageTabs />
         {toolbar}
         {body}
       </div>
     </ConfigProvider>
   )
 
-  if (!id) return shell(<div className="lp-card lp-empty"><Empty description={tx('জমির নম্বর, দাগ, খতিয়ান বা মালিকের নাম দিয়ে খুঁজুন')} /></div>)
+  if (!id)
+    return shell(
+      <div className="lp-card lp-empty">
+        <Empty description={tx('জমির নম্বর, দাগ, খতিয়ান বা মালিকের নাম দিয়ে খুঁজুন')} />
+      </div>,
+    )
   if (error) return shell(<Alert type="error" showIcon title={errorMessage(error)} />)
   if (isLoading || !land) return shell(<Spin />)
 
@@ -531,14 +556,29 @@ export default function LandDetailPage() {
         <div className="lp-card lp-block">
           <SectionTitle
             icon={<span className="lp-ico lp-ico-doc" />}
-            extra={can('land.edit') && <Button type="primary" size="small" icon={<PlusOutlined />} onClick={() => open('document')}>{tx('ডকুমেন্ট যোগ করুন')}</Button>}
+            extra={
+              can('land.edit') && (
+                <Button type="primary" size="small" icon={<PlusOutlined />} onClick={() => open('document')}>
+                  {tx('ডকুমেন্ট যোগ করুন')}
+                </Button>
+              )
+            }
           >
             {tx('জমির ডকুমেন্ট')}
           </SectionTitle>
           {docTable(false)}
         </div>
         <div className="lp-card lp-block">
-          <SectionTitle icon={<StarFilled className="lp-star" />} extra={can('land.edit') && <Button type="primary" size="small" icon={<PlusOutlined />} onClick={() => open('note')}>{tx('নোট যোগ করুন')}</Button>}>
+          <SectionTitle
+            icon={<StarFilled className="lp-star" />}
+            extra={
+              can('land.edit') && (
+                <Button type="primary" size="small" icon={<PlusOutlined />} onClick={() => open('note')}>
+                  {tx('নোট যোগ করুন')}
+                </Button>
+              )
+            }
+          >
             {tx('নোট')}
           </SectionTitle>
           <Table<Note>
@@ -588,7 +628,16 @@ export default function LandDetailPage() {
       label: tx('মালিকানার বিবরণ'),
       children: (
         <div className="lp-card lp-block">
-          <SectionTitle icon={<span className="lp-ico lp-ico-doc" />} extra={can('land.edit') && <Button size="small" icon={<SwapOutlined />} onClick={() => navigate(`/lands/transfers/new?land_id=${id}`)}>{tx('মালিকানা হস্তান্তর')}</Button>}>
+          <SectionTitle
+            icon={<span className="lp-ico lp-ico-doc" />}
+            extra={
+              can('land.edit') && (
+                <Button size="small" icon={<SwapOutlined />} onClick={() => navigate(`/lands/transfers/new?land_id=${id}`)}>
+                  {tx('মালিকানা হস্তান্তর')}
+                </Button>
+              )
+            }
+          >
             {tx('মালিকানা ও হস্তান্তরের ইতিহাস')}
           </SectionTitle>
           <Table
@@ -619,8 +668,14 @@ export default function LandDetailPage() {
             extra={
               can('land.edit') && (
                 <span className="lp-btns">
-                  <Button size="small" onClick={() => open('cultivation')}>{land.cultivation ? tx('চাষি পরিবর্তন') : tx('চাষি দিন')}</Button>
-                  {land.cultivation && <Button size="small" onClick={() => open('end')}>{tx('চাষ শেষ')}</Button>}
+                  <Button size="small" onClick={() => open('cultivation')}>
+                    {land.cultivation ? tx('চাষি পরিবর্তন') : tx('চাষি দিন')}
+                  </Button>
+                  {land.cultivation && (
+                    <Button size="small" onClick={() => open('end')}>
+                      {tx('চাষ শেষ')}
+                    </Button>
+                  )}
                 </span>
               )
             }
@@ -666,7 +721,11 @@ export default function LandDetailPage() {
               { title: tx('পরিমাণ (শতক)'), dataIndex: 'area_decimal', render: (v) => digits(Number(v).toLocaleString('en-IN', { maximumFractionDigits: 2 })) },
               { title: tx('টাকা'), dataIndex: 'amount', render: money },
               { title: tx('পরিশোধ'), dataIndex: 'paid_amount', render: money },
-              { title: tx('অবস্থা'), dataIndex: 'status', render: (s) => <Tag className={`lp-tag ${s === 'paid' ? 'lp-tag-green' : s === 'partial' ? 'lp-tag-gold' : 'lp-tag-red'}`}>{{ paid: tx('পরিশোধিত'), partial: tx('আংশিক'), unpaid: tx('বকেয়া') }[s as string] ?? s}</Tag> },
+              {
+                title: tx('অবস্থা'),
+                dataIndex: 'status',
+                render: (s) => <Tag className={`lp-tag ${s === 'paid' ? 'lp-tag-green' : s === 'partial' ? 'lp-tag-gold' : 'lp-tag-red'}`}>{{ paid: tx('পরিশোধিত'), partial: tx('আংশিক'), unpaid: tx('বকেয়া') }[s as string] ?? s}</Tag>,
+              },
             ]}
           />
         </div>
@@ -686,7 +745,16 @@ export default function LandDetailPage() {
       label: tx('ডকুমেন্ট'),
       children: (
         <div className="lp-card lp-block">
-          <SectionTitle icon={<span className="lp-ico lp-ico-doc" />} extra={can('land.edit') && <Button type="primary" size="small" icon={<PlusOutlined />} onClick={() => open('document')}>{tx('ডকুমেন্ট যোগ করুন')}</Button>}>
+          <SectionTitle
+            icon={<span className="lp-ico lp-ico-doc" />}
+            extra={
+              can('land.edit') && (
+                <Button type="primary" size="small" icon={<PlusOutlined />} onClick={() => open('document')}>
+                  {tx('ডকুমেন্ট যোগ করুন')}
+                </Button>
+              )
+            }
+          >
             {tx('জমির ডকুমেন্ট')}
           </SectionTitle>
           {docTable(true)}
@@ -711,7 +779,16 @@ export default function LandDetailPage() {
               { title: tx('পিতার নাম'), dataIndex: 'father_name' },
               { title: tx('মোবাইল'), dataIndex: 'mobile', render: (v) => digits(v) || '—' },
               { title: tx('সদস্য নং'), dataIndex: 'member_no', render: (v) => (v ? digits(v) : '—') },
-              { title: tx('সম্পর্ক'), dataIndex: 'roles', render: (roles: string[]) => roles.map((r) => <Tag key={r} className={`lp-tag ${ROLE[r]?.[1]}`}>{ROLE[r]?.[0]}</Tag>) },
+              {
+                title: tx('সম্পর্ক'),
+                dataIndex: 'roles',
+                render: (roles: string[]) =>
+                  roles.map((r) => (
+                    <Tag key={r} className={`lp-tag ${ROLE[r]?.[1]}`}>
+                      {ROLE[r]?.[0]}
+                    </Tag>
+                  )),
+              },
             ]}
           />
         </div>
@@ -761,14 +838,15 @@ export default function LandDetailPage() {
             p={owner}
             tag={tx('মালিক')}
             tagClass="lp-tag-blue"
-            extra={land.owner_cards.length > 1 && <a className="lp-more-owners" onClick={() => setTab('ownership')}>{tx('+{{p0}} জন', { p0: digits(land.owner_cards.length - 1) })}</a>}
+            extra={
+              land.owner_cards.length > 1 && (
+                <a className="lp-more-owners" onClick={() => setTab('ownership')}>
+                  {tx('+{{p0}} জন', { p0: digits(land.owner_cards.length - 1) })}
+                </a>
+              )
+            }
           />
-          <PersonCard
-            title={tx('বর্তমান চাষি')}
-            p={land.cultivator_card}
-            tag={land.cultivation ? (meta?.cultivation_types[land.cultivation.type] ?? tx('চাষি')) : tx('চাষি')}
-            tagClass="lp-tag-green"
-          />
+          <PersonCard title={tx('বর্তমান চাষি')} p={land.cultivator_card} tag={land.cultivation ? (meta?.cultivation_types[land.cultivation.type] ?? tx('চাষি')) : tx('চাষি')} tagClass="lp-tag-green" />
         </div>
       </div>
 
@@ -796,7 +874,7 @@ export default function LandDetailPage() {
         <Form form={form} layout="vertical">
           {modal === 'transfer' && (
             <>
-              <Alert type="info" showIcon style={{ marginBottom: 12 }} title={tx('বর্তমান মালিকানা এই তারিখে শেষ হবে এবং নতুন মালিকানা শুরু হবে। \'নিজ চাষ\' করা চাষি নতুন মালিকদের মধ্যে না থাকলে তার চাষও শেষ হবে।')} />
+              <Alert type="info" showIcon style={{ marginBottom: 12 }} title={tx("বর্তমান মালিকানা এই তারিখে শেষ হবে এবং নতুন মালিকানা শুরু হবে। 'নিজ চাষ' করা চাষি নতুন মালিকদের মধ্যে না থাকলে তার চাষও শেষ হবে।")} />
               <OwnersEditor />
               <Form.Item name="effective_date" label={tx('কার্যকর তারিখ')} rules={[required(tx('তারিখ দিন'))]} style={{ marginTop: 12 }}>
                 <DatePicker format="DD/MM/YYYY" style={{ width: '100%' }} disabledDate={(d) => d.isAfter(dayjs())} />

@@ -8,6 +8,7 @@ import {
   CameraFilled,
   CloseOutlined,
   DeleteOutlined,
+  DownOutlined,
   EnvironmentFilled,
   FileTextOutlined,
   FileTextFilled,
@@ -17,13 +18,14 @@ import {
   ReloadOutlined,
   RightOutlined,
   SaveFilled,
+  UpOutlined,
   UploadOutlined,
   UserOutlined,
 } from '@ant-design/icons'
 import dayjs, { type Dayjs } from 'dayjs'
 import { useAuth } from '../../auth/AuthContext'
 import DuplicateMatches from '../../components/DuplicateMatches'
-import { LevelSelect, LEVELS, type LocationPath } from '../../components/LocationCascader'
+import { LevelSelect, LEVELS, useLevelNames, type LocationPath } from '../../components/LocationCascader'
 import ProtectedImage from '../../components/ProtectedImage'
 import { TeamSolid, UserSolid } from '../../components/SideIcons'
 import { api, applyFormErrors, errorMessage } from '../../lib/api'
@@ -113,12 +115,14 @@ function FarmerForm({ id, existing, defaults }: { id?: string; existing?: Farmer
   const [householdTerm, setHouseholdTerm] = useState('')
   const [duplicates, setDuplicates] = useState<DuplicateMatch[] | null>(null)
   const [saving, setSaving] = useState(false)
+  const [more, setMore] = useState(() => !!existing && !!(existing.mother_name || existing.date_of_birth || existing.alt_mobile || existing.email || existing.occupation || existing.post_office || existing.spouse_name || existing.remarks))
+  // the division-to-union levels come from the society's default area; shown only when changing it
+  const [showArea, setShowArea] = useState(() => startPath.filter(Boolean).length < 4)
+  const areaLine = useLevelNames(path, 4).join(', ')
 
   const initialValues = useMemo(
     () =>
-      existing
-        ? { ...existing, date_of_birth: existing.date_of_birth ? dayjs(String(existing.date_of_birth)) : null }
-        : { gender: 'male', is_active: true, occupation: 'farmer', mouza_id: defaults.path[4] ? defaults.mouza_id : undefined },
+      existing ? { ...existing, date_of_birth: existing.date_of_birth ? dayjs(String(existing.date_of_birth)) : null } : { gender: 'male', is_active: true, occupation: 'farmer', mouza_id: defaults.path[4] ? defaults.mouza_id : undefined },
     [existing, defaults],
   )
 
@@ -264,7 +268,21 @@ function FarmerForm({ id, existing, defaults }: { id?: string; existing?: Farmer
           </Button>
         </div>
 
-        <Form form={form} layout="vertical" initialValues={initialValues} onFinish={() => save(false)} requiredMark={(label, { required: r }) => (r ? <>{label} <span className="ff-req">*</span></> : label)}>
+        <Form
+          form={form}
+          layout="vertical"
+          initialValues={initialValues}
+          onFinish={() => save(false)}
+          requiredMark={(label, { required: r }) =>
+            r ? (
+              <>
+                {label} <span className="ff-req">*</span>
+              </>
+            ) : (
+              label
+            )
+          }
+        >
           {!isEdit && (
             <section className="ff-member">
               <div className="ff-member-main">
@@ -311,8 +329,8 @@ function FarmerForm({ id, existing, defaults }: { id?: string; existing?: Farmer
             </section>
           )}
 
-          <div className="ff-row3">
-            <Section icon={<UserSolid />} title={tx('১. ব্যক্তিগত তথ্য')}>
+          <div className="ff-row2 ff-main">
+            <Section icon={<UserSolid />} title={tx('১. জরুরি তথ্য')}>
               <div className="ff-grid2">
                 <Form.Item name="name_bn" label={tx('পূর্ণ নাম')} rules={[required(tx('নাম দিন'))]}>
                   <Input placeholder={tx('পূর্ণ নাম লিখুন')} />
@@ -320,14 +338,8 @@ function FarmerForm({ id, existing, defaults }: { id?: string; existing?: Farmer
                 <Form.Item name="father_name" label={tx('পিতার নাম')} rules={[required(tx('পিতার নাম দিন'))]}>
                   <Input placeholder={tx('পিতার নাম লিখুন')} />
                 </Form.Item>
-                <Form.Item name="mother_name" label={tx('মাতার নাম')}>
-                  <Input placeholder={tx('মাতার নাম লিখুন')} />
-                </Form.Item>
                 <Form.Item name="gender" label={tx('লিঙ্গ')} rules={[required(tx('লিঙ্গ বাছাই করুন'))]}>
                   <Select placeholder={tx('লিঙ্গ বাছাই করুন')} options={toOptions(meta?.genders)} />
-                </Form.Item>
-                <Form.Item name="date_of_birth" label={tx('জন্মতারিখ')} help={isMinor ? tx('সতর্কতা: বয়স ১৮ বছরের কম।') : undefined} validateStatus={isMinor ? 'warning' : undefined}>
-                  <DatePicker format="DD-MM-YYYY" placeholder="dd-mm-yyyy" style={{ width: '100%' }} disabledDate={(d) => d.isAfter(dayjs())} />
                 </Form.Item>
                 <Form.Item name="nid" label={tx('জাতীয় পরিচয়পত্র (NID)')} rules={[digitRule(/^(\d{10}|\d{13}|\d{17})$/, tx('NID ১০, ১৩ বা ১৭ অঙ্কের হতে হবে'))]}>
                   <Input inputMode="numeric" placeholder={tx('NID নম্বর লিখুন')} />
@@ -335,22 +347,24 @@ function FarmerForm({ id, existing, defaults }: { id?: string; existing?: Farmer
                 <Form.Item name="mobile" label={tx('মোবাইল নম্বর')} rules={[digitRule(MOBILE, tx('সঠিক মোবাইল নম্বর দিন'))]}>
                   <Input inputMode="numeric" placeholder={tx('মোবাইল নম্বর লিখুন')} />
                 </Form.Item>
-                <Form.Item name="alt_mobile" label={tx('বিকল্প মোবাইল')} rules={[digitRule(MOBILE, tx('সঠিক মোবাইল নম্বর দিন'))]}>
-                  <Input inputMode="numeric" placeholder={tx('বিকল্প মোবাইল লিখুন')} />
-                </Form.Item>
-                <Form.Item name="email" label={tx('ইমেইল')} rules={[{ type: 'email', message: tx('সঠিক ইমেইল দিন') }]} className="ff-last">
-                  <Input type="email" placeholder={tx('ইমেইল ঠিকানা লিখুন')} />
-                </Form.Item>
-                <Form.Item name="occupation" label={tx('পেশা')} className="ff-last">
-                  <Select allowClear placeholder={tx('পেশা বাছাই করুন')} options={toOptions(meta?.occupations)} />
-                </Form.Item>
               </div>
             </Section>
 
-            <Section icon={<EnvironmentFilled />} title={tx('২. ঠিকানার তথ্য')}>
+            <Section
+              icon={<EnvironmentFilled />}
+              title={tx('২. ঠিকানা')}
+              extra={
+                !showArea && (
+                  <Button size="small" type="link" onClick={() => setShowArea(true)}>
+                    {tx('এলাকা বদলান')}
+                  </Button>
+                )
+              }
+            >
+              {!showArea && <div className="ff-area">{areaLine}</div>}
               <div className="ff-grid2">
                 {LEVELS.map((level, i) => (
-                  <div key={level.key} className="ff-field">
+                  <div key={level.key} className="ff-field" hidden={!showArea && i < 4}>
                     <span>
                       {level.label}
                       {i === 4 && <span className="ff-req"> *</span>}
@@ -358,12 +372,7 @@ function FarmerForm({ id, existing, defaults }: { id?: string; existing?: Farmer
                     <LevelSelect index={i} parentId={i === 0 ? undefined : path[i - 1]} value={path[i]} onChange={(v) => setLevel(i, v)} placeholder={tx('{{p0}} বাছাই করুন', { p0: level.label })} />
                   </div>
                 ))}
-                <Form.Item
-                  name="mouza_id"
-                  label={tx('মৌজা')}
-                  rules={[required(tx('মৌজা বাছাই করুন'))]}
-                  extra={villageId && mouzas.data?.length === 0 ? tx('এই গ্রামের সাথে কোনো মৌজা যুক্ত নেই — মৌজা পাতায় যুক্ত করুন।') : undefined}
-                >
+                <Form.Item name="mouza_id" label={tx('মৌজা')} rules={[required(tx('মৌজা বাছাই করুন'))]} extra={villageId && mouzas.data?.length === 0 ? tx('এই গ্রামের সাথে কোনো মৌজা যুক্ত নেই — মৌজা পাতায় যুক্ত করুন।') : undefined}>
                   <Select
                     disabled={!villageId}
                     loading={mouzas.isFetching}
@@ -372,19 +381,140 @@ function FarmerForm({ id, existing, defaults }: { id?: string; existing?: Farmer
                     options={mouzas.data?.map((m) => ({ value: m.id, label: `${nameOf(m)} (JL ${digits(m.jl_no)})` }))}
                   />
                 </Form.Item>
+              </div>
+              <Form.Item name="para" label={tx('বর্তমান ঠিকানা (বাড়ি/পাড়া)')} className="ff-last">
+                <Input.TextArea rows={3} maxLength={255} showCount placeholder={tx('পূর্ণ ঠিকানা লিখুন')} />
+              </Form.Item>
+            </Section>
+          </div>
+
+          <button type="button" className={`ff-more-toggle${more ? ' on' : ''}`} onClick={() => setMore((m) => !m)}>
+            {more ? <UpOutlined /> : <DownOutlined />}
+            {tx('আরও তথ্য (ঐচ্ছিক)')}
+            <small>{tx('মাতার নাম, জন্মতারিখ, বিকল্প মোবাইল, ইমেইল, পেশা, ডাকঘর, ছবি ও ডকুমেন্ট, পরিবার, খানা')}</small>
+          </button>
+          <div className="ff-row3 ff-more" hidden={!more}>
+            <Section icon={<FileTextFilled />} title={tx('৩. অতিরিক্ত তথ্য')}>
+              <div className="ff-grid3">
+                <Form.Item name="mother_name" label={tx('মাতার নাম')}>
+                  <Input placeholder={tx('মাতার নাম লিখুন')} />
+                </Form.Item>
+                <Form.Item name="date_of_birth" label={tx('জন্মতারিখ')} help={isMinor ? tx('সতর্কতা: বয়স ১৮ বছরের কম।') : undefined} validateStatus={isMinor ? 'warning' : undefined}>
+                  <DatePicker format="DD-MM-YYYY" placeholder="dd-mm-yyyy" style={{ width: '100%' }} disabledDate={(d) => d.isAfter(dayjs())} />
+                </Form.Item>
+                <Form.Item name="alt_mobile" label={tx('বিকল্প মোবাইল')} rules={[digitRule(MOBILE, tx('সঠিক মোবাইল নম্বর দিন'))]}>
+                  <Input inputMode="numeric" placeholder={tx('বিকল্প মোবাইল লিখুন')} />
+                </Form.Item>
+                <Form.Item name="email" label={tx('ইমেইল')} rules={[{ type: 'email', message: tx('সঠিক ইমেইল দিন') }]}>
+                  <Input type="email" placeholder={tx('ইমেইল ঠিকানা লিখুন')} />
+                </Form.Item>
+                <Form.Item name="occupation" label={tx('পেশা')}>
+                  <Select allowClear placeholder={tx('পেশা বাছাই করুন')} options={toOptions(meta?.occupations)} />
+                </Form.Item>
                 <Form.Item name="post_office" label={tx('ডাকঘর')}>
                   <Input placeholder={tx('ডাকঘর লিখুন')} />
                 </Form.Item>
                 <Form.Item name="post_code" label={tx('পোস্ট কোড')} rules={[digitRule(/^\d{4}$/, tx('পোস্ট কোড ৪ অঙ্কের হতে হবে।'))]}>
                   <Input inputMode="numeric" placeholder={tx('পোস্ট কোড লিখুন')} />
                 </Form.Item>
+                <Form.Item name="blood_group" label={tx('রক্তের গ্রুপ')}>
+                  <Select allowClear placeholder={tx('রক্তের গ্রুপ বাছাই করুন')} options={toOptions(meta?.blood_groups)} />
+                </Form.Item>
+                <Form.Item name="education_level" label={tx('শিক্ষাগত যোগ্যতা')}>
+                  <Select allowClear placeholder={tx('শিক্ষাগত যোগ্যতা বাছাই করুন')} options={toOptions(meta?.education_levels)} />
+                </Form.Item>
+                <Form.Item name="farmer_type" label={tx('কৃষকের ধরন')}>
+                  <Select allowClear placeholder={tx('কৃষকের ধরন বাছাই করুন')} options={toOptions(meta?.farmer_types)} />
+                </Form.Item>
+                <Form.Item name="name_en" label={tx('নাম (ইংরেজি)')}>
+                  <Input placeholder="Full name in English" />
+                </Form.Item>
+                <Form.Item name="spouse_name" label={tx('স্বামী/স্ত্রীর নাম')}>
+                  <Input placeholder={tx('স্বামী/স্ত্রীর নাম লিখুন')} />
+                </Form.Item>
+                <Form.Item name="birth_reg_no" label={tx('জন্ম নিবন্ধন নম্বর')} rules={[digitRule(/^\d{17}$/, tx('১৭ অঙ্কের হতে হবে'))]}>
+                  <Input inputMode="numeric" placeholder={tx('NID না থাকলে')} />
+                </Form.Item>
               </div>
-              <Form.Item name="para" label={tx('বর্তমান ঠিকানা (বাড়ি/পাড়া)')} className="ff-last">
-                <Input.TextArea rows={3} maxLength={255} showCount placeholder={tx('পূর্ণ ঠিকানা লিখুন')} />
+              <Form.Item name="remarks" label={tx('মন্তব্য')} className="ff-last">
+                <Input.TextArea rows={2} maxLength={300} showCount placeholder={tx('অতিরিক্ত নোট লিখুন')} />
               </Form.Item>
             </Section>
 
-            <Section icon={<CameraFilled />} title={tx('৩. ছবি ও ডকুমেন্ট')} className="ff-photo-card">
+            <Section
+              icon={<TeamSolid />}
+              title={tx('৪. পরিবারের তথ্য')}
+              extra={
+                <Button type="primary" size="small" icon={<PlusOutlined />} className="ff-add" onClick={() => setFamily((f) => (f.length >= 20 ? f : [...f, ...blankRows(1)]))}>
+                  {tx('পরিবারের সদস্য যোগ করুন')}
+                </Button>
+              }
+              className="ff-family"
+            >
+              <div className="ff-table-wrap">
+                <table className="ff-table">
+                  <thead>
+                    <tr>
+                      <th>#</th>
+                      <th>{tx('নাম')}</th>
+                      <th>{tx('সম্পর্ক')}</th>
+                      <th>{tx('পেশা')}</th>
+                      <th>{tx('মোবাইল')}</th>
+                      <th>{tx('অ্যাকশন')}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {family.map((r, i) => (
+                      <tr key={r.key}>
+                        <td>{digits(i + 1)}</td>
+                        <td>
+                          <Input size="small" value={r.name} placeholder={tx('নাম লিখুন')} maxLength={150} onChange={(e) => setRow(r.key, { name: e.target.value })} />
+                        </td>
+                        <td>
+                          <Select size="small" allowClear value={r.relation} placeholder={tx('সম্পর্ক বাছাই করুন')} options={toOptions(meta?.relations).filter((o) => o.value !== 'self')} onChange={(v) => setRow(r.key, { relation: v })} />
+                        </td>
+                        <td>
+                          <Input size="small" value={r.occupation} placeholder={tx('পেশা লিখুন')} maxLength={100} onChange={(e) => setRow(r.key, { occupation: e.target.value })} />
+                        </td>
+                        <td>
+                          <Input size="small" inputMode="numeric" value={r.mobile} placeholder={tx('মোবাইল লিখুন')} maxLength={11} onChange={(e) => setRow(r.key, { mobile: e.target.value })} />
+                        </td>
+                        <td>
+                          <Button type="text" size="small" danger icon={<DeleteOutlined />} aria-label={tx('মুছুন')} onClick={() => setFamily((f) => f.filter((x) => x.key !== r.key))} />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div className="ff-household">
+                <span className="ff-household-label">{tx('খানা (Household)')}</span>
+                <Radio.Group
+                  value={householdMode}
+                  onChange={(e) => setHouseholdMode(e.target.value)}
+                  options={[{ value: 'none', label: tx('কোনো খানা নয়') }, { value: 'existing', label: tx('বিদ্যমান খানা') }, ...(existing?.household ? [] : [{ value: 'new', label: tx('নতুন খানা (ইনি খানাপ্রধান)') }])]}
+                />
+                {householdMode === 'existing' && (
+                  <div className="ff-household-pick">
+                    <Form.Item name="household_id" rules={[required(tx('খানা বাছাই করুন'))]}>
+                      <Select
+                        showSearch={{ filterOption: false, onSearch: setHouseholdTerm }}
+                        loading={households.isFetching}
+                        placeholder={tx('খানার কোড বা খানাপ্রধানের নাম')}
+                        options={[
+                          ...(existing?.household && !households.data?.some((h) => h.id === existing.household!.id) ? [{ value: existing.household.id, label: `${existing.household.code} — ${existing.household.head?.name_bn ?? ''}` }] : []),
+                          ...(households.data ?? []).map((h) => ({ value: h.id, label: `${h.code} — ${h.head?.name_bn ?? ''}${h.village ? ', ' + h.village.name_bn : ''}` })),
+                        ]}
+                      />
+                    </Form.Item>
+                    <Form.Item name="household_relation" rules={[required(tx('সম্পর্ক দিন'))]}>
+                      <Select placeholder={tx('খানাপ্রধানের সাথে সম্পর্ক')} options={toOptions(meta?.relations)} />
+                    </Form.Item>
+                  </div>
+                )}
+              </div>
+            </Section>
+            <Section icon={<CameraFilled />} title={tx('৫. ছবি ও ডকুমেন্ট')} className="ff-photo-card">
               <Upload
                 className="ff-photo-upload"
                 accept="image/png,image/jpeg"
@@ -431,121 +561,6 @@ function FarmerForm({ id, existing, defaults }: { id?: string; existing?: Farmer
             </Section>
           </div>
 
-          <div className="ff-row2">
-            <Section icon={<FileTextFilled />} title={tx('৪. অতিরিক্ত তথ্য')}>
-              <div className="ff-grid3">
-                <Form.Item name="blood_group" label={tx('রক্তের গ্রুপ')}>
-                  <Select allowClear placeholder={tx('রক্তের গ্রুপ বাছাই করুন')} options={toOptions(meta?.blood_groups)} />
-                </Form.Item>
-                <Form.Item name="education_level" label={tx('শিক্ষাগত যোগ্যতা')}>
-                  <Select allowClear placeholder={tx('শিক্ষাগত যোগ্যতা বাছাই করুন')} options={toOptions(meta?.education_levels)} />
-                </Form.Item>
-                <Form.Item name="farmer_type" label={tx('কৃষকের ধরন')}>
-                  <Select allowClear placeholder={tx('কৃষকের ধরন বাছাই করুন')} options={toOptions(meta?.farmer_types)} />
-                </Form.Item>
-                <Form.Item name="name_en" label={tx('নাম (ইংরেজি)')}>
-                  <Input placeholder="Full name in English" />
-                </Form.Item>
-                <Form.Item name="spouse_name" label={tx('স্বামী/স্ত্রীর নাম')}>
-                  <Input placeholder={tx('স্বামী/স্ত্রীর নাম লিখুন')} />
-                </Form.Item>
-                <Form.Item name="birth_reg_no" label={tx('জন্ম নিবন্ধন নম্বর')} rules={[digitRule(/^\d{17}$/, tx('১৭ অঙ্কের হতে হবে'))]}>
-                  <Input inputMode="numeric" placeholder={tx('NID না থাকলে')} />
-                </Form.Item>
-              </div>
-              <Form.Item name="remarks" label={tx('মন্তব্য')} className="ff-last">
-                <Input.TextArea rows={2} maxLength={300} showCount placeholder={tx('অতিরিক্ত নোট লিখুন')} />
-              </Form.Item>
-            </Section>
-
-            <Section
-              icon={<TeamSolid />}
-              title={tx('৫. পরিবারের তথ্য')}
-              extra={
-                <Button type="primary" size="small" icon={<PlusOutlined />} className="ff-add" onClick={() => setFamily((f) => (f.length >= 20 ? f : [...f, ...blankRows(1)]))}>
-                  {tx('পরিবারের সদস্য যোগ করুন')}
-                </Button>
-              }
-              className="ff-family"
-            >
-              <div className="ff-table-wrap">
-                <table className="ff-table">
-                  <thead>
-                    <tr>
-                      <th>#</th>
-                      <th>{tx('নাম')}</th>
-                      <th>{tx('সম্পর্ক')}</th>
-                      <th>{tx('পেশা')}</th>
-                      <th>{tx('মোবাইল')}</th>
-                      <th>{tx('অ্যাকশন')}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {family.map((r, i) => (
-                      <tr key={r.key}>
-                        <td>{digits(i + 1)}</td>
-                        <td>
-                          <Input size="small" value={r.name} placeholder={tx('নাম লিখুন')} maxLength={150} onChange={(e) => setRow(r.key, { name: e.target.value })} />
-                        </td>
-                        <td>
-                          <Select
-                            size="small"
-                            allowClear
-                            value={r.relation}
-                            placeholder={tx('সম্পর্ক বাছাই করুন')}
-                            options={toOptions(meta?.relations).filter((o) => o.value !== 'self')}
-                            onChange={(v) => setRow(r.key, { relation: v })}
-                          />
-                        </td>
-                        <td>
-                          <Input size="small" value={r.occupation} placeholder={tx('পেশা লিখুন')} maxLength={100} onChange={(e) => setRow(r.key, { occupation: e.target.value })} />
-                        </td>
-                        <td>
-                          <Input size="small" inputMode="numeric" value={r.mobile} placeholder={tx('মোবাইল লিখুন')} maxLength={11} onChange={(e) => setRow(r.key, { mobile: e.target.value })} />
-                        </td>
-                        <td>
-                          <Button type="text" size="small" danger icon={<DeleteOutlined />} aria-label={tx('মুছুন')} onClick={() => setFamily((f) => f.filter((x) => x.key !== r.key))} />
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              <div className="ff-household">
-                <span className="ff-household-label">{tx('খানা (Household)')}</span>
-                <Radio.Group
-                  value={householdMode}
-                  onChange={(e) => setHouseholdMode(e.target.value)}
-                  options={[
-                    { value: 'none', label: tx('কোনো খানা নয়') },
-                    { value: 'existing', label: tx('বিদ্যমান খানা') },
-                    ...(existing?.household ? [] : [{ value: 'new', label: tx('নতুন খানা (ইনি খানাপ্রধান)') }]),
-                  ]}
-                />
-                {householdMode === 'existing' && (
-                  <div className="ff-household-pick">
-                    <Form.Item name="household_id" rules={[required(tx('খানা বাছাই করুন'))]}>
-                      <Select
-                        showSearch={{ filterOption: false, onSearch: setHouseholdTerm }}
-                        loading={households.isFetching}
-                        placeholder={tx('খানার কোড বা খানাপ্রধানের নাম')}
-                        options={[
-                          ...(existing?.household && !households.data?.some((h) => h.id === existing.household!.id)
-                            ? [{ value: existing.household.id, label: `${existing.household.code} — ${existing.household.head?.name_bn ?? ''}` }]
-                            : []),
-                          ...(households.data ?? []).map((h) => ({ value: h.id, label: `${h.code} — ${h.head?.name_bn ?? ''}${h.village ? ', ' + h.village.name_bn : ''}` })),
-                        ]}
-                      />
-                    </Form.Item>
-                    <Form.Item name="household_relation" rules={[required(tx('সম্পর্ক দিন'))]}>
-                      <Select placeholder={tx('খানাপ্রধানের সাথে সম্পর্ক')} options={toOptions(meta?.relations)} />
-                    </Form.Item>
-                  </div>
-                )}
-              </div>
-            </Section>
-          </div>
-
           <div className="ff-footer">
             <Button icon={<ReloadOutlined />} onClick={reset}>
               {tx('রিসেট')}
@@ -582,12 +597,7 @@ function FarmerForm({ id, existing, defaults }: { id?: string; existing?: Farmer
             </Button>,
           ]}
         >
-          <Alert
-            type="warning"
-            showIcon
-            style={{ marginBottom: 12 }}
-            title={tx('এই তথ্যের সাথে মিলে যায় এমন কৃষক আগে থেকেই আছেন। একই ব্যক্তি হলে নতুন রেকর্ড না করে আগেরটি খুলুন।')}
-          />
+          <Alert type="warning" showIcon style={{ marginBottom: 12 }} title={tx('এই তথ্যের সাথে মিলে যায় এমন কৃষক আগে থেকেই আছেন। একই ব্যক্তি হলে নতুন রেকর্ড না করে আগেরটি খুলুন।')} />
           <DuplicateMatches matches={duplicates ?? []} />
         </Modal>
       </div>

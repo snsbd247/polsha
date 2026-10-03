@@ -13,6 +13,7 @@ import '../membership/member-list.css'
 import '../farmers/deleted-farmers.css'
 import '../masters/patwari-list.css'
 import './land-reports.css'
+import PageTabs from '../../components/PageTabs'
 
 export type StatCard = {
   key: string
@@ -82,6 +83,7 @@ export default function ListFrame(props: {
           <RightOutlined className="fl-crumb-sep" />
           <span>{props.title}</span>
         </nav>
+        <PageTabs />
 
         <div className="fl-head">
           <div>

@@ -34,6 +34,7 @@ import '../farmers/farmer-list.css'
 import '../membership/member-list.css'
 import '../farmers/deleted-farmers.css'
 import './patwari-list.css'
+import PageTabs from '../../components/PageTabs'
 
 type Assignment = { id: number; mouza_id: number; start_date: string; end_date: string | null; mouza: { id: number; name_bn: string; jl_no: string } }
 type Patwari = {
@@ -111,11 +112,7 @@ export default function PatwariPage() {
   const open = (p: Patwari | 'new') => {
     setEditing(p)
     form.resetFields()
-    form.setFieldsValue(
-      p === 'new'
-        ? { is_active: true, start_date: dayjs(), mouza_ids: [] }
-        : { ...p, start_date: dayjs(), mouza_ids: p.current_assignments.map((a) => a.mouza_id) },
-    )
+    form.setFieldsValue(p === 'new' ? { is_active: true, start_date: dayjs(), mouza_ids: [] } : { ...p, start_date: dayjs(), mouza_ids: p.current_assignments.map((a) => a.mouza_id) })
   }
 
   const save = async () => {
@@ -149,7 +146,16 @@ export default function PatwariPage() {
       width: 62,
       render: (_, p) => (p.photo_url ? <ProtectedImage url={p.photo_url} size={38} shape="square" /> : <span className="ml-initials pl-initials">{initials(p.name)}</span>),
     },
-    { key: 'name', title: tx('পাটোয়ারীর নাম'), dataIndex: 'name', render: (v, p) => <a className="fl-name" onClick={() => setViewing(p.id)}>{v}</a> },
+    {
+      key: 'name',
+      title: tx('পাটোয়ারীর নাম'),
+      dataIndex: 'name',
+      render: (v, p) => (
+        <a className="fl-name" onClick={() => setViewing(p.id)}>
+          {v}
+        </a>
+      ),
+    },
     { key: 'mobile', title: tx('মোবাইল'), dataIndex: 'mobile', render: (v) => digits(v) },
     { key: 'nid', title: 'NID', dataIndex: 'nid', render: (v) => digits(v) || '—' },
     { key: 'district', title: tx('জেলা'), dataIndex: 'district', render: (v) => v || '—' },
@@ -205,6 +211,7 @@ export default function PatwariPage() {
           <RightOutlined className="fl-crumb-sep" />
           <span>{tx('পাটোয়ারী তালিকা')}</span>
         </nav>
+        <PageTabs />
 
         <div className="fl-head">
           <div>
@@ -345,8 +352,7 @@ export default function PatwariPage() {
               <Button className="ml-edge" icon={<DoubleRightOutlined />} disabled={params.page >= lastPage} aria-label={tx('শেষ পাতা')} onClick={() => setParams((p) => ({ ...p, page: lastPage }))} />
             </span>
             <span className="fl-rows">
-              {tx('প্রতি পাতায় সারি')}{' '}
-              <Select value={params.per_page} className="fl-size" options={[10, 25, 50, 100].map((n) => ({ value: n, label: digits(n) }))} onChange={(per_page) => setParams((p) => ({ ...p, per_page, page: 1 }))} />
+              {tx('প্রতি পাতায় সারি')} <Select value={params.per_page} className="fl-size" options={[10, 25, 50, 100].map((n) => ({ value: n, label: digits(n) }))} onChange={(per_page) => setParams((p) => ({ ...p, per_page, page: 1 }))} />
             </span>
           </div>
         </div>

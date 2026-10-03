@@ -609,3 +609,43 @@
     margin-left: 0;
   }
 }
+
+/* the optional part of the farmer form, folded until asked for */
+.ff-main {
+  margin-bottom: 11px;
+}
+.ff-area {
+  margin: -2px 0 8px;
+  color: #3d4b63;
+  font-size: 13px;
+}
+.ff-more-toggle {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  width: 100%;
+  margin-bottom: 11px;
+  padding: 10px 14px;
+  border: 1px dashed #b9c6db;
+  border-radius: 8px;
+  background: #f7f9fc;
+  color: #1769e0;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+.ff-more-toggle small {
+  color: #6b7280;
+  font-weight: 400;
+}
+.ff-more-toggle.on {
+  border-style: solid;
+}
+.ff-more {
+  margin-bottom: 11px;
+}
+.ff-more[hidden],
+.ff-field[hidden] {
+  display: none !important;
+}

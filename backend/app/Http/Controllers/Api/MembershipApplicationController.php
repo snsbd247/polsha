@@ -106,6 +106,13 @@ class MembershipApplicationController extends Controller
             'farmer_address' => $v ? implode(', ', array_filter([$f->para, $f->post_office, $v->name_bn, $v->union?->name_bn, $v->union?->upazila?->name_bn, $v->union?->upazila?->district?->name_bn])) : null,
             'share_unit_price' => (float) SettingService::get('share_unit_price', 10) ?: 10.0,
             'can_act' => $application->approvalRequest ? $this->approvals->canAct($request->user(), $application->approvalRequest) : false,
+            // what was paid on admission, for the receipt: the fee's voucher and the first shares' transaction
+            'paid' => $application->member_id ? [
+                'fee_voucher' => \App\Models\Journal::where('source_type', $application->getMorphClass())->where('source_id', $application->id)->value('voucher_no'),
+                'share_txn' => \App\Models\MemberTransaction::whereHas('account', fn ($q) => $q->where('member_id', $application->member_id)->where('kind', 'share'))
+                    ->where('type', 'purchase')->where('remarks', 'like', '%'.$application->application_no)->first(['id', 'txn_no', 'amount', 'date']),
+                'society' => SettingService::society(),
+            ] : null,
         ]);
     }
 
