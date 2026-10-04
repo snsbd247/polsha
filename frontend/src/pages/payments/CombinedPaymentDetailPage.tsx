@@ -9,7 +9,7 @@ import { api, applyFormErrors, errorMessage } from '../../lib/api'
 import { accountLabel, money } from '../../lib/accounting'
 import { digits, fmtDate, fmtDateTime } from '../../lib/format'
 import { amountInWords } from '../../lib/irrigation'
-import { MODULE_TONE, type CombinedModule } from '../../lib/phase8'
+import { MODULE_TONE, appUrl, type CombinedModule } from '../../lib/phase8'
 import { type Society } from '../../lib/settings'
 import { ReceiptFacts, ReceiptFoot, ReceiptMeta, ReceiptPaper, ReceiptSign, ReceiptTop } from '../../components/PrintParts'
 import { required } from '../../lib/rules'
@@ -131,7 +131,7 @@ export default function CombinedPaymentDetailPage() {
   }
 
   const amount = Number(r.amount)
-  const verifyUrl = `${window.location.origin}/verify/combined/${r.verify_token}`
+  const verifyUrl = appUrl(`/verify/combined/${r.verify_token}`)
 
   return (
     <>

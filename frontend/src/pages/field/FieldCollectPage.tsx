@@ -11,6 +11,7 @@ import { api, errorMessage } from '../../lib/api'
 import { money } from '../../lib/accounting'
 import { digits, fmtDate, fmtDateTime } from '../../lib/format'
 import { nameOf, t as tx } from '../../lib/i18n'
+import { appUrl } from '../../lib/phase8'
 import { StatRow } from '../lands/ListFrame'
 import '../lands/land-list.css'
 import '../irrigation/invoice-detail.css'
@@ -167,7 +168,7 @@ function CollectorView() {
           </ul>
           {done.verify_token && (
             <div className="fc-qr">
-              <QRCode value={`${window.location.origin}/verify/combined/${done.verify_token}`} size={132} bordered={false} />
+              <QRCode value={appUrl(`/verify/combined/${done.verify_token}`)} size={132} bordered={false} />
               <small>{tx('কৃষক এই QR স্ক্যান করে রশিদ যাচাই করতে পারবেন। মোবাইল নম্বর থাকলে SMS-এও রশিদ যাবে।')}</small>
             </div>
           )}

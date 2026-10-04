@@ -31,6 +31,7 @@ import { openProtectedFile } from '../../lib/phase2'
 import { required } from '../../lib/rules'
 import type { Mouza } from '../../lib/types'
 import { nameOf, t as tx } from '../../lib/i18n'
+import { appPath } from '../../lib/phase8'
 import { DashIcon } from '../dashboard/DashIcons'
 import './land-form.css'
 
@@ -711,7 +712,7 @@ function LandForm({ id, existing }: { id?: string; existing?: LandDetail }) {
                 title: 'Land ID',
                 dataIndex: 'land_code',
                 render: (v, m) => (
-                  <a href={`/lands/${m.id}`} target="_blank" rel="noreferrer">
+                  <a href={appPath(`/lands/${m.id}`)} target="_blank" rel="noreferrer">
                     {v}
                   </a>
                 ),

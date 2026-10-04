@@ -84,8 +84,14 @@ export function useAssetFunds() {
   return useQuery({ queryKey: ['asset-funds'], queryFn: async () => (await api.get<ReceiptFund[]>('/assets/funds')).data })
 }
 
+/** An app path with the build's base prepended ("/" live, "/polsha/" on a local XAMPP copy). */
+export const appPath = (path: string) => `${import.meta.env.BASE_URL.replace(/\/$/, '')}${path}`
+
+/** Full URL of an app path — for QR codes and links shared outside the app. */
+export const appUrl = (path: string) => `${window.location.origin}${appPath(path)}`
+
 /** "{origin}/q/{type}/{code}" — what every QR label carries. */
-export const qrUrl = (type: string, code: string) => `${window.location.origin}/q/${type}/${encodeURIComponent(code)}`
+export const qrUrl = (type: string, code: string) => appUrl(`/q/${type}/${encodeURIComponent(code)}`)
 
 /** Reads a scanned text back into type + code; accepts our label URLs, receipt verify URLs or "type:code". */
 export function parseQr(text: string): { type: string; code: string } | null {

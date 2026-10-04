@@ -25,6 +25,7 @@ import { api, applyFormErrors, errorMessage, type Paginated } from '../../lib/ap
 import { digits, fmtDate } from '../../lib/format'
 import { useLandMeta, type LandRow } from '../../lib/land'
 import { nameOf, t as tx } from '../../lib/i18n'
+import { appPath } from '../../lib/phase8'
 import { DashIcon } from '../dashboard/DashIcons'
 import { PlotSketch } from './LandDetailPage'
 import { TRANSFER_STATUS } from './LandTransferPage'
@@ -440,7 +441,7 @@ export default function LandTransferFormPage() {
                       ) : (
                         <div className="lt-new-help">
                           <p>{tx('নতুন কৃষককে আগে নিবন্ধন করুন, তারপর এখানে "নিবন্ধিত কৃষক" থেকে খুঁজে নিন। এই ফর্মের তথ্য হারাবে না — কৃষক ফর্মটি নতুন ট্যাবে খুলবে।')}</p>
-                          <Button icon={<UserAddOutlined />} onClick={() => window.open('/farmers/new', '_blank', 'noopener')}>
+                          <Button icon={<UserAddOutlined />} onClick={() => window.open(appPath('/farmers/new'), '_blank', 'noopener')}>
                             {tx('নতুন কৃষক যোগ করুন')}
                           </Button>
                         </div>

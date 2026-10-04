@@ -9,6 +9,7 @@ import { api, applyFormErrors, errorMessage, type Paginated } from '../../lib/ap
 import { money } from '../../lib/accounting'
 import { digits, fmtDate, fmtDateTime } from '../../lib/format'
 import { nameOf, t as tx } from '../../lib/i18n'
+import { appPath, appUrl } from '../../lib/phase8'
 import ListFrame, { Field, n0 } from '../lands/ListFrame'
 import '../lands/land-list.css'
 import '../farmers/farmer-merge-list.css'
@@ -247,8 +248,8 @@ function SettingsModal({ open, onClose }: { open: boolean; onClose: () => void }
           </Form.Item>
           <p style={{ color: '#888', margin: 0 }}>
             {tx('পাবলিক পাতার ঠিকানা:')}{' '}
-            <a href="/pay" target="_blank" rel="noreferrer">
-              {window.location.origin}/pay
+            <a href={appPath('/pay')} target="_blank" rel="noreferrer">
+              {appUrl('/pay')}
             </a>
           </p>
         </Form>

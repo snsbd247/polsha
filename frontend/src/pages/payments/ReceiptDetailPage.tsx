@@ -13,6 +13,7 @@ import { type Society } from '../../lib/settings'
 import { ReceiptFacts, ReceiptFoot, ReceiptMeta, ReceiptPaper, ReceiptSign, ReceiptTop } from '../../components/PrintParts'
 import { required } from '../../lib/rules'
 import { nameOf, t as tx } from '../../lib/i18n'
+import { appUrl } from '../../lib/phase8'
 import { Box, Fact, KV } from '../irrigation/InvoiceDetailPage'
 import { RECEIPT_TONE } from './ReceiptListPage'
 import '../irrigation/invoices.css'
@@ -122,7 +123,7 @@ export default function ReceiptDetailPage() {
     }
   }
 
-  const verifyUrl = `${window.location.origin}/verify/receipt/${r.verify_token}`
+  const verifyUrl = appUrl(`/verify/receipt/${r.verify_token}`)
   const amount = Number(r.amount)
   const showDue = r.society.show_due !== false
   const invoices = r.items.filter((it) => it.invoice)

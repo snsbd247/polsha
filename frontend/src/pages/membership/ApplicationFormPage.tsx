@@ -37,6 +37,7 @@ import { ReceiptFacts, ReceiptFoot, ReceiptMeta, ReceiptPaper, ReceiptSign, Rece
 import { money as tk } from '../../lib/accounting'
 import { amountInWords } from '../../lib/irrigation'
 import type { Society } from '../../lib/settings'
+import { appPath } from '../../lib/phase8'
 import './application-form.css'
 import '../farmers/farmer-form.css'
 
@@ -468,7 +469,7 @@ export default function ApplicationFormPage() {
                       <div className="ma-farmer-name">
                         <h4>{nameOf(f)}</h4>
                         <span className="ma-pill green">{tx('নিবন্ধিত কৃষক')}</span>
-                        <Button size="small" icon={<EyeOutlined />} className="ma-outline ma-view" onClick={() => window.open(`/farmers/${f.id}`, '_blank')}>
+                        <Button size="small" icon={<EyeOutlined />} className="ma-outline ma-view" onClick={() => window.open(appPath(`/farmers/${f.id}`), '_blank')}>
                           {tx('সম্পূর্ণ প্রোফাইল')}
                         </Button>
                       </div>
