@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { Link, NavLink } from 'react-router-dom'
 import { ConfigProvider } from 'antd'
-import { CalendarOutlined, ControlOutlined, FileTextOutlined, HomeOutlined, MessageOutlined, PictureOutlined, RightOutlined, SafetyCertificateOutlined, SettingOutlined } from '@ant-design/icons'
+import { CalendarOutlined, ControlOutlined, FileTextOutlined, GlobalOutlined, HomeOutlined, MessageOutlined, PictureOutlined, RightOutlined, SafetyCertificateOutlined, SettingOutlined } from '@ant-design/icons'
 import { useAuth } from '../../auth/AuthContext'
 import { t as tx } from '../../lib/i18n'
 import './settings.css'
@@ -13,6 +13,7 @@ const TABS = [
   { to: '/settings/financial-year', icon: <CalendarOutlined />, label: tx('অর্থবছর'), perm: 'settings.admin' },
   { to: '/settings/sms', icon: <MessageOutlined />, label: tx('SMS সেটিংস'), perm: ['settings.admin', 'sms.admin'] },
   { to: '/settings/preferences', icon: <SettingOutlined />, label: tx('সিস্টেম পছন্দসমূহ'), perm: 'settings.admin' },
+  { to: '/settings/website', icon: <GlobalOutlined />, label: tx('ওয়েবসাইট'), perm: 'settings.admin' },
   { to: '/settings/license', icon: <SafetyCertificateOutlined />, label: tx('লাইসেন্স ও ইনস্টলেশন'), perm: 'settings.admin' },
 ]
 

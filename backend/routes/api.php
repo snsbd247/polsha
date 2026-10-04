@@ -60,6 +60,7 @@ use App\Http\Controllers\Api\SmsController;
 use App\Http\Controllers\Api\SystemController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\VoterListController;
+use App\Http\Controllers\Api\WebsiteController;
 use Illuminate\Support\Facades\Route;
 
 // ---- Public ----
@@ -70,6 +71,8 @@ Route::get('public/receipts/{token}', [ReceiptController::class, 'verify'])->mid
 Route::get('public/combined-receipts/{token}', [CombinedPaymentController::class, 'verify'])->middleware('throttle:30,1,receipt-verify');
 Route::post('auth/forgot-password', [PasswordResetController::class, 'forgot'])->middleware('throttle:5,1,forgot-password');
 Route::post('auth/reset-password', [PasswordResetController::class, 'reset'])->middleware('throttle:10,1,reset-password');
+Route::get('public/website', [WebsiteController::class, 'show'])->middleware('throttle:60,1,website');
+Route::get('public/website/images/{name}', [WebsiteController::class, 'image'])->where('name', '[A-Za-z0-9]{40}\.jpg')->middleware('throttle:240,1,website-img');
 Route::get('public/payment-info', [PublicPaymentController::class, 'info'])->middleware('throttle:30,1,pay-info');
 Route::get('public/payments/farmer', [PublicPaymentController::class, 'farmer'])->middleware('throttle:20,1,pay-farmer');
 Route::post('public/payments', [PublicPaymentController::class, 'submit'])->middleware('throttle:5,1,pay-submit');
@@ -144,6 +147,9 @@ Route::middleware(['auth:sanctum', 'usable'])->group(function () {
         Route::delete('settings/images/{slot}', [SettingController::class, 'removeImage'])->whereIn('slot', ['logo', 'signature', 'seal']);
         Route::get('system/license', [SystemController::class, 'license']);
         Route::post('system/license', [SystemController::class, 'installLicense']);
+        Route::get('settings/website', [WebsiteController::class, 'edit']);
+        Route::put('settings/website', [WebsiteController::class, 'update']);
+        Route::post('settings/website/images', [WebsiteController::class, 'upload']);
         Route::get('sequences', [SettingController::class, 'sequences']);
         Route::put('sequences/{sequence}', [SettingController::class, 'updateSequence']);
     });

@@ -56,6 +56,7 @@ const BrandingSettingsPage = lazy(() => import('./pages/settings/BrandingSetting
 const ReceiptSettingsPage = lazy(() => import('./pages/settings/ReceiptSettingsPage'))
 const PreferencesPage = lazy(() => import('./pages/settings/PreferencesPage'))
 const LicensePage = lazy(() => import('./pages/settings/LicensePage'))
+const WebsiteSettingsPage = lazy(() => import('./pages/settings/WebsiteSettingsPage'))
 const LandTypesPage = lazy(() => import('./pages/settings/LandTypesPage'))
 const ChartOfAccountsPage = lazy(() => import('./pages/accounting/ChartOfAccountsPage'))
 const JournalListPage = lazy(() => import('./pages/accounting/JournalListPage'))
@@ -140,6 +141,7 @@ const SmsTemplatesPage = lazy(() => import('./pages/settings/SmsTemplatesPage'))
 const SmsLogsPage = lazy(() => import('./pages/settings/SmsLogsPage'))
 const FinancialYearPage = lazy(() => import('./pages/settings/FinancialYearPage'))
 const PublicPaymentPage = lazy(() => import('./pages/PublicPaymentPage'))
+const LandingPage = lazy(() => import('./pages/site/LandingPage'))
 const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage'))
 
 const ACC_SECTION = { label: tx('হিসাব'), to: '/accounting/summary' }
@@ -167,6 +169,8 @@ function RequireAuth({ children }: { children: ReactNode }) {
   const location = useLocation()
 
   if (loading) return <Spin fullscreen />
+  // visitors at the root see the public website; every other page still asks for a login
+  if (!user && location.pathname === '/') return <LandingPage />
   if (!user) return <Navigate to="/login" replace state={{ from: location.pathname }} />
   if (user.must_change_password) return <Navigate to="/change-password" replace />
   return <>{children}</>
@@ -220,6 +224,7 @@ export default function App() {
       <Route path="/change-password" element={<ChangePasswordPage />} />
       <Route path="/verify/:kind/:token" element={<VerifyReceiptPage />} />
       <Route path="/pay" element={<PublicPaymentPage />} />
+      <Route path="/site" element={<LandingPage />} />
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       <Route
         element={
@@ -270,6 +275,7 @@ export default function App() {
         <Route path="settings/receipt" element={<Perm perm="settings.admin"><ReceiptSettingsPage /></Perm>} />
         <Route path="settings/preferences" element={<Perm perm="settings.admin"><PreferencesPage /></Perm>} />
         <Route path="settings/license" element={<Perm perm="settings.admin"><LicensePage /></Perm>} />
+        <Route path="settings/website" element={<Perm perm="settings.admin"><WebsiteSettingsPage /></Perm>} />
         <Route path="settings/sequences" element={<Perm perm="settings.admin"><SequencePage /></Perm>} />
         <Route path="settings/land-types" element={<Perm perm="settings.admin"><LandTypesPage /></Perm>} />
         <Route path="settings/irrigation-types" element={<Perm perm="settings.admin"><IrrigationTypesPage /></Perm>} />

@@ -1,0 +1,98 @@
+/* Settings → Website */
+.ws .st-card + .st-card {
+  margin-top: 16px;
+}
+.ws-item {
+  border: 1px solid var(--st-border, #e5e7eb);
+  border-radius: 8px;
+  padding: 14px 14px 2px;
+  margin-bottom: 12px;
+  background: #fafbfc;
+}
+.ws-photo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.ws-photo-box {
+  display: grid;
+  place-items: center;
+  width: 120px;
+  height: 90px;
+  flex: none;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #eef1f6;
+  color: #9ca3af;
+  font-size: 26px;
+}
+.ws-photo-box img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.ws-photo-box.ws-round {
+  width: 84px;
+  height: 84px;
+  border-radius: 50%;
+}
+.ws-photo-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-start;
+}
+.ws-person {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+.ws-person-photo .ws-photo {
+  flex-direction: column;
+}
+.ws-person-photo .ws-photo-actions {
+  align-items: center;
+}
+.ws-person-fields {
+  flex: 1;
+  min-width: 0;
+}
+.ws-person-tools {
+  display: flex;
+  flex-direction: column;
+}
+.ws-gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 12px;
+}
+.ws-gallery-item {
+  margin-bottom: 0;
+  padding-bottom: 10px;
+}
+.ws-gallery-item .ws-photo {
+  flex-direction: column;
+  align-items: stretch;
+}
+.ws-gallery-item .ws-photo-box {
+  width: 100%;
+  height: 140px;
+}
+.ws-gallery + .ant-btn {
+  margin-top: 12px;
+}
+.ws-save {
+  position: sticky;
+  bottom: 0;
+  margin-top: 16px;
+  padding: 12px 0;
+  background: linear-gradient(transparent, #fff 30%);
+}
+@media (max-width: 700px) {
+  .ws-person {
+    flex-direction: column;
+  }
+  .ws-person-tools {
+    flex-direction: row;
+  }
+}
