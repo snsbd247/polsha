@@ -9,6 +9,7 @@ use App\Models\PublicPaymentRequest;
 use App\Services\CombinedPaymentService;
 use App\Services\PublicPaymentService;
 use App\Services\SettingService;
+use App\Services\SmsService;
 use App\Support\Bn;
 use App\Support\Tr;
 use Illuminate\Http\JsonResponse;
@@ -50,8 +51,9 @@ class PublicPaymentController extends Controller
     {
         $data = $request->validate(['request_no' => ['required', 'string', 'max:30'], 'mobile' => ['required', 'string', 'max:20']]);
         $req = PublicPaymentRequest::with('combinedPayment:id,payment_no')->where('request_no', trim(Bn::toEnDigits($data['request_no'])))->first();
-        $mobile = preg_replace('/\D/', '', Bn::toEnDigits($data['mobile']));
-        abort_unless($req && str_ends_with(preg_replace('/\D/', '', $req->mobile), substr($mobile, -10)), 404, __('এই নম্বর ও মোবাইলে কোনো অনুরোধ পাওয়া যায়নি।'));
+        // The whole number must match: an empty or partial mobile used to pass the suffix check.
+        $mobile = SmsService::normalize($data['mobile']);
+        abort_unless($req && $mobile && SmsService::normalize($req->mobile) === $mobile, 404, __('এই নম্বর ও মোবাইলে কোনো অনুরোধ পাওয়া যায়নি।'));
 
         return response()->json([
             'request_no' => $req->request_no, 'status' => $req->status, 'status_label' => __(PublicPaymentRequest::STATUSES[$req->status]),

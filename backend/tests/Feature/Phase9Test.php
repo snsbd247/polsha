@@ -119,6 +119,11 @@ class Phase9Test extends Phase2TestCase
         $this->assertSame('BK7X2M9Q1A', $req->trx_id);
         $this->getJson("/api/public/payments/status?request_no={$no}&mobile=01711000000")->assertOk()->assertJsonPath('status', 'pending');
         $this->getJson("/api/public/payments/status?request_no={$no}&mobile=01999999999")->assertNotFound();
+        // an empty or partial number must not slip past the check
+        foreach (['-', '0', '000000', '1711000000'] as $bad) {
+            $this->getJson("/api/public/payments/status?request_no={$no}&mobile={$bad}")->assertNotFound();
+        }
+        $this->getJson("/api/public/payments/status?request_no={$no}&mobile=+8801711000000")->assertOk();
 
         $bank = BankAccount::findOrFail($this->actingAs($this->admin)->postJson('/api/bank-accounts', [
             'bank_name' => 'বিকাশ মার্চেন্ট', 'account_no' => '01700000000', 'account_type' => 'current',
