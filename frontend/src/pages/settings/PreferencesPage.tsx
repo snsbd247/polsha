@@ -115,13 +115,14 @@ export default function PreferencesPage() {
               name="combined_payment_order"
               label={tx('টাকা সমন্বয়ের ক্রম')}
               extra={tx('যে ক্রমে বাছাই করবেন, সেই ক্রমে বকেয়া পরিশোধ হবে; বাকি টাকা সঞ্চয়ে যাবে। আদায়ের সময় প্রয়োজনে বদলানো যায়।')}
-              rules={[{ validator: (_, v?: string[]) => (v?.length === 3 ? Promise.resolve() : Promise.reject(new Error(tx('তিনটিই ক্রম অনুযায়ী বাছাই করুন')))) }]}
+              rules={[{ validator: (_, v?: string[]) => (v?.length === 4 ? Promise.resolve() : Promise.reject(new Error(tx('চারটিই ক্রম অনুযায়ী বাছাই করুন')))) }]}
             >
               <Select
                 mode="multiple"
                 options={[
                   { value: 'loan', label: tx('ঋণ') },
                   { value: 'irrigation', label: tx('সেচ') },
+                  { value: 'water', label: tx('পানি') },
                   { value: 'share', label: tx('শেয়ার') },
                 ]}
               />

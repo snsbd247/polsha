@@ -3,7 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query'
 import dayjs from 'dayjs'
 import { App, Button, Card, Col, DatePicker, Form, Input, Modal, Row, Select, Space, Statistic, Table, Tag } from 'antd'
-import { CloseCircleOutlined, DollarOutlined, DownloadOutlined } from '@ant-design/icons'
+import { CloseCircleOutlined, DollarOutlined, DownloadOutlined, GiftOutlined } from '@ant-design/icons'
 import { useAuth } from '../../auth/AuthContext'
 import { api, errorMessage, type Paginated } from '../../lib/api'
 import { money } from '../../lib/accounting'
@@ -27,6 +27,8 @@ export default function BillsPage() {
   const [cancelling, setCancelling] = useState<WaterBill | null>(null)
   const [busy, setBusy] = useState(false)
   const [form] = Form.useForm<{ reason: string }>()
+  const [waiving, setWaiving] = useState<WaterBill | null>(null)
+  const [waiveForm] = Form.useForm<{ reason: string }>()
   const set = (patch: Partial<Params>) => setParams((p) => ({ ...p, ...patch, page: 1 }))
   const { data: meta } = useWaterMeta()
   const villages = useQuery({ queryKey: ['villages', 'all'], queryFn: async () => (await api.get<LocationItem[]>('/locations/villages', { params: { active_only: 1 } })).data })
@@ -43,6 +45,21 @@ export default function BillsPage() {
       await api.post(`/water/bills/${cancelling.id}/cancel`, { reason })
       message.success(tx('বাতিলের অনুরোধ অনুমোদনের জন্য পাঠানো হয়েছে।'))
       setCancelling(null)
+      queryClient.invalidateQueries({ queryKey: ['water'] })
+    } catch (e) {
+      message.error(errorMessage(e))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const waive = async ({ reason }: { reason: string }) => {
+    if (!waiving) return
+    setBusy(true)
+    try {
+      await api.post(`/water/bills/${waiving.id}/waive-penalty`, { reason })
+      message.success(tx('জরিমানা মওকুফ হয়েছে।'))
+      setWaiving(null)
       queryClient.invalidateQueries({ queryKey: ['water'] })
     } catch (e) {
       message.error(errorMessage(e))
@@ -150,6 +167,18 @@ export default function BillsPage() {
                     aria-label={tx('বাতিল')}
                   />
                 )}
+                {can('water.approve') && b.penalty > 0 && b.due > 0 && (
+                  <Button
+                    size="small"
+                    icon={<GiftOutlined />}
+                    title={tx('জরিমানা মওকুফ')}
+                    onClick={() => {
+                      waiveForm.resetFields()
+                      setWaiving(b)
+                    }}
+                    aria-label={tx('জরিমানা মওকুফ')}
+                  />
+                )}
               </Space>
             ),
           },
@@ -166,6 +195,24 @@ export default function BillsPage() {
       >
         <p style={{ color: '#888' }}>{tx('ম্যানেজার অনুমোদন দিলে বিল বাতিল হবে ও হিসাবের খাতায় উল্টো এন্ট্রি হবে।')}</p>
         <Form form={form} layout="vertical" onFinish={requestCancel}>
+          <Form.Item name="reason" label={tx('কারণ')} rules={[{ required: true, message: tx('কারণ লিখুন') }]}>
+            <Input.TextArea rows={2} maxLength={300} />
+          </Form.Item>
+        </Form>
+      </Modal>
+      <Modal
+        open={!!waiving}
+        title={tx('জরিমানা মওকুফ — {{p0}}', { p0: digits(waiving?.bill_no ?? '') })}
+        onCancel={() => setWaiving(null)}
+        onOk={() => waiveForm.submit()}
+        confirmLoading={busy}
+        okText={tx('মওকুফ করুন')}
+        destroyOnHidden
+      >
+        <p style={{ color: '#888' }}>
+          {tx('এই বিলে অপরিশোধিত জরিমানা ৳{{p0}} মওকুফ হবে; আগে আদায় হওয়া টাকা বদলাবে না।', { p0: money(Math.min(waiving?.penalty ?? 0, waiving?.due ?? 0)) })}
+        </p>
+        <Form form={waiveForm} layout="vertical" onFinish={waive}>
           <Form.Item name="reason" label={tx('কারণ')} rules={[{ required: true, message: tx('কারণ লিখুন') }]}>
             <Input.TextArea rows={2} maxLength={300} />
           </Form.Item>

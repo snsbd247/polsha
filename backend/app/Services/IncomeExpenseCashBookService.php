@@ -29,7 +29,10 @@ class IncomeExpenseCashBookService
     /** @return array<string, mixed> */
     public function build(string $stream, string $from, string $to): array
     {
-        $irrigation = $stream === 'irrigation';
+        // irrigation and water collect their own bills; their book has one collection column
+        $billed = ['irrigation' => ['irrigation_receivable', 'irrigation_income', 'cash_field'],
+            'water' => ['water_receivable', 'water_income', 'water_penalty_income', 'water_connection_fee_income', 'cash_field']][$stream] ?? null;
+        $irrigation = $billed !== null;
         $cash = Account::whereIn('key', IrrigationCashStatementService::STREAMS[$stream])->pluck('id')->flip();
         $banks = BankAccount::pluck('account_id')->flip();
         $keyOf = Account::whereNotNull('key')->pluck('key', 'id');
@@ -39,18 +42,18 @@ class IncomeExpenseCashBookService
 
         // fixed heads per side, in the order the book shows them
         $fixed = $irrigation
-            ? ['income' => ['irrigation' => __('সেচ চার্জ'), 'bank' => __('ব্যাংক থেকে উত্তোলন'), 'transfer' => __('অন্য তহবিল থেকে')],
+            ? ['income' => [$stream => $stream === 'water' ? __('পানির বিল') : __('সেচ চার্জ'), 'bank' => __('ব্যাংক থেকে উত্তোলন'), 'transfer' => __('অন্য তহবিল থেকে')],
                 'expense' => ['bank' => __('নগদ ব্যাংকে জমা'), 'transfer' => __('অন্য তহবিলে')]]
             : ['income' => ['share' => __('শেয়ার'), 'savings' => __('সঞ্চয় জমা'), 'bank' => __('ব্যাংক থেকে উত্তোলন'), 'loan' => __('ঋণ আদায় (আসল)'),
                 'interest' => __('ঋণের সুদ ও জরিমানা'), 'admission' => __('ভর্তি ফি'), 'field' => __('মাঠ-আদায় জমা'), 'transfer' => __('অন্য তহবিল থেকে')],
                 'expense' => ['refund' => __('সঞ্চয়/শেয়ার ফেরত'), 'bank' => __('নগদ ব্যাংকে জমা'), 'loan' => __('ঋণ বিতরণ'), 'transfer' => __('অন্য তহবিলে')]];
-        $head = function (int $accountId, string $side) use ($irrigation, $banks, $keyOf, $others): string {
+        $head = function (int $accountId, string $side) use ($irrigation, $billed, $stream, $banks, $keyOf, $others): string {
             $key = $keyOf[$accountId] ?? null;
 
             return match (true) {
                 isset($banks[$accountId]) => 'bank',
                 isset($others[$accountId]) => 'transfer',
-                $irrigation && in_array($key, ['irrigation_receivable', 'irrigation_income', 'cash_field'], true) => 'irrigation',
+                $irrigation && in_array($key, $billed, true) => $stream,
                 ! $irrigation && $key === 'cash_field' => 'field',
                 ! $irrigation && in_array($key, ['savings_deposits', 'share_capital'], true) && $side === 'expense' => 'refund',
                 ! $irrigation && $key === 'savings_deposits' => 'savings',

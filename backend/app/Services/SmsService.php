@@ -132,6 +132,21 @@ class SmsService
                 }
             });
 
+        // water bills falling due that day, one message per tap
+        DB::table('water_bills')->join('water_connections', 'water_connections.id', '=', 'water_bills.connection_id')
+            ->whereIn('water_bills.status', ['unpaid', 'partial'])->whereDate('water_bills.due_date', $day)->whereNotNull('water_connections.mobile')
+            ->where('water_connections.status', '!=', 'closed')
+            ->groupBy('water_connections.id', 'water_connections.name_bn', 'water_connections.mobile', 'water_connections.connection_no')
+            ->selectRaw('water_connections.name_bn, water_connections.mobile, water_connections.connection_no,
+                SUM(water_bills.amount + water_bills.penalty - water_bills.paid_amount) as due')
+            ->get()->each(function ($r) use ($day, &$count) {
+                if ($r->due > 0 && $this->queue('water_due', $r->mobile, [
+                    'name' => $r->name_bn, 'connection_no' => $r->connection_no, 'amount' => number_format((float) $r->due, 2), 'due_date' => date('d/m/Y', strtotime($day)),
+                ])) {
+                    $count++;
+                }
+            });
+
         DB::table('loan_installments')->join('loans', 'loans.id', '=', 'loan_installments.loan_id')
             ->join('members', 'members.id', '=', 'loans.member_id')->join('farmers', 'farmers.id', '=', 'members.farmer_id')
             ->where('loans.status', 'active')->whereDate('loan_installments.due_date', $day)->whereNotNull('farmers.mobile')

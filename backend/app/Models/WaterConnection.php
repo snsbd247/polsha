@@ -15,8 +15,8 @@ class WaterConnection extends Model
     protected string $auditModule = 'water';
 
     protected $fillable = [
-        'connection_no', 'type_id', 'name_bn', 'name_en', 'father_name', 'mobile', 'nid', 'village_id', 'address',
-        'monthly_fee', 'connected_on', 'status', 'status_date', 'status_reason', 'remarks', 'created_by',
+        'connection_no', 'type_id', 'farmer_id', 'name_bn', 'name_en', 'father_name', 'mobile', 'nid', 'village_id', 'address',
+        'monthly_fee', 'connected_on', 'status', 'status_date', 'status_reason', 'remarks', 'created_by', 'import_batch_id',
     ];
 
     protected $casts = ['monthly_fee' => 'decimal:2', 'connected_on' => 'date:Y-m-d', 'status_date' => 'date:Y-m-d'];
@@ -24,6 +24,12 @@ class WaterConnection extends Model
     public function type()
     {
         return $this->belongsTo(WaterConnectionType::class, 'type_id');
+    }
+
+    /** When the customer is a registered farmer: the counter and field collection take this tap's bills with the farmer's other dues. */
+    public function farmer()
+    {
+        return $this->belongsTo(Farmer::class)->withTrashed();
     }
 
     public function village()

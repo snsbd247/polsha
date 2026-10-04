@@ -26,11 +26,11 @@ type Book = {
   opening: number
   closing: number
 }
-export type BookStream = 'society' | 'irrigation'
+export type BookStream = 'society' | 'irrigation' | 'water'
 type Which = 'both' | 'income' | 'expense'
 
 const PER_PAGE = 25
-const TITLE: Record<BookStream, string> = { society: tx('আয়-ব্যয় নগদ বই (সমিতি)'), irrigation: tx('সেচের আয়-ব্যয় নগদ বই') }
+const TITLE: Record<BookStream, string> = { society: tx('আয়-ব্যয় নগদ বই (সমিতি)'), irrigation: tx('সেচের আয়-ব্যয় নগদ বই'), water: tx('পানির আয়-ব্যয় নগদ বই') }
 const amt = (v: number | undefined) => (v ? money(v) : '')
 
 /**

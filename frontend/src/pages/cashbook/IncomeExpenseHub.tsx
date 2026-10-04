@@ -15,10 +15,11 @@ export default function IncomeExpenseHub() {
       items={[
         { key: 'society', label: tx('সমিতির আয়-ব্যয় নগদ বই') },
         { key: 'irrigation', label: tx('সেচের আয়-ব্যয় নগদ বই') },
+        { key: 'water', label: tx('পানির আয়-ব্যয় নগদ বই') },
         { key: 'list', label: tx('সব আয়-ব্যয় এন্ট্রি') },
       ]}
     />
   )
   if (view === 'list') return <IncomeExpenseBookPage tabs={tabs} />
-  return <CashBookSheetPage key={view} stream={view === 'irrigation' ? 'irrigation' : 'society'} tabs={tabs} />
+  return <CashBookSheetPage key={view} stream={view === 'irrigation' || view === 'water' ? view : 'society'} tabs={tabs} />
 }

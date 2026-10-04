@@ -13,6 +13,8 @@ use App\Models\MemberAccount;
 use App\Models\MemberTransaction;
 use App\Models\Receipt;
 use App\Models\ReceiptItem;
+use App\Models\WaterBill;
+use App\Models\WaterConnection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -53,6 +55,7 @@ class ImportRollbackService
             'loan_opening' => $this->loanBlockers($batch),
             'legacy_irrigation' => $this->invoiceBlockers($batch),
             'payments' => $this->paymentBlockers($batch),
+            'water_connections' => $this->waterBlockers($batch),
             default => [__('অজানা ইমপোর্ট ধরন')],
         };
 
@@ -105,6 +108,7 @@ class ImportRollbackService
                 'loan_opening' => $this->undoLoans($batch, $reason),
                 'legacy_irrigation' => $this->undoInvoices($batch, $reason),
                 'payments' => $this->undoPayments($batch, $reason),
+                'water_connections' => $this->undoWater($batch, $reason),
             };
             $batch->update(['status' => 'rolled_back', 'rolled_back_at' => now(), 'rolled_back_by' => auth()->id()]);
             AuditLogger::log('import', 'rollback', $batch, null, ['type' => $batch->type, 'rows' => $batch->imported_rows, 'reason' => $batch->rollback_reason]);
@@ -245,6 +249,28 @@ class ImportRollbackService
             $loan->schedule()->delete();
             $loan->update(['status' => 'cancelled', 'closed_on' => null, 'remarks' => mb_substr(trim($loan->remarks.' | '.$reason, ' |'), 0, 500)]);
         }
+    }
+
+    /** Imported taps that have since been billed or paid stay: undoing them would leave those records hanging. */
+    private function waterBlockers(ImportBatch $batch): array
+    {
+        $taps = WaterConnection::where('import_batch_id', $batch->id)->pluck('connection_no', 'id');
+        $billed = WaterBill::whereIn('connection_id', $taps->keys())->where('status', '!=', 'cancelled')
+            ->where(fn ($q) => $q->whereNull('import_batch_id')->orWhere('paid_amount', '>', 0))->get(['connection_id', 'bill_no']);
+
+        return $billed->map(fn ($b) => __('সংযোগ :c — বিল :b ইমপোর্টের পরে তৈরি বা আদায় হয়েছে', ['c' => $taps[$b->connection_id], 'b' => $b->bill_no]))->all();
+    }
+
+    /** The old-due vouchers are reversed and the taps closed (their numbers are not given again). */
+    private function undoWater(ImportBatch $batch, string $reason): void
+    {
+        foreach (WaterBill::with('journal')->where('import_batch_id', $batch->id)->where('status', '!=', 'cancelled')->get() as $bill) {
+            if ($bill->journal && $bill->journal->status === 'posted') {
+                $this->ledger->reverse($bill->journal, $reason);
+            }
+            $bill->update(['status' => 'cancelled', 'cancelled_at' => now(), 'cancelled_by' => auth()->id(), 'cancel_reason' => mb_substr($reason, 0, 300)]);
+        }
+        WaterConnection::where('import_batch_id', $batch->id)->update(['status' => 'closed', 'status_date' => now()->toDateString(), 'status_reason' => mb_substr($reason, 0, 300)]);
     }
 
     private function undoInvoices(ImportBatch $batch, string $reason): void

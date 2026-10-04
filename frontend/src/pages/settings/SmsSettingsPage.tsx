@@ -15,6 +15,7 @@ type SmsSettings = {
   sms_auto_payment: boolean
   sms_auto_savings: boolean
   sms_reminders: boolean
+  sms_water_bill: boolean
   sms_reminder_days: number
   sms_api_key_set: boolean
   configured: boolean
@@ -119,8 +120,11 @@ export default function SmsSettingsPage() {
           <Form.Item name="sms_auto_savings" valuePropName="checked" style={{ marginBottom: 8 }}>
             <Checkbox>{tx('সঞ্চয় জমা/উত্তোলনে এসএমএস')}</Checkbox>
           </Form.Item>
+          <Form.Item name="sms_water_bill" valuePropName="checked" style={{ marginBottom: 8 }}>
+            <Checkbox>{tx('মাসিক পানির বিল তৈরি হলে গ্রাহককে এসএমএস')}</Checkbox>
+          </Form.Item>
           <Form.Item name="sms_reminders" valuePropName="checked" style={{ marginBottom: 8 }}>
-            <Checkbox>{tx('কিস্তির তারিখের আগে রিমাইন্ডার')}</Checkbox>
+            <Checkbox>{tx('কিস্তি ও বিলের শেষ তারিখের আগে রিমাইন্ডার (সেচ, পানি, ঋণ)')}</Checkbox>
           </Form.Item>
           <Form.Item name="sms_reminder_days" label={tx('কত দিন আগে রিমাইন্ডার')}>
             <InputNumber min={0} max={30} />

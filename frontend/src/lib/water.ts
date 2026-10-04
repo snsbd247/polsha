@@ -21,6 +21,9 @@ export type WaterConnection = {
   id: number
   connection_no: string
   type_id: number
+  /** set when the customer is a registered farmer */
+  farmer_id: number | null
+  farmer?: { id: number; farmer_code: string; name_bn?: string; name_en?: string | null } | null
   name_bn: string
   name_en: string | null
   father_name: string | null
@@ -57,7 +60,7 @@ export type WaterBill = {
   id: number
   bill_no: string
   connection_id: number
-  kind: 'monthly' | 'connection' | 'reconnection'
+  kind: 'monthly' | 'connection' | 'reconnection' | 'opening'
   period: string | null
   bill_date: string
   due_date: string | null
@@ -94,6 +97,7 @@ export function monthLabel(period?: string | null): string {
 /** What a bill is for: the month of a monthly bill, else the fee's name. */
 export function billLabel(b: { kind: string; period: string | null }): string {
   if (b.kind === 'monthly') return monthLabel(b.period)
+  if (b.kind === 'opening') return tx('পুরনো বকেয়া')
   return b.kind === 'connection' ? tx('সংযোগ ফি') : tx('পুনঃসংযোগ ফি')
 }
 

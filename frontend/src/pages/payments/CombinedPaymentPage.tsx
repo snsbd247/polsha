@@ -24,7 +24,7 @@ import '../savings/savings.css'
 import '../loans/loans.css'
 import './collect.css'
 
-const MODULE_NAME: Record<CombinedModule, string> = { loan: tx('ঋণ'), irrigation: tx('সেচ'), share: tx('শেয়ার'), savings: tx('সঞ্চয়') }
+const MODULE_NAME: Record<CombinedModule, string> = { loan: tx('ঋণ'), irrigation: tx('সেচ'), water: tx('পানি'), share: tx('শেয়ার'), savings: tx('সঞ্চয়') }
 
 function Section({ no, icon, title, children, extra }: { no: number; icon: ReactNode; title: string; children: ReactNode; extra?: ReactNode }) {
   return (
@@ -76,16 +76,17 @@ export default function CombinedPaymentPage({ tabs }: { tabs?: ReactNode }) {
   const funds = useQuery({ queryKey: ['receipt-funds'], queryFn: async () => (await api.get<ReceiptFund[]>('/receipts/funds')).data })
   const q = farmerId ? quote.data : undefined
   const auto = q?.allocation.parts
-  const parts: Record<CombinedModule, number> = { loan: 0, irrigation: 0, share: 0, savings: 0, ...(auto ?? {}), ...(manual ?? {}) }
+  const parts: Record<CombinedModule, number> = { loan: 0, irrigation: 0, water: 0, share: 0, savings: 0, ...(auto ?? {}), ...(manual ?? {}) }
   const partsSum = round2(COMBINED_MODULES.reduce((s, m) => s + (parts[m] || 0), 0))
   const gap = round2((amount ?? 0) - partsSum)
   const limits: Record<CombinedModule, number | undefined> = {
     loan: q?.loan?.payable ? q.loan.payoff : 0,
     irrigation: q?.irrigation.due ?? 0,
+    water: q?.water?.due ?? 0,
     share: q?.member_active ? undefined : 0,
     savings: q?.member_active ? undefined : 0,
   }
-  const totalDue = q ? round2((q.loan?.payable ? q.loan.due_now : 0) + q.irrigation.due + q.share.due) : 0
+  const totalDue = q ? round2((q.loan?.payable ? q.loan.due_now : 0) + q.irrigation.due + (q.water?.due ?? 0) + q.share.due) : 0
 
   const pickFarmer = (id: number | null) => {
     setFarmerId(id)
@@ -148,6 +149,7 @@ export default function CombinedPaymentPage({ tabs }: { tabs?: ReactNode }) {
     if (!q) return ''
     if (m === 'loan') return q.loan ? (q.loan.payable ? tx('কিস্তি বকেয়া ৳{{p0}} (সম্পূর্ণ পরিশোধ ৳{{p1}})', { p0: money(q.loan.due_now), p1: money(q.loan.payoff) }) : tx('ঋণ এখনো বিতরণ হয়নি')) : tx('চলমান ঋণ নেই')
     if (m === 'irrigation') return q.irrigation.invoices.length ? tx('{{p0}}টি ইনভয়েস, বকেয়া ৳{{p1}}', { p0: digits(q.irrigation.invoices.length), p1: money(q.irrigation.due) }) : tx('কোনো বকেয়া নেই')
+    if (m === 'water') return q.water?.bills.length ? tx('{{p0}}টি পানির বিল, বকেয়া ৳{{p1}}', { p0: digits(q.water.bills.length), p1: money(q.water.due) }) : tx('কোনো বকেয়া নেই')
     if (m === 'share') return q.member_active ? tx('জমা ৳{{p0}}, ন্যূনতম ৳{{p1}}', { p0: money(q.share.balance), p1: money(q.share.min) }) : tx('সক্রিয় সদস্য নন')
     return q.member_active ? tx('বর্তমান জমা ৳{{p0}}', { p0: money(q.savings.balance) }) : tx('সক্রিয় সদস্য নন')
   }

@@ -113,16 +113,16 @@ class Phase8Test extends Phase2TestCase
     {
         $farmer = $this->payer();
         $q = $this->actingAs($this->cashier)->getJson("/api/combined-payments/quote?farmer_id={$farmer->id}&amount=3000")->assertOk();
-        $this->assertSame(['loan', 'irrigation', 'share'], $q->json('order'));
+        $this->assertSame(['loan', 'irrigation', 'water', 'share'], $q->json('order'));
         $this->assertEquals(1120, $q->json('loan.due_now'));
         $this->assertEquals(330, $q->json('irrigation.due'));
         $this->assertEquals(1000, $q->json('share.due'));
-        $this->assertEquals(['loan' => 1120, 'irrigation' => 330, 'share' => 1000, 'savings' => 550], $q->json('allocation.parts'));
+        $this->assertEquals(['loan' => 1120, 'irrigation' => 330, 'water' => 0, 'share' => 1000, 'savings' => 550], $q->json('allocation.parts'));
 
         // the configured order decides who gets paid when money is short
         SettingService::setMany(['combined_payment_order' => ['irrigation', 'share', 'loan']]);
         $short = $this->actingAs($this->cashier)->getJson("/api/combined-payments/quote?farmer_id={$farmer->id}&amount=1000")->json('allocation.parts');
-        $this->assertEquals(['loan' => 0, 'irrigation' => 330, 'share' => 670, 'savings' => 0], $short);
+        $this->assertEquals(['loan' => 0, 'irrigation' => 330, 'water' => 0, 'share' => 670, 'savings' => 0], $short);
         SettingService::setMany(['combined_payment_order' => ['loan', 'irrigation', 'share']]);
 
         // a manual split must add up and respect each module's limit

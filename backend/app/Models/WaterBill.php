@@ -17,7 +17,7 @@ class WaterBill extends Model implements Payable
 {
     use Auditable;
 
-    public const KINDS = ['monthly' => 'মাসিক বিল', 'connection' => 'সংযোগ ফি', 'reconnection' => 'পুনঃসংযোগ ফি'];
+    public const KINDS = ['monthly' => 'মাসিক বিল', 'connection' => 'সংযোগ ফি', 'reconnection' => 'পুনঃসংযোগ ফি', 'opening' => 'পুরনো বকেয়া'];
 
     public const STATUSES = ['unpaid' => 'অপরিশোধিত', 'partial' => 'আংশিক পরিশোধিত', 'paid' => 'পরিশোধিত', 'cancelled' => 'বাতিল'];
 
@@ -27,7 +27,7 @@ class WaterBill extends Model implements Payable
 
     protected $fillable = [
         'bill_no', 'connection_id', 'kind', 'period', 'bill_date', 'due_date', 'amount', 'penalty', 'paid_amount', 'status',
-        'snapshot', 'journal_id', 'created_by', 'cancelled_at', 'cancelled_by', 'cancel_reason',
+        'snapshot', 'journal_id', 'created_by', 'cancelled_at', 'cancelled_by', 'cancel_reason', 'import_batch_id',
     ];
 
     protected $casts = [

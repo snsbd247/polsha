@@ -13,6 +13,7 @@ use App\Models\Member;
 use App\Models\MemberAccount;
 use App\Models\MemberTransaction;
 use App\Models\Receipt;
+use App\Models\WaterBill;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -27,7 +28,7 @@ use Illuminate\Validation\ValidationException;
 class CombinedPaymentService
 {
     /** Modules that have a "due" and are settled in the configured order; savings takes whatever is left. */
-    public const DUE_MODULES = ['loan', 'irrigation', 'share'];
+    public const DUE_MODULES = ['loan', 'irrigation', 'water', 'share'];
 
     public function __construct(
         private LoanService $loans,
@@ -52,6 +53,7 @@ class CombinedPaymentService
         $position = $loan && $date >= $loan->disbursed_on->toDateString() ? $this->loans->position($loan, $date) : null;
         $invoices = Invoice::where('farmer_id', $farmer->id)->whereIn('status', ['unpaid', 'partial'])
             ->with('season:id,name_bn')->orderBy('invoice_date')->orderBy('id')->get();
+        $water = $this->waterBills($farmer)->get();
         $accounts = $member ? MemberAccount::where('member_id', $member->id)->get()->keyBy('kind') : collect();
         $shareMin = (float) SettingService::get('share_min_amount', 0);
         $shareBalance = (float) ($accounts['share']->balance ?? 0);
@@ -70,6 +72,12 @@ class CombinedPaymentService
                 'invoices' => $invoices->map(fn (Invoice $i) => ['id' => $i->id, 'invoice_no' => $i->invoice_no,
                     'season' => $i->season ? ['name_bn' => $i->season->name_bn, 'name_en' => $i->season->name_en] : null, 'due' => $i->dueAmount()])->values(),
             ],
+            // the bills of water connections that belong to this farmer
+            'water' => [
+                'due' => round($water->sum(fn (WaterBill $b) => $b->dueAmount()), 2),
+                'bills' => $water->map(fn (WaterBill $b) => ['id' => $b->id, 'bill_no' => $b->bill_no, 'connection_no' => $b->snapshot['connection_no'] ?? null,
+                    'kind' => $b->kind, 'period' => $b->period, 'due' => $b->dueAmount()])->values(),
+            ],
             'share' => [
                 'account_no' => $accounts['share']->account_no ?? null, 'balance' => $shareBalance, 'min' => $shareMin,
                 'due' => $active ? max(0.0, round($shareMin - $shareBalance, 2)) : 0.0,
@@ -83,10 +91,11 @@ class CombinedPaymentService
     public function allocate(array $dues, float $amount): array
     {
         $left = (int) round($amount * 100);
-        $parts = ['loan' => 0.0, 'irrigation' => 0.0, 'share' => 0.0, 'savings' => 0.0];
+        $parts = ['loan' => 0.0, 'irrigation' => 0.0, 'water' => 0.0, 'share' => 0.0, 'savings' => 0.0];
         $due = [
             'loan' => ($dues['loan']['payable'] ?? false) ? (float) $dues['loan']['due_now'] : 0.0,
             'irrigation' => (float) $dues['irrigation']['due'],
+            'water' => (float) ($dues['water']['due'] ?? 0),
             'share' => (float) $dues['share']['due'],
         ];
         foreach ($dues['order'] as $m) {
@@ -137,6 +146,7 @@ class CombinedPaymentService
                 [$source, $label] = match ($module) {
                     'loan' => $this->payLoan($dues, $money + ['amount' => $value]),
                     'irrigation' => $this->payIrrigation($farmer, $money, $value),
+                    'water' => $this->payWater($farmer, $money, $value),
                     default => $this->payFund($member, $module, $money + ['amount' => $value]),
                 };
                 $combined->parts()->create([
@@ -257,6 +267,9 @@ class CombinedPaymentService
         if ($parts['irrigation'] > (float) $dues['irrigation']['due']) {
             throw ValidationException::withMessages(['parts.irrigation' => __('সেচের মোট বকেয়া :amount টাকা।', ['amount' => number_format($dues['irrigation']['due'], 2)])]);
         }
+        if ($parts['water'] > (float) ($dues['water']['due'] ?? 0)) {
+            throw ValidationException::withMessages(['parts.water' => __('পানির বিলের মোট বকেয়া :amount টাকা।', ['amount' => number_format($dues['water']['due'] ?? 0, 2)])]);
+        }
         foreach (['share', 'savings'] as $m) {
             if ($parts[$m] > 0 && ! $dues['member_active']) {
                 throw ValidationException::withMessages(["parts.$m" => __('শুধু সক্রিয় সদস্যের শেয়ার/সঞ্চয়ে জমা নেওয়া যায়।')]);
@@ -288,6 +301,30 @@ class CombinedPaymentService
         $receipt = $this->receipts->create(['module' => 'irrigation', 'farmer_id' => $farmer->id, 'payer_name' => $farmer->name_bn] + $money, $items);
 
         return [$receipt, __('সেচ চার্জ — রশিদ :no', ['no' => $receipt->receipt_no])];
+    }
+
+    /** Water bills of the farmer's connections, oldest first, as one water receipt. */
+    private function payWater(Farmer $farmer, array $money, float $value): array
+    {
+        $left = (int) round($value * 100);
+        $items = [];
+        foreach ($this->waterBills($farmer)->lockForUpdate()->get() as $bill) {
+            $take = min($left, (int) round($bill->dueAmount() * 100));
+            if ($take > 0) {
+                $items[] = ['payable' => $bill, 'amount' => $take / 100];
+                $left -= $take;
+            }
+        }
+        $receipt = $this->receipts->create(['module' => 'water', 'farmer_id' => $farmer->id, 'payer_name' => $farmer->name_bn] + $money, $items);
+
+        return [$receipt, __('পানির বিল — রশিদ :no', ['no' => $receipt->receipt_no])];
+    }
+
+    private function waterBills(Farmer $farmer)
+    {
+        return WaterBill::whereIn('status', ['unpaid', 'partial'])
+            ->whereHas('connection', fn ($c) => $c->where('farmer_id', $farmer->id))
+            ->orderBy('bill_date')->orderBy('id');
     }
 
     private function payFund(Member $member, string $kind, array $data): array

@@ -11,7 +11,7 @@ class CombinedPayment extends Model
     use Auditable;
 
     /** Modules a combined payment can pay into, in their default settlement order. */
-    public const MODULES = ['loan' => 'ঋণ', 'irrigation' => 'সেচ', 'share' => 'শেয়ার', 'savings' => 'সঞ্চয়'];
+    public const MODULES = ['loan' => 'ঋণ', 'irrigation' => 'সেচ', 'water' => 'পানি', 'share' => 'শেয়ার', 'savings' => 'সঞ্চয়'];
 
     public const STATUSES = ['posted' => 'বৈধ', 'cancel_pending' => 'বাতিলের অপেক্ষায়', 'cancelled' => 'বাতিল'];
 

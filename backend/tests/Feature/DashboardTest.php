@@ -22,7 +22,7 @@ class DashboardTest extends TestCase
         $keys = collect($res->json('kpis'))->pluck('key')->all();
         $this->assertSame([
             'farmers', 'member_farmers', 'non_member_farmers', 'land',
-            'irrigation_invoices', 'irrigation_collection', 'irrigation_due', 'savings',
+            'irrigation_invoices', 'irrigation_collection', 'irrigation_due', 'water_collection', 'water_due', 'savings',
             'loans', 'share', 'cash', 'bank', 'assets',
         ], $keys);
         $res->assertJsonStructure([
@@ -32,7 +32,7 @@ class DashboardTest extends TestCase
         ]);
         $this->assertCount(40, $res->json('collection.days'));
         $this->assertSame(
-            ['irrigation_due_30', 'loan_overdue', 'membership', 'withdrawals', 'bank_recon', 'maintenance'],
+            ['irrigation_due_30', 'water_owing', 'loan_overdue', 'membership', 'withdrawals', 'bank_recon', 'maintenance'],
             collect($res->json('notices'))->pluck('key')->all(),
         );
 

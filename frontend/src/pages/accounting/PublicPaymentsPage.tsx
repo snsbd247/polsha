@@ -38,6 +38,9 @@ type Req = {
   verifier: Named
   verified_at: string | null
   combined_payment: { id: number; payment_no: string } | null
+  /** a water bill paid with the connection number */
+  water_connection: (Named & { connection_no: string }) | null
+  receipt: { id: number; receipt_no: string } | null
   created_at: string
 }
 type ListResp = Paginated<Req> & {
@@ -45,21 +48,23 @@ type ListResp = Paginated<Req> & {
   statuses: Record<string, string>
   methods: Record<string, string>
 }
-type Parts = { loan: number; irrigation: number; share: number; savings: number }
+type Parts = { loan: number; irrigation: number; water: number; share: number; savings: number }
 type Detail = Req & {
   dues?: {
     member_active: boolean
     loan: { loan_no: string; due_now: number; payable: boolean } | null
     irrigation: { due: number }
+    water?: { due: number }
     share: { due: number }
     savings: { account_no: string | null }
   }
+  water_dues?: { due: number; bills: { id: number; bill_no: string; kind: string; period: string | null; due: number }[] }
   allocation?: { parts: Parts; unallocated: number }
   duplicate_trx: string[]
   funds: { id: number; code: string; name_bn: string; name_en: string | null; bank_account: { bank_name: string; account_no: string } | null }[]
 }
 
-const PART_LABEL: Record<keyof Parts, string> = { loan: tx('ঋণের কিস্তি'), irrigation: tx('সেচের বকেয়া'), share: tx('শেয়ার'), savings: tx('সঞ্চয়') }
+const PART_LABEL: Record<keyof Parts, string> = { loan: tx('ঋণের কিস্তি'), irrigation: tx('সেচের বকেয়া'), water: tx('পানির বিল'), share: tx('শেয়ার'), savings: tx('সঞ্চয়') }
 
 function DetailDrawer({ id, meta, onClose, onDone }: { id: number | null; meta?: ListResp; onClose: () => void; onDone: () => void }) {
   const { message } = App.useApp()
@@ -75,10 +80,10 @@ function DetailDrawer({ id, meta, onClose, onDone }: { id: number | null; meta?:
   })
   const canAct = can(['payment.create', 'payment.approve']) && data?.status === 'pending'
 
-  const verify = async (v: { fund_account_id: number; parts: Parts }) => {
+  const verify = async (v: { fund_account_id: number; parts?: Parts; amount?: number }) => {
     setBusy(true)
     try {
-      await api.post(`/public-payments/${id}/verify`, { fund_account_id: v.fund_account_id, parts: v.parts })
+      await api.post(`/public-payments/${id}/verify`, { fund_account_id: v.fund_account_id, parts: v.parts, amount: v.amount })
       message.success(tx('যাচাই হয়েছে; রশিদ তৈরি হয়েছে ও SMS পাঠানো হয়েছে।'))
       onDone()
     } catch (e) {
@@ -112,15 +117,23 @@ function DetailDrawer({ id, meta, onClose, onDone }: { id: number | null; meta?:
             <Descriptions.Item label={tx('অবস্থা')}>
               <Tag className={`fl-tag ${STATUS_TONE[data.status] ?? 'll-gray'}`}>{meta?.statuses[data.status] ?? data.status}</Tag>
             </Descriptions.Item>
-            <Descriptions.Item label={tx('কৃষক')}>
-              {data.farmer ? (
-                <Link to={`/farmers/${data.farmer.id}`}>
-                  {digits(data.farmer.farmer_code)} — {nameOf(data.farmer)}
+            {data.water_connection ? (
+              <Descriptions.Item label={tx('পানির সংযোগ')}>
+                <Link to={`/water/connections/${data.water_connection.id}`}>
+                  {digits(data.water_connection.connection_no)} — {nameOf(data.water_connection)}
                 </Link>
-              ) : (
-                digits(data.farmer_code)
-              )}
-            </Descriptions.Item>
+              </Descriptions.Item>
+            ) : (
+              <Descriptions.Item label={tx('কৃষক')}>
+                {data.farmer ? (
+                  <Link to={`/farmers/${data.farmer.id}`}>
+                    {digits(data.farmer.farmer_code)} — {nameOf(data.farmer)}
+                  </Link>
+                ) : (
+                  digits(data.farmer_code)
+                )}
+              </Descriptions.Item>
+            )}
             <Descriptions.Item label={tx('প্রদানকারী')}>{data.payer_name}</Descriptions.Item>
             <Descriptions.Item label={tx('মোবাইল')}>{digits(data.mobile)}</Descriptions.Item>
             <Descriptions.Item label={tx('মাধ্যম')}>{meta?.methods[data.method] ?? data.method}</Descriptions.Item>
@@ -142,8 +155,49 @@ function DetailDrawer({ id, meta, onClose, onDone }: { id: number | null; meta?:
                 <Link to={`/payments/combined/${data.combined_payment.id}`}>{digits(data.combined_payment.payment_no)}</Link>
               </Descriptions.Item>
             )}
+            {data.receipt && (
+              <Descriptions.Item label={tx('রশিদ')}>
+                <Link to={`/water/receipts/${data.receipt.id}`}>{digits(data.receipt.receipt_no)}</Link>
+              </Descriptions.Item>
+            )}
             {data.reject_reason && <Descriptions.Item label={tx('প্রত্যাখ্যানের কারণ')}>{data.reject_reason}</Descriptions.Item>}
           </Descriptions>
+
+          {canAct && data.water_dues && (
+            <Form
+              form={form}
+              layout="vertical"
+              style={{ marginTop: 16 }}
+              onFinish={verify}
+              initialValues={{ amount: Math.min(Number(data.amount), data.water_dues.due), fund_account_id: data.funds.length === 1 ? data.funds[0].id : undefined }}
+            >
+              <Alert
+                type="info"
+                showIcon
+                style={{ marginBottom: 12 }}
+                title={tx('পানির বিল — {{n}}টি বকেয়া বিল, মোট ৳{{d}}। টাকা সবচেয়ে পুরোনো বিল থেকে পরিশোধ হবে।', { n: digits(data.water_dues.bills.length), d: money(data.water_dues.due) })}
+              />
+              <Form.Item name="fund_account_id" label={tx('টাকা কোন হিসাবে এসেছে')} rules={[{ required: true, message: tx('হিসাব বাছাই করুন') }]}>
+                <Select
+                  options={data.funds.map((f) => ({
+                    value: f.id,
+                    label: `${digits(f.code)} — ${nameOf(f)}${f.bank_account ? ` (${f.bank_account.bank_name} ${digits(f.bank_account.account_no)})` : ''}`,
+                  }))}
+                />
+              </Form.Item>
+              <Form.Item name="amount" label={tx('বিলে নেওয়া হবে')} extra={Number(data.amount) > data.water_dues.due ? tx('পাঠানো টাকা বকেয়ার চেয়ে বেশি — বাড়তি টাকা গ্রাহককে ফেরত দিতে হবে।') : undefined}>
+                <InputNumber min={1} max={data.water_dues.due} style={{ width: 200 }} prefix="৳" />
+              </Form.Item>
+              <Space>
+                <Button type="primary" htmlType="submit" loading={busy} disabled={!data.water_dues.due}>
+                  {tx('যাচাই করে রশিদ দিন')}
+                </Button>
+                <Button danger onClick={() => setRejecting(true)}>
+                  {tx('প্রত্যাখ্যান')}
+                </Button>
+              </Space>
+            </Form>
+          )}
 
           {canAct && data.allocation && (
             <Form form={form} layout="vertical" style={{ marginTop: 16 }} onFinish={verify} initialValues={{ parts: data.allocation.parts, fund_account_id: data.funds.length === 1 ? data.funds[0].id : undefined }}>
@@ -164,9 +218,10 @@ function DetailDrawer({ id, meta, onClose, onDone }: { id: number | null; meta?:
                 ))}
               </Space>
               <div style={{ color: '#888', fontSize: 12, marginBottom: 12 }}>
-                {tx('বকেয়া — ঋণ: {{l}}, সেচ: {{i}}, শেয়ার: {{s}}', {
+                {tx('বকেয়া — ঋণ: {{l}}, সেচ: {{i}}, পানি: {{w}}, শেয়ার: {{s}}', {
                   l: money(data.dues?.loan?.payable ? data.dues.loan.due_now : 0),
                   i: money(data.dues?.irrigation.due),
+                  w: money(data.dues?.water?.due ?? 0),
                   s: money(data.dues?.share.due),
                 })}
                 {data.allocation.unallocated > 0 && ` · ${tx('বণ্টনহীন: {{a}}', { a: money(data.allocation.unallocated) })}`}
@@ -181,7 +236,7 @@ function DetailDrawer({ id, meta, onClose, onDone }: { id: number | null; meta?:
               </Space>
             </Form>
           )}
-          {canAct && !data.allocation && (
+          {canAct && !data.allocation && !data.water_dues && (
             <Space style={{ marginTop: 16 }}>
               <Button danger onClick={() => setRejecting(true)}>
                 {tx('প্রত্যাখ্যান')}
@@ -330,6 +385,15 @@ export default function PublicPaymentsPage() {
               {nameOf(r.farmer)}
             </Link>
             <span>{digits(r.farmer.farmer_code)}</span>
+          </span>
+        ) : r.water_connection ? (
+          <span className="hs-two">
+            <Link to={`/water/connections/${r.water_connection.id}`} className="mg-name">
+              {nameOf(r.water_connection)}
+            </Link>
+            <span>
+              {tx('পানি')} · {digits(r.water_connection.connection_no)}
+            </span>
           </span>
         ) : (
           <span className="hs-two">

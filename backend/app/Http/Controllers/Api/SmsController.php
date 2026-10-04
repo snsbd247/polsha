@@ -15,7 +15,7 @@ use Illuminate\Validation\ValidationException;
 class SmsController extends Controller
 {
     private const KEYS = ['sms_enabled', 'sms_gateway_url', 'sms_http_method', 'sms_sender_id', 'sms_success_text',
-        'sms_auto_payment', 'sms_auto_savings', 'sms_reminders', 'sms_reminder_days'];
+        'sms_auto_payment', 'sms_auto_savings', 'sms_reminders', 'sms_reminder_days', 'sms_water_bill'];
 
     public function __construct(private SmsService $sms) {}
 
@@ -44,6 +44,8 @@ class SmsController extends Controller
             'sms_auto_savings' => ['required', 'boolean'],
             'sms_reminders' => ['required', 'boolean'],
             'sms_reminder_days' => ['required', 'integer', 'between:0,30'],
+            // older screens do not send it; it then stays as it was
+            'sms_water_bill' => ['sometimes', 'boolean'],
         ]);
         if ($data['sms_enabled'] && trim((string) ($data['sms_gateway_url'] ?? '')) === '') {
             throw ValidationException::withMessages(['sms_gateway_url' => __('SMS চালু করতে গেটওয়ে URL দিন।')]);

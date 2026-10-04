@@ -86,6 +86,8 @@ const LOOK: Record<string, { icon: string; color: string; bg: string }> = {
   irrigation_invoices: { icon: 'file', color: '#2563eb', bg: '#e4edfd' },
   irrigation_collection: { icon: 'moneyBag', color: '#1f9d55', bg: '#e3f5ea' },
   irrigation_due: { icon: 'receipt', color: '#e0383e', bg: '#fde6e7' },
+  water_collection: { icon: 'drop', color: '#0b8fd6', bg: '#e0f1fb' },
+  water_due: { icon: 'drop', color: '#e0383e', bg: '#fde6e7' },
   savings: { icon: 'piggy', color: '#f08c00', bg: '#fdf0dc' },
   loans: { icon: 'handCoins', color: '#7c4ddb', bg: '#efe8fc' },
   share: { icon: 'share', color: '#e0386b', bg: '#fde6ee' },
@@ -97,6 +99,7 @@ const LOOK: Record<string, { icon: string; color: string; bg: string }> = {
 /** Fixed chart colours per collection module (irrigation green, savings blue, loan orange, share purple). */
 const MODULE_COLOR: Record<string, string> = {
   irrigation: '#22b55f',
+  water: '#0ea5e9',
   savings: '#2f6fed',
   loan: '#f59e0b',
   share: '#9b5cf6',

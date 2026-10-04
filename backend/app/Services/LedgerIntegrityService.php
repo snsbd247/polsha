@@ -36,20 +36,25 @@ class LedgerIntegrityService
                 'label' => __('খতিয়ানে পোস্ট হয়নি এমন বৈধ রশিদ'), 'severity' => 'error',
                 'rows' => fn () => DB::table('receipts')->leftJoin('journals', 'journals.id', '=', 'receipts.journal_id')
                     ->where('receipts.status', '!=', 'cancelled')->where(fn ($w) => $w->whereNull('journals.id')->orWhere('journals.status', '!=', 'posted'))
-                    ->get(['receipts.id', 'receipts.receipt_no', 'receipts.amount', 'receipts.date'])
-                    ->map(fn ($r) => ['no' => $r->receipt_no, 'detail' => $r->date.' · '.number_format((float) $r->amount, 2), 'link' => '/payments/receipts/'.$r->id]),
+                    ->get(['receipts.id', 'receipts.receipt_no', 'receipts.amount', 'receipts.date', 'receipts.module'])
+                    ->map(fn ($r) => ['no' => $r->receipt_no, 'detail' => $r->date.' · '.number_format((float) $r->amount, 2), 'link' => self::receiptLink($r)]),
             ],
             'receipt_cancel_not_reversed' => [
                 'label' => __('বাতিল রশিদ কিন্তু ভাউচার রিভার্স হয়নি'), 'severity' => 'error',
                 'rows' => fn () => DB::table('receipts')->join('journals', 'journals.id', '=', 'receipts.journal_id')
                     ->where('receipts.status', 'cancelled')->where('journals.status', 'posted')
-                    ->get(['receipts.id', 'receipts.receipt_no', 'journals.voucher_no'])
-                    ->map(fn ($r) => ['no' => $r->receipt_no, 'detail' => __('ভাউচার :no', ['no' => $r->voucher_no]), 'link' => '/payments/receipts/'.$r->id]),
+                    ->get(['receipts.id', 'receipts.receipt_no', 'journals.voucher_no', 'receipts.module'])
+                    ->map(fn ($r) => ['no' => $r->receipt_no, 'detail' => __('ভাউচার :no', ['no' => $r->voucher_no]), 'link' => self::receiptLink($r)]),
             ],
             'invoice_no_journal' => [
                 'label' => __('খতিয়ানে পোস্ট হয়নি এমন ইনভয়েস'), 'severity' => 'error',
                 'rows' => fn () => DB::table('invoices')->where('status', '!=', 'cancelled')->whereNull('journal_id')
                     ->get(['id', 'invoice_no', 'amount'])->map(fn ($r) => ['no' => $r->invoice_no, 'detail' => number_format((float) $r->amount, 2), 'link' => '/irrigation/invoices/'.$r->id]),
+            ],
+            'water_bill_no_journal' => [
+                'label' => __('খতিয়ানে পোস্ট হয়নি এমন পানির বিল'), 'severity' => 'error',
+                'rows' => fn () => DB::table('water_bills')->where('status', '!=', 'cancelled')->whereNull('journal_id')
+                    ->get(['id', 'bill_no', 'amount', 'connection_id'])->map(fn ($r) => ['no' => $r->bill_no, 'detail' => number_format((float) $r->amount, 2), 'link' => '/water/connections/'.$r->connection_id]),
             ],
             'loan_no_journal' => [
                 'label' => __('বিতরণ ভাউচার নেই এমন চলমান ঋণ'), 'severity' => 'error',
@@ -92,12 +97,20 @@ class LedgerIntegrityService
         ];
     }
 
+    /** Water receipts open on their own page; the rest on the irrigation receipt page. */
+    private static function receiptLink(object $r): string
+    {
+        return ($r->module === 'water' ? '/water/receipts/' : '/payments/receipts/').$r->id;
+    }
+
     /** Module totals against their control accounts, as of today. */
     public function sourceVsLedger(): array
     {
         $items = [
             ['item' => __('সেচ বকেয়া (অপরিশোধিত ইনভয়েস)'), 'key' => 'irrigation_receivable', 'sign' => 1,
                 'source' => fn () => DB::table('invoices')->where('status', '!=', 'cancelled')->sum(DB::raw('amount - paid_amount'))],
+            ['item' => __('পানির বিল বকেয়া (অপরিশোধিত বিল, জরিমানাসহ)'), 'key' => 'water_receivable', 'sign' => 1,
+                'source' => fn () => DB::table('water_bills')->where('status', '!=', 'cancelled')->sum(DB::raw('amount + penalty - paid_amount'))],
             ['item' => __('সদস্যদের সঞ্চয় স্থিতি'), 'key' => 'savings_deposits', 'sign' => -1,
                 'source' => fn () => DB::table('member_accounts')->where('kind', 'savings')->sum('balance')],
             ['item' => __('সদস্যদের শেয়ার স্থিতি'), 'key' => 'share_capital', 'sign' => -1,
@@ -136,6 +149,8 @@ class LedgerIntegrityService
         $funds = $this->reports->fundAccountIds();
         $src = [
             'irrigation' => DB::table('receipts')->where('module', 'irrigation')->where('status', '!=', 'cancelled')->whereBetween('date', [$from, $to])
+                ->selectRaw('count(*) as n, coalesce(sum(amount),0) as amount')->first(),
+            'water' => DB::table('receipts')->where('module', 'water')->where('status', '!=', 'cancelled')->whereBetween('date', [$from, $to])
                 ->selectRaw('count(*) as n, coalesce(sum(amount),0) as amount')->first(),
             'loan' => DB::table('loan_payments')->where('status', '!=', 'cancelled')->whereBetween('date', [$from, $to])
                 ->selectRaw('count(*) as n, coalesce(sum(amount),0) as amount')->first(),

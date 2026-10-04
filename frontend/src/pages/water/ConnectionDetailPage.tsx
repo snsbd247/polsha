@@ -127,7 +127,17 @@ export default function ConnectionDetailPage() {
       </Row>
       <Card size="small" style={{ marginBottom: 16 }}>
         <Descriptions size="small" column={{ xs: 1, md: 3 }}>
-          <Descriptions.Item label={tx('গ্রাহক')}>{nameOf(c)}</Descriptions.Item>
+          <Descriptions.Item label={tx('গ্রাহক')}>
+            {nameOf(c)}
+            {c.farmer && (
+              <>
+                {' · '}
+                <Link to={`/farmers/${c.farmer.id}`}>
+                  {tx('কৃষক')} {digits(c.farmer.farmer_code)}
+                </Link>
+              </>
+            )}
+          </Descriptions.Item>
           <Descriptions.Item label={tx('পিতা/স্বামী')}>{c.father_name || '—'}</Descriptions.Item>
           <Descriptions.Item label={tx('মোবাইল')}>{c.mobile ? digits(c.mobile) : '—'}</Descriptions.Item>
           <Descriptions.Item label={tx('গ্রাম / পাড়া')}>{[nameOf(c.village), c.address].filter(Boolean).join(', ') || '—'}</Descriptions.Item>

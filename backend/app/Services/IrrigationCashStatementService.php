@@ -28,15 +28,23 @@ use Illuminate\Support\Facades\DB;
  */
 class IrrigationCashStatementService
 {
-    public const STREAMS = ['irrigation' => ['cash_irrigation'], 'society' => ['cash_society', 'cash_misc']];
+    public const STREAMS = ['irrigation' => ['cash_irrigation'], 'society' => ['cash_society', 'cash_misc'], 'water' => ['cash_water']];
+
+    /** Funds that keep their own money in the bank and collect their own bills: the head their collections are shown under. */
+    private const BILLED = [
+        'irrigation' => ['সেচ চার্জ আদায় (বকেয়াসহ)', ['irrigation_receivable', 'irrigation_income', 'cash_field']],
+        'water' => ['পানির বিল আদায় (বকেয়াসহ)', ['water_receivable', 'water_income', 'water_penalty_income', 'water_connection_fee_income', 'cash_field']],
+    ];
 
     /** @return array<string, mixed> */
     public function build(string $from, string $to, ?float $openingOverride = null, string $stream = 'irrigation'): array
     {
-        $irrigation = $stream === 'irrigation';
+        // irrigation and water: the fund's cash and its money in the bank, and its own bill collection
+        $irrigation = isset(self::BILLED[$stream]);
+        $collect = $irrigation ? __(self::BILLED[$stream][0]) : null;
         $cash = Account::whereIn('key', self::STREAMS[$stream])->pluck('id')->flip();
         $banks = BankAccount::pluck('account_id')->flip();
-        $collectionKeys = $irrigation ? ['irrigation_receivable', 'irrigation_income', 'cash_field'] : [];
+        $collectionKeys = $irrigation ? self::BILLED[$stream][1] : [];
         $collection = Account::whereIn('key', $collectionKeys)->pluck('id')->flip();
         $field = Account::where('key', 'cash_field')->value('id');
         $otherFunds = Account::whereIn('key', array_merge(...array_values(array_diff_key(self::STREAMS, [$stream => 1]))))->pluck('id')->flip();
@@ -46,7 +54,7 @@ class IrrigationCashStatementService
         $journalIds = DB::table('journal_lines')->join('journals', 'journals.id', '=', 'journal_lines.journal_id')
             ->whereIn('journals.status', LedgerService::EFFECTIVE)->where('journals.date', '<=', $to)
             ->where(fn ($q) => $q->whereIn('journal_lines.account_id', $cash->keys())
-                ->when($irrigation, fn ($w) => $w->orWhere(fn ($x) => $x->where('journals.module', 'irrigation')->whereIn('journal_lines.account_id', $banks->keys()))))
+                ->when($irrigation, fn ($w) => $w->orWhere(fn ($x) => $x->where('journals.module', $stream)->whereIn('journal_lines.account_id', $banks->keys()))))
             ->distinct()->pluck('journals.id');
         $lines = DB::table('journal_lines')->join('journals', 'journals.id', '=', 'journal_lines.journal_id')
             ->whereIn('journals.id', $journalIds)
@@ -71,7 +79,7 @@ class IrrigationCashStatementService
 
                 continue;
             }
-            $fundBankNet = $irrigation && $first->module === 'irrigation' ? $bankLines->sum($net) : 0;
+            $fundBankNet = $irrigation && $first->module === $stream ? $bankLines->sum($net) : 0;
             $bank += $fundBankNet;
             $flow = $cashNet + $fundBankNet;
             if ($flow === 0 && $counters->isEmpty()) {
@@ -88,7 +96,7 @@ class IrrigationCashStatementService
                     continue;
                 }
                 $label = match (true) {
-                    isset($collection[$c->account_id]) => __('সেচ চার্জ আদায় (বকেয়াসহ)'),
+                    isset($collection[$c->account_id]) => $collect,
                     isset($banks[$c->account_id]) => $amount > 0 ? __('ব্যাংক থেকে নগদ উত্তোলন') : __('নগদ ব্যাংকে জমা'),
                     $c->account_id === $field => __('মাঠ-আদায় জমা'),
                     isset($otherFunds[$c->account_id]) => $amount > 0 ? __('অন্য তহবিল থেকে স্থানান্তর') : __('অন্য তহবিলে স্থানান্তর'),
@@ -101,8 +109,7 @@ class IrrigationCashStatementService
         }
 
         // a cancelled receipt gives collection money back: it lowers the collection, it is not an expense
-        $collect = __('সেচ চার্জ আদায় (বকেয়াসহ)');
-        if (isset($expense[$collect])) {
+        if ($collect !== null && isset($expense[$collect])) {
             $income[$collect][0] = ($income[$collect][0] ?? 0) - $expense[$collect][0];
             $income[$collect][1] = ($income[$collect][1] ?? []) + $expense[$collect][1];
             unset($expense[$collect]);

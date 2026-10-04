@@ -11,6 +11,7 @@ use App\Models\WaterConnection;
 use App\Models\WaterConnectionType;
 use App\Services\ReceiptService;
 use App\Services\SettingService;
+use App\Services\SmsService;
 use App\Services\WaterService;
 use App\Support\Bn;
 use App\Support\CsvExport;
@@ -109,7 +110,7 @@ class WaterController extends Controller
 
     public function showConnection(WaterConnection $connection): JsonResponse
     {
-        $connection->load(['type', 'village:id,name_bn,name_en', 'creator:id,name_bn,name_en']);
+        $connection->load(['type', 'village:id,name_bn,name_en', 'creator:id,name_bn,name_en', 'farmer:id,farmer_code,name_bn,name_en']);
         $bills = $connection->bills()->orderByDesc('bill_date')->orderByDesc('id')->get();
         $receiptIds = ReceiptItem::where('payable_type', (new WaterBill)->getMorphClass())->whereIn('payable_id', $bills->pluck('id'))->pluck('receipt_id')->unique();
 
@@ -146,6 +147,8 @@ class WaterController extends Controller
 
         return $request->validate([
             'type_id' => ['required', Rule::exists('water_connection_types', 'id')->where('is_active', true)],
+            // a registered farmer's tap: its bills also come up in the farmer's combined payment
+            'farmer_id' => ['nullable', Rule::exists('farmers', 'id')->whereNull('deleted_at')],
             'name_bn' => ['required', 'string', 'max:150'],
             'name_en' => ['nullable', 'string', 'max:150'],
             'father_name' => ['nullable', 'string', 'max:150'],
@@ -161,7 +164,7 @@ class WaterController extends Controller
 
     private function connectionQuery(Request $request): Builder
     {
-        $q = WaterConnection::with(['type:id,code,name_bn,name_en,monthly_fee', 'village:id,name_bn,name_en'])
+        $q = WaterConnection::with(['type:id,code,name_bn,name_en,monthly_fee', 'village:id,name_bn,name_en', 'farmer:id,farmer_code'])
             ->addSelect(['due' => WaterBill::selectRaw('COALESCE(SUM(amount + penalty - paid_amount), 0)')
                 ->whereColumn('connection_id', 'water_connections.id')->where('status', '!=', 'cancelled')]);
         foreach (['type_id', 'village_id', 'status'] as $f) {
@@ -205,8 +208,30 @@ class WaterController extends Controller
             'due_date' => ['nullable', 'date', 'after_or_equal:bill_date'],
         ]);
         $bills = $this->water->generate($data['period'], $data['bill_date'], $data['due_date'] ?? null);
+        $this->billSms($bills);
 
         return response()->json(['count' => $bills->count(), 'total' => round($bills->sum(fn ($b) => (float) $b->amount), 2)], 201);
+    }
+
+    /** The month's bill to each customer with a mobile, with what the tap owes in all. */
+    private function billSms($bills): void
+    {
+        if (! SettingService::get('sms_water_bill', true)) {
+            return;
+        }
+        $sms = app(SmsService::class);
+        foreach ($bills as $b) {
+            $mobile = $b->snapshot['mobile'] ?? null;
+            if (! $mobile) {
+                continue;
+            }
+            $sms->queue('water_bill', $mobile, [
+                'name' => $b->snapshot['name_bn'] ?? '', 'connection_no' => $b->snapshot['connection_no'] ?? '',
+                'month' => WaterBill::periodLabel($b->period), 'amount' => number_format((float) $b->amount, 2),
+                'total_due' => number_format($this->water->due($b->connection), 2),
+                'due_date' => $b->due_date ? $b->due_date->format('d/m/Y') : '—',
+            ], $b);
+        }
     }
 
     // ---- bills ----
@@ -268,6 +293,13 @@ class WaterController extends Controller
         ]);
     }
 
+    public function waivePenalty(Request $request, WaterBill $bill): JsonResponse
+    {
+        $reason = $request->validate(['reason' => ['required', 'string', 'max:300']])['reason'];
+
+        return response()->json($this->billRow($this->water->waivePenalty($bill, $reason, now()->toDateString())));
+    }
+
     public function cancelBill(Request $request, WaterBill $bill): JsonResponse
     {
         $reason = $request->validate(['reason' => ['required', 'string', 'max:300']])['reason'];
@@ -319,6 +351,7 @@ class WaterController extends Controller
         $connection = WaterConnection::findOrFail($data['connection_id']);
         $money = collect($data)->only(['date', 'method', 'fund_account_id', 'reference', 'remarks'])->all();
         $receipt = $this->water->collect($connection, $money, $data['items'], round((float) ($data['penalty'] ?? 0), 2));
+        app(SmsService::class)->paymentConfirmation($connection->mobile, $connection->name_bn, (float) $receipt->amount, $receipt->receipt_no, $data['date'], $receipt);
 
         return response()->json(['id' => $receipt->id, 'receipt_no' => $receipt->receipt_no, 'amount' => (float) $receipt->amount], 201);
     }

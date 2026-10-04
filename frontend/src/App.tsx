@@ -312,6 +312,7 @@ export default function App() {
         <Route path="imports/loan-opening" element={<Perm perm="import.create"><ImportTypePage key="loan_opening" type="loan_opening" /></Perm>} />
         <Route path="imports/payments" element={<Perm perm="import.create"><ImportTypePage key="payments" type="payments" /></Perm>} />
         <Route path="imports/legacy-irrigation" element={<Perm perm="import.create"><ImportTypePage key="legacy_irrigation" type="legacy_irrigation" /></Perm>} />
+        <Route path="imports/water-connections" element={<Perm perm="import.create"><ImportTypePage key="water_connections" type="water_connections" /></Perm>} />
         <Route path="imports/audit" element={<Perm perm="import.view"><ImportAuditPage /></Perm>} />
 
         <Route path="accounting/funds" element={<Perm perm={['cash.view', 'bank.view']}><FundsPage /></Perm>} />
@@ -352,6 +353,7 @@ export default function App() {
         <Route path="water/receipts/:id" element={<Perm perm="water.view"><WaterReceiptPage /></Perm>} />
         <Route path="water/dues" element={<Perm perm="water.view"><WaterDuesPage /></Perm>} />
         <Route path="water/types" element={<Perm perm="water.view"><WaterTypesPage /></Perm>} />
+        <Route path="water/statement" element={<Perm perm={['water.view', 'accounting.view', 'cash.view']}><FundStatementPage key="water" stream="water" /></Perm>} />
         <Route path="irrigation/farmers/:id/statement" element={<Perm perm="irrigation.view"><FarmerStatementPage /></Perm>} />
         <Route path="irrigation/mismatch" element={<Perm perm="irrigation.view"><MismatchPage /></Perm>} />
         <Route path="irrigation/rate-audit" element={<Navigate to="/irrigation/rates?view=history" replace />} />

@@ -3,12 +3,20 @@
 namespace Tests\Feature;
 
 use App\Models\Account;
+use App\Models\BankAccount;
+use App\Models\CombinedPaymentPart;
+use App\Models\ImportBatch;
+use App\Models\SmsLog;
+use App\Models\PublicPaymentRequest;
 use App\Models\Receipt;
 use App\Models\User;
 use App\Models\WaterBill;
 use App\Models\WaterConnection;
 use App\Models\WaterConnectionType;
 use App\Services\LedgerService;
+use App\Services\SettingService;
+use App\Services\SmsService;
+use Illuminate\Http\UploadedFile;
 
 class WaterSupplyTest extends Phase2TestCase
 {
@@ -143,6 +151,151 @@ class WaterSupplyTest extends Phase2TestCase
 
         $this->actingAs($this->waterUser)->postJson("/api/water/connections/{$c->id}/status", ['action' => 'close', 'date' => now()->toDateString(), 'reason' => 'বাড়ি বিক্রি'])
             ->assertOk()->assertJsonPath('status', 'closed');
+    }
+
+    public function test_a_farmers_water_bills_are_taken_in_the_combined_payment(): void
+    {
+        $farmer = $this->makeFarmer(['name_bn' => 'রহিম উদ্দিন']);
+        $c = $this->connect(['farmer_id' => $farmer->id]);
+        $this->actingAs($this->waterUser)->postJson('/api/water/billing', ['period' => now()->subMonth()->format('Y-m'), 'bill_date' => now()->toDateString()])->assertCreated();
+
+        $cashier = $this->userWithRole('cashier');
+        $this->actingAs($cashier)->getJson("/api/combined-payments/quote?farmer_id={$farmer->id}&amount=200")->assertOk()
+            ->assertJsonPath('water.due', 200)->assertJsonPath('allocation.parts.water', 200);
+        // a non-member pays only dues: more than the water bill is refused
+        $this->actingAs($cashier)->postJson('/api/combined-payments', ['farmer_id' => $farmer->id, 'date' => now()->toDateString(), 'amount' => 250, 'method' => 'cash'])
+            ->assertUnprocessable();
+        $this->actingAs($cashier)->postJson('/api/combined-payments', ['farmer_id' => $farmer->id, 'date' => now()->toDateString(), 'amount' => 200, 'method' => 'cash'])
+            ->assertCreated();
+        $this->assertSame(['water'], CombinedPaymentPart::pluck('module')->all());
+        $this->assertSame('paid', WaterBill::where('connection_id', $c->id)->first()->status);
+        $this->assertSame(200.0, $this->balance('cash_water'));
+        $this->assertSame(1, Receipt::where('module', 'water')->where('farmer_id', $farmer->id)->count());
+    }
+
+    public function test_a_water_bill_paid_online_with_the_connection_number(): void
+    {
+        $c = $this->connect(['mobile' => '01711000002']);
+        $this->actingAs($this->waterUser)->postJson('/api/water/billing', ['period' => now()->subMonth()->format('Y-m'), 'bill_date' => now()->toDateString()])->assertCreated();
+        SettingService::setMany(['public_payment_enabled' => true, 'public_payment_bkash' => '01700000000']);
+
+        $this->getJson("/api/public/payments/farmer?code={$c->connection_no}")->assertOk()->assertJsonPath('kind', 'water');
+        $no = $this->postJson('/api/public/payments', ['farmer_code' => $c->connection_no, 'payer_name' => 'রহিম', 'mobile' => '01711000002',
+            'method' => 'bkash', 'sender_number' => '01811000000', 'trx_id' => 'WTR12345', 'amount' => 200, 'paid_on' => now()->toDateString()])
+            ->assertCreated()->json('request_no');
+        $req = PublicPaymentRequest::where('request_no', $no)->firstOrFail();
+        $this->assertSame($c->id, $req->water_connection_id);
+
+        $bank = BankAccount::findOrFail($this->actingAs($this->manager)->postJson('/api/bank-accounts', [
+            'bank_name' => 'বিকাশ মার্চেন্ট', 'account_no' => '01700000000', 'account_type' => 'current',
+        ])->assertCreated()->json('id'));
+        $cashier = $this->userWithRole('cashier');
+        $this->actingAs($cashier)->getJson("/api/public-payments/{$req->id}")->assertOk()->assertJsonPath('water_dues.due', 200);
+        $this->actingAs($cashier)->postJson("/api/public-payments/{$req->id}/verify", ['fund_account_id' => $bank->account_id, 'amount' => 300])->assertUnprocessable();
+        $this->actingAs($cashier)->postJson("/api/public-payments/{$req->id}/verify", ['fund_account_id' => $bank->account_id])->assertOk();
+
+        $req->refresh();
+        $this->assertSame('verified', $req->status);
+        $this->assertSame('paid', WaterBill::where('connection_id', $c->id)->first()->status);
+        $this->assertEquals(200, app(LedgerService::class)->balance($bank->account_id));
+        $this->getJson("/api/public/payments/status?request_no={$no}&mobile=01711000002")->assertJsonPath('receipt_no', $req->receipt->receipt_no);
+    }
+
+    public function test_field_collector_takes_water_and_the_office_deposit_puts_it_in_water_cash(): void
+    {
+        $farmer = $this->makeFarmer();
+        $this->connect(['farmer_id' => $farmer->id]);
+        $this->actingAs($this->waterUser)->postJson('/api/water/billing', ['period' => now()->subMonth()->format('Y-m'), 'bill_date' => now()->toDateString()])->assertCreated();
+        $collector = $this->userWithRole('field_collector');
+        $this->actingAs($collector)->postJson('/api/field/collect', ['farmer_id' => $farmer->id, 'amount' => 200])->assertCreated();
+        $this->assertSame(200.0, $this->balance('cash_field'));
+        $this->assertSame(0.0, $this->balance('cash_water'));
+
+        $this->actingAs($this->userWithRole('cashier'))->postJson('/api/field/deposits', ['collector_id' => $collector->id, 'date' => now()->toDateString()])->assertCreated();
+        $this->assertSame(0.0, $this->balance('cash_field'));
+        $this->assertSame(200.0, $this->balance('cash_water'));
+    }
+
+    public function test_water_shows_in_reports_fund_statement_cash_book_and_ledger_checks(): void
+    {
+        $c = $this->connect();
+        $this->actingAs($this->waterUser)->postJson('/api/water/billing', ['period' => now()->subMonth()->format('Y-m'), 'bill_date' => now()->toDateString()])->assertCreated();
+        $bill = WaterBill::where('connection_id', $c->id)->firstOrFail();
+        $this->actingAs($this->waterUser)->postJson('/api/water/collect', [
+            'connection_id' => $c->id, 'date' => now()->toDateString(), 'method' => 'cash', 'penalty' => 20, 'items' => [['bill_id' => $bill->id, 'amount' => 200]],
+        ])->assertCreated();
+        $range = '?from='.now()->startOfMonth()->toDateString().'&to='.now()->toDateString();
+
+        $this->actingAs($this->manager)->getJson('/api/reports/water_billing'.$range)->assertOk()->assertJsonCount(1, 'rows')->assertJsonPath('rows.0.penalty', 20);
+        $this->actingAs($this->manager)->getJson('/api/reports/water_collection'.$range)->assertOk()->assertJsonPath('rows.0.amount', 220);
+        $this->actingAs($this->manager)->getJson('/api/reports/water_monthly')->assertOk()->assertJsonPath('rows.0.rate', 100);
+
+        // the water fund's own statement: the collection is its income
+        $s = $this->actingAs($this->manager)->getJson('/api/cashbook/water-statement'.$range)->assertOk()->json();
+        $this->assertSame('water', $s['stream']);
+        $this->assertEquals(220, collect($s['income'])->firstWhere('label', 'পানির বিল আদায় (বকেয়াসহ)')['amount']);
+        $this->actingAs($this->manager)->getJson('/api/cashbook/income-expense-book'.$range.'&stream=water')->assertOk();
+
+        // module and ledger agree; the water head is in the payment reconciliation
+        $ledger = $this->actingAs($this->manager)->getJson('/api/ledger-integrity')->assertOk()->json('source_vs_ledger');
+        $water = collect($ledger)->firstWhere('item', 'পানির বিল বকেয়া (অপরিশোধিত বিল, জরিমানাসহ)');
+        $this->assertEquals(0, $water['difference']);
+
+        $kpis = collect($this->actingAs($this->manager)->getJson('/api/dashboard?refresh=1')->assertOk()->json('kpis'))->keyBy('key');
+        $this->assertEquals(220, $kpis['water_collection']['value']);
+    }
+
+    public function test_customers_and_old_dues_come_in_through_import_and_roll_back(): void
+    {
+        $csv = "\xEF\xBB\xBF".implode("\n", [
+            'গ্রাহকের নাম,পিতা/স্বামী,মোবাইল,গ্রাম,পাড়া/বাড়ি,সংযোগের ধরন,সংযোগের তারিখ,পুরনো বকেয়া',
+            'রহিম উদ্দিন,করিম উদ্দিন,1711223344,পলাশবাড়ী,উত্তর পাড়া,আবাসিক,০১/০৩/২০২২,"৬০০"',
+            'ভুল সারি,,,,,ট্যাংকি,01/03/2022,0',
+        ])."\n";
+        $up = $this->actingAs($this->manager)->post('/api/imports/water_connections/upload', ['file' => UploadedFile::fake()->createWithContent('water.csv', $csv)], ['Accept' => 'application/json'])->assertOk();
+        $preview = $this->actingAs($this->manager)->postJson('/api/imports/validate', ['upload_token' => $up->json('upload_token'), 'mapping' => $up->json('mapping')])
+            ->assertOk()->assertJsonPath('valid', 1);
+        $batch = ImportBatch::findOrFail($this->actingAs($this->manager)->postJson('/api/imports/commit', ['token' => $preview->json('token')])->assertOk()->json('id'));
+
+        $c = WaterConnection::where('import_batch_id', $batch->id)->firstOrFail();
+        $this->assertSame('01711223344', $c->mobile);
+        $this->assertSame($this->village->id, $c->village_id);
+        $this->assertSame('2022-03-01', $c->connected_on->toDateString());
+        $this->assertSame(600.0, $this->balance('water_receivable'));
+        $this->assertSame(-600.0, $this->balance('opening_balance_equity'));
+
+        $admin = $this->userWithRole('admin');
+        $r = $this->actingAs($admin)->postJson("/api/imports/{$batch->id}/rollback", ['reason' => 'ভুল ফাইল'])->assertOk();
+        $this->actingAs($this->userWithRole('admin'))->postJson('/api/approvals/'.$r->json('approval.id').'/decide', ['decision' => 'approve'])->assertOk();
+        $this->assertSame('closed', $c->fresh()->status);
+        $this->assertSame(0.0, $this->balance('water_receivable'));
+    }
+
+    public function test_bill_sms_payment_sms_reminder_and_penalty_waiver(): void
+    {
+        $c = $this->connect();
+        $this->actingAs($this->waterUser)->postJson('/api/water/billing', [
+            'period' => now()->format('Y-m'), 'bill_date' => now()->toDateString(), 'due_date' => now()->addDays(3)->toDateString(),
+        ])->assertCreated();
+        $this->assertSame(1, SmsLog::where('template_key', 'water_bill')->where('mobile', '01711000001')->count());
+
+        // three days before the due date the reminder goes out
+        app(SmsService::class)->queueReminders(now()->toDateString());
+        $this->assertSame(1, SmsLog::where('template_key', 'water_due')->count());
+
+        // part of the bill and a penalty: the penalty stays partly owed, and the manager lets it off
+        $bill = WaterBill::where('connection_id', $c->id)->firstOrFail();
+        $this->actingAs($this->waterUser)->postJson('/api/water/collect', [
+            'connection_id' => $c->id, 'date' => now()->toDateString(), 'method' => 'cash', 'penalty' => 50, 'items' => [['bill_id' => $bill->id, 'amount' => 100]],
+        ])->assertCreated();
+        $this->assertSame(1, SmsLog::where('template_key', 'payment')->count());
+        $this->assertEquals(100, $bill->fresh()->dueAmount());
+
+        $this->actingAs($this->waterUser)->postJson("/api/water/bills/{$bill->id}/waive-penalty", ['reason' => 'বয়স্ক গ্রাহক'])->assertForbidden();
+        $this->actingAs($this->manager)->postJson("/api/water/bills/{$bill->id}/waive-penalty", ['reason' => 'বয়স্ক গ্রাহক'])->assertOk()->assertJsonPath('due', 50);
+        $this->assertSame(0.0, $this->balance('water_penalty_income'));
+        $this->assertSame(50.0, $this->balance('water_receivable'));
+        $this->actingAs($this->manager)->postJson("/api/water/bills/{$bill->id}/waive-penalty", ['reason' => 'আবার'])->assertUnprocessable();
     }
 
     public function test_disconnected_connections_are_not_billed_and_reconnection_fee_is_a_bill(): void

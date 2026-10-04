@@ -7,6 +7,7 @@ import { money } from '../../lib/accounting'
 import type { LocationItem } from '../../lib/types'
 import { nameOf, t as tx } from '../../lib/i18n'
 import { useWaterMeta, type WaterConnection } from '../../lib/water'
+import FarmerPicker from '../../components/FarmerPicker'
 
 type Values = Omit<WaterConnection, 'connected_on' | 'id' | 'connection_no' | 'status' | 'status_date' | 'status_reason'> & { connected_on: Dayjs; connection_fee?: number }
 
@@ -65,6 +66,20 @@ export default function ConnectionForm({ open, connection, onClose, onSaved }: {
       }
     >
       <Form form={form} layout="vertical" onFinish={save} requiredMark={false}>
+        <Form.Item
+          name="farmer_id"
+          label={tx('গ্রাহক কি নিবন্ধিত কৃষক? (ঐচ্ছিক)')}
+          extra={tx('বাছাই করলে এই সংযোগের বিল কৃষকের একত্রিত পেমেন্ট ও মাঠে আদায়েও আসবে।')}
+        >
+          <FarmerPicker
+            initialLabel={connection?.farmer ? `${nameOf(connection.farmer)} (${connection.farmer.farmer_code})` : undefined}
+            onChange={(id, f) => {
+              form.setFieldValue('farmer_id', id)
+              // the farmer's own details fill the customer fields
+              if (f) form.setFieldsValue({ name_bn: f.name_bn, father_name: f.father_name, village_id: f.village_id })
+            }}
+          />
+        </Form.Item>
         <Row gutter={12}>
           <Col xs={24} md={12}>
             <Form.Item name="name_bn" label={tx('গ্রাহকের নাম (বাংলা)')} rules={[{ required: true, message: tx('নাম দিন') }]}>

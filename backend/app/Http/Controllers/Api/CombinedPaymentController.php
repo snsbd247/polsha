@@ -31,12 +31,12 @@ class CombinedPaymentController extends Controller
         $statuses = Tr::map(CombinedPayment::STATUSES);
         if ($request->query('export') === 'csv') {
             return CsvExport::download('combined-receipts-'.now()->format('Ymd').'.csv',
-                [__('রশিদ নং'), __('তারিখ'), __('প্রদানকারী'), __('মাধ্যম'), __('ঋণ'), __('সেচ'), __('শেয়ার'), __('সঞ্চয়'), __('মোট'), __('অবস্থা')],
+                [__('রশিদ নং'), __('তারিখ'), __('প্রদানকারী'), __('মাধ্যম'), __('ঋণ'), __('সেচ'), __('পানি'), __('শেয়ার'), __('সঞ্চয়'), __('মোট'), __('অবস্থা')],
                 $q->with('parts')->orderBy('payment_no')->lazy()->map(function (CombinedPayment $p) use ($methods, $statuses) {
                     $by = $p->parts->pluck('amount', 'module');
 
                     return [$p->payment_no, $p->date, $p->payer_name, $methods[$p->method] ?? $p->method,
-                        $by['loan'] ?? 0, $by['irrigation'] ?? 0, $by['share'] ?? 0, $by['savings'] ?? 0, $p->amount, $statuses[$p->status] ?? $p->status];
+                        $by['loan'] ?? 0, $by['irrigation'] ?? 0, $by['water'] ?? 0, $by['share'] ?? 0, $by['savings'] ?? 0, $p->amount, $statuses[$p->status] ?? $p->status];
                 }));
         }
         $valid = (clone $q)->reorder()->where('status', '!=', 'cancelled');

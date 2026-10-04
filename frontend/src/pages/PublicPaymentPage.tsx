@@ -18,7 +18,7 @@ type Info = {
   society_name_en: string
   methods_labels: Record<string, string>
 }
-type FarmerHit = { farmer_code: string; name_bn: string; name_en: string | null }
+type FarmerHit = { farmer_code: string; kind?: 'farmer' | 'water'; name_bn: string; name_en: string | null }
 type Status = {
   request_no: string
   status: string
@@ -121,10 +121,10 @@ function SubmitForm({ info }: { info: Info }) {
       )}
       <Form.Item
         name="farmer_code"
-        label={tx('কৃষক আইডি')}
-        rules={[{ required: true, message: tx('কৃষক আইডি দিন') }]}
+        label={tx('কৃষক আইডি বা পানির সংযোগ নং')}
+        rules={[{ required: true, message: tx('কৃষক আইডি বা পানির সংযোগ নং দিন') }]}
         validateStatus={farmerError ? 'error' : undefined}
-        help={farmerError ?? (farmer ? `✓ ${nameOf(farmer)}` : undefined)}
+        help={farmerError ?? (farmer ? `✓ ${nameOf(farmer)}${farmer.kind === 'water' ? ` — ${tx('পানির বিল')}` : ''}` : tx('যেমন F-000012, অথবা পানির বিলের জন্য WC-000034'))}
       >
         <Input.Search enterButton={tx('যাচাই')} loading={checking} onSearch={lookup} onBlur={lookup} maxLength={30} />
       </Form.Item>

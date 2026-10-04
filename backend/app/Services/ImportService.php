@@ -13,6 +13,7 @@ use App\Models\Upazila;
 use App\Models\User;
 use App\Models\Village;
 use App\Services\Imports\FinanceImporter;
+use App\Services\Imports\WaterImporter;
 use App\Support\AreaUnit;
 use App\Support\Bn;
 use App\Support\ImportValue;
@@ -42,6 +43,7 @@ class ImportService
         'loan_opening' => ['চলমান ঋণ', 'loan.create', true],
         'legacy_irrigation' => ['পুরনো সেচ বকেয়া', 'irrigation.create', true],
         'payments' => ['পুরনো রশিদ', 'payment.create', true],
+        'water_connections' => ['পানির সংযোগ ও পুরনো বকেয়া', 'water.create', true],
     ];
 
     public const COLUMNS = [
@@ -85,6 +87,13 @@ class ImportService
             'amount' => ['টাকা', 'পরিমাণ', 'amount'], 'method' => ['মাধ্যম', 'method'], 'payer' => ['প্রদানকারী', 'payer'],
             'remarks' => ['মন্তব্য', 'remarks'],
         ],
+        'water_connections' => [
+            'name_bn' => ['গ্রাহকের নাম', 'নাম', 'name'], 'name_en' => ['ইংরেজি নাম', 'english name'], 'father_name' => ['পিতা/স্বামী', 'পিতার নাম', 'father'],
+            'mobile' => ['মোবাইল', 'phone'], 'village' => ['গ্রাম', 'village'], 'address' => ['পাড়া/বাড়ি', 'পাড়া', 'ঠিকানা', 'address'],
+            'type' => ['সংযোগের ধরন', 'ধরন', 'type'], 'monthly_fee' => ['আলাদা মাসিক ফি', 'মাসিক ফি', 'fee'],
+            'connected_on' => ['সংযোগের তারিখ', 'তারিখ', 'connected on'], 'farmer_code' => ['কৃষক আইডি', 'farmer id'],
+            'due' => ['পুরনো বকেয়া', 'বকেয়া', 'due'],
+        ],
     ];
 
     public const REQUIRED = [
@@ -95,6 +104,7 @@ class ImportService
         'loan_opening' => ['member_ref', 'product', 'amount', 'disbursed_on', 'principal_outstanding'],
         'legacy_irrigation' => ['season', 'amount'],
         'payments' => ['legacy_no', 'date', 'amount'],
+        'water_connections' => ['name_bn', 'type', 'connected_on'],
     ];
 
     private const SAMPLE = [
@@ -107,6 +117,7 @@ class ImportService
         'loan_opening' => ['96', 'কৃষি ঋণ', '50000', '15/01/2026', '', '30000', '', 'পুরনো-১২'],
         'legacy_irrigation' => ['L-000001', '', '', '', '', 'বোরো ২০২৫', '3300', '1000', '15/03/2025', ''],
         'payments' => ['১২৩৪', '20/04/2025', 'IRR-000010', '', '', '1500', 'নগদ', 'আব্দুল করিম', ''],
+        'water_connections' => ['রহিম উদ্দিন', 'Rahim Uddin', 'করিম উদ্দিন', '01711223344', 'পলাশবাড়ী', 'উত্তর পাড়া', 'আবাসিক', '', '01/03/2022', '', '600'],
     ];
 
     /** How long an unfinished upload/preview is kept. */
@@ -117,6 +128,7 @@ class ImportService
         private MembershipService $membership,
         private FarmerDuplicateService $duplicates,
         private FinanceImporter $finance,
+        private WaterImporter $water,
     ) {}
 
     public static function isMoney(string $type): bool
@@ -290,6 +302,7 @@ class ImportService
                     $amount += (float) DB::transaction(fn () => match ($type) {
                         'farmers' => $this->importFarmer($row, $batch, $user),
                         'lands' => $this->importLand($row, $batch, $user),
+                        'water_connections' => $this->water->import($row, $batch),
                         default => $this->finance->import($type, $row, $batch),
                     });
                     $imported++;
@@ -341,6 +354,7 @@ class ImportService
             [$resolved, $errs, $warns] = match ($type) {
                 'farmers' => $this->validateFarmer($row, $user, $seen, $line),
                 'lands' => $this->validateLand($row, $seen, $line),
+                'water_connections' => $this->water->validate($row, $seen, $line),
                 default => $this->finance->validate($type, $row, $seen, $line),
             };
             if ($errs) {

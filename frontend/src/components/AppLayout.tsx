@@ -245,6 +245,11 @@ const GROUPS: Group[] = [
         perm: 'water.view',
       },
       {
+        path: '/water/statement',
+        label: m('পানির নগদ বিবরণী', 'Water Cash Statement'),
+        perm: 'water.view',
+      },
+      {
         path: '/water/types',
         label: m('সংযোগের ধরন ও মাসিক ফি', 'Connection Types & Fees'),
         perm: 'water.view',
@@ -645,6 +650,11 @@ const GROUPS: Group[] = [
       {
         path: '/imports/legacy-irrigation',
         label: m('পুরোনো সেচ ডেটা ইমপোর্ট', 'Legacy Irrigation Import'),
+        perm: 'import.create',
+      },
+      {
+        path: '/imports/water-connections',
+        label: m('পানির সংযোগ ইমপোর্ট', 'Water Connections Import'),
         perm: 'import.create',
       },
       {

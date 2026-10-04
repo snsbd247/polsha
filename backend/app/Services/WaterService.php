@@ -142,9 +142,36 @@ class WaterService
     /** Receipt cancelled (approval handler): its penalties come off the bill and the ledger. */
     public function undoPenalties(Receipt $receipt): void
     {
-        foreach (WaterBillPenalty::where('receipt_id', $receipt->id)->whereNull('reversed_at')->with(['journal', 'bill'])->get() as $p) {
+        foreach (WaterBillPenalty::where('receipt_id', $receipt->id)->where('amount', '>', 0)->whereNull('reversed_at')->with(['journal', 'bill'])->get() as $p) {
             $this->reversePenalty($p, __('রশিদ বাতিলে জরিমানা ফেরত'));
         }
+    }
+
+    /**
+     * A penalty still unpaid on a bill is let off (manager's decision, with a reason):
+     * Dr penalty income / Cr receivable for what is waived; what was paid stays.
+     */
+    public function waivePenalty(WaterBill $bill, string $reason, string $date): WaterBill
+    {
+        return DB::transaction(function () use ($bill, $reason, $date) {
+            $bill = WaterBill::whereKey($bill->id)->lockForUpdate()->firstOrFail();
+            $waive = round(min((float) $bill->penalty, $bill->dueAmount()), 2);
+            if ($bill->status === 'cancelled' || $waive <= 0) {
+                throw ValidationException::withMessages(['bill' => __('এই বিলে মওকুফ করার মতো বকেয়া জরিমানা নেই।')]);
+            }
+            $journal = $this->ledger->postNow('journal', $date,
+                __('পানির বিলের জরিমানা মওকুফ — বিল :no: :reason', ['no' => $bill->bill_no, 'reason' => $reason]),
+                [
+                    ['account_id' => Account::byKey('water_penalty_income')->id, 'debit' => $waive],
+                    ['account_id' => Account::byKey('water_receivable')->id, 'credit' => $waive],
+                ], 'water', $bill);
+            WaterBillPenalty::create(['bill_id' => $bill->id, 'date' => $date, 'amount' => -$waive, 'journal_id' => $journal->id, 'created_by' => auth()->id()]);
+            $bill->update(['penalty' => round((float) $bill->penalty - $waive, 2)]);
+            $bill->setPaid((float) $bill->paid_amount);
+            AuditLogger::log('water', 'penalty_waived', $bill, null, ['amount' => $waive, 'reason' => $reason]);
+
+            return $bill->fresh();
+        });
     }
 
     public function requestCancel(WaterBill $bill, string $reason): ApprovalRequest

@@ -25,6 +25,7 @@ type Dues = {
   member_active: boolean
   loan: { loan_no: string; due_now: number; penalty: number; payable: boolean } | null
   irrigation: { due: number }
+  water?: { due: number; bills: unknown[] }
   share: { due: number }
   savings: { account_no: string | null }
   allocation: { parts: Record<string, number>; unallocated: number }
@@ -93,7 +94,7 @@ function CollectorView() {
     placeholderData: (prev) => prev,
   })
   const d = dues.data
-  const owed = d ? round((d.loan?.payable ? d.loan.due_now : 0) + d.irrigation.due + d.share.due) : 0
+  const owed = d ? round((d.loan?.payable ? d.loan.due_now : 0) + d.irrigation.due + (d.water?.due ?? 0) + d.share.due) : 0
   // first time the dues arrive, offer the whole amount owed
   const offered = useRef<number | null>(null)
   useEffect(() => {
@@ -206,6 +207,12 @@ function CollectorView() {
                   <span>{tx('সেচ বিল')}</span>
                   <b>৳ {money(d.irrigation.due)}</b>
                 </li>
+                {!!d.water?.bills.length && (
+                  <li>
+                    <span>{tx('পানির বিল')}</span>
+                    <b>৳ {money(d.water.due)}</b>
+                  </li>
+                )}
                 {d.member_active && (
                   <li>
                     <span>{tx('শেয়ার (ন্যূনতম বাকি)')}</span>

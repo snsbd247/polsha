@@ -91,7 +91,14 @@ export default function CombinedPaymentListPage({ tabs }: { tabs?: ReactNode }) 
       tint: '#e4edfd',
       onClick: () => show({}),
     },
-    { key: 'irrigation', label: label('irrigation', tx('সেচ')), value: data ? `৳ ${money(m.irrigation ?? 0)}` : undefined, icon: 'drop', color: '#0e9f9a', tint: '#d9f4f2' },
+    {
+      key: 'irrigation',
+      label: `${label('irrigation', tx('সেচ'))} + ${label('water', tx('পানি'))}`,
+      value: data ? `৳ ${money((m.irrigation ?? 0) + (m.water ?? 0))}` : undefined,
+      icon: 'drop',
+      color: '#0e9f9a',
+      tint: '#d9f4f2',
+    },
     { key: 'loan', label: label('loan', tx('ঋণ')), value: data ? `৳ ${money(m.loan ?? 0)}` : undefined, icon: 'bank', color: '#e5383b', tint: '#fde4e5' },
     { key: 'funds', label: `${label('savings', tx('সঞ্চয়'))} + ${label('share', tx('শেয়ার'))}`, value: data ? `৳ ${money((m.savings ?? 0) + (m.share ?? 0))}` : undefined, icon: 'piggy', color: '#1f9d55', tint: '#dcf3e5' },
   ]
@@ -128,6 +135,7 @@ export default function CombinedPaymentListPage({ tabs }: { tabs?: ReactNode }) 
     },
     { title: tx('মাধ্যম'), dataIndex: 'method', render: (v: string) => data?.methods[v] ?? v },
     { title: `${label('irrigation', tx('সেচ'))} (৳)`, align: 'right', render: (_, r) => part(r, 'irrigation') },
+    { title: `${label('water', tx('পানি'))} (৳)`, align: 'right', render: (_, r) => part(r, 'water') },
     { title: `${label('loan', tx('ঋণ'))} (৳)`, align: 'right', render: (_, r) => part(r, 'loan') },
     { title: `${label('share', tx('শেয়ার'))} (৳)`, align: 'right', render: (_, r) => part(r, 'share') },
     { title: `${label('savings', tx('সঞ্চয়'))} (৳)`, align: 'right', render: (_, r) => part(r, 'savings') },

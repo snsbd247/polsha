@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Account;
 use App\Models\Farmer;
 use App\Models\PublicPaymentRequest;
+use App\Models\WaterBill;
 use App\Services\CombinedPaymentService;
 use App\Services\PublicPaymentService;
 use App\Services\SettingService;
@@ -50,7 +51,7 @@ class PublicPaymentController extends Controller
     public function status(Request $request): JsonResponse
     {
         $data = $request->validate(['request_no' => ['required', 'string', 'max:30'], 'mobile' => ['required', 'string', 'max:20']]);
-        $req = PublicPaymentRequest::with('combinedPayment:id,payment_no')->where('request_no', trim(Bn::toEnDigits($data['request_no'])))->first();
+        $req = PublicPaymentRequest::with(['combinedPayment:id,payment_no', 'receipt:id,receipt_no'])->where('request_no', trim(Bn::toEnDigits($data['request_no'])))->first();
         // The whole number must match: an empty or partial mobile used to pass the suffix check.
         $mobile = SmsService::normalize($data['mobile']);
         abort_unless($req && $mobile && SmsService::normalize($req->mobile) === $mobile, 404, __('এই নম্বর ও মোবাইলে কোনো অনুরোধ পাওয়া যায়নি।'));
@@ -58,7 +59,7 @@ class PublicPaymentController extends Controller
         return response()->json([
             'request_no' => $req->request_no, 'status' => $req->status, 'status_label' => __(PublicPaymentRequest::STATUSES[$req->status]),
             'amount' => $req->amount, 'trx_id' => $req->trx_id, 'paid_on' => $req->paid_on?->toDateString(),
-            'receipt_no' => $req->combinedPayment?->payment_no, 'reject_reason' => $req->reject_reason,
+            'receipt_no' => $req->receiptNo(), 'reject_reason' => $req->reject_reason,
         ]);
     }
 
@@ -66,7 +67,8 @@ class PublicPaymentController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        $q = PublicPaymentRequest::with(['farmer:id,farmer_code,name_bn,name_en', 'verifier:id,name_bn,name_en', 'combinedPayment:id,payment_no'])->latest('id');
+        $q = PublicPaymentRequest::with(['farmer:id,farmer_code,name_bn,name_en', 'waterConnection:id,connection_no,name_bn,name_en', 'verifier:id,name_bn,name_en',
+            'combinedPayment:id,payment_no', 'receipt:id,receipt_no'])->latest('id');
         $request->filled('status') && $q->where('status', $request->query('status'));
         $request->filled('method') && $q->where('method', $request->query('method'));
         if ($s = $request->query('q')) {
@@ -84,8 +86,17 @@ class PublicPaymentController extends Controller
     /** One request with the farmer's dues and the proposed split, so the cashier can check before booking. */
     public function show(PublicPaymentRequest $publicPayment, CombinedPaymentService $combined): JsonResponse
     {
-        $publicPayment->load(['farmer:id,farmer_code,name_bn,name_en,mobile', 'verifier:id,name_bn,name_en', 'combinedPayment:id,payment_no,amount,status']);
+        $publicPayment->load(['farmer:id,farmer_code,name_bn,name_en,mobile', 'waterConnection:id,connection_no,name_bn,name_en,mobile,status', 'verifier:id,name_bn,name_en',
+            'combinedPayment:id,payment_no,amount,status', 'receipt:id,receipt_no,amount,status']);
         $out = $publicPayment->toArray();
+        if ($publicPayment->status === 'pending' && $publicPayment->waterConnection) {
+            // a water bill: the open bills it will pay, oldest first
+            $bills = WaterBill::where('connection_id', $publicPayment->water_connection_id)->whereIn('status', ['unpaid', 'partial'])->orderBy('bill_date')->orderBy('id')->get();
+            $out['water_dues'] = [
+                'due' => round($bills->sum(fn (WaterBill $b) => $b->dueAmount()), 2),
+                'bills' => $bills->map(fn (WaterBill $b) => ['id' => $b->id, 'bill_no' => $b->bill_no, 'kind' => $b->kind, 'period' => $b->period, 'due' => $b->dueAmount()])->values(),
+            ];
+        }
         if ($publicPayment->status === 'pending' && $publicPayment->farmer) {
             $dues = $combined->dues($publicPayment->farmer, $publicPayment->paid_on->toDateString());
             $out['dues'] = $dues;
@@ -146,9 +157,13 @@ class PublicPaymentController extends Controller
     {
         $code = trim(Bn::toEnDigits((string) $request->query('code')));
         $farmer = $code !== '' ? Farmer::where('farmer_code', $code)->first(['id', 'farmer_code', 'name_bn', 'name_en']) : null;
-        abort_unless($farmer, 404, __('এই আইডির কোনো কৃষক পাওয়া যায়নি।'));
+        if (! $farmer && ($c = PublicPaymentService::connection($code))) {
+            // a water connection number: the payer pays that tap's water bills
+            return response()->json(['farmer_code' => $c->connection_no, 'kind' => 'water', 'name_bn' => self::mask($c->name_bn), 'name_en' => self::mask($c->name_en)]);
+        }
+        abort_unless($farmer, 404, __('এই আইডি বা পানির সংযোগ নম্বরের কাউকে পাওয়া যায়নি।'));
 
-        return response()->json(['farmer_code' => $farmer->farmer_code, 'name_bn' => self::mask($farmer->name_bn), 'name_en' => self::mask($farmer->name_en)]);
+        return response()->json(['farmer_code' => $farmer->farmer_code, 'kind' => 'farmer', 'name_bn' => self::mask($farmer->name_bn), 'name_en' => self::mask($farmer->name_en)]);
     }
 
     /** "রহিম উদ্দিন মিয়া" → "রহিম ***": enough to confirm the ID, not a directory of names. */

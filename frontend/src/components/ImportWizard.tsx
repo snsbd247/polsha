@@ -9,7 +9,7 @@ import { digits, fmtDate } from '../lib/format'
 import { buildXlsx, download, type Cell } from '../lib/reports'
 import { t as tx } from '../lib/i18n'
 
-export type ImportTypeKey = 'farmers' | 'lands' | 'savings_opening' | 'share_opening' | 'loan_opening' | 'legacy_irrigation' | 'payments'
+export type ImportTypeKey = 'farmers' | 'lands' | 'savings_opening' | 'share_opening' | 'loan_opening' | 'legacy_irrigation' | 'payments' | 'water_connections'
 type Column = { key: string; label: string; required: boolean }
 export type ImportTypeInfo = { key: ImportTypeKey; label: string; money: boolean; allowed: boolean; columns: Column[]; template: [string[], string[]] }
 type Issue = { line: number; messages: string[] }

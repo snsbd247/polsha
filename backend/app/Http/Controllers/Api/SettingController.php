@@ -80,8 +80,9 @@ class SettingController extends Controller
         'voter_min_membership_months' => ['required', 'integer', 'min:0'],
         'bigha_decimal' => ['required', 'numeric', 'min:1', 'max:200'],
         'loan_max_guarantees' => ['required', 'integer', 'min:1', 'max:20'],
-        'combined_payment_order' => ['required', 'array', 'size:3'],
-        'combined_payment_order.*' => ['required', 'distinct', 'in:loan,irrigation,share'],
+        // water may be missing from an order saved before it existed; it is then settled last
+        'combined_payment_order' => ['required', 'array', 'min:3', 'max:4'],
+        'combined_payment_order.*' => ['required', 'distinct', 'in:loan,irrigation,water,share'],
         'share_min_amount' => ['required', 'numeric', 'min:0'],
         'share_unit_price' => ['required', 'numeric', 'gt:0'],
         'alert_day_close_days' => ['required', 'integer', 'min:1', 'max:60'],

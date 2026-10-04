@@ -26,6 +26,12 @@ class AccountingReportController extends Controller
         return $this->irrigationStatement($request, 'society');
     }
 
+    /** The water fund's cash statement, laid out like the irrigation one. */
+    public function waterStatement(Request $request)
+    {
+        return $this->irrigationStatement($request, 'water');
+    }
+
     /** The irrigation fund's audit-style cash statement: income and expense heads, opening and closing fund, bank part. */
     public function irrigationStatement(Request $request, string $stream = 'irrigation')
     {
@@ -44,7 +50,7 @@ class AccountingReportController extends Controller
     public function incomeExpenseBook(Request $request)
     {
         $data = $request->validate([
-            'stream' => ['required', 'in:society,irrigation'],
+            'stream' => ['required', 'in:society,irrigation,water'],
             'from' => ['required', 'date'],
             'to' => ['required', 'date', 'after_or_equal:from'],
         ]);

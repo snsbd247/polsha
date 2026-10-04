@@ -49,7 +49,7 @@ class SettingService
         // how many running loans one member may stand guarantor for
         'loan_max_guarantees' => 2,
         // combined payment: which dues are settled first; savings takes the rest
-        'combined_payment_order' => ['loan', 'irrigation', 'share'],
+        'combined_payment_order' => ['loan', 'irrigation', 'water', 'share'],
         // share capital every member should hold; the gap is a "share due" in combined payment
         'share_min_amount' => 0,
         // face value of one share; share capital ÷ this = number of shares on profiles and cards
@@ -68,6 +68,8 @@ class SettingService
         'sms_auto_payment' => true,
         'sms_auto_savings' => true,
         'sms_reminders' => true,
+        // each customer gets the month's water bill by SMS when the bills are made
+        'sms_water_bill' => true,
         'sms_reminder_days' => 3,
         // public (no-login) bKash/Nagad payment requests
         'public_payment_enabled' => false,

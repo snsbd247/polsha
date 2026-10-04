@@ -27,7 +27,7 @@ class DashboardService
     public const CHART_DAYS = 40;
 
     /** Chart / tag order of the collection modules; anything else follows. */
-    public const MODULE_ORDER = ['irrigation', 'savings', 'loan', 'share'];
+    public const MODULE_ORDER = ['irrigation', 'water', 'savings', 'loan', 'share'];
 
     private const CACHE_KEYS = ['people', 'lands', 'season', 'irrigation_due', 'savings', 'share', 'loans', 'cash', 'bank', 'assets', 'collection', 'notices'];
 
@@ -70,6 +70,11 @@ class DashboardService
             ]);
             $kpis[] = $this->kpi('irrigation_due', __('সেচের বকেয়া'), $due['value'], 'money', '/irrigation/dues', null, $due['change']);
         }
+        if ($can('water.view')) {
+            $w = $this->cached('water', fn () => $this->waterFigures() + ['change' => $this->ledgerChange('water_receivable', 1)]);
+            $kpis[] = $this->kpi('water_collection', __('পানির বিল আদায়'), $w['collected'], 'money', '/water/receipts', __('এই মাস'), $this->pct($w['collected'], $w['collected_prev']));
+            $kpis[] = $this->kpi('water_due', __('পানির বিল বকেয়া'), $w['due'], 'money', '/water/dues', __(':n সংযোগ', ['n' => $w['owing']]), $w['change']);
+        }
         foreach (['savings' => [__('মোট সঞ্চয়'), __('সব সদস্য')], 'share' => [__('শেয়ার মূলধন'), __('মোট')]] as $kind => [$label, $caption]) {
             if ($can($kind.'.view')) {
                 $f = $this->cached($kind, fn () => [
@@ -85,7 +90,7 @@ class DashboardService
             $kpis[] = $this->kpi('loans', __('মোট ঋণ'), $loan['outstanding'], 'money', '/loans', __('বকেয়া'), $loan['change']);
         }
         // keep the sample's card order: savings before loans, share after loans
-        $kpis = $this->reorder($kpis, ['farmers', 'member_farmers', 'non_member_farmers', 'land', 'irrigation_invoices', 'irrigation_collection', 'irrigation_due', 'savings', 'loans', 'share']);
+        $kpis = $this->reorder($kpis, ['farmers', 'member_farmers', 'non_member_farmers', 'land', 'irrigation_invoices', 'irrigation_collection', 'irrigation_due', 'water_collection', 'water_due', 'savings', 'loans', 'share']);
 
         if ($can('cash.view', 'bank.view')) {
             $kpis[] = $this->kpi('cash', __('হাতে নগদ'), $this->cached('cash', fn () => round(Account::whereIn('key', Account::CASH_STREAMS)->get()
@@ -235,6 +240,23 @@ class DashboardService
     }
 
     /** Daily money received into cash/bank for the last CHART_DAYS days, per module, plus today / this month. */
+    /** Water receipts this month and last (cancelled ones left out), and what is still owed on water bills. */
+    private function waterFigures(): array
+    {
+        $sum = fn (string $from, string $to) => round((float) DB::table('receipts')->where('module', 'water')->where('status', '!=', 'cancelled')
+            ->whereBetween('date', [$from, $to])->sum('amount'), 2);
+        $month = today()->startOfMonth();
+        $open = DB::table('water_bills')->whereIn('status', ['unpaid', 'partial']);
+
+        return [
+            'collected' => $sum($month->toDateString(), today()->toDateString()),
+            // the same days of last month, so early in a month the comparison is fair
+            'collected_prev' => $sum($month->copy()->subMonthNoOverflow()->toDateString(), today()->subMonthNoOverflow()->toDateString()),
+            'due' => round((float) (clone $open)->sum(DB::raw('amount + penalty - paid_amount')), 2),
+            'owing' => (clone $open)->distinct()->count('connection_id'),
+        ];
+    }
+
     private function collection(): array
     {
         $to = today();
@@ -338,6 +360,9 @@ class DashboardService
                     ->whereColumn('bank_reconciliations.bank_account_id', 'bank_accounts.id')->where('period', $period)->where('status', 'finalized'))->count(),
                 'maintenance' => DB::table('asset_maintenances')->where('status', 'scheduled')->whereNotNull('due_on')
                     ->where('due_on', '<=', today()->toDateString())->count(),
+                // taps with two or more months' bills unpaid: the disconnection list
+                'water_owing' => DB::table('water_bills')->whereIn('status', ['unpaid', 'partial'])->where('kind', 'monthly')
+                    ->groupBy('connection_id')->havingRaw('COUNT(*) >= 2')->select('connection_id')->get()->count(),
             ];
         });
         $rows = [];
@@ -346,6 +371,9 @@ class DashboardService
         };
         if ($can('irrigation.view')) {
             $add('irrigation_due_30', __('৩০ দিনের বেশি সেচের বকেয়া'), $counts['irrigation_due_30'], 'error', '/irrigation/dues');
+        }
+        if ($can('water.view')) {
+            $add('water_owing', __('২ মাস বা বেশি পানির বিল বকেয়া (সংযোগ)'), $counts['water_owing'], 'warning', '/water/dues');
         }
         if ($loan) {
             $add('loan_overdue', __('ঋণের কিস্তি মেয়াদোত্তীর্ণ'), $loan['overdue_installments'] ?? $loan['overdue_loans'], 'warning', '/loans/dues');

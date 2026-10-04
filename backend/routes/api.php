@@ -319,6 +319,7 @@ Route::middleware(['auth:sanctum', 'usable'])->group(function () {
     Route::get('accounting/ledger', [AccountingReportController::class, 'ledger'])->middleware('permission:accounting.view|cash.view|bank.view');
     Route::get('cashbook/irrigation-statement', [AccountingReportController::class, 'irrigationStatement'])->middleware('permission:accounting.view|cash.view|bank.view');
     Route::get('cashbook/society-statement', [AccountingReportController::class, 'societyStatement'])->middleware('permission:accounting.view|cash.view|bank.view');
+    Route::get('cashbook/water-statement', [AccountingReportController::class, 'waterStatement'])->middleware('permission:accounting.view|cash.view|bank.view|water.view');
     Route::get('cashbook/income-expense-book', [AccountingReportController::class, 'incomeExpenseBook'])->middleware('permission:accounting.view|cash.view|bank.view');
     Route::middleware('permission:accounting.edit')->group(function () {
         Route::post('accounts', [AccountController::class, 'store']);
@@ -452,6 +453,8 @@ Route::middleware(['auth:sanctum', 'usable'])->group(function () {
             Route::post('bills/{bill}/cancel', [WaterController::class, 'cancelBill']);
             Route::post('receipts/{receipt}/cancel', [WaterController::class, 'cancelReceipt']);
         });
+        // letting a penalty off is a manager's decision
+        Route::post('bills/{bill}/waive-penalty', [WaterController::class, 'waivePenalty'])->middleware('permission:water.approve');
         // the monthly fee is the society's tariff: only water admins change it
         Route::middleware('permission:water.admin')->group(function () {
             Route::post('types', [WaterController::class, 'storeType']);

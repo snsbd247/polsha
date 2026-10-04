@@ -13,7 +13,7 @@ import './statement.css'
 
 type Head = { label: string; amount: number; account_ids: number[] }
 type BankRow = { id: number; account_no: string; bank_name: string; opening: number; interest: number; charges: number; deposits: number; withdrawals: number; closing: number }
-export type Stream = 'irrigation' | 'society'
+export type Stream = 'irrigation' | 'society' | 'water'
 type Statement = {
   society: string | null
   from: string
@@ -33,6 +33,7 @@ type Statement = {
 const META: Record<Stream, { title: string; subtitle: string; tag: string; api: string; csvName: string }> = {
   irrigation: { title: tx('নগদ বিবরণী (সেচ)'), subtitle: tx('অডিট রিপোর্ট — আয় ও ব্যয়ের পূর্ণ বিবরণ'), tag: tx('সেচ'), api: '/cashbook/irrigation-statement', csvName: 'irrigation' },
   society: { title: tx('নগদ বিবরণী (সমিতি)'), subtitle: tx('অডিট রিপোর্ট — সমিতির আয় ও ব্যয়ের পূর্ণ বিবরণ'), tag: tx('সমিতি'), api: '/cashbook/society-statement', csvName: 'society' },
+  water: { title: tx('নগদ বিবরণী (পানি সরবরাহ)'), subtitle: tx('অডিট রিপোর্ট — পানির তহবিলের আয় ও ব্যয়ের পূর্ণ বিবরণ'), tag: tx('পানি'), api: '/cashbook/water-statement', csvName: 'water' },
 }
 const BANK_COLS = ['opening', 'interest', 'charges', 'deposits', 'withdrawals', 'closing'] as const
 

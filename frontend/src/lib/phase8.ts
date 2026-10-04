@@ -19,10 +19,10 @@ export const JOURNAL_MODULE_LABEL: Record<string, string> = {
 
 export const DENOMINATIONS = [1000, 500, 200, 100, 50, 20, 10, 5, 2, 1]
 
-export type CombinedModule = 'loan' | 'irrigation' | 'share' | 'savings'
-export const COMBINED_MODULES: CombinedModule[] = ['loan', 'irrigation', 'share', 'savings']
+export type CombinedModule = 'loan' | 'irrigation' | 'water' | 'share' | 'savings'
+export const COMBINED_MODULES: CombinedModule[] = ['loan', 'irrigation', 'water', 'share', 'savings']
 /** Tag tone per money head (the fl-tag / ll-* classes), same colours as the combined list cards. */
-export const MODULE_TONE: Record<string, string> = { irrigation: 'll-blue', loan: 'fl-tag-red', savings: 'fl-tag-green', share: 'll-purple' }
+export const MODULE_TONE: Record<string, string> = { irrigation: 'll-blue', water: 'll-blue', loan: 'fl-tag-red', savings: 'fl-tag-green', share: 'll-purple' }
 
 export type CombinedQuote = {
   farmer: { id: number; farmer_code: string; name_bn: string; name_en: string | null; father_name: string; mobile: string | null }
@@ -30,9 +30,11 @@ export type CombinedQuote = {
   member_active: boolean
   loan: { id: number; loan_no: string; due_now: number; payoff: number; overdue: number; penalty: number; payable: boolean } | null
   irrigation: { due: number; invoices: { id: number; invoice_no: string; season: { name_bn: string; name_en: string | null } | null; due: number }[] }
+  /** bills of the water connections that belong to this farmer */
+  water: { due: number; bills: { id: number; bill_no: string; connection_no: string | null; kind: string; period: string | null; due: number }[] }
   share: { account_no: string | null; balance: number; min: number; due: number }
   savings: { account_no: string | null; balance: number }
-  order: ('loan' | 'irrigation' | 'share')[]
+  order: ('loan' | 'irrigation' | 'water' | 'share')[]
   allocation: { parts: Record<CombinedModule, number>; unallocated: number }
   modules: Record<CombinedModule, string>
 }

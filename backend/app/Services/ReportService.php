@@ -16,6 +16,8 @@ use App\Models\LoanProduct;
 use App\Models\MemberTransaction;
 use App\Models\PublicPaymentRequest;
 use App\Models\Receipt;
+use App\Models\WaterBill;
+use App\Models\WaterConnection;
 use App\Models\Season;
 use App\Models\User;
 use App\Support\Bn;
@@ -36,7 +38,7 @@ class ReportService
     public const MAX_ROWS = 5000;
 
     public const CATEGORIES = [
-        'farmer' => 'কৃষক ও সদস্য', 'land' => 'জমি', 'irrigation' => 'সেচ', 'savings' => 'সঞ্চয় ও শেয়ার', 'loan' => 'ঋণ',
+        'farmer' => 'কৃষক ও সদস্য', 'land' => 'জমি', 'irrigation' => 'সেচ', 'water' => 'পানি সরবরাহ', 'savings' => 'সঞ্চয় ও শেয়ার', 'loan' => 'ঋণ',
         'accounting' => 'হিসাব', 'collection' => 'আদায়', 'due' => 'বকেয়া', 'audit' => 'অডিট', 'asset' => 'সম্পদ',
     ];
 
@@ -150,6 +152,10 @@ class ReportService
             'approval_status' => ['name' => 'status', 'type' => 'select', 'label' => __('অবস্থা'),
                 'options' => fn () => $this->options(['pending' => 'অপেক্ষমাণ', 'approved' => 'অনুমোদিত', 'rejected' => 'প্রত্যাখ্যাত', 'returned' => 'ফেরত'])],
             'public_status' => ['name' => 'status', 'type' => 'select', 'label' => __('অবস্থা'), 'options' => fn () => $this->options(PublicPaymentRequest::STATUSES)],
+            'water_type' => ['name' => 'type_id', 'type' => 'select', 'label' => __('সংযোগের ধরন'),
+                'options' => fn () => $opts(DB::table('water_connection_types')->orderBy('sort_order')->get(['id', 'name_bn', 'name_en']))],
+            'water_status' => ['name' => 'status', 'type' => 'select', 'label' => __('অবস্থা'), 'options' => fn () => $this->options(WaterConnection::STATUSES)],
+            'water_bill_status' => ['name' => 'status', 'type' => 'select', 'label' => __('অবস্থা'), 'options' => fn () => $this->options(WaterBill::STATUSES)],
             default => throw new \LogicException("Unknown report filter {$name}"),
         };
     }
@@ -300,7 +306,7 @@ class ReportService
     private function definitions(): array
     {
         return $this->defs ??= array_merge(
-            $this->farmerReports(), $this->landReports(), $this->irrigationReports(), $this->savingsReports(),
+            $this->farmerReports(), $this->landReports(), $this->irrigationReports(), $this->waterReports(), $this->savingsReports(),
             $this->loanReports(), $this->accountingReports(), $this->collectionReports(), $this->auditReports(), $this->assetReports(),
         );
     }
@@ -730,6 +736,85 @@ class ReportService
                     ->map(fn ($r) => ['season' => $r->season, 'land_code' => $r->land_code, 'dag_no' => $r->dag_no, 'farmer' => $this->farmerName($r).' ('.$r->farmer_code.')',
                         'type' => $this->lbl(Land::CULTIVATION_TYPES, $r->cultivation_type), 'area' => (float) $r->area_decimal,
                         'amount' => $r->status === 'cancelled' ? 0.0 : (float) $r->amount, 'status' => $this->lbl(Invoice::STATUSES, $r->status)]),
+            ],
+        ];
+    }
+
+    private function waterReports(): array
+    {
+        $who = fn ($r) => (app()->getLocale() === 'en' && ! empty($r->name_en) ? $r->name_en : $r->name_bn);
+        $type = fn ($r) => (app()->getLocale() === 'en' && ! empty($r->type_en) ? $r->type_en : $r->type_bn);
+        $connections = fn ($f) => DB::table('water_connections as c')->join('water_connection_types as t', 't.id', '=', 'c.type_id')
+            ->leftJoin('villages as v', 'v.id', '=', 'c.village_id')
+            ->when($f['type_id'] ?? null, fn ($q, $v) => $q->where('c.type_id', $v));
+
+        return [
+            'water_connections' => [
+                'categories' => ['water'], 'perm' => 'water.view', 'title' => __('পানির সংযোগের তালিকা'),
+                'filters' => ['water_type', 'water_status'],
+                'columns' => [['connection_no', __('সংযোগ নং')], ['customer', __('গ্রাহক')], ['father', __('পিতা/স্বামী')], ['mobile', __('মোবাইল')], ['village', __('গ্রাম')],
+                    ['type', __('ধরন')], ['fee', __('মাসিক ফি'), 'money', true], ['connected_on', __('সংযোগের তারিখ'), 'date'], ['status', __('অবস্থা')]],
+                'rows' => fn ($f) => $connections($f)->when($f['status'], fn ($q, $v) => $q->where('c.status', $v))
+                    ->orderBy('c.connection_no')->limit(self::MAX_ROWS + 1)
+                    ->get(['c.*', 't.name_bn as type_bn', 't.name_en as type_en', 't.monthly_fee as type_fee', 'v.name_bn as village'])
+                    ->map(fn ($r) => ['connection_no' => $r->connection_no, 'customer' => $who($r), 'father' => $r->father_name, 'mobile' => $r->mobile, 'village' => $r->village,
+                        'type' => $type($r), 'fee' => (float) ($r->monthly_fee ?? $r->type_fee), 'connected_on' => $r->connected_on,
+                        'status' => $this->lbl(WaterConnection::STATUSES, $r->status)]),
+            ],
+            'water_billing' => [
+                'categories' => ['water'], 'perm' => 'water.view', 'title' => __('পানির বিলিং রেজিস্টার'),
+                'filters' => ['period', 'water_type', 'water_bill_status'],
+                'columns' => [['bill_no', __('বিল নং')], ['for', __('কিসের বিল')], ['date', __('বিলের তারিখ'), 'date'], ['connection_no', __('সংযোগ নং')], ['customer', __('গ্রাহক')],
+                    ['type', __('ধরন')], ['amount', __('বিল'), 'money', true], ['penalty', __('জরিমানা'), 'money', true], ['paid', __('আদায়'), 'money', true],
+                    ['due', __('বকেয়া'), 'money', true], ['status', __('অবস্থা')]],
+                'rows' => fn ($f) => DB::table('water_bills as b')->join('water_connections as c', 'c.id', '=', 'b.connection_id')
+                    ->join('water_connection_types as t', 't.id', '=', 'c.type_id')
+                    ->whereBetween('b.bill_date', [$f['from'], $f['to']])
+                    ->when($f['type_id'], fn ($q, $v) => $q->where('c.type_id', $v))->when($f['status'], fn ($q, $v) => $q->where('b.status', $v))
+                    ->orderBy('b.bill_no')->limit(self::MAX_ROWS + 1)
+                    ->get(['b.*', 'c.connection_no', 'c.name_bn', 'c.name_en', 't.name_bn as type_bn', 't.name_en as type_en'])
+                    ->map(fn ($r) => ['bill_no' => $r->bill_no,
+                        'for' => $r->kind === 'monthly' ? WaterBill::periodLabel($r->period, app()->getLocale()) : $this->lbl(WaterBill::KINDS, $r->kind),
+                        'date' => $r->bill_date, 'connection_no' => $r->connection_no, 'customer' => $who($r), 'type' => $type($r),
+                        'amount' => $r->status === 'cancelled' ? 0.0 : (float) $r->amount, 'penalty' => $r->status === 'cancelled' ? 0.0 : (float) $r->penalty,
+                        'paid' => (float) $r->paid_amount,
+                        'due' => $r->status === 'cancelled' ? 0.0 : round((float) $r->amount + (float) $r->penalty - (float) $r->paid_amount, 2),
+                        'status' => $this->lbl(WaterBill::STATUSES, $r->status)]),
+            ],
+            'water_collection' => [
+                'categories' => ['water', 'collection'], 'perm' => 'water.view', 'title' => __('পানির বিল আদায় রিপোর্ট'),
+                'filters' => ['period'],
+                'columns' => [['date', __('তারিখ'), 'date'], ['receipt_no', __('রশিদ নং')], ['payer', __('প্রদানকারী')], ['method', __('মাধ্যম')], ['amount', __('টাকা'), 'money', true]],
+                'rows' => fn ($f) => DB::table('receipts')->where('module', 'water')->where('status', '!=', 'cancelled')
+                    ->whereBetween('date', [$f['from'], $f['to']])->orderBy('date')->orderBy('id')->limit(self::MAX_ROWS + 1)->get()
+                    ->map(fn ($r) => ['date' => $r->date, 'receipt_no' => $r->receipt_no, 'payer' => $r->payer_name, 'method' => $this->lbl(Receipt::METHODS, $r->method),
+                        'amount' => (float) $r->amount]),
+            ],
+            'water_due' => [
+                'categories' => ['water', 'due'], 'perm' => 'water.view', 'title' => __('সংযোগভিত্তিক পানির বিল বকেয়া'),
+                'filters' => ['water_type'],
+                'columns' => [['connection_no', __('সংযোগ নং')], ['customer', __('গ্রাহক')], ['mobile', __('মোবাইল')], ['village', __('গ্রাম')], ['type', __('ধরন')],
+                    ['bills', __('বকেয়া বিল'), 'number', true], ['oldest', __('সবচেয়ে পুরনো বিল'), 'date'], ['due', __('বকেয়া'), 'money', true]],
+                'rows' => fn ($f) => $connections($f)->join('water_bills as b', 'b.connection_id', '=', 'c.id')->whereIn('b.status', ['unpaid', 'partial'])
+                    ->groupBy('c.id', 'c.connection_no', 'c.name_bn', 'c.name_en', 'c.mobile', 'v.name_bn', 't.name_bn', 't.name_en')
+                    ->selectRaw('c.connection_no, c.name_bn, c.name_en, c.mobile, v.name_bn as village, t.name_bn as type_bn, t.name_en as type_en,
+                        count(b.id) as bills, min(b.bill_date) as oldest, sum(b.amount + b.penalty - b.paid_amount) as due')
+                    ->orderByRaw('sum(b.amount + b.penalty - b.paid_amount) desc')->limit(self::MAX_ROWS + 1)->get()
+                    ->map(fn ($r) => ['connection_no' => $r->connection_no, 'customer' => $who($r), 'mobile' => $r->mobile, 'village' => $r->village, 'type' => $type($r),
+                        'bills' => (int) $r->bills, 'oldest' => $r->oldest, 'due' => round((float) $r->due, 2)]),
+            ],
+            'water_monthly' => [
+                'categories' => ['water'], 'perm' => 'water.view', 'title' => __('মাসভিত্তিক পানির বিল সারসংক্ষেপ'),
+                'filters' => [],
+                'columns' => [['month', __('মাস')], ['bills', __('বিল'), 'number', true], ['billed', __('বিলের টাকা'), 'money', true], ['penalty', __('জরিমানা'), 'money', true],
+                    ['collected', __('আদায়'), 'money', true], ['due', __('বকেয়া'), 'money', true], ['rate', __('আদায়ের হার (%)'), 'decimal']],
+                'rows' => fn () => DB::table('water_bills')->where('kind', 'monthly')->where('status', '!=', 'cancelled')
+                    ->groupBy('period')->orderByDesc('period')
+                    ->selectRaw('period, count(*) as bills, sum(amount) as billed, sum(penalty) as penalty, sum(paid_amount) as collected')->get()
+                    ->map(fn ($r) => ['month' => WaterBill::periodLabel($r->period, app()->getLocale()), 'bills' => (int) $r->bills, 'billed' => (float) $r->billed,
+                        'penalty' => (float) $r->penalty, 'collected' => (float) $r->collected,
+                        'due' => round((float) $r->billed + (float) $r->penalty - (float) $r->collected, 2),
+                        'rate' => (float) $r->billed + (float) $r->penalty > 0 ? round((float) $r->collected * 100 / ((float) $r->billed + (float) $r->penalty), 1) : 0.0]),
             ],
         ];
     }
