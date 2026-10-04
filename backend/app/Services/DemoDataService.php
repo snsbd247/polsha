@@ -302,7 +302,7 @@ class DemoDataService
         }
         // the admin also enters old-book members and the demo area, and brings the paper records in through Import
         $this->users['admin']->givePermissionTo(['member.admin', 'member.view', 'location.create', 'mouza.create', 'farmer.view', 'farmer.delete',
-            'farmer.create', 'farmer.edit', 'land.create', 'land.edit', 'land.view', 'savings.create', 'share.create', 'loan.create', 'irrigation.create', 'payment.create']);
+            'farmer.create', 'farmer.edit', 'land.create', 'land.edit', 'land.view', 'savings.create', 'share.create', 'loan.create', 'irrigation.create', 'payment.create', 'water.create']);
         // the accountant prepares year-end distributions and account closings; the manager approves them
         $this->users['accountant']->givePermissionTo(['savings.view', 'share.view', 'savings.edit', 'share.edit']);
     }
@@ -634,7 +634,7 @@ class DemoDataService
                         break;
                     }
                     $d = $this->api('field', 'GET', 'field/dues', ['farmer_id' => $fid]);
-                    $owed = round(($d['loan']['payable'] ?? false ? $d['loan']['due_now'] : 0) + $d['irrigation']['due'] + $d['share']['due'], 2);
+                    $owed = round(($d['loan']['payable'] ?? false ? $d['loan']['due_now'] : 0) + $d['irrigation']['due'] + ($d['water']['due'] ?? 0) + $d['share']['due'], 2);
                     $amount = $owed > 0 ? min($owed, $this->money(300, 3000)) : ($d['member_active'] ? $this->money(200, 1000) : 0);
                     if ($amount <= 0) {
                         continue;
@@ -1681,7 +1681,12 @@ class DemoDataService
         $i = 0;
         for ($back = 52; $back >= 0; $back -= mt_rand(2, 5)) {
             $outcome = $back <= 3 ? 'pending' : (++$i % 5 === 0 ? 'reject' : 'verify');
-            $this->at($today->copy()->subDays($back), function (string $d) use ($outcome) {
+            // every third one pays a water bill with the connection number (the customer need not be a farmer)
+            $water = $i % 3 === 1;
+            $this->at($today->copy()->subDays($back), function (string $d) use ($outcome, $water) {
+                if ($water && $this->waterOnline($d, $outcome)) {
+                    return;
+                }
                 $inv = Invoice::whereIn('status', ['unpaid', 'partial'])->whereIn('farmer_id', array_keys($this->farmers))->inRandomOrder()->first();
                 $amount = $inv ? min(floor($inv->dueAmount() / 50) * 50, $this->money(500, 3000, 100)) : 0;
                 if ($amount < 100) {
@@ -1702,6 +1707,34 @@ class DemoDataService
                 });
             });
         }
+    }
+
+    /** A water customer sends a bill by bKash and reports it with the connection number; false when nobody owes enough. */
+    private function waterOnline(string $date, string $outcome): bool
+    {
+        $c = DB::table('water_bills')->join('water_connections as c', 'c.id', '=', 'water_bills.connection_id')
+            ->whereIn('water_bills.status', ['unpaid', 'partial'])->where('c.status', '!=', 'closed')->whereNotNull('c.mobile')
+            ->groupBy('c.id', 'c.connection_no', 'c.name_bn', 'c.mobile')
+            ->selectRaw('c.id, c.connection_no, c.name_bn, c.mobile, SUM(water_bills.amount + water_bills.penalty - water_bills.paid_amount) as due')
+            ->havingRaw('SUM(water_bills.amount + water_bills.penalty - water_bills.paid_amount) >= 100')->inRandomOrder()->first();
+        if (! $c) {
+            return false;
+        }
+        $trx = strtoupper(Str::random(10));
+        $this->api('cashier', 'POST', 'public/payments', [
+            'farmer_code' => $c->connection_no, 'payer_name' => $c->name_bn, 'mobile' => $c->mobile, 'method' => $this->pick(['bkash', 'nagad']),
+            'sender_number' => $this->mobile(), 'trx_id' => $trx, 'amount' => floor((float) $c->due / 50) * 50, 'paid_on' => $date,
+        ]);
+        $id = DB::table('public_payment_requests')->where('trx_id', $trx)->value('id');
+        $this->at(Carbon::parse($date)->addDays(mt_rand(1, 2)), function () use ($id, $outcome) {
+            // paid at the counter meanwhile: the bill is gone, so the request is turned down
+            $ok = $outcome === 'verify' && $this->tryApi('accountant', 'POST', "public-payments/$id/verify", ['fund_account_id' => $this->mobileAccountId], true);
+            if (! $ok) {
+                $this->api('cashier', 'POST', "public-payments/$id/reject", ['reason' => $outcome === 'verify' ? 'বিলটি এর মধ্যে অফিসে পরিশোধ হয়ে গেছে — টাকা ফেরত দেওয়া হবে' : 'এই ট্রানজেকশন আইডি স্টেটমেন্টে পাওয়া যায়নি']);
+            }
+        });
+
+        return true;
     }
 
     /** At the year end the AGM shares out profit on savings and a dividend on shares. */
@@ -1804,6 +1837,20 @@ class DemoDataService
             for ($i = 0; $i < 45; $i++) {
                 $this->waterConnection($d, $this->start->copy()->subMonths(mt_rand(3, 30))->toDateString(), false);
             }
+            // and the old register's customers who still owed money, brought in through Import
+            $rows = [];
+            for ($i = 0; $i < 8; $i++) {
+                [$bn, $en] = DemoNames::person($this->chance(0.7));
+                [$father] = DemoNames::person(true);
+                $rows[] = [$bn, $en, $father, $this->chance(0.85) ? $this->mobile() : '', $this->pick($this->villages)['bn'],
+                    $this->pick(['উত্তর পাড়া', 'দক্ষিণ পাড়া', 'বাজার এলাকা']), $this->pick(['আবাসিক', 'আবাসিক', 'আবাসিক', 'বাণিজ্যিক']),
+                    $this->dmy($this->start->copy()->subMonths(mt_rand(6, 40))), $this->money(200, 1600)];
+            }
+            $batch = $this->import('water_connections', 'panir-khata.csv',
+                ['গ্রাহকের নাম', 'ইংরেজি নাম', 'পিতা/স্বামী', 'মোবাইল', 'গ্রাম', 'পাড়া/বাড়ি', 'সংযোগের ধরন', 'সংযোগের তারিখ', 'পুরনো বকেয়া'], $rows);
+            foreach (DB::table('water_connections')->where('import_batch_id', $batch['id'])->pluck('id') as $id) {
+                $this->water[$id] = ['payer' => $this->pick(['good', 'late', 'late'])];
+            }
         });
         // a few new taps every month, each with its connection fee
         for ($m = $this->start->copy()->addMonth()->startOfMonth(); $m->toDateString() <= $this->today; $m->addMonth()) {
@@ -1852,7 +1899,8 @@ class DemoDataService
         $type = $this->chance(0.82) ? 'RES' : ($this->chance(0.7) ? 'COM' : 'INS');
         $typeId = (int) DB::table('water_connection_types')->where('code', $type)->value('id');
         $c = $this->api('water', 'POST', 'water/connections', [
-            'type_id' => $typeId, 'name_bn' => $bn, 'name_en' => $en, 'father_name' => $father, 'mobile' => $mobile,
+            // a farmer's tap: its bills also come up in the farmer's combined payment and field collection
+            'type_id' => $typeId, 'farmer_id' => $farmer?->id, 'name_bn' => $bn, 'name_en' => $en, 'father_name' => $father, 'mobile' => $mobile,
             'village_id' => $v['id'], 'address' => $this->pick(['উত্তর পাড়া', 'দক্ষিণ পাড়া', 'পূর্ব পাড়া', 'পশ্চিম পাড়া', 'বাজার এলাকা', 'মসজিদ সংলগ্ন', 'স্কুল রোড']),
             'connected_on' => $connectedOn,
             // a shop or two pays a little more than the usual fee by agreement
@@ -1929,6 +1977,18 @@ class DemoDataService
             });
             // a cut-off tap gets no bills, so it is no longer in the monthly round until reconnected
             $this->water[$debtor]['payer'] = 'chronic';
+        });
+        // an elderly customer pays part of a late bill with a penalty; the manager lets the rest of the penalty off
+        $this->at($this->start->copy()->addDays((int) ($span * 0.6)), function (string $d) {
+            $bill = DB::table('water_bills')->where('kind', 'monthly')->where('status', 'unpaid')->where('amount', '>=', 200)->orderBy('id')->first();
+            if (! $bill) {
+                return;
+            }
+            $this->api('water', 'POST', 'water/collect', [
+                'connection_id' => $bill->connection_id, 'date' => $d, 'method' => 'cash', 'penalty' => 50,
+                'items' => [['bill_id' => $bill->id, 'amount' => round((float) $bill->amount / 2)]], 'remarks' => 'আংশিক পরিশোধ',
+            ]);
+            $this->api('manager', 'POST', "water/bills/{$bill->id}/waive-penalty", ['reason' => 'বয়স্ক ও অসচ্ছল গ্রাহক — কমিটির সিদ্ধান্তে জরিমানা মওকুফ']);
         });
         // a family moves away: pays up and closes the tap
         $this->at($this->start->copy()->addDays((int) ($span * 0.7)), function (string $d) {

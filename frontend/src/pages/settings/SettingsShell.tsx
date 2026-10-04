@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { useEffect, useRef, type ReactNode } from 'react'
 import { Link, NavLink } from 'react-router-dom'
 import { ConfigProvider } from 'antd'
 import { CalendarOutlined, ControlOutlined, FileTextOutlined, GlobalOutlined, HomeOutlined, MessageOutlined, PictureOutlined, RightOutlined, SafetyCertificateOutlined, SettingOutlined } from '@ant-design/icons'
@@ -23,6 +23,12 @@ const TABS = [
  */
 export default function SettingsShell({ title, subtitle, extra, children }: { title: string; subtitle: string; extra?: ReactNode; children: ReactNode }) {
   const { can } = useAuth()
+  const tabs = useRef<HTMLElement>(null)
+  // eight tabs overflow a narrow screen: bring the open one into view
+  useEffect(() => {
+    const active = tabs.current?.querySelector<HTMLElement>('a.active')
+    if (tabs.current && active) tabs.current.scrollLeft = active.offsetLeft - (tabs.current.clientWidth - active.offsetWidth) / 2
+  }, [])
   return (
     // the approved design uses a blue accent on these pages, whatever the brand colour
     <ConfigProvider theme={{ token: { colorPrimary: '#1769e0', colorLink: '#1769e0' } }}>
@@ -44,7 +50,7 @@ export default function SettingsShell({ title, subtitle, extra, children }: { ti
           </div>
           {extra && <div className="st-head-extra">{extra}</div>}
         </div>
-        <nav className="st-tabs">
+        <nav className="st-tabs" ref={tabs}>
           {TABS.filter((t) => (Array.isArray(t.perm) ? t.perm.some((p) => can(p)) : can(t.perm))).map((t) => (
             <NavLink key={t.to} to={t.to} className={({ isActive }) => (isActive ? 'active' : '')}>
               {t.icon}

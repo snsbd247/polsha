@@ -101,6 +101,8 @@ cd "$ROOT"
 rm -rf backend.old
 if [ -d backend ]; then mv backend backend.old; fi
 mv backend.new backend
+# the new release carries the database backups; a second copy in the old release only fills the disk
+rm -rf backend.old/storage/app/private/backups
 
 # Cache only after the move: cached config stores absolute paths.
 cd "$ROOT/backend"
