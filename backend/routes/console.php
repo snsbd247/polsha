@@ -136,3 +136,9 @@ Artisan::command('demo:seed {--farmers=100}', function (App\Services\DemoDataSer
 Artisan::command('demo:purge {--force}', function (App\Services\DemoDataService $demo) {
     $demo->purge((bool) $this->option('force'), fn (string $m) => $this->line($m));
 })->purpose('Remove the demo data by loading back the pre-demo snapshot');
+
+// every division, district, upazila and union of Bangladesh (safe to run again; existing places are kept)
+Artisan::command('locations:import-bd', function (\App\Services\BdLocationImporter $importer) {
+    $added = $importer->run();
+    $this->info(sprintf('Added: %d divisions, %d districts, %d upazilas, %d unions.', $added['divisions'], $added['districts'], $added['upazilas'], $added['unions']));
+})->purpose('Import every division, district, upazila and union of Bangladesh');

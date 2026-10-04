@@ -1338,5 +1338,6 @@
     "টাকা এলো — :heads (জমা: :fund)": "Money in — :heads (into :fund)",
     "টাকা গেল — :heads (:fund থেকে)": "Money out — :heads (from :fund)",
     "সমন্বয় — :a": "Adjustment — :a",
-    "স্থানান্তর — :from থেকে :to": "Transfer — from :from to :to"
+    "স্থানান্তর — :from থেকে :to": "Transfer — from :from to :to",
+    "বাংলাদেশের সব বিভাগ, জেলা, উপজেলা ও ইউনিয়ন ইমপোর্ট": "Imported every division, district, upazila and union of Bangladesh"
 }

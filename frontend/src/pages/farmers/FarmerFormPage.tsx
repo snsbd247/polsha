@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import type { AxiosError } from 'axios'
-import { Alert, App, Button, Checkbox, ConfigProvider, DatePicker, Form, Input, Modal, Radio, Select, Spin, Tooltip, Upload } from 'antd'
+import { Alert, App, Button, Checkbox, ConfigProvider, DatePicker, Divider, Form, Input, Modal, Radio, Select, Space, Spin, Tooltip, Upload } from 'antd'
 import {
   ArrowLeftOutlined,
   CameraFilled,
@@ -136,10 +136,29 @@ function FarmerForm({ id, existing, defaults }: { id?: string; existing?: Farmer
 
   const villageId = path[4]
   const mouzas = useQuery({
-    queryKey: ['mouzas', 'by-village', villageId],
-    queryFn: async () => (await api.get<Mouza[]>('/mouzas', { params: { all: 1, village_id: villageId } })).data,
+    queryKey: ['mouzas', 'by-village', villageId, path[3]],
+    // a village with no mouza yet (just added) offers its union's mouzas; saving links the two
+    queryFn: async () => {
+      const own = (await api.get<Mouza[]>('/mouzas', { params: { all: 1, village_id: villageId } })).data
+      return own.length || !path[3] ? own : (await api.get<Mouza[]>('/mouzas', { params: { all: 1, union_id: path[3] } })).data
+    },
     enabled: !!villageId,
   })
+
+  // a mouza missing in a new area is added from here, under the chosen union and with the chosen village
+  const [newMouza, setNewMouza] = useState({ name: '', jl: '' })
+  const addMouza = async () => {
+    if (!newMouza.name.trim() || !newMouza.jl.trim() || !path[3]) return
+    try {
+      const r = await api.post<{ id: number }>('/mouzas', { union_id: path[3], name_bn: newMouza.name.trim(), jl_no: toEnDigits(newMouza.jl.trim()), village_ids: villageId ? [villageId] : [] })
+      await queryClient.invalidateQueries({ queryKey: ['mouzas'] })
+      form.setFieldValue('mouza_id', r.data.id)
+      setNewMouza({ name: '', jl: '' })
+      message.success(tx('মৌজা যোগ হয়েছে।'))
+    } catch (e) {
+      message.error(errorMessage(e))
+    }
+  }
 
   const households = useQuery({
     queryKey: ['households', 'lookup', householdTerm],
@@ -372,13 +391,48 @@ function FarmerForm({ id, existing, defaults }: { id?: string; existing?: Farmer
                     <LevelSelect index={i} parentId={i === 0 ? undefined : path[i - 1]} value={path[i]} onChange={(v) => setLevel(i, v)} placeholder={tx('{{p0}} বাছাই করুন', { p0: level.label })} />
                   </div>
                 ))}
-                <Form.Item name="mouza_id" label={tx('মৌজা')} rules={[required(tx('মৌজা বাছাই করুন'))]} extra={villageId && mouzas.data?.length === 0 ? tx('এই গ্রামের সাথে কোনো মৌজা যুক্ত নেই — মৌজা পাতায় যুক্ত করুন।') : undefined}>
+                <Form.Item
+                  name="mouza_id"
+                  label={tx('মৌজা')}
+                  rules={[required(tx('মৌজা বাছাই করুন'))]}
+                  extra={
+                    villageId && mouzas.data?.length === 0 ? (
+                      <>
+                        {tx('এই ইউনিয়নে কোনো মৌজা নেই।')} {can('mouza.create') ? tx('তালিকার নিচে নাম ও JL নং দিয়ে যোগ করুন।') : tx('মৌজা পাতায় যোগ করতে বলুন।')}
+                      </>
+                    ) : undefined
+                  }
+                >
                   <Select
                     disabled={!villageId}
                     loading={mouzas.isFetching}
                     placeholder={villageId ? tx('মৌজা বাছাই করুন') : tx('আগে গ্রাম বাছাই করুন')}
                     labelRender={(o) => o.label ?? tx('লোড হচ্ছে…')}
                     options={mouzas.data?.map((m) => ({ value: m.id, label: `${nameOf(m)} (JL ${digits(m.jl_no)})` }))}
+                    popupRender={
+                      can('mouza.create') && path[3]
+                        ? (menu) => (
+                            <>
+                              {menu}
+                              <Divider style={{ margin: '6px 0' }} />
+                              <Space.Compact style={{ width: '100%', padding: '0 6px 4px' }}>
+                                <Input value={newMouza.name} placeholder={tx('নতুন মৌজার নাম')} onChange={(e) => setNewMouza((m) => ({ ...m, name: e.target.value }))} onKeyDown={(e) => e.stopPropagation()} />
+                                <Input
+                                  value={newMouza.jl}
+                                  placeholder={tx('JL নং')}
+                                  style={{ width: 90 }}
+                                  onChange={(e) => setNewMouza((m) => ({ ...m, jl: e.target.value }))}
+                                  onKeyDown={(e) => e.stopPropagation()}
+                                  onPressEnter={addMouza}
+                                />
+                                <Button type="primary" icon={<PlusOutlined />} onClick={addMouza}>
+                                  {tx('যোগ করুন')}
+                                </Button>
+                              </Space.Compact>
+                            </>
+                          )
+                        : undefined
+                    }
                   />
                 </Form.Item>
               </div>

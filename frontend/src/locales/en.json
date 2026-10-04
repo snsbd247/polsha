@@ -3872,5 +3872,14 @@
   "ইংরেজি নাম, ব্র্যান্ড, সিরিয়াল, সরবরাহকারী, মৌজা, মন্তব্য, অবশিষ্ট মূল্য ও আয়ুষ্কাল (খালি রাখলে শ্রেণি থেকে), রেফারেন্স": "English name, brand, serial, supplier, mouza, remarks, salvage value and life (from the category if left empty), reference",
   "কী মেরামত": "What is repaired",
   "যেমন: মোটর রিওয়াইন্ডিং": "e.g. motor rewinding",
-  "কবে ফেরত আসার কথা": "Expected back on"
+  "কবে ফেরত আসার কথা": "Expected back on",
+  "গ্রাম যোগ হয়েছে।": "Village added.",
+  "এই ইউনিয়নে কোনো গ্রাম নেই — নিচে যোগ করুন": "No village in this union yet — add one below",
+  "নতুন গ্রামের নাম": "New village name",
+  "মৌজা যোগ হয়েছে।": "Mouza added.",
+  "এই ইউনিয়নে কোনো মৌজা নেই।": "No mouza in this union.",
+  "তালিকার নিচে নাম ও JL নং দিয়ে যোগ করুন।": "Add one below the list with its name and JL no.",
+  "মৌজা পাতায় যোগ করতে বলুন।": "Ask for it to be added on the Mouza page.",
+  "নতুন মৌজার নাম": "New mouza name",
+  "JL নং": "JL no."
 }

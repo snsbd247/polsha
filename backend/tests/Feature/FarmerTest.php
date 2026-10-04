@@ -24,12 +24,13 @@ class FarmerTest extends Phase2TestCase
         $this->assertDatabaseHas('farmers', ['nid' => '1234567890', 'mobile' => '01711223344']);
     }
 
-    public function test_mouza_must_belong_to_selected_village(): void
+    public function test_mouza_of_the_villages_union_takes_the_village(): void
     {
+        // not linked yet, but in the same union: saving the farmer links them (another union is refused — BdLocationImportTest)
         $this->mouza->villages()->detach();
 
-        $this->actingAs($this->officer)->postJson('/api/farmers', $this->farmerPayload())
-            ->assertStatus(422)->assertJsonValidationErrors('mouza_id');
+        $this->actingAs($this->officer)->postJson('/api/farmers', $this->farmerPayload())->assertCreated();
+        $this->assertTrue($this->mouza->villages()->where('villages.id', $this->village->id)->exists());
     }
 
     public function test_same_nid_is_blocked(): void

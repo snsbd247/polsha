@@ -11,6 +11,7 @@ use App\Models\Loan;
 use App\Models\MemberAccount;
 use App\Models\Mouza;
 use App\Models\User;
+use App\Models\Village;
 use App\Services\AuditLogger;
 use App\Services\FarmerDuplicateService;
 use App\Services\ImageService;
@@ -552,9 +553,13 @@ class FarmerController extends Controller
             'post_code.regex' => __('পোস্ট কোড ৪ অঙ্কের হতে হবে।'),
         ]);
 
-        $linked = Mouza::whereKey($data['mouza_id'])->whereHas('villages', fn ($v) => $v->where('villages.id', $data['village_id']))->exists();
-        if (! $linked) {
-            throw ValidationException::withMessages(['mouza_id' => __('এই মৌজা বাছাই করা গ্রামের সাথে যুক্ত নয়। মৌজা পাতায় গ্রাম যুক্ত করুন।')]);
+        $mouza = Mouza::find($data['mouza_id']);
+        if (! $mouza->villages()->where('villages.id', $data['village_id'])->exists()) {
+            // a village just added under its union has no mouza yet: a mouza of the same union takes it in
+            if ((int) $mouza->union_id !== (int) Village::whereKey($data['village_id'])->value('union_id')) {
+                throw ValidationException::withMessages(['mouza_id' => __('এই মৌজা বাছাই করা গ্রামের সাথে যুক্ত নয়। মৌজা পাতায় গ্রাম যুক্ত করুন।')]);
+            }
+            $mouza->villages()->syncWithoutDetaching([$data['village_id']]);
         }
         unset($data['photo']);
 

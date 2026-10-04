@@ -1,6 +1,9 @@
-import { useQueries, useQuery } from '@tanstack/react-query'
-import { Select, Space } from 'antd'
-import { api } from '../lib/api'
+import { useState } from 'react'
+import { useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
+import { App, Button, Divider, Input, Select, Space } from 'antd'
+import { PlusOutlined } from '@ant-design/icons'
+import { useAuth } from '../auth/AuthContext'
+import { api, errorMessage } from '../lib/api'
 import type { LocationItem } from '../lib/types'
 import { t as tx } from '../lib/i18n'
 
@@ -18,11 +21,35 @@ export type LocationPath = (number | undefined)[]
 export function LevelSelect({ index, parentId, value, onChange, placeholder }: { index: number; parentId?: number; value?: number; onChange: (v?: number) => void; placeholder?: string }) {
   const level = LEVELS[index]
   const enabled = index === 0 || !!parentId
+  const { can } = useAuth()
+  const { message } = App.useApp()
+  const queryClient = useQueryClient()
+  const [newName, setNewName] = useState('')
+  const [adding, setAdding] = useState(false)
+  const queryKey = ['locations', level.key, parentId ?? null, 'active']
   const { data, isLoading } = useQuery({
-    queryKey: ['locations', level.key, parentId ?? null, 'active'],
+    queryKey,
     queryFn: async () => (await api.get<LocationItem[]>(`/locations/${level.key}`, { params: { parent_id: parentId, active_only: 1 } })).data,
     enabled,
   })
+  // villages are not in any countrywide list: a missing one is added right here, under the chosen union
+  const canAdd = level.key === 'villages' && !!parentId && can('location.create')
+  const add = async () => {
+    const name = newName.trim()
+    if (!name) return
+    setAdding(true)
+    try {
+      const r = await api.post<LocationItem>('/locations/villages', { union_id: parentId, name_bn: name })
+      await queryClient.invalidateQueries({ queryKey })
+      setNewName('')
+      onChange(r.data.id)
+      message.success(tx('গ্রাম যোগ হয়েছে।'))
+    } catch (e) {
+      message.error(errorMessage(e))
+    } finally {
+      setAdding(false)
+    }
+  }
   return (
     <Select
       placeholder={placeholder ?? level.label}
@@ -35,6 +62,23 @@ export function LevelSelect({ index, parentId, value, onChange, placeholder }: {
       value={data ? value : undefined}
       onChange={onChange}
       options={data?.map((d) => ({ value: d.id, label: d.name_bn }))}
+      notFoundContent={canAdd ? tx('এই ইউনিয়নে কোনো গ্রাম নেই — নিচে যোগ করুন') : undefined}
+      popupRender={
+        canAdd
+          ? (menu) => (
+              <>
+                {menu}
+                <Divider style={{ margin: '6px 0' }} />
+                <Space.Compact style={{ width: '100%', padding: '0 6px 4px' }}>
+                  <Input value={newName} placeholder={tx('নতুন গ্রামের নাম')} onChange={(e) => setNewName(e.target.value)} onKeyDown={(e) => e.stopPropagation()} onPressEnter={add} />
+                  <Button type="primary" icon={<PlusOutlined />} loading={adding} onClick={add}>
+                    {tx('যোগ করুন')}
+                  </Button>
+                </Space.Compact>
+              </>
+            )
+          : undefined
+      }
     />
   )
 }

@@ -57,5 +57,7 @@ class LocationSeeder extends Seeder
                 District::firstOrCreate(['division_id' => $division->id, 'name_bn' => $dbn], ['name_en' => $den]);
             }
         }
+        // and every upazila and union of the country
+        app(\App\Services\BdLocationImporter::class)->run();
     }
 }

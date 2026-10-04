@@ -207,6 +207,8 @@ class DemoDataService
         $log('ডেমোর আগের স্ন্যাপশট ফেরানো হচ্ছে…');
         $this->backups->restore($path);
         $this->catchUpSchema($path, $log);
+        // the country's places may have come in after the snapshot was taken; bring them back
+        app(BdLocationImporter::class)->run();
         Cache::flush();
         $log('ডেমো ডাটা মুছে ফেলা হয়েছে।');
     }
