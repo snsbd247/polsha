@@ -66,6 +66,7 @@ class DemoDataService
         'loan' => ['loan_officer', 'ডেমো ঋণ কর্মকর্তা', 'Demo Loan Officer'],
         'asset' => ['asset_officer', 'ডেমো সম্পদ কর্মকর্তা', 'Demo Asset Officer'],
         'field' => ['field_collector', 'ডেমো মাঠকর্মী', 'Demo Field Collector'],
+        'water' => ['water_officer', 'ডেমো পানি কর্মকর্তা', 'Demo Water Officer'],
     ];
 
     /** @var array<string, User> */
@@ -204,13 +205,52 @@ class DemoDataService
         if ($real > 0 && ! $force) {
             throw new RuntimeException("ডেমোর পর অন্য ব্যবহারকারীরা {$real}টি কাজ করেছেন; সেগুলোও মুছে যাবে। নিশ্চিত হলে --force দিয়ে চালান।");
         }
+        // what the society set up since the snapshot is not demo data: keep it
+        $settings = DB::table('settings')->where('key', '!=', self::SETTING)->get();
+        $people = DB::table('users')->whereNotIn('id', $info['users'] ?? [])->get();
+        $roles = DB::table('model_has_roles')->where('model_type', User::class)->whereIn('model_id', $people->pluck('id'))->get();
+
         $log('ডেমোর আগের স্ন্যাপশট ফেরানো হচ্ছে…');
         $this->backups->restore($path);
         $this->catchUpSchema($path, $log);
         // the country's places may have come in after the snapshot was taken; bring them back
         app(BdLocationImporter::class)->run();
+        $this->keepCurrent($settings, $people, $roles);
+        $this->dropOrphanUploads();
         Cache::flush();
-        $log('ডেমো ডাটা মুছে ফেলা হয়েছে।');
+        $log('ডেমো ডাটা মুছে ফেলা হয়েছে (সেটিংস ও ব্যবহারকারীদের লগইন যেমন ছিল তেমন আছে)।');
+    }
+
+    /** Settings and the real users' sign-in (password, roles) as they were just before the purge. */
+    private function keepCurrent($settings, $people, $roles): void
+    {
+        foreach ($settings as $s) {
+            DB::table('settings')->updateOrInsert(['key' => $s->key], ['value' => $s->value, 'created_at' => $s->created_at, 'updated_at' => $s->updated_at]);
+        }
+        $columns = array_flip(Schema::getColumnListing('users'));
+        foreach ($people as $u) {
+            $row = array_intersect_key((array) $u, $columns);
+            DB::table('users')->updateOrInsert(['id' => $u->id], $row);
+        }
+        foreach ($roles as $r) {
+            DB::table('model_has_roles')->insertOrIgnore((array) $r);
+        }
+        app(\Spatie\Permission\PermissionRegistrar::class)->forgetCachedPermissions();
+    }
+
+    /** Photos and papers of farmers, lands and applications that no longer exist. */
+    private function dropOrphanUploads(): void
+    {
+        $disk = Storage::disk('local');
+        $dirs = ['farmer-docs' => 'farmers', 'farmers' => 'farmers', 'land-docs' => 'lands', 'membership' => 'membership_applications'];
+        foreach ($dirs as $dir => $table) {
+            if (Schema::hasTable($table) && DB::table($table)->doesntExist()) {
+                $disk->deleteDirectory($dir);
+            }
+        }
+        if (Schema::hasTable('import_batches') && DB::table('import_batches')->doesntExist()) {
+            $disk->deleteDirectory('imports');
+        }
     }
 
     /**
@@ -478,6 +518,7 @@ class DemoDataService
         $this->accountClosures();
         $this->pendingWithdrawals();
         $this->fieldCollections();
+        $this->waterSupply();
         $this->monthEnds();
         $this->recent();
         $this->extras();
@@ -554,6 +595,18 @@ class DemoDataService
             }
             foreach (MemberTransaction::latest('id')->limit(5)->pluck('id') as $tid) {
                 $this->tryApi('cashier', 'POST', 'print-logs', ['document_type' => 'member_transaction', 'document_id' => $tid], true);
+            }
+            // a namesake in the same village (same name and father, a different man): saved after the warning, then marked "not the same person"
+            $twin = Farmer::whereIn('id', array_keys($this->farmers))->where('gender', 'male')->whereNotNull('father_name')->inRandomOrder()->first();
+            if ($twin) {
+                $v = collect($this->villages)->firstWhere('id', $twin->village_id) ?? $this->villages[0];
+                $this->tryApi('member', 'POST', 'farmers', [
+                    'name_bn' => $twin->name_bn, 'name_en' => $twin->name_en, 'father_name' => $twin->father_name, 'gender' => 'male',
+                    'date_of_birth' => Carbon::create(mt_rand(1960, 2000), mt_rand(1, 12), mt_rand(1, 28))->toDateString(),
+                    'nid' => (string) mt_rand(1000000000, 9999999999), 'mobile' => $this->mobile(),
+                    'village_id' => $v['id'], 'mouza_id' => $v['mouza_id'], 'para' => 'নতুন পাড়া', 'occupation' => 'farmer',
+                    'confirm_duplicate' => true,
+                ], true);
             }
             $pair = $this->tryApi('admin', 'GET', 'farmers/duplicates', [], true)['data'][0] ?? null;
             if ($pair && isset($pair['a']['id'], $pair['b']['id'])) {
@@ -1248,7 +1301,7 @@ class DemoDataService
 
     private function bankDeposit(string $date): void
     {
-        foreach (['cash_society' => [150000, 60000], 'cash_irrigation' => [70000, 40000]] as $fund => [$keep, $amount]) {
+        foreach (['cash_society' => [150000, 60000], 'cash_irrigation' => [70000, 40000], 'cash_water' => [30000, 20000]] as $fund => [$keep, $amount]) {
             if ($this->balance($fund) > $keep) {
                 $this->api('manager', 'POST', 'funds/transfer', [
                     'fund_account_id' => Account::byKey($fund)->id, 'to_account_id' => $this->bankAccountId, 'amount' => $amount, 'date' => $date,
@@ -1722,6 +1775,193 @@ class DemoDataService
      * newest one is still a draft), the month is locked around the 10th, the
      * data checker runs each month, and the year is closed after the AGM.
      */
+    // ------------------------------------------------------------------ water supply
+
+    /** connection id => ['payer' => 'good'|'late'|'chronic'] */
+    private array $water = [];
+
+    /**
+     * Household water: the society sets its fees, the village's existing taps
+     * come in on day one (anyone, farmer or not), a few new ones each month
+     * with a connection fee. Every month's fixed bills are made on the 3rd;
+     * most pay that month, some late with a penalty at the counter, a few
+     * owe for months — one is cut off and later reconnected, one closes.
+     * One wrong bill and one wrong receipt are cancelled through approval.
+     */
+    private function waterSupply(): void
+    {
+        $d0 = $this->start->copy()->addDays(1);
+        $this->at($d0, function (string $d) {
+            $fees = ['RES' => [200, 1500], 'COM' => [500, 3000], 'INS' => [350, 2000]];
+            foreach ($this->api('water', 'GET', 'water/types') as $t) {
+                [$monthly, $fee] = $fees[$t['code']] ?? [250, 1500];
+                $this->api('manager', 'PUT', "water/types/{$t['id']}", [
+                    'code' => $t['code'], 'name_bn' => $t['name_bn'], 'name_en' => $t['name_en'], 'monthly_fee' => $monthly,
+                    'connection_fee' => $fee, 'is_active' => true, 'sort_order' => $t['sort_order'],
+                ]);
+            }
+            // the taps the village already had before the system came in
+            for ($i = 0; $i < 45; $i++) {
+                $this->waterConnection($d, $this->start->copy()->subMonths(mt_rand(3, 30))->toDateString(), false);
+            }
+        });
+        // a few new taps every month, each with its connection fee
+        for ($m = $this->start->copy()->addMonth()->startOfMonth(); $m->toDateString() <= $this->today; $m->addMonth()) {
+            for ($k = mt_rand(1, 3); $k > 0; $k--) {
+                $this->at($m->copy()->addDays(mt_rand(5, 25)), fn (string $d) => $this->waterConnection($d, $d, true));
+            }
+        }
+        // the month's bills on the 3rd, then the money comes in through the month
+        for ($m = $this->start->copy()->startOfMonth(); $m->toDateString() <= $this->today; $m->addMonth()) {
+            $month = $m->copy();
+            $billOn = $month->copy()->day(3)->max($d0->copy()->addDay());
+            $this->at($billOn, function (string $d) use ($month) {
+                $period = $month->format('Y-m');
+                $preview = $this->api('water', 'GET', 'water/billing/preview', ['period' => $period]);
+                if (! $preview['count']) {
+                    return;
+                }
+                $this->api('water', 'POST', 'water/billing', ['period' => $period, 'bill_date' => $d, 'due_date' => $month->copy()->day(20)->toDateString()]);
+                foreach ($this->water as $id => $c) {
+                    $this->waterPayment($id, $c['payer'], $month, Carbon::parse($d));
+                }
+            });
+            $this->at($month->copy()->day(18), fn (string $d) => $this->expense('cash_water', 'other_expense', $this->money(2500, 5000), 'পানির পাম্পের বিদ্যুৎ বিল', $d));
+            if ($this->chance(0.4)) {
+                $this->at($month->copy()->day(22), fn (string $d) => $this->expense('cash_water', 'other_expense', $this->money(500, 2500), $this->pick(['পানির পাইপ লিকেজ মেরামত', 'পানির ট্যাংক পরিষ্কার', 'ভাল্ব বদল']), $d));
+            }
+        }
+
+        $this->waterTroubles();
+    }
+
+    /** One customer's tap: a farmer of the village or someone else who lives there. */
+    private function waterConnection(string $date, string $connectedOn, bool $withFee): void
+    {
+        $v = $this->pick($this->villages);
+        $farmer = $this->chance(0.55) ? Farmer::whereIn('id', array_keys($this->farmers))->inRandomOrder()->first() : null;
+        if ($farmer) {
+            [$bn, $en, $father, $mobile] = [$farmer->name_bn, $farmer->name_en, $farmer->father_name, $farmer->mobile];
+            $v = collect($this->villages)->firstWhere('id', $farmer->village_id) ?? $v;
+        } else {
+            $male = $this->chance(0.7);
+            [$bn, $en] = DemoNames::person($male);
+            [$father] = DemoNames::person(true);
+            $mobile = $this->chance(0.85) ? $this->mobile() : null;
+        }
+        $type = $this->chance(0.82) ? 'RES' : ($this->chance(0.7) ? 'COM' : 'INS');
+        $typeId = (int) DB::table('water_connection_types')->where('code', $type)->value('id');
+        $c = $this->api('water', 'POST', 'water/connections', [
+            'type_id' => $typeId, 'name_bn' => $bn, 'name_en' => $en, 'father_name' => $father, 'mobile' => $mobile,
+            'village_id' => $v['id'], 'address' => $this->pick(['উত্তর পাড়া', 'দক্ষিণ পাড়া', 'পূর্ব পাড়া', 'পশ্চিম পাড়া', 'বাজার এলাকা', 'মসজিদ সংলগ্ন', 'স্কুল রোড']),
+            'connected_on' => $connectedOn,
+            // a shop or two pays a little more than the usual fee by agreement
+            'monthly_fee' => $type === 'COM' && $this->chance(0.3) ? 600 : null,
+            'connection_fee' => $withFee ? (int) DB::table('water_connection_types')->where('id', $typeId)->value('connection_fee') : 0,
+        ]);
+        $roll = mt_rand(1, 100);
+        $this->water[$c['id']] = ['payer' => $roll <= 72 ? 'good' : ($roll <= 92 ? 'late' : 'chronic')];
+        if ($withFee) {
+            // the connection fee is paid the day the tap is fitted, or within the week
+            $this->at(Carbon::parse($date)->addDays($this->chance(0.7) ? 0 : mt_rand(2, 7)), fn (string $d) => $this->waterCollect($c['id'], $d, 0));
+        }
+    }
+
+    /** When this month's bill is paid: good payers within the month, late ones next month with a penalty, chronic ones every few months. */
+    private function waterPayment(int $id, string $payer, Carbon $month, Carbon $billed): void
+    {
+        $penalty = $this->pick([20, 30, 50]);
+        // never before the bill itself (the first month's bills come late in the month)
+        $on = fn (Carbon $d) => $d->max($billed);
+        match ($payer) {
+            'good' => $this->at($on($month->copy()->day(mt_rand(5, 25))), fn (string $d) => $this->waterCollect($id, $d, 0, $this->chance(0.05))),
+            'late' => $this->chance(0.6)
+                ? $this->at($on($month->copy()->day(mt_rand(6, 26))), fn (string $d) => $this->waterCollect($id, $d, 0))
+                : $this->at($month->copy()->addMonth()->day(mt_rand(4, 15)), fn (string $d) => $this->waterCollect($id, $d, $penalty)),
+            'chronic' => $month->month % 4 === 0
+                ? $this->at($on($month->copy()->day(mt_rand(8, 25))), fn (string $d) => $this->waterCollect($id, $d, $penalty * 2))
+                : null,
+        };
+    }
+
+    /** Money for a tap's open bills at the counter (half of it now and then), with any penalty. */
+    private function waterCollect(int $id, string $date, int $penalty, bool $half = false): ?int
+    {
+        $dues = $this->api('water', 'GET', "water/connections/$id/dues");
+        if (! $dues['bills']) {
+            return null;
+        }
+        $items = array_map(fn ($b) => ['bill_id' => $b['id'], 'amount' => $b['due']], $dues['bills']);
+        if ($half) {
+            $items = [['bill_id' => $items[0]['bill_id'], 'amount' => max(50, round($items[0]['amount'] / 2))]];
+        }
+        $roll = mt_rand(1, 100);
+        $money = match (true) {
+            $roll <= 85 => ['method' => 'cash'],
+            $roll <= 95 => ['method' => 'other', 'fund_account_id' => $this->mobileAccountId, 'reference' => 'BK'.Str::upper(Str::random(8))],
+            default => ['method' => 'bank', 'fund_account_id' => $this->bankAccountId, 'reference' => 'CHQ-'.mt_rand(100000, 999999)],
+        };
+        $r = $this->api('water', 'POST', 'water/collect', $money + [
+            'connection_id' => $id, 'date' => $date, 'penalty' => $penalty, 'items' => $items,
+            'remarks' => $penalty ? 'দেরিতে পরিশোধ — জরিমানাসহ' : null,
+        ]);
+
+        return (int) $r['id'];
+    }
+
+    /** The year's water troubles: a cut-off and reconnection, a closed tap, a wrong bill, a wrong receipt. */
+    private function waterTroubles(): void
+    {
+        $span = (int) $this->start->diffInDays(Carbon::parse($this->today));
+        // the biggest debtor is cut off; two months later pays everything and is reconnected for a fee
+        $this->at($this->start->copy()->addDays((int) ($span * 0.55)), function (string $d) {
+            $debtor = DB::table('water_bills')->whereIn('status', ['unpaid', 'partial'])->groupBy('connection_id')
+                ->selectRaw('connection_id, SUM(amount + penalty - paid_amount) as due')->orderByDesc('due')->value('connection_id');
+            if (! $debtor) {
+                return;
+            }
+            $this->api('water', 'POST', "water/connections/$debtor/status", ['action' => 'disconnect', 'date' => $d, 'reason' => 'তিন মাসের বেশি বিল বকেয়া — নোটিশের পরও পরিশোধ হয়নি']);
+            $this->at(Carbon::parse($d)->addDays(60), function (string $x) use ($debtor) {
+                $this->waterCollect($debtor, $x, 100);
+                $this->api('water', 'POST', "water/connections/$debtor/status", ['action' => 'reconnect', 'date' => $x, 'reason' => 'সব বকেয়া জরিমানাসহ পরিশোধ', 'fee' => 300]);
+                $this->waterCollect($debtor, $x, 0);
+                $this->water[$debtor]['payer'] = 'good';
+            });
+            // a cut-off tap gets no bills, so it is no longer in the monthly round until reconnected
+            $this->water[$debtor]['payer'] = 'chronic';
+        });
+        // a family moves away: pays up and closes the tap
+        $this->at($this->start->copy()->addDays((int) ($span * 0.7)), function (string $d) {
+            $id = collect($this->water)->filter(fn ($c) => $c['payer'] === 'good')->keys()->first();
+            if (! $id) {
+                return;
+            }
+            $this->waterCollect($id, $d, 0);
+            $this->api('water', 'POST', "water/connections/$id/status", ['action' => 'close', 'date' => $d, 'reason' => 'পরিবার অন্যত্র চলে গেছে — বাড়ি বিক্রি']);
+            unset($this->water[$id]);
+        });
+        // a bill made by mistake for a tap that was not running that month: cancelled with the manager's approval
+        $this->at($this->start->copy()->addDays((int) ($span * 0.4)), function (string $d) {
+            $bill = DB::table('water_bills')->where('kind', 'monthly')->where('status', 'unpaid')->orderByDesc('id')->first();
+            if ($bill) {
+                $req = $this->api('water', 'POST', "water/bills/{$bill->id}/cancel", ['reason' => 'মেরামতের জন্য সংযোগ পুরো মাস বন্ধ ছিল — ভুল বিল']);
+                // approved the same day, before anyone could take money for the bill
+                $this->approve($req['id']);
+            }
+        });
+        // money written down wrong: the receipt is cancelled through approval and taken again
+        $this->at($this->start->copy()->addDays((int) ($span * 0.65)), function (string $d) {
+            $id = collect($this->water)->filter(fn ($c) => $c['payer'] === 'good')->keys()->last();
+            $receipt = $id ? $this->waterCollect($id, $d, 0) : null;
+            if (! $receipt) {
+                return;
+            }
+            $req = $this->api('water', 'POST', "water/receipts/$receipt/cancel", ['reason' => 'টাকার অঙ্ক ভুল লেখা হয়েছিল']);
+            $this->approve($req['id']);
+            $this->waterCollect($id, $d, 0);
+        });
+    }
+
     private function monthEnds(): void
     {
         $today = Carbon::parse($this->today);

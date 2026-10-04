@@ -157,8 +157,15 @@ class BackupService
         ], null, $this->env($db), null, 1800);
         $in = gzopen($gzPath, 'rb');
         $process->setInput((function () use ($in) {
+            $first = true;
             while (! gzeof($in)) {
-                yield gzread($in, 1024 * 512);
+                $chunk = gzread($in, 1024 * 512);
+                if ($first) {
+                    // MariaDB 10.11+ dumps open with a "sandbox mode" line older clients reject
+                    $chunk = preg_replace('~\A/\*M!999999\\\\- enable the sandbox mode \*/\s*~', '', $chunk);
+                    $first = false;
+                }
+                yield $chunk;
             }
             gzclose($in);
         })());
