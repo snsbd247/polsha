@@ -1,0 +1,124 @@
+<?php
+
+namespace App\Models;
+
+use App\Contracts\Payable;
+use App\Models\Concerns\Auditable;
+use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Validation\ValidationException;
+
+/**
+ * A water bill: the fixed monthly charge, or a connection / reconnection fee.
+ * Posted to the ledger when made (Dr water receivable / Cr income) and paid
+ * through the money-receipt engine like an irrigation invoice.
+ */
+class WaterBill extends Model implements Payable
+{
+    use Auditable;
+
+    public const KINDS = ['monthly' => 'মাসিক বিল', 'connection' => 'সংযোগ ফি', 'reconnection' => 'পুনঃসংযোগ ফি'];
+
+    public const STATUSES = ['unpaid' => 'অপরিশোধিত', 'partial' => 'আংশিক পরিশোধিত', 'paid' => 'পরিশোধিত', 'cancelled' => 'বাতিল'];
+
+    protected string $auditModule = 'water';
+
+    protected $auditExclude = ['snapshot'];
+
+    protected $fillable = [
+        'bill_no', 'connection_id', 'kind', 'period', 'bill_date', 'due_date', 'amount', 'penalty', 'paid_amount', 'status',
+        'snapshot', 'journal_id', 'created_by', 'cancelled_at', 'cancelled_by', 'cancel_reason',
+    ];
+
+    protected $casts = [
+        'bill_date' => 'date:Y-m-d', 'due_date' => 'date:Y-m-d', 'amount' => 'decimal:2', 'penalty' => 'decimal:2',
+        'paid_amount' => 'decimal:2', 'snapshot' => 'array', 'cancelled_at' => 'datetime',
+    ];
+
+    public function connection()
+    {
+        return $this->belongsTo(WaterConnection::class, 'connection_id');
+    }
+
+    public function journal()
+    {
+        return $this->belongsTo(Journal::class);
+    }
+
+    public function penalties()
+    {
+        return $this->hasMany(WaterBillPenalty::class, 'bill_id');
+    }
+
+    public function creator()
+    {
+        return $this->belongsTo(User::class, 'created_by')->withTrashed();
+    }
+
+    public function receiptItems()
+    {
+        return $this->morphMany(ReceiptItem::class, 'payable');
+    }
+
+    /** "অক্টোবর ২০২৬"-style month name of a monthly bill. */
+    public static function periodLabel(?string $period, string $locale = 'bn'): ?string
+    {
+        if (! $period) {
+            return null;
+        }
+
+        return Carbon::createFromFormat('Y-m-d', $period.'-01')->locale($locale)->translatedFormat('F Y');
+    }
+
+    public function total(): float
+    {
+        return round((float) $this->amount + (float) $this->penalty, 2);
+    }
+
+    public function dueAmount(): float
+    {
+        return $this->status === 'cancelled' ? 0.0 : round($this->total() - (float) $this->paid_amount, 2);
+    }
+
+    public function creditAccountId(): int
+    {
+        return Account::byKey('water_receivable')->id;
+    }
+
+    public function payableLabel(): string
+    {
+        $what = $this->kind === 'monthly'
+            ? __('পানির বিল :month', ['month' => self::periodLabel($this->period)])
+            : __(self::KINDS[$this->kind] ?? $this->kind);
+
+        return __(':what — সংযোগ :no (:bill)', ['what' => $what, 'no' => $this->snapshot['connection_no'] ?? '', 'bill' => $this->bill_no]);
+    }
+
+    public function applyPayment(float $amount): void
+    {
+        $fresh = self::whereKey($this->id)->lockForUpdate()->firstOrFail();
+        if ($fresh->status === 'cancelled') {
+            throw ValidationException::withMessages(['items' => __('বিল :no বাতিল করা হয়েছে।', ['no' => $fresh->bill_no])]);
+        }
+        if (round($amount, 2) > $fresh->dueAmount()) {
+            throw ValidationException::withMessages(['items' => __('বিল :no-এর বকেয়ার চেয়ে বেশি টাকা নেওয়া যাবে না (বকেয়া :due)।', [
+                'no' => $fresh->bill_no, 'due' => number_format($fresh->dueAmount(), 2),
+            ])]);
+        }
+        $fresh->setPaid(round((float) $fresh->paid_amount + $amount, 2));
+    }
+
+    public function revertPayment(float $amount): void
+    {
+        $fresh = self::whereKey($this->id)->lockForUpdate()->firstOrFail();
+        $fresh->setPaid(max(0, round((float) $fresh->paid_amount - $amount, 2)));
+    }
+
+    /** Re-reads the status from what is paid against the bill plus its penalty. */
+    public function setPaid(float $paid): void
+    {
+        $status = $this->status === 'cancelled' ? 'cancelled'
+            : ($paid <= 0 ? 'unpaid' : ($paid >= $this->total() ? 'paid' : 'partial'));
+        $this->update(['paid_amount' => $paid, 'status' => $status]);
+    }
+}

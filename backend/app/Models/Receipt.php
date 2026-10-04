@@ -14,9 +14,9 @@ class Receipt extends Model
     public const STATUSES = ['active' => 'বৈধ', 'cancel_pending' => 'বাতিলের অপেক্ষায়', 'cancelled' => 'বাতিল'];
 
     /** Receipt module → the cash stream its cash lands in. */
-    public const MODULES = ['irrigation' => 'সেচ'];
+    public const MODULES = ['irrigation' => 'সেচ', 'water' => 'পানি সরবরাহ'];
 
-    public const CASH_ACCOUNT = ['irrigation' => 'cash_irrigation', 'savings' => 'cash_society', 'share' => 'cash_society', 'loan' => 'cash_society'];
+    public const CASH_ACCOUNT = ['irrigation' => 'cash_irrigation', 'water' => 'cash_water', 'savings' => 'cash_society', 'share' => 'cash_society', 'loan' => 'cash_society'];
 
     protected string $auditModule = 'payment';
 

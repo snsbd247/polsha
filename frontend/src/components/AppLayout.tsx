@@ -7,6 +7,7 @@ import {
   BankFilled,
   BookFilled,
   CalculatorFilled,
+  CloudFilled,
   CodeSandboxCircleFilled,
   DollarCircleFilled,
   ExperimentFilled,
@@ -205,6 +206,48 @@ const GROUPS: Group[] = [
         path: '/payments/collect?legacy=1',
         label: m('পুরোনো রশিদ এন্ট্রি', 'Old Receipt Entry'),
         perm: 'payment.create',
+      },
+    ],
+  },
+  {
+    key: 'g-water',
+    label: m('পানি সরবরাহ', 'Water Supply'),
+    icon: <CloudFilled />,
+    children: [
+      {
+        path: '/water/connections',
+        label: m('সংযোগ ও গ্রাহক', 'Connections & Customers'),
+        perm: 'water.view',
+      },
+      {
+        path: '/water/billing',
+        label: m('মাসিক বিল তৈরি', 'Create Monthly Bills'),
+        perm: 'water.create',
+      },
+      {
+        path: '/water/bills',
+        label: m('পানির বিল', 'Water Bills'),
+        perm: 'water.view',
+      },
+      {
+        path: '/water/collect',
+        label: m('বিল আদায়', 'Collect Bills'),
+        perm: 'water.create',
+      },
+      {
+        path: '/water/receipts',
+        label: m('পানির রশিদ', 'Water Receipts'),
+        perm: 'water.view',
+      },
+      {
+        path: '/water/dues',
+        label: m('বকেয়া তালিকা', 'Dues'),
+        perm: 'water.view',
+      },
+      {
+        path: '/water/types',
+        label: m('সংযোগের ধরন ও মাসিক ফি', 'Connection Types & Fees'),
+        perm: 'water.view',
       },
     ],
   },

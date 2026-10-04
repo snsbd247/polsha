@@ -20,6 +20,7 @@ use App\Approvals\MemberStatusHandler;
 use App\Approvals\MemberTxnCancelHandler;
 use App\Approvals\MemberTxnHandler;
 use App\Approvals\ReceiptCancelHandler;
+use App\Approvals\WaterBillCancelHandler;
 
 /*
 | ERP-wide constants. Permission names are "{module}.{action}".
@@ -69,6 +70,7 @@ return [
         'sms' => 'এসএমএস',
         'import' => 'ইমপোর্ট',
         'field' => 'মাঠে আদায়',
+        'water' => 'পানি সরবরাহ',
     ],
 
     'roles' => [
@@ -85,6 +87,7 @@ return [
         'auditor' => ['label' => 'অডিটর', 'description' => 'শুধু দেখা ও এক্সপোর্ট'],
         'data_entry' => ['label' => 'ডাটা এন্ট্রি', 'description' => 'তথ্য এন্ট্রি'],
         'field_collector' => ['label' => 'মাঠকর্মী', 'description' => 'মাঠে গিয়ে মোবাইলে আদায়; টাকা পরে অফিসে জমা'],
+        'water_officer' => ['label' => 'পানি কর্মকর্তা', 'description' => 'পানির সংযোগ, মাসিক বিল ও আদায়'],
     ],
 
     'login' => [
@@ -127,6 +130,7 @@ return [
         'payment.combined_cancel' => CombinedPaymentCancelHandler::class,
         'asset.disposal' => AssetDisposalHandler::class,
         'import.rollback' => ImportRollbackHandler::class,
+        'water.bill_cancel' => WaterBillCancelHandler::class,
     ],
 
     'farmer' => [

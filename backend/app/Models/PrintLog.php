@@ -11,7 +11,7 @@ class PrintLog extends Model
 
     /** document type => [model, permission(s) needed to see it]. */
     public const DOCUMENTS = [
-        'receipt' => [Receipt::class, ['payment.view']],
+        'receipt' => [Receipt::class, ['payment.view', 'water.view']],
         'combined_payment' => [CombinedPayment::class, ['payment.view']],
         'loan_payment' => [LoanPayment::class, ['loan.view']],
         'member_transaction' => [MemberTransaction::class, ['savings.view', 'share.view']],

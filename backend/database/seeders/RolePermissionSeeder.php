@@ -9,7 +9,7 @@ use Spatie\Permission\PermissionRegistrar;
 
 class RolePermissionSeeder extends Seeder
 {
-    private const OPERATIONS = ['farmer', 'membership', 'member', 'patwari', 'land', 'irrigation', 'savings', 'share', 'loan', 'payment', 'cash', 'bank', 'accounting', 'asset', 'report'];
+    private const OPERATIONS = ['farmer', 'membership', 'member', 'patwari', 'land', 'irrigation', 'water', 'savings', 'share', 'loan', 'payment', 'cash', 'bank', 'accounting', 'asset', 'report'];
 
     public function run(): void
     {
@@ -44,21 +44,22 @@ class RolePermissionSeeder extends Seeder
             'admin' => array_merge(
                 $p($system, ['view', 'create', 'edit', 'delete', 'export', 'admin']),
                 $p($modules, ['view', 'export']),
+                ['water.admin'],
             ),
             'president' => array_merge($p($modules, ['view', 'export']), $p(self::OPERATIONS, ['approve'])),
             'manager' => array_merge(
                 $p(self::OPERATIONS, ['view', 'create', 'edit', 'export', 'approve']),
                 $p(['location', 'mouza'], ['view', 'create', 'edit']),
-                ['audit.view', 'user.view', 'import.view', 'import.create', 'field.view', 'field.approve', 'field.export'],
+                ['audit.view', 'user.view', 'import.view', 'import.create', 'field.view', 'field.approve', 'field.export', 'water.admin'],
             ),
             'accountant' => array_merge(
                 $p(['accounting', 'cash', 'bank', 'payment'], ['view', 'create', 'edit', 'export']),
                 $p(['savings', 'share'], ['create']),
-                $p(['farmer', 'member', 'irrigation', 'savings', 'share', 'loan', 'report'], ['view', 'export']),
+                $p(['farmer', 'member', 'irrigation', 'water', 'savings', 'share', 'loan', 'report'], ['view', 'export']),
                 ['field.view', 'field.approve'],
             ),
             'cashier' => array_merge(
-                $p(['payment', 'cash', 'savings', 'share'], ['view', 'create']),
+                $p(['payment', 'cash', 'savings', 'share', 'water'], ['view', 'create']),
                 $p(['farmer', 'member', 'irrigation', 'loan'], ['view']),
                 ['field.view', 'field.approve'],
             ),
@@ -84,6 +85,7 @@ class RolePermissionSeeder extends Seeder
             ),
             // collects at the farmer's door on a phone; nothing else
             'field_collector' => ['field.view', 'field.create'],
+            'water_officer' => array_merge($p(['water'], ['view', 'create', 'edit', 'export']), ['report.view']),
             default => [],
         }));
     }

@@ -12,7 +12,7 @@ class Account extends Model
     public const TYPES = ['asset' => 'সম্পদ', 'liability' => 'দায়', 'equity' => 'মূলধন ও তহবিল', 'income' => 'আয়', 'expense' => 'ব্যয়'];
 
     /** Cash streams kept apart so irrigation money never mixes with society money. */
-    public const CASH_STREAMS = ['cash_irrigation', 'cash_society', 'cash_misc'];
+    public const CASH_STREAMS = ['cash_irrigation', 'cash_society', 'cash_misc', 'cash_water'];
 
     protected $table = 'chart_of_accounts';
 

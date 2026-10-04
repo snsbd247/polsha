@@ -145,6 +145,10 @@ class ReceiptService
             if ($receipt->journal && $receipt->journal->status === 'posted') {
                 $this->ledger->reverse($receipt->journal, __('রশিদ বাতিল').($receipt->cancel_reason ? ': '.$receipt->cancel_reason : ''));
             }
+            if ($receipt->module === 'water') {
+                // a penalty added when this money was taken goes with it
+                app(WaterService::class)->undoPenalties($receipt);
+            }
             $receipt->update(['status' => 'cancelled', 'cancelled_at' => now(), 'cancelled_by' => auth()->id()]);
         });
     }

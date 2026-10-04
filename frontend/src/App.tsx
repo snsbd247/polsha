@@ -81,6 +81,15 @@ const BillingHubPage = lazy(() => import('./pages/irrigation/IrrigationHubs').th
 const InvoiceListPage = lazy(() => import('./pages/irrigation/InvoiceListPage'))
 const InvoiceDetailPage = lazy(() => import('./pages/irrigation/InvoiceDetailPage'))
 const DuesPage = lazy(() => import('./pages/irrigation/DuesPage'))
+const WaterConnectionsPage = lazy(() => import('./pages/water/ConnectionsPage'))
+const WaterConnectionDetailPage = lazy(() => import('./pages/water/ConnectionDetailPage'))
+const WaterBillingPage = lazy(() => import('./pages/water/BillingPage'))
+const WaterBillsPage = lazy(() => import('./pages/water/BillsPage'))
+const WaterCollectPage = lazy(() => import('./pages/water/CollectPage'))
+const WaterReceiptsPage = lazy(() => import('./pages/water/ReceiptsPage'))
+const WaterReceiptPage = lazy(() => import('./pages/water/ReceiptPage'))
+const WaterDuesPage = lazy(() => import('./pages/water/DuesPage'))
+const WaterTypesPage = lazy(() => import('./pages/water/TypesPage'))
 const FarmerStatementPage = lazy(() => import('./pages/irrigation/FarmerStatementPage'))
 const MismatchPage = lazy(() => import('./pages/irrigation/MismatchPage'))
 const CollectHubPage = lazy(() => import('./pages/payments/PaymentHubs').then((m) => ({ default: m.CollectHubPage })))
@@ -212,8 +221,11 @@ function Perm({ perm, children }: { perm: string | string[]; children: ReactNode
 /** A field collector only collects: they land straight on their phone screen instead of the dashboard. */
 function Home() {
   const { can } = useAuth()
-  const fieldOnly = can('field.create') && !can(['farmer.view', 'payment.view', 'member.view', 'land.view', 'irrigation.view', 'loan.view', 'savings.view', 'accounting.view'])
-  return fieldOnly ? <Navigate to="/payments/field" replace /> : <DashboardPage />
+  const office = ['farmer.view', 'payment.view', 'member.view', 'land.view', 'irrigation.view', 'loan.view', 'savings.view', 'accounting.view']
+  const fieldOnly = can('field.create') && !can(office)
+  // a water officer has nothing on the dashboard: straight to the connections
+  const waterOnly = can('water.view') && !can(office) && !can('field.create')
+  return fieldOnly ? <Navigate to="/payments/field" replace /> : waterOnly ? <Navigate to="/water/connections" replace /> : <DashboardPage />
 }
 
 export default function App() {
@@ -330,6 +342,16 @@ export default function App() {
         <Route path="irrigation/invoices/bulk" element={<Perm perm="irrigation.create"><ByQuery><BillingHubPage /></ByQuery></Perm>} />
         <Route path="irrigation/invoices/:id" element={<Perm perm="irrigation.view"><InvoiceDetailPage /></Perm>} />
         <Route path="irrigation/dues" element={<Perm perm="irrigation.view"><DuesPage /></Perm>} />
+
+        <Route path="water/connections" element={<Perm perm="water.view"><WaterConnectionsPage /></Perm>} />
+        <Route path="water/connections/:id" element={<Perm perm="water.view"><WaterConnectionDetailPage /></Perm>} />
+        <Route path="water/billing" element={<Perm perm="water.view"><WaterBillingPage /></Perm>} />
+        <Route path="water/bills" element={<Perm perm="water.view"><WaterBillsPage /></Perm>} />
+        <Route path="water/collect" element={<Perm perm="water.create"><WaterCollectPage /></Perm>} />
+        <Route path="water/receipts" element={<Perm perm="water.view"><WaterReceiptsPage /></Perm>} />
+        <Route path="water/receipts/:id" element={<Perm perm="water.view"><WaterReceiptPage /></Perm>} />
+        <Route path="water/dues" element={<Perm perm="water.view"><WaterDuesPage /></Perm>} />
+        <Route path="water/types" element={<Perm perm="water.view"><WaterTypesPage /></Perm>} />
         <Route path="irrigation/farmers/:id/statement" element={<Perm perm="irrigation.view"><FarmerStatementPage /></Perm>} />
         <Route path="irrigation/mismatch" element={<Perm perm="irrigation.view"><MismatchPage /></Perm>} />
         <Route path="irrigation/rate-audit" element={<Navigate to="/irrigation/rates?view=history" replace />} />

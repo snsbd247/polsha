@@ -211,8 +211,9 @@ class ReceiptController extends Controller
 
     private function filtered(Request $request): Builder
     {
-        $q = Receipt::query();
-        foreach (['module', 'status', 'method', 'farmer_id'] as $f) {
+        // these screens are the irrigation receipts; water receipts are listed under Water Supply
+        $q = Receipt::query()->where('module', $request->query('module') ?: 'irrigation');
+        foreach (['status', 'method', 'farmer_id'] as $f) {
             if ($request->filled($f)) {
                 $q->where($f, $request->query($f));
             }
@@ -249,7 +250,8 @@ class ReceiptController extends Controller
     /** Card figures for the receipt list: valid receipts overall, today and this month, and cancellations. */
     public function summary(): JsonResponse
     {
-        $valid = fn () => Receipt::where('status', '!=', 'cancelled');
+        // irrigation receipts only; water receipts have their own screens
+        $valid = fn () => Receipt::where('module', 'irrigation')->where('status', '!=', 'cancelled');
         $today = now()->toDateString();
 
         return response()->json([
@@ -258,8 +260,8 @@ class ReceiptController extends Controller
             'today_count' => $valid()->where('date', $today)->count(),
             'today_amount' => round((float) $valid()->where('date', $today)->sum('amount'), 2),
             'month_amount' => round((float) $valid()->whereBetween('date', [now()->startOfMonth()->toDateString(), $today])->sum('amount'), 2),
-            'cancelled' => Receipt::where('status', 'cancelled')->count(),
-            'cancel_pending' => Receipt::where('status', 'cancel_pending')->count(),
+            'cancelled' => Receipt::where('module', 'irrigation')->where('status', 'cancelled')->count(),
+            'cancel_pending' => Receipt::where('module', 'irrigation')->where('status', 'cancel_pending')->count(),
         ]);
     }
 

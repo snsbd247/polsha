@@ -9,6 +9,7 @@ export const JOURNAL_MODULE_LABEL: Record<string, string> = {
   cash: tx('নগদ'),
   bank: tx('ব্যাংক'),
   irrigation: tx('সেচ'),
+  water: tx('পানি সরবরাহ'),
   loan: tx('ঋণ'),
   share: tx('শেয়ার'),
   savings: tx('সঞ্চয়'),

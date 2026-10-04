@@ -60,6 +60,7 @@ use App\Http\Controllers\Api\SmsController;
 use App\Http\Controllers\Api\SystemController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\VoterListController;
+use App\Http\Controllers\Api\WaterController;
 use App\Http\Controllers\Api\WebsiteController;
 use Illuminate\Support\Facades\Route;
 
@@ -422,6 +423,41 @@ Route::middleware(['auth:sanctum', 'usable'])->group(function () {
     Route::get('distributions/{run}', [DistributionController::class, 'show'])->whereNumber('run');
     Route::get('distributions/{kind}/preview', [DistributionController::class, 'preview'])->whereIn('kind', ['profit', 'dividend']);
     Route::post('distributions/{kind}', [DistributionController::class, 'store'])->whereIn('kind', ['profit', 'dividend']);
+
+    // ---- Water supply ----
+    Route::prefix('water')->group(function () {
+        Route::middleware('permission:water.view')->group(function () {
+            Route::get('meta', [WaterController::class, 'meta']);
+            Route::get('types', [WaterController::class, 'types']);
+            Route::get('connections', [WaterController::class, 'connections']);
+            Route::get('connections-summary', [WaterController::class, 'connectionSummary']);
+            Route::get('connections/{connection}', [WaterController::class, 'showConnection']);
+            Route::get('connections/{connection}/dues', [WaterController::class, 'dues']);
+            Route::get('billing/preview', [WaterController::class, 'billingPreview']);
+            Route::get('bills', [WaterController::class, 'bills']);
+            Route::get('bills/{bill}', [WaterController::class, 'showBill']);
+            Route::get('receipts', [WaterController::class, 'receipts']);
+            Route::get('receipts/{receipt}', [WaterController::class, 'showReceipt']);
+            Route::get('dues', [WaterController::class, 'dueList']);
+            Route::get('funds', [ReceiptController::class, 'funds']);
+        });
+        Route::middleware('permission:water.create')->group(function () {
+            Route::post('connections', [WaterController::class, 'storeConnection']);
+            Route::post('billing', [WaterController::class, 'generate']);
+            Route::post('collect', [WaterController::class, 'collect']);
+        });
+        Route::middleware('permission:water.edit')->group(function () {
+            Route::put('connections/{connection}', [WaterController::class, 'updateConnection']);
+            Route::post('connections/{connection}/status', [WaterController::class, 'connectionStatus']);
+            Route::post('bills/{bill}/cancel', [WaterController::class, 'cancelBill']);
+            Route::post('receipts/{receipt}/cancel', [WaterController::class, 'cancelReceipt']);
+        });
+        // the monthly fee is the society's tariff: only water admins change it
+        Route::middleware('permission:water.admin')->group(function () {
+            Route::post('types', [WaterController::class, 'storeType']);
+            Route::put('types/{type}', [WaterController::class, 'updateType']);
+        });
+    });
 
     // ---- Phase 7: loans ----
     Route::middleware('permission:loan.view')->group(function () {

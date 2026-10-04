@@ -1,0 +1,23 @@
+/* Water supply → collection: the amount box above the save button */
+.wc-total {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  margin: 4px 0 16px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  background: #f0f7ff;
+  border: 1px solid #d6e6fb;
+}
+.wc-total span {
+  color: #6b7280;
+  font-size: 13px;
+}
+.wc-total strong {
+  font-size: 24px;
+  color: #1769e0;
+}
+.wc-total small {
+  color: #4b5563;
+}
