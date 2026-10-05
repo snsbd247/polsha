@@ -89,14 +89,22 @@ class WaterController extends Controller
 
     public function connectionSummary(): JsonResponse
     {
-        $month = now()->startOfMonth()->toDateString();
+        $month = now()->startOfMonth();
+        $billed = fn ($from, $to) => round((float) WaterBill::where('status', '!=', 'cancelled')
+            ->whereBetween('bill_date', [$from->toDateString(), $to->toDateString()])->sum('amount'), 2);
+        $open = WaterBill::where('status', '!=', 'cancelled')->whereRaw('amount + penalty - paid_amount > 0');
 
         return response()->json([
             'total' => WaterConnection::count(),
             'active' => WaterConnection::where('status', 'active')->count(),
             'disconnected' => WaterConnection::where('status', 'disconnected')->count(),
-            'new_this_month' => WaterConnection::whereDate('connected_on', '>=', $month)->count(),
+            'closed' => WaterConnection::where('status', 'closed')->count(),
+            'new_this_month' => WaterConnection::whereDate('connected_on', '>=', $month->toDateString())->count(),
+            // connections with at least one unpaid bill
+            'owing' => (clone $open)->distinct()->count('connection_id'),
             'due' => round((float) WaterBill::where('status', '!=', 'cancelled')->selectRaw('COALESCE(SUM(amount + penalty - paid_amount), 0) as d')->value('d'), 2),
+            'billed_this_month' => $billed($month, $month->copy()->endOfMonth()),
+            'billed_last_month' => $billed($month->copy()->subMonth(), $month->copy()->subMonth()->endOfMonth()),
         ]);
     }
 
@@ -172,10 +180,15 @@ class WaterController extends Controller
                 $q->where($f, $request->query($f));
             }
         }
+        // the rows ticked on the list (export / print only those)
+        if ($ids = array_filter(array_map('intval', explode(',', (string) $request->query('ids'))))) {
+            $q->whereIn('water_connections.id', $ids);
+        }
         if ($search = trim((string) $request->query('search'))) {
             $en = Bn::toEnDigits($search);
             $q->where(fn ($w) => $w->where('name_bn', 'like', "%$search%")->orWhere('name_en', 'like', "%$search%")
-                ->orWhere('father_name', 'like', "%$search%")->orWhere('mobile', 'like', "%$en%")->orWhere('connection_no', 'like', "%$en%"));
+                ->orWhere('father_name', 'like', "%$search%")->orWhere('mobile', 'like', "%$en%")->orWhere('connection_no', 'like', "%$en%")
+                ->orWhere('address', 'like', "%$search%")->orWhereHas('farmer', fn ($f) => $f->where('farmer_code', 'like', "%$en%")));
         }
 
         return $q;

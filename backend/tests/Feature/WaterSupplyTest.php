@@ -91,6 +91,14 @@ class WaterSupplyTest extends Phase2TestCase
         $this->assertSame(-550.0, $this->balance('water_income'));
         $this->actingAs($this->waterUser)->getJson("/api/water/bills?period=$period")->assertOk()
             ->assertJsonPath('totals.count', 2)->assertJsonPath('totals.due', 550);
+
+        // the list's summary cards: connections that owe, and what was billed this month
+        $this->actingAs($this->waterUser)->getJson('/api/water/connections-summary')->assertOk()
+            ->assertJsonPath('total', 4)->assertJsonPath('owing', 2)
+            ->assertJsonPath('billed_this_month', 550)->assertJsonPath('billed_last_month', 0);
+        // ticked rows only, and search by address
+        $this->actingAs($this->waterUser)->getJson("/api/water/connections?ids={$c->id}")->assertOk()->assertJsonPath('total', 1);
+        $this->actingAs($this->waterUser)->getJson('/api/water/connections?search=উত্তর')->assertOk()->assertJsonPath('total', 4);
     }
 
     public function test_collection_with_penalty_lands_in_water_cash_and_cancel_undoes_it(): void
