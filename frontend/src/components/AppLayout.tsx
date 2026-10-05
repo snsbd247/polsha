@@ -26,6 +26,7 @@ import { useAuth } from '../auth/AuthContext'
 import { api } from '../lib/api'
 import { digits, fmtDate } from '../lib/format'
 import { logoUrl, usePublicSettings } from '../lib/settings'
+import { pick, usePublicSite } from '../lib/website'
 import { lang, nameOf, t as tx } from '../lib/i18n'
 import AlertBell, { type BellAlert } from './AlertBell'
 import GlobalSearch from './GlobalSearch'
@@ -744,6 +745,7 @@ const APP_VERSION = '1.0.0'
 
 export default function AppLayout() {
   const { user, can, logout } = useAuth()
+  const { data: site } = usePublicSite()
   const { data: settings } = usePublicSettings()
   const location = useLocation()
   const navigate = useNavigate()
@@ -866,12 +868,15 @@ export default function AppLayout() {
       name_bn: settings?.society_name_bn,
       name_en: settings?.society_name_en,
     }) || tx('সমবায় ERP')
+  // the short name and the line under it from Settings → Website, so a long society name is not cut off
+  const brandTitle = pick(site?.brand_title) || societyName
+  const brandSub = pick(site?.brand_subtitle) || tx('সেচ ও সঞ্চয় সমবায় সমিতি')
   const brand = (
     <Link to={HOME} className="side-brand" onClick={() => setDrawerOpen(false)}>
       <span className="side-logo">{settings?.logo ? <img src={logoUrl()} alt="" /> : <BrandMark />}</span>
       <span className="side-brand-text">
-        <b title={societyName}>{societyName}</b>
-        <small>{tx('সেচ ও সঞ্চয় সমবায় সমিতি')}</small>
+        <b title={societyName}>{brandTitle}</b>
+        <small>{brandSub}</small>
       </span>
     </Link>
   )

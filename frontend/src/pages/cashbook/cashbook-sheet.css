@@ -36,7 +36,12 @@
 }
 .cbs-sides {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 18px;
+}
+/* lets the wide table scroll inside its box instead of widening the page */
+.cbs-side {
+  min-width: 0;
 }
 /* side by side only where both fit; otherwise income above expense */
 @media (min-width: 1900px) {

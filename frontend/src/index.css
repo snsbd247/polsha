@@ -58,20 +58,23 @@ body {
 }
 
 .side-brand-text b {
-  font-size: 18px;
+  font-size: 17px;
   font-weight: 600;
-  white-space: nowrap;
+  line-height: 1.2;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
   overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .side-brand-text small {
   margin-top: 3px;
-  font-size: 12.5px;
+  font-size: 12px;
   color: #c7d1e2;
-  white-space: nowrap;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
   overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .side-menu.ant-menu {
@@ -474,4 +477,68 @@ button.top-bell {
   align-items: center;
   padding: 10px 2px 2px;
   border-top: 1px solid #eef1f6;
+}
+
+/* ---------- responsive safety net for every screen ---------- */
+/* a wide table scrolls inside its own box instead of stretching the whole page */
+.ant-table-wrapper .ant-table-container > .ant-table-content {
+  overflow-x: auto;
+}
+/* filters given a fixed width (style={{ width: 260 }}) shrink to fit a phone */
+.ant-select,
+.ant-picker,
+.ant-input,
+.ant-input-affix-wrapper,
+.ant-input-number,
+.ant-input-group-wrapper,
+.ant-cascader {
+  max-width: 100%;
+}
+/* page content never pushes the layout sideways */
+.ant-layout-content,
+.ant-tabs,
+.ant-tabs-content-holder,
+.ant-tabs-tabpane,
+.ant-card,
+.ant-card-body {
+  min-width: 0;
+}
+.ant-layout-content img {
+  max-width: 100%;
+}
+@media (max-width: 767px) {
+  /* bordered detail lists: label above value instead of two cramped columns */
+  .ant-descriptions-bordered .ant-descriptions-view table,
+  .ant-descriptions-bordered .ant-descriptions-view tbody,
+  .ant-descriptions-bordered .ant-descriptions-row,
+  .ant-descriptions-bordered .ant-descriptions-item-label,
+  .ant-descriptions-bordered .ant-descriptions-item-content {
+    display: block;
+    width: 100% !important;
+  }
+  .ant-descriptions-bordered .ant-descriptions-item-label {
+    border-inline-end: 0 !important;
+    padding-bottom: 4px !important;
+  }
+  /* toolbars and button rows wrap instead of running off the edge */
+  .ant-space:not(.ant-space-vertical) {
+    flex-wrap: wrap;
+  }
+  .ant-card-head-wrapper {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .ant-card-head-title {
+    white-space: normal;
+  }
+  .ant-modal {
+    max-width: calc(100vw - 20px);
+  }
+  .ant-tabs-nav {
+    max-width: 100%;
+  }
+  .ant-pagination {
+    flex-wrap: wrap;
+    row-gap: 6px;
+  }
 }

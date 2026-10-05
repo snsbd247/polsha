@@ -1269,13 +1269,31 @@
     margin-right: 90px;
   }
   .ld-cta-in {
-    padding-left: 0;
+    padding-left: 20px;
   }
   .ld-cta .ld-btn {
     margin-right: 0;
   }
 }
 @media (max-width: 1180px) {
+  /* arrows sit beside the dots so they never cover the headline */
+  .ld-arrow {
+    top: auto;
+    bottom: 4px;
+    margin-top: 0;
+    width: 30px;
+    height: 30px;
+    font-size: 12px;
+  }
+  .ld-arrow-l {
+    left: calc(50% - 82px);
+  }
+  .ld-arrow-r {
+    right: calc(50% - 82px);
+  }
+  .ld-hero-in {
+    padding-bottom: 46px;
+  }
   .ld-nav {
     display: none;
   }
@@ -1315,8 +1333,8 @@
     display: none;
   }
   .ld-hero-text {
-    padding-left: 44px;
-    padding-right: 44px;
+    padding-left: 0;
+    padding-right: 0;
   }
   .ld-hide-sm,
   .ld-top-addr {
@@ -1359,21 +1377,10 @@
     font-size: 32px;
   }
   .ld-hero-text {
-    padding: 0 26px;
+    padding: 0;
   }
   .ld-hero-text p {
     font-size: 15px;
-  }
-  .ld-arrow {
-    width: 32px;
-    height: 32px;
-    margin-top: -16px;
-  }
-  .ld-arrow-l {
-    left: 6px;
-  }
-  .ld-arrow-r {
-    right: 6px;
   }
   .ld-quick-grid,
   .ld-svc-grid {

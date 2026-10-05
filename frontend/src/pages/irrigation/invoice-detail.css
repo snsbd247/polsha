@@ -22,6 +22,8 @@
 
 .id-hero,
 .id-fact {
+  min-width: 0;
+  overflow-wrap: anywhere;
   display: flex;
   align-items: center;
   gap: 14px;
@@ -186,6 +188,10 @@
 }
 
 @media (max-width: 900px) {
+  /* a long name wraps instead of running off a phone screen */
+  .id-hero strong {
+    white-space: normal;
+  }
   .id-top,
   .id-two,
   .id-grid3,

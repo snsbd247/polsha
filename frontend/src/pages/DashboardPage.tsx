@@ -170,7 +170,7 @@ function KpiCard({ k }: { k: Kpi }) {
           <span className="dash-kpi-value">{num(k)}</span>
           <Change value={k.change} />
         </span>
-        {k.caption && <span className="dash-kpi-caption">{k.caption}</span>}
+        {k.caption && <span className="dash-kpi-caption">{digits(k.caption)}</span>}
       </span>
     </Link>
   )
@@ -310,11 +310,6 @@ export default function DashboardPage() {
     queryClient.setQueryData(['dashboard'], fresh)
   }
 
-  // rows of the design: 4 + 4 + the rest (loans, share, cash, bank, assets)
-  const rows = useMemo(() => {
-    const k = data?.kpis ?? []
-    return [k.slice(0, 4), k.slice(4, 8), k.slice(8)].filter((r) => r.length)
-  }, [data])
 
   const alertRows = useMemo(() => {
     const online = data?.pending.find((p) => p.key === 'public_payments')
@@ -377,14 +372,10 @@ export default function DashboardPage() {
 
       {isLoading && <Skeleton active paragraph={{ rows: 8 }} />}
 
-      {/* rows of 4+4+5 on wide screens; on narrower ones all cards flow as one grid */}
+      {/* one grid: as many cards per row as the width allows (5 on a wide screen, 2 on a phone) */}
       <div className="dash-kpi-wrap">
-        {rows.map((r, i) => (
-          <div key={i} className={`dash-kpis ${i === 2 ? 'dash-kpis-5' : ''}`} data-n={r.length} style={{ ['--n' as string]: r.length }}>
-            {r.map((k) => (
-              <KpiCard key={k.key} k={k} />
-            ))}
-          </div>
+        {(data?.kpis ?? []).map((k) => (
+          <KpiCard key={k.key} k={k} />
         ))}
       </div>
 

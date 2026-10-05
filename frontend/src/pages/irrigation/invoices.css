@@ -179,6 +179,7 @@
 
 .iv-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 12px;
   margin-top: 6px;
 }
@@ -213,5 +214,13 @@
   .iv-charges {
     display: block;
     overflow-x: auto;
+  }
+  /* phone: the action buttons share the width, two to a row */
+  .iv-spacer {
+    display: none;
+  }
+  .iv-actions .ant-btn {
+    flex: 1 1 140px;
+    min-width: 0;
   }
 }
