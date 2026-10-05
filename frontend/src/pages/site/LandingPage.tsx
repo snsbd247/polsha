@@ -819,7 +819,8 @@ export default function LandingPage() {
         <div className="ld-foot-bar">
           <div className="ld-wrap ld-foot-bar-in">
             <span>
-              © {year} {society}। {tx('সর্বস্বত্ব সংরক্ষিত।')}
+              © {year} {society}
+              {lang === 'en' ? (society.endsWith('.') ? '' : '.') : '।'} {tx('সর্বস্বত্ব সংরক্ষিত।')}
             </span>
             <span className="ld-foot-bar-links">
               <Link to="/pay">{tx('অনলাইন পেমেন্ট')}</Link>

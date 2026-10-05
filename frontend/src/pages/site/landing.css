@@ -1310,11 +1310,17 @@
   .ld-svc-grid {
     grid-template-columns: repeat(2, 1fr);
   }
-  .ld-stats-in {
-    grid-template-columns: repeat(3, 1fr);
-    row-gap: 14px;
+  .ld-stat {
+    gap: 10px;
   }
-  .ld-about-in,
+  .ld-stat-ic,
+  .ld-stat-ic svg {
+    width: 42px;
+    height: 42px;
+  }
+  .ld-about-in {
+    gap: 28px;
+  }
   .ld-nf-in {
     grid-template-columns: 1fr;
   }
@@ -1326,6 +1332,15 @@
   }
   .ld-foot-brand {
     grid-column: 1 / -1;
+  }
+}
+@media (max-width: 960px) {
+  .ld-stats-in {
+    grid-template-columns: repeat(3, 1fr);
+    row-gap: 14px;
+  }
+  .ld-about-in {
+    grid-template-columns: 1fr;
   }
 }
 @media (max-width: 860px) {
