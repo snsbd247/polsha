@@ -17,6 +17,7 @@ use App\Services\LedgerService;
 use App\Services\SettingService;
 use App\Services\SmsService;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 
 class WaterSupplyTest extends Phase2TestCase
 {
@@ -319,5 +320,43 @@ class WaterSupplyTest extends Phase2TestCase
 
         $this->actingAs($this->waterUser)->getJson('/api/water/dues')->assertOk()
             ->assertJsonPath('totals.connections', 1)->assertJsonPath('totals.due', 300);
+    }
+
+    public function test_detail_fields_photo_documents_and_activity(): void
+    {
+        Storage::fake('local');
+        $c = $this->connect(['alt_mobile' => '০১৮২৩৪৫৬৭৮৯', 'meter_no' => 'MTR-001', 'pipe_size' => '20 mm', 'latitude' => 24.5987, 'longitude' => 88.2765]);
+        $this->assertSame('01823456789', $c->alt_mobile);
+        $this->actingAs($this->waterUser)->getJson("/api/water/connections/{$c->id}")->assertOk()
+            ->assertJsonPath('meter_no', 'MTR-001')->assertJsonPath('latitude', 24.5987)->assertJsonPath('documents', []);
+        // a place needs both numbers
+        $this->actingAs($this->waterUser)->putJson("/api/water/connections/{$c->id}", ['type_id' => $this->home->id, 'name_bn' => 'রহিম উদ্দিন', 'latitude' => 24.6])
+            ->assertStatus(422)->assertJsonValidationErrors(['longitude']);
+
+        $this->actingAs($this->waterUser)->postJson("/api/water/connections/{$c->id}/photo", ['image' => UploadedFile::fake()->image('tap.jpg', 900, 700)])->assertOk();
+        $photo = $c->fresh()->photo;
+        Storage::disk('local')->assertExists($photo);
+        $this->actingAs($this->waterUser)->get("/api/water/connections/{$c->id}/photo")->assertOk();
+
+        $doc = $this->actingAs($this->waterUser)->postJson("/api/water/connections/{$c->id}/documents", [
+            'title' => 'NID কপি', 'file' => UploadedFile::fake()->create('nid.pdf', 120, 'application/pdf'),
+        ])->assertCreated()->assertJsonMissingPath('path')->json('id');
+        $this->actingAs($this->waterUser)->get("/api/water/connections/{$c->id}/documents/$doc")->assertOk();
+        // another connection's document is not reachable through this one
+        $other = $this->connect(['name_bn' => 'অন্য', 'mobile' => null]);
+        $this->actingAs($this->waterUser)->get("/api/water/connections/{$other->id}/documents/$doc")->assertNotFound();
+        // a reader can look but not upload
+        $reader = $this->userWithRole('auditor');
+        if ($reader->can('water.view') && ! $reader->can('water.edit')) {
+            $this->actingAs($reader)->postJson("/api/water/connections/{$c->id}/documents", ['title' => 'x', 'file' => UploadedFile::fake()->create('a.pdf', 10, 'application/pdf')])->assertForbidden();
+        }
+
+        $log = $this->actingAs($this->waterUser)->getJson("/api/water/connections/{$c->id}/activity")->assertOk()->json('data');
+        $this->assertNotEmpty($log);
+        $this->assertSame([], array_values(array_filter($log, fn ($l) => $l['auditable_id'] === $other->id && str_ends_with($l['auditable_type'], 'WaterConnection'))));
+
+        $this->actingAs($this->waterUser)->deleteJson("/api/water/connections/{$c->id}/documents/$doc")->assertOk();
+        $this->actingAs($this->waterUser)->deleteJson("/api/water/connections/{$c->id}/photo")->assertOk();
+        Storage::disk('local')->assertMissing($photo);
     }
 }

@@ -242,7 +242,8 @@ class DemoDataService
     private function dropOrphanUploads(): void
     {
         $disk = Storage::disk('local');
-        $dirs = ['farmer-docs' => 'farmers', 'farmers' => 'farmers', 'land-docs' => 'lands', 'membership' => 'membership_applications'];
+        $dirs = ['farmer-docs' => 'farmers', 'farmers' => 'farmers', 'land-docs' => 'lands', 'membership' => 'membership_applications',
+            'water-docs' => 'water_connections', 'water-photos' => 'water_connections'];
         foreach ($dirs as $dir => $table) {
             if (Schema::hasTable($table) && DB::table($table)->doesntExist()) {
                 $disk->deleteDirectory($dir);

@@ -1415,5 +1415,6 @@
     "পানির সংযোগ ও পুরনো বকেয়া": "Water connections & old dues",
     "পুরনো বকেয়া": "Old due",
     "সবচেয়ে পুরনো বিল": "Oldest bill",
-    "মাসিক পানির বিল তৈরি হলে গ্রাহককে এসএমএস": "SMS the customer when the monthly water bill is made"
+    "মাসিক পানির বিল তৈরি হলে গ্রাহককে এসএমএস": "SMS the customer when the monthly water bill is made",
+    "একটি সংযোগে সর্বোচ্চ ২০টি ডকুমেন্ট রাখা যায়।": "A connection can keep at most 20 documents."
 }

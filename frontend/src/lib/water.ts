@@ -28,7 +28,13 @@ export type WaterConnection = {
   name_en: string | null
   father_name: string | null
   mobile: string | null
+  alt_mobile?: string | null
   nid: string | null
+  meter_no?: string | null
+  pipe_size?: string | null
+  latitude?: number | null
+  longitude?: number | null
+  photo?: string | null
   village_id: number | null
   address: string | null
   monthly_fee: string | null

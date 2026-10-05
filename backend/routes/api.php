@@ -434,6 +434,9 @@ Route::middleware(['auth:sanctum', 'usable'])->group(function () {
             Route::get('connections-summary', [WaterController::class, 'connectionSummary']);
             Route::get('connections/{connection}', [WaterController::class, 'showConnection']);
             Route::get('connections/{connection}/dues', [WaterController::class, 'dues']);
+            Route::get('connections/{connection}/photo', [WaterController::class, 'connectionPhoto']);
+            Route::get('connections/{connection}/documents/{document}', [WaterController::class, 'downloadConnectionDocument']);
+            Route::get('connections/{connection}/activity', [WaterController::class, 'connectionActivity']);
             Route::get('billing/preview', [WaterController::class, 'billingPreview']);
             Route::get('bills', [WaterController::class, 'bills']);
             Route::get('bills/{bill}', [WaterController::class, 'showBill']);
@@ -450,6 +453,10 @@ Route::middleware(['auth:sanctum', 'usable'])->group(function () {
         Route::middleware('permission:water.edit')->group(function () {
             Route::put('connections/{connection}', [WaterController::class, 'updateConnection']);
             Route::post('connections/{connection}/status', [WaterController::class, 'connectionStatus']);
+            Route::post('connections/{connection}/photo', [WaterController::class, 'uploadConnectionPhoto']);
+            Route::delete('connections/{connection}/photo', [WaterController::class, 'deleteConnectionPhoto']);
+            Route::post('connections/{connection}/documents', [WaterController::class, 'storeConnectionDocument']);
+            Route::delete('connections/{connection}/documents/{document}', [WaterController::class, 'deleteConnectionDocument']);
             Route::post('bills/{bill}/cancel', [WaterController::class, 'cancelBill']);
             Route::post('receipts/{receipt}/cancel', [WaterController::class, 'cancelReceipt']);
         });

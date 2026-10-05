@@ -15,11 +15,17 @@ class WaterConnection extends Model
     protected string $auditModule = 'water';
 
     protected $fillable = [
-        'connection_no', 'type_id', 'farmer_id', 'name_bn', 'name_en', 'father_name', 'mobile', 'nid', 'village_id', 'address',
+        'connection_no', 'type_id', 'farmer_id', 'name_bn', 'name_en', 'father_name', 'mobile', 'alt_mobile', 'nid', 'village_id', 'address',
+        'meter_no', 'pipe_size', 'latitude', 'longitude', 'photo',
         'monthly_fee', 'connected_on', 'status', 'status_date', 'status_reason', 'remarks', 'created_by', 'import_batch_id',
     ];
 
-    protected $casts = ['monthly_fee' => 'decimal:2', 'connected_on' => 'date:Y-m-d', 'status_date' => 'date:Y-m-d'];
+    protected $casts = ['latitude' => 'float', 'longitude' => 'float', 'monthly_fee' => 'decimal:2', 'connected_on' => 'date:Y-m-d', 'status_date' => 'date:Y-m-d'];
+
+    public function documents()
+    {
+        return $this->hasMany(WaterConnectionDocument::class, 'connection_id')->latest('id');
+    }
 
     public function type()
     {

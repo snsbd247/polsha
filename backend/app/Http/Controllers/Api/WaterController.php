@@ -3,12 +3,15 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\AuditLog;
 use App\Models\Receipt;
 use App\Models\ReceiptItem;
 use App\Models\WaterBill;
 use App\Models\WaterBillPenalty;
 use App\Models\WaterConnection;
+use App\Models\WaterConnectionDocument;
 use App\Models\WaterConnectionType;
+use App\Services\ImageService;
 use App\Services\ReceiptService;
 use App\Services\SettingService;
 use App\Services\SmsService;
@@ -19,6 +22,7 @@ use App\Support\Tr;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 
 /** Household water supply: connection types, connections, monthly bills, collection, dues. */
@@ -118,7 +122,7 @@ class WaterController extends Controller
 
     public function showConnection(WaterConnection $connection): JsonResponse
     {
-        $connection->load(['type', 'village:id,name_bn,name_en', 'creator:id,name_bn,name_en', 'farmer:id,farmer_code,name_bn,name_en']);
+        $connection->load(['type', 'village:id,name_bn,name_en', 'creator:id,name_bn,name_en', 'farmer:id,farmer_code,name_bn,name_en', 'documents.uploader:id,name_bn,name_en']);
         $bills = $connection->bills()->orderByDesc('bill_date')->orderByDesc('id')->get();
         $receiptIds = ReceiptItem::where('payable_type', (new WaterBill)->getMorphClass())->whereIn('payable_id', $bills->pluck('id'))->pluck('receipt_id')->unique();
 
@@ -128,6 +132,84 @@ class WaterController extends Controller
             'bills' => $bills->map(fn (WaterBill $b) => $this->billRow($b)),
             'receipts' => Receipt::whereIn('id', $receiptIds)->orderByDesc('date')->orderByDesc('id')->get(['id', 'receipt_no', 'date', 'amount', 'method', 'status']),
         ]);
+    }
+
+    /** The tap's photo, shown on the detail page (private disk, so through the API). */
+    public function connectionPhoto(WaterConnection $connection)
+    {
+        abort_unless($connection->photo && Storage::disk('local')->exists($connection->photo), 404);
+
+        return Storage::disk('local')->response($connection->photo, null, ['Cache-Control' => 'private, max-age=3600']);
+    }
+
+    public function uploadConnectionPhoto(Request $request, WaterConnection $connection): JsonResponse
+    {
+        $request->validate(['image' => ['required', 'image', 'mimes:png,jpg,jpeg,webp', 'max:5120']]);
+        $old = $connection->photo;
+        $connection->update(['photo' => ImageService::storeCompressed($request->file('image'), 'water-photos', 1200, 80)]);
+        if ($old) {
+            Storage::disk('local')->delete($old);
+        }
+
+        return response()->json(['photo' => $connection->photo]);
+    }
+
+    public function deleteConnectionPhoto(WaterConnection $connection): JsonResponse
+    {
+        if ($connection->photo) {
+            Storage::disk('local')->delete($connection->photo);
+            $connection->update(['photo' => null]);
+        }
+
+        return response()->json(['photo' => null]);
+    }
+
+    public function storeConnectionDocument(Request $request, WaterConnection $connection): JsonResponse
+    {
+        $data = $request->validate([
+            'title' => ['required', 'string', 'max:100'],
+            'file' => ['required', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
+        ]);
+        abort_if($connection->documents()->count() >= 20, 422, __('একটি সংযোগে সর্বোচ্চ ২০টি ডকুমেন্ট রাখা যায়।'));
+        $file = $request->file('file');
+        $doc = $connection->documents()->create([
+            'title' => $data['title'],
+            // private disk: reachable only through the authenticated download route
+            'path' => $file->store("water-docs/{$connection->id}", 'local'),
+            'original_name' => mb_substr($file->getClientOriginalName(), 0, 250),
+            'mime' => $file->getMimeType(),
+            'size' => $file->getSize(),
+            'uploaded_by' => $request->user()->id,
+        ]);
+
+        return response()->json($doc->load('uploader:id,name_bn,name_en'), 201);
+    }
+
+    public function downloadConnectionDocument(WaterConnection $connection, WaterConnectionDocument $document)
+    {
+        abort_unless($document->connection_id === $connection->id && Storage::disk('local')->exists($document->path), 404);
+
+        return Storage::disk('local')->response($document->path, $document->original_name);
+    }
+
+    public function deleteConnectionDocument(WaterConnection $connection, WaterConnectionDocument $document): JsonResponse
+    {
+        abort_unless($document->connection_id === $connection->id, 404);
+        Storage::disk('local')->delete($document->path);
+        $document->delete();
+
+        return response()->json(['message' => __('ডকুমেন্ট মুছে ফেলা হয়েছে।')]);
+    }
+
+    /** Who did what to this connection, its bills and its papers (the audit log keeps short class names). */
+    public function connectionActivity(Request $request, WaterConnection $connection): JsonResponse
+    {
+        $q = AuditLog::with('user:id,name_bn,username')->where(fn ($w) => $w
+            ->where(fn ($x) => $x->where('auditable_type', 'WaterConnection')->where('auditable_id', $connection->id))
+            ->orWhere(fn ($x) => $x->where('auditable_type', 'WaterBill')->whereIn('auditable_id', $connection->bills()->select('id')))
+            ->orWhere(fn ($x) => $x->where('auditable_type', 'WaterConnectionDocument')->whereIn('auditable_id', WaterConnectionDocument::where('connection_id', $connection->id)->select('id'))));
+
+        return response()->json($q->latest('id')->paginate($this->perPage($request)));
     }
 
     public function updateConnection(Request $request, WaterConnection $connection): JsonResponse
@@ -151,7 +233,7 @@ class WaterController extends Controller
 
     private function connectionData(Request $request, ?WaterConnection $connection = null): array
     {
-        $request->merge(collect($request->only(['mobile', 'nid']))->map(fn ($v) => is_string($v) ? trim(Bn::toEnDigits($v)) : $v)->all());
+        $request->merge(collect($request->only(['mobile', 'alt_mobile', 'nid', 'latitude', 'longitude']))->map(fn ($v) => is_string($v) ? trim(Bn::toEnDigits($v)) : $v)->all());
 
         return $request->validate([
             'type_id' => ['required', Rule::exists('water_connection_types', 'id')->where('is_active', true)],
@@ -161,13 +243,18 @@ class WaterController extends Controller
             'name_en' => ['nullable', 'string', 'max:150'],
             'father_name' => ['nullable', 'string', 'max:150'],
             'mobile' => ['nullable', 'regex:/^01[3-9]\d{8}$/'],
-            'nid' => ['nullable', 'regex:/^(\d{10}|\d{13}|\d{17})$/'],
+            'alt_mobile' => ['nullable', 'regex:/^01[3-9]\d{8}$/'],
+            'meter_no' => ['nullable', 'string', 'max:40'],
+            'pipe_size' => ['nullable', 'string', 'max:40'],
+            'latitude' => ['nullable', 'numeric', 'between:-90,90', 'required_with:longitude'],
+            'longitude' => ['nullable', 'numeric', 'between:-180,180', 'required_with:latitude'],
+            'nid' =>['nullable', 'regex:/^(\d{10}|\d{13}|\d{17})$/'],
             'village_id' => ['nullable', 'exists:villages,id'],
             'address' => ['nullable', 'string', 'max:250'],
             'monthly_fee' => ['nullable', 'numeric', 'min:0', 'max:1000000'],
             'connected_on' => [$connection ? 'sometimes' : 'required', 'date', 'before_or_equal:today'],
             'remarks' => ['nullable', 'string', 'max:500'],
-        ], ['mobile.regex' => __('মোবাইল নম্বর ০১XXXXXXXXX আকারে দিন।'), 'nid.regex' => __('NID ১০, ১৩ বা ১৭ অঙ্কের হতে হবে।')]);
+        ], ['mobile.regex' => __('মোবাইল নম্বর ০১XXXXXXXXX আকারে দিন।'), 'alt_mobile.regex' => __('মোবাইল নম্বর ০১XXXXXXXXX আকারে দিন।'), 'nid.regex' => __('NID ১০, ১৩ বা ১৭ অঙ্কের হতে হবে।')]);
     }
 
     private function connectionQuery(Request $request): Builder

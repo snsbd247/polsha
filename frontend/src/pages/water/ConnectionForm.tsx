@@ -102,6 +102,11 @@ export default function ConnectionForm({ open, connection, onClose, onSaved }: {
             </Form.Item>
           </Col>
           <Col xs={24} md={12}>
+            <Form.Item name="alt_mobile" label={tx('বিকল্প মোবাইল')}>
+              <Input maxLength={14} inputMode="tel" placeholder="01XXXXXXXXX" />
+            </Form.Item>
+          </Col>
+          <Col xs={24} md={12}>
             <Form.Item name="village_id" label={tx('গ্রাম')}>
               <Select allowClear showSearch={{ optionFilterProp: 'label' }} loading={villages.isLoading} options={villages.data?.map((v) => ({ value: v.id, label: nameOf(v) }))} />
             </Form.Item>
@@ -137,9 +142,29 @@ export default function ConnectionForm({ open, connection, onClose, onSaved }: {
               </Form.Item>
             </Col>
           )}
-          <Col xs={24}>
+          <Col xs={24} md={12}>
             <Form.Item name="nid" label={tx('NID (ঐচ্ছিক)')}>
               <Input maxLength={17} inputMode="numeric" />
+            </Form.Item>
+          </Col>
+          <Col xs={12} md={6}>
+            <Form.Item name="meter_no" label={tx('মিটার নং')} extra={tx('মিটার থাকলে')}>
+              <Input maxLength={40} />
+            </Form.Item>
+          </Col>
+          <Col xs={12} md={6}>
+            <Form.Item name="pipe_size" label={tx('পাইপের মাপ')}>
+              <Input maxLength={40} placeholder={tx('যেমন ২০ মিমি (½")')} />
+            </Form.Item>
+          </Col>
+          <Col xs={12}>
+            <Form.Item name="latitude" label={tx('অক্ষাংশ (Latitude)')}>
+              <InputNumber min={-90} max={90} step={0.0001} style={{ width: '100%' }} placeholder="24.5987" />
+            </Form.Item>
+          </Col>
+          <Col xs={12}>
+            <Form.Item name="longitude" label={tx('দ্রাঘিমাংশ (Longitude)')} extra={tx('গুগল ম্যাপে জায়গায় চেপে ধরলে সংখ্যা দুটি দেখা যায়')}>
+              <InputNumber min={-180} max={180} step={0.0001} style={{ width: '100%' }} placeholder="88.2765" />
             </Form.Item>
           </Col>
           <Col xs={24}>
