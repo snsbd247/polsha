@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import dayjs, { type Dayjs } from 'dayjs'
 import { Alert, Button, Card, DatePicker, Descriptions, Form, Input, InputNumber, Radio, Result, Spin, Tabs, Tag, Typography } from 'antd'
@@ -218,6 +218,8 @@ function StatusCheck() {
 /** Public (no login) page: farmers report a bKash/Nagad payment for cashier verification, and check its status. */
 export default function PublicPaymentPage() {
   const { data: settings } = usePublicSettings()
+  // the website's "check payment status" card opens /pay?tab=status
+  const [params] = useSearchParams()
   const { data: info, isLoading, error } = useQuery({
     queryKey: ['public-payment-info'],
     queryFn: async () => (await api.get<Info>('/public/payment-info')).data,
@@ -243,6 +245,7 @@ export default function PublicPaymentPage() {
           <Alert type="error" showIcon title={errorMessage(error)} />
         ) : (
           <Tabs
+            defaultActiveKey={params.get('tab') === 'status' ? 'status' : 'submit'}
             items={[
               {
                 key: 'submit',

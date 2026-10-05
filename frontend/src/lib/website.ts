@@ -8,12 +8,27 @@ export type Bi = { bn: string; en: string }
 export type SiteNotice = { date: string; title: Bi; tag: Bi }
 export type SitePerson = { name: Bi; role: Bi; photo: string | null }
 export type SitePhoto = { photo: string; caption: Bi }
+export type SiteFaq = { q: Bi; a: Bi }
 
 export type SiteContent = {
   enabled: boolean
   show_stats: boolean
+  brand_title: Bi
+  brand_subtitle: Bi
+  brand_tagline: Bi
+  hero_kicker: Bi
+  hero_title: Bi
+  hero_photos: string[]
   tagline: Bi
+  about_title: Bi
   intro: Bi
+  vision: Bi
+  mission: Bi
+  values: Bi
+  faqs: SiteFaq[]
+  facebook: string
+  youtube: string
+  instagram: string
   founded_year: string
   work_area: Bi
   about_photo: string | null
@@ -27,7 +42,7 @@ export type SiteContent = {
   map_url: string
 }
 
-export type SiteStat = { key: 'members' | 'farmers' | 'irrigated_acres' | 'years'; value: number }
+export type SiteStat = { key: 'members' | 'farmers' | 'irrigated_acres' | 'water_connections' | 'years'; value: number }
 
 /** What the public landing page receives: the content plus contact fallbacks and live numbers. */
 export type PublicSite = SiteContent & { registration_no: string; stats: SiteStat[] }

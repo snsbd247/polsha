@@ -11,6 +11,9 @@ import {
   GlobalOutlined,
   NotificationOutlined,
   PictureOutlined,
+  QuestionCircleOutlined,
+  ShareAltOutlined,
+  StarOutlined,
   PlusOutlined,
   TeamOutlined,
   UploadOutlined,
@@ -26,9 +29,9 @@ type FormNotice = Omit<SiteNotice, 'date'> & { date: Dayjs }
 type FormValues = Omit<SiteContent, 'notices'> & { notices: FormNotice[] }
 
 /** Bangla + English inputs side by side for one text of the website. */
-function BiInput({ name, label, max, area, required, extra }: { name: (string | number)[]; label: string; max: number; area?: boolean; required?: boolean; extra?: ReactNode }) {
+function BiInput({ name, label, max, area, rows = 4, required, extra }: { name: (string | number)[]; label: string; max: number; area?: boolean; rows?: number; required?: boolean; extra?: ReactNode }) {
   const Field = area ? Input.TextArea : Input
-  const props = area ? { rows: 4, maxLength: max, showCount: true } : { maxLength: max }
+  const props = area ? { rows, maxLength: max, showCount: true } : { maxLength: max }
   return (
     <Row gutter={12}>
       <Col xs={24} md={12}>
@@ -82,6 +85,23 @@ function PhotoField({ value, onChange, round }: { value?: string | null; onChang
   )
 }
 
+/** Up to three photos the top of the page slides through; none → the built-in photos. */
+function HeroPhotos({ value = [], onChange }: { value?: string[]; onChange?: (v: string[]) => void }) {
+  return (
+    <div className="ws-hero-photos">
+      {[0, 1, 2].map((i) =>
+        i <= value.length ? (
+          <PhotoField
+            key={i}
+            value={value[i] ?? null}
+            onChange={(p) => onChange?.(p ? Object.assign([...value], { [i]: p }) : value.filter((_, j) => j !== i))}
+          />
+        ) : null,
+      )}
+    </div>
+  )
+}
+
 export default function WebsiteSettingsPage() {
   const [form] = Form.useForm<FormValues>()
   const { message } = App.useApp()
@@ -127,7 +147,7 @@ export default function WebsiteSettingsPage() {
   return (
     <SettingsShell
       title={tx('ওয়েবসাইট')}
-      subtitle={tx('লগইন ছাড়া মূল ঠিকানা খুললে যে পাতা দেখায় — পরিচিতি, নোটিশ, কমিটি, গ্যালারি ও যোগাযোগ।')}
+      subtitle={tx('লগইন ছাড়া মূল ঠিকানা খুললে যে পাতা দেখায় — পরিচিতি, সেবা, নোটিশ, প্রশ্নোত্তর, কমিটি, গ্যালারি ও যোগাযোগ।')}
       extra={
         <Button icon={<ExportOutlined />} href={appPath('/site')} target="_blank">
           {tx('ওয়েবসাইট দেখুন')}
@@ -143,13 +163,31 @@ export default function WebsiteSettingsPage() {
               </Form.Item>
             </Col>
             <Col xs={24} md={16}>
-              <Form.Item name="show_stats" label={tx('সংখ্যার সারি দেখাবে')} valuePropName="checked" extra={tx('সক্রিয় সদস্য, কৃষক ও সেচকৃত জমি — সিস্টেমের হিসাব থেকে নিজে আসে।')}>
+              <Form.Item name="show_stats" label={tx('সংখ্যার সারি দেখাবে')} valuePropName="checked" extra={tx('কৃষক ও সদস্য, সেচকৃত জমি ও পানির সংযোগ — সিস্টেমের হিসাব থেকে নিজে আসে।')}>
                 <Switch />
               </Form.Item>
             </Col>
           </Row>
+        </SettingsCard>
+
+        <SettingsCard icon={<StarOutlined />} title={tx('হেডার ও প্রথম অংশ')} subtitle={tx('লোগোর পাশের নাম, বড় শিরোনাম ও পেছনের ছবি।')}>
+          <BiInput name={['brand_title']} label={tx('লোগোর পাশের নাম')} max={80} extra={tx('খালি থাকলে সমিতির নাম দেখাবে।')} />
+          <BiInput name={['brand_subtitle']} label={tx('নামের নিচের লাইন')} max={120} />
+          <BiInput name={['brand_tagline']} label={tx('ছোট স্লোগান')} max={120} />
+          <BiInput name={['hero_kicker']} label={tx('শিরোনামের উপরের ছোট লাইন')} max={80} />
+          <BiInput name={['hero_title']} label={tx('বড় শিরোনাম')} max={160} area rows={4} extra={tx('প্রতি লাইন আলাদা লাইনে লিখুন; [ ] বন্ধনীর ভেতরের শব্দ সবুজ দেখাবে।')} />
           <BiInput name={['tagline']} label={tx('শিরোনামের নিচের লাইন')} max={200} />
+          <Form.Item name="hero_photos" label={tx('পেছনের ছবি (সর্বোচ্চ ৩টি)')} extra={tx('চওড়া ছবি দিন; না দিলে সফটওয়্যারের নিজস্ব ছবি দেখাবে।')}>
+            <HeroPhotos />
+          </Form.Item>
+        </SettingsCard>
+
+        <SettingsCard icon={<TeamOutlined />} title={tx('আমাদের সম্পর্কে')} subtitle={tx('পরিচিতি, লক্ষ্য, উদ্দেশ্য ও মূল্যবোধ।')}>
+          <BiInput name={['about_title']} label={tx('শিরোনাম')} max={120} extra={tx('খালি থাকলে সমিতির পূর্ণ নাম দেখাবে।')} />
           <BiInput name={['intro']} label={tx('সমিতির পরিচিতি')} max={1500} area />
+          <BiInput name={['vision']} label={tx('আমাদের লক্ষ্য')} max={300} area rows={2} />
+          <BiInput name={['mission']} label={tx('আমাদের উদ্দেশ্য')} max={300} area rows={2} />
+          <BiInput name={['values']} label={tx('আমাদের মূল্যবোধ')} max={300} area rows={2} />
           <Row gutter={12}>
             <Col xs={24} md={8}>
               <Form.Item name="founded_year" label={tx('প্রতিষ্ঠার সাল')} extra={tx('যেমন ১৯৯৮ — "বছরের সেবা" এখান থেকে হিসাব হয়।')}>
@@ -201,6 +239,31 @@ export default function WebsiteSettingsPage() {
                 ))}
                 <Button icon={<PlusOutlined />} onClick={() => add({ date: dayjs(), title: emptyBi(), tag: emptyBi() }, 0)} disabled={fields.length >= 12}>
                   {tx('নোটিশ যোগ করুন')}
+                </Button>
+              </>
+            )}
+          </Form.List>
+        </SettingsCard>
+
+        <SettingsCard icon={<QuestionCircleOutlined />} title={tx('সচরাচর জিজ্ঞাসা')} subtitle={tx('প্রথম ৮টি প্রশ্ন দেখায়, বাকিগুলো "সব দেখুন"-এ।')}>
+          <Form.List name="faqs">
+            {(fields, { add, remove, move }) => (
+              <>
+                {fields.map((f, i) => (
+                  <div className="ws-item ws-faq" key={f.key}>
+                    <div className="ws-person-fields">
+                      <BiInput name={[f.name, 'q']} label={tx('প্রশ্ন')} max={200} required />
+                      <BiInput name={[f.name, 'a']} label={tx('উত্তর')} max={1000} area rows={2} required />
+                    </div>
+                    <div className="ws-person-tools">
+                      <Button type="text" icon={<ArrowUpOutlined />} disabled={i === 0} onClick={() => move(i, i - 1)} aria-label={tx('উপরে')} />
+                      <Button type="text" icon={<ArrowDownOutlined />} disabled={i === fields.length - 1} onClick={() => move(i, i + 1)} aria-label={tx('নিচে')} />
+                      <Button type="text" danger icon={<DeleteOutlined />} onClick={() => remove(f.name)} aria-label={tx('মুছুন')} />
+                    </div>
+                  </div>
+                ))}
+                <Button icon={<PlusOutlined />} onClick={() => add({ q: emptyBi(), a: emptyBi() })} disabled={fields.length >= 20}>
+                  {tx('প্রশ্ন যোগ করুন')}
                 </Button>
               </>
             )}
@@ -287,6 +350,18 @@ export default function WebsiteSettingsPage() {
           >
             <Input maxLength={1000} placeholder="https://www.google.com/maps/embed?pb=..." />
           </Form.Item>
+        </SettingsCard>
+
+        <SettingsCard icon={<ShareAltOutlined />} title={tx('সোশ্যাল মিডিয়া')} subtitle={tx('লিংক দিলে উপরের সারি ও ফুটারে আইকন দেখাবে।')}>
+          <Row gutter={12}>
+            {(['facebook', 'youtube', 'instagram'] as const).map((k) => (
+              <Col xs={24} md={8} key={k}>
+                <Form.Item name={k} label={k === 'facebook' ? 'Facebook' : k === 'youtube' ? 'YouTube' : 'Instagram'} rules={[{ type: 'url', message: tx('সঠিক লিংক দিন') }]}>
+                  <Input maxLength={300} placeholder={`https://www.${k}.com/...`} />
+                </Form.Item>
+              </Col>
+            ))}
+          </Row>
         </SettingsCard>
 
         <div className="ws-save">{saveBtn}</div>

@@ -96,3 +96,13 @@
     flex-direction: row;
   }
 }
+
+.ws-hero-photos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+.ws-faq {
+  display: flex;
+  gap: 12px;
+}

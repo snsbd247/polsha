@@ -101,4 +101,30 @@ class WebsiteTest extends Phase2TestCase
         $this->actingAs($this->userWithRole('super_admin'))->putJson('/api/settings/website', $this->page(['enabled' => false]))->assertOk();
         $this->getJson('/api/public/website')->assertOk()->assertJsonPath('enabled', false);
     }
+
+    public function test_homepage_texts_faqs_and_social_links_are_saved(): void
+    {
+        $this->getJson('/api/public/website')->assertOk()
+            ->assertJsonPath('hero_title.en', "Reliable Water\nfor [Agriculture]\nand a Prosperous\nCommunity")
+            ->assertJsonCount(8, 'faqs');
+
+        $admin = $this->userWithRole('super_admin');
+        $this->actingAs($admin)->putJson('/api/settings/website', $this->page([
+            'hero_title' => ['bn' => "[সেচ] সবার জন্য", 'en' => ''],
+            'vision' => ['bn' => '  সমৃদ্ধ গ্রাম  ', 'en' => ''],
+            'faqs' => [['q' => ['bn' => 'প্রশ্ন?', 'en' => 'Question?'], 'a' => ['bn' => 'উত্তর।', 'en' => '']]],
+            'facebook' => 'https://www.facebook.com/polsha',
+        ]))->assertOk();
+        $this->getJson('/api/public/website')->assertOk()
+            ->assertJsonPath('hero_title.bn', '[সেচ] সবার জন্য')
+            ->assertJsonPath('vision.bn', 'সমৃদ্ধ গ্রাম')
+            ->assertJsonPath('faqs.0.q.en', 'Question?')
+            ->assertJsonPath('facebook', 'https://www.facebook.com/polsha');
+
+        $this->actingAs($admin)->putJson('/api/settings/website', $this->page([
+            'facebook' => 'not a link',
+            'hero_photos' => ['website/x.jpg'],
+            'faqs' => [['q' => ['bn' => ''], 'a' => ['bn' => 'উত্তর।']]],
+        ]))->assertStatus(422)->assertJsonValidationErrors(['facebook', 'hero_photos.0', 'faqs.0.q.bn']);
+    }
 }
