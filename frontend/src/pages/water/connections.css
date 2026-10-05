@@ -457,6 +457,137 @@
   }
 }
 
+/* ---- monthly bills page (same frame, a few extras) ---- */
+.wcl-card-labelled .wcl-card-label {
+  margin: 0 0 4px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--c);
+}
+.wcl-card-labelled .wcl-card-body > small {
+  margin-top: 4px;
+  font-size: 13px;
+  color: #374151;
+}
+.wcl-taka {
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 1;
+}
+.wcl-filters-titled {
+  row-gap: 12px;
+}
+.wcl-filter-title,
+.wcl-list-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: #0f172a;
+}
+.wcl-filter-title {
+  grid-column: 1 / -1;
+}
+.wcl-filter-title .anticon,
+.wcl-list-title .anticon {
+  font-size: 22px;
+  color: var(--wcl-blue);
+}
+.wcl-field .ant-picker {
+  height: 40px;
+  width: 100%;
+}
+.wcl-list-title small {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--wcl-muted);
+}
+.wcl-print-only {
+  display: none;
+}
+.wcl-plain-link {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: #1f2937 !important;
+}
+.wcl-plain-link:hover {
+  color: var(--wcl-blue) !important;
+}
+.wcl-tag-grey {
+  background: #eef1f5;
+  color: #6b7280;
+}
+.wcl-act:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.wcl-modal-note {
+  margin: 0 0 14px;
+  font-size: 13px;
+  color: var(--wcl-muted);
+}
+.wcl-gen-fields {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0 12px;
+}
+.wcl-gen-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.wcl-gen-stats > div {
+  display: flex;
+  flex-direction: column;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #f3f7ff;
+  border: 1px solid #dbe7fb;
+}
+.wcl-gen-stats small {
+  font-size: 12.5px;
+  color: var(--wcl-muted);
+}
+.wcl-gen-stats b {
+  font-size: 17px;
+  color: #0f172a;
+}
+.wcl-kv {
+  margin: 0;
+}
+.wcl-kv > div {
+  display: grid;
+  grid-template-columns: 130px minmax(0, 1fr);
+  padding: 5px 0;
+  border-bottom: 1px solid #f0f2f6;
+  font-size: 13.5px;
+}
+.wcl-kv dt {
+  color: var(--wcl-muted);
+}
+.wcl-kv dd {
+  margin: 0;
+  color: #111827;
+}
+@media (max-width: 575px) {
+  .wcl-gen-fields,
+  .wcl-gen-stats {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .wcl-list-title {
+    width: 100%;
+  }
+}
+@media print {
+  .wcl-print-only {
+    display: inline;
+  }
+}
+
 @media print {
   .wcl-no-print,
   .wcl-table .ant-table-selection-column {

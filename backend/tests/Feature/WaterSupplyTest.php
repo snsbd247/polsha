@@ -100,6 +100,15 @@ class WaterSupplyTest extends Phase2TestCase
         // ticked rows only, and search by address
         $this->actingAs($this->waterUser)->getJson("/api/water/connections?ids={$c->id}")->assertOk()->assertJsonPath('total', 1);
         $this->actingAs($this->waterUser)->getJson('/api/water/connections?search=উত্তর')->assertOk()->assertJsonPath('total', 4);
+
+        // the monthly bills page: cards count the whole month, the status filter narrows the list
+        $this->actingAs($this->waterUser)->getJson("/api/water/bills?period=$period&kind=monthly")->assertOk()
+            ->assertJsonPath('cards.total', 2)->assertJsonPath('cards.paid', 0)->assertJsonPath('cards.pending', 2)
+            ->assertJsonPath('cards.overdue', 0)->assertJsonPath('cards.amount', 550);
+        WaterBill::where('period', $period)->update(['due_date' => now()->subDay()->toDateString()]);
+        $this->actingAs($this->waterUser)->getJson("/api/water/bills?period=$period&kind=monthly&status=overdue")->assertOk()
+            ->assertJsonPath('total', 2)->assertJsonPath('cards.overdue', 2)->assertJsonPath('cards.pending', 0);
+        $this->actingAs($this->waterUser)->getJson("/api/water/bills?period=$period&kind=monthly&status=pending")->assertOk()->assertJsonPath('total', 0);
     }
 
     public function test_collection_with_penalty_lands_in_water_cash_and_cancel_undoes_it(): void

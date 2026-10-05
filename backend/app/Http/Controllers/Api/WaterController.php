@@ -22,6 +22,7 @@ use App\Support\Tr;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 
@@ -338,16 +339,19 @@ class WaterController extends Controller
 
     public function bills(Request $request)
     {
-        $q = WaterBill::query();
+        $q = WaterBill::query()->with('connection:id,farmer_id', 'connection.farmer:id,farmer_code');
         foreach (['period', 'kind', 'connection_id'] as $f) {
             if ($request->filled($f)) {
                 $q->where($f, $request->query($f));
             }
         }
-        if ($request->filled('status')) {
-            // "open" = anything still to collect
-            $request->query('status') === 'open' ? $q->whereIn('status', ['unpaid', 'partial']) : $q->where('status', $request->query('status'));
+        // the ticked rows of the list (export only those)
+        if ($ids = array_filter(array_map('intval', explode(',', (string) $request->query('ids'))))) {
+            $q->whereIn('water_bills.id', $ids);
         }
+        $today = now()->toDateString();
+        $overdue = fn ($w) => $w->whereIn('status', ['unpaid', 'partial'])->whereNotNull('due_date')->where('due_date', '<', $today);
+        $pending = fn ($w) => $w->whereIn('status', ['unpaid', 'partial'])->where(fn ($d) => $d->whereNull('due_date')->orWhere('due_date', '>=', $today));
         if ($request->filled('type_id') || $request->filled('village_id')) {
             $q->whereHas('connection', fn ($c) => $c->when($request->filled('type_id'), fn ($w) => $w->where('type_id', $request->integer('type_id')))
                 ->when($request->filled('village_id'), fn ($w) => $w->where('village_id', $request->integer('village_id'))));
@@ -357,6 +361,24 @@ class WaterController extends Controller
             $q->where(fn ($w) => $w->where('bill_no', 'like', "%$en%")
                 ->orWhereHas('connection', fn ($c) => $c->where('name_bn', 'like', "%$search%")->orWhere('name_en', 'like', "%$search%")
                     ->orWhere('mobile', 'like', "%$en%")->orWhere('connection_no', 'like', "%$en%")));
+        }
+        // the summary cards count the month as a whole, whatever status is picked below
+        $all = (clone $q)->where('status', '!=', 'cancelled');
+        $cards = [
+            'total' => (clone $all)->count(),
+            'paid' => (clone $all)->where('status', 'paid')->count(),
+            'pending' => (clone $all)->where($pending)->count(),
+            'overdue' => (clone $all)->where($overdue)->count(),
+            'amount' => round((float) (clone $all)->sum(DB::raw('amount + penalty')), 2),
+        ];
+        if ($request->filled('status')) {
+            // "open" = anything still to collect; "pending" = open and not yet past its last date; "overdue" = open and past it
+            match ($request->query('status')) {
+                'open' => $q->whereIn('status', ['unpaid', 'partial']),
+                'pending' => $q->where($pending),
+                'overdue' => $q->where($overdue),
+                default => $q->where('status', $request->query('status')),
+            };
         }
         if ($request->query('export') === 'csv') {
             $statuses = Tr::map(WaterBill::STATUSES);
@@ -377,7 +399,8 @@ class WaterController extends Controller
         $totals['due'] = round($totals['amount'] + $totals['penalty'] - $totals['paid'], 2);
         $page = $q->orderByDesc('bill_date')->orderByDesc('id')->paginate($this->perPage($request));
 
-        return response()->json(['data' => collect($page->items())->map(fn (WaterBill $b) => $this->billRow($b))] + collect($page->toArray())->except('data')->all() + ['totals' => $totals]);
+        return response()->json(['data' => collect($page->items())->map(fn (WaterBill $b) => $this->billRow($b) + ['farmer_code' => $b->connection?->farmer?->farmer_code])]
+            + collect($page->toArray())->except('data')->all() + ['totals' => $totals, 'cards' => $cards]);
     }
 
     public function showBill(WaterBill $bill): JsonResponse
