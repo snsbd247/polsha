@@ -118,7 +118,10 @@ class WaterSupplyTest extends Phase2TestCase
         $this->actingAs($this->waterUser)->postJson('/api/water/billing', ['period' => $period, 'bill_date' => now()->toDateString()])->assertCreated();
         $bill = WaterBill::where('connection_id', $c->id)->firstOrFail();
 
-        $dues = $this->actingAs($this->waterUser)->getJson("/api/water/connections/{$c->id}/dues")->assertOk()->assertJsonPath('total_due', 200);
+        $dues = $this->actingAs($this->waterUser)->getJson("/api/water/connections/{$c->id}/dues")->assertOk()->assertJsonPath('total_due', 200)
+            // the type's fee, not 0 (the type used to come without it)
+            ->assertJsonPath('connection.fee', 200);
+        $this->actingAs($this->waterUser)->getJson('/api/water/dues')->assertOk()->assertJsonPath('totals.connections', 1)->assertJsonPath('totals.long_due', 0);
         $r = $this->actingAs($this->waterUser)->postJson('/api/water/collect', [
             'connection_id' => $c->id, 'date' => now()->toDateString(), 'method' => 'cash', 'penalty' => 20,
             'items' => [['bill_id' => $dues->json('bills.0.id'), 'amount' => 200]],
@@ -131,6 +134,9 @@ class WaterSupplyTest extends Phase2TestCase
         $this->assertSame(-20.0, $this->balance('water_penalty_income'));
         // not mixed into the irrigation receipt screens
         $this->actingAs($this->manager)->getJson('/api/receipts')->assertOk()->assertJsonPath('total', 0);
+        $this->actingAs($this->waterUser)->getJson('/api/water/receipts')->assertOk()
+            ->assertJsonPath('cards.count', 1)->assertJsonPath('cards.amount', 220)->assertJsonPath('cards.today', 220)->assertJsonPath('cards.cancelled', 0);
+        $this->actingAs($this->waterUser)->get('/api/water/receipts?export=csv&ids='.$r->json('id'))->assertOk();
         $this->actingAs($this->waterUser)->getJson("/api/water/receipts/{$r->json('id')}")->assertOk()
             ->assertJsonPath('penalty', 20)->assertJsonPath('connection.connection_no', $c->connection_no);
 

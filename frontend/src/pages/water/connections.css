@@ -38,7 +38,7 @@
 /* summary cards */
 .wcl-cards {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(var(--n, 5), minmax(0, 1fr));
   gap: 12px;
   margin-bottom: 20px;
 }
@@ -585,6 +585,119 @@
 @media print {
   .wcl-print-only {
     display: inline;
+  }
+}
+
+.wcl-tools-lead {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+/* five filters before the buttons */
+.wcl-filters-5 {
+  grid-template-columns: minmax(0, 1.5fr) repeat(4, minmax(0, 1fr)) auto;
+}
+@media (max-width: 1400px) {
+  .wcl-filters-5 {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+@media (max-width: 900px) {
+  .wcl-filters-5 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 575px) {
+  .wcl-filters-5 {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.wcl-count {
+  display: inline-grid;
+  place-items: center;
+  min-width: 26px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 11px;
+  background: #fff3cd;
+  color: #b7791f;
+  font-size: 12.5px;
+  font-weight: 600;
+}
+.wcl-count-ok {
+  background: #e3f6ea;
+  color: #1e9e50;
+}
+.wcl-count-hot {
+  background: #fde4e4;
+  color: #dc2626;
+}
+
+/* collection screen */
+.wcl-section {
+  margin-bottom: 14px;
+}
+.wcl-section .wcl-list-title {
+  margin-bottom: 10px;
+}
+.wcl-lookup.ant-select {
+  width: 100%;
+  max-width: 620px;
+  height: 42px;
+}
+.wcl-collect {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
+}
+.wcl-collect-main {
+  min-width: 0;
+}
+.wcl-payer {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 10px;
+}
+.wcl-avatar-lg {
+  width: 52px;
+  height: 52px;
+  font-size: 17px;
+  background: #1769e0;
+}
+.wcl-payer-text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.wcl-payer-text b {
+  font-size: 17px;
+  color: #0f172a;
+}
+.wcl-payer-text small {
+  font-size: 13px;
+  color: var(--wcl-muted);
+}
+.wcl-kv-2 {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0 18px;
+}
+.wcl-kv-2 > div {
+  grid-template-columns: 1fr;
+  border-bottom: 0;
+}
+@media (max-width: 1100px) {
+  .wcl-collect {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 575px) {
+  .wcl-kv-2 {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 

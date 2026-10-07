@@ -445,7 +445,7 @@ class WaterController extends Controller
     /** A connection's open bills, oldest first — what the collection screen offers. */
     public function dues(WaterConnection $connection): JsonResponse
     {
-        $connection->load(['type:id,name_bn,name_en', 'village:id,name_bn,name_en']);
+        $connection->load(['type:id,name_bn,name_en,monthly_fee', 'village:id,name_bn,name_en']);
         $bills = $connection->bills()->whereIn('status', ['unpaid', 'partial'])->orderBy('bill_date')->orderBy('id')->get();
 
         return response()->json([
@@ -481,7 +481,7 @@ class WaterController extends Controller
 
     // ---- receipts ----
 
-    public function receipts(Request $request): JsonResponse
+    public function receipts(Request $request)
     {
         $q = Receipt::where('module', 'water');
         foreach (['status', 'method'] as $f) {
@@ -499,10 +499,32 @@ class WaterController extends Controller
             $en = Bn::toEnDigits($search);
             $q->where(fn ($w) => $w->where('receipt_no', 'like', "%$en%")->orWhere('payer_name', 'like', "%$search%")->orWhere('reference', 'like', "%$en%"));
         }
-        $total = (clone $q)->where('status', '!=', 'cancelled')->sum('amount');
+        // the ticked rows of the list (export only those)
+        if ($ids = array_filter(array_map('intval', explode(',', (string) $request->query('ids'))))) {
+            $q->whereIn('id', $ids);
+        }
+        if ($request->query('export') === 'csv') {
+            $methods = Tr::map(Receipt::METHODS);
+            $statuses = Tr::map(Receipt::STATUSES);
+
+            return CsvExport::download('water-receipts-'.now()->format('Ymd').'.csv',
+                [__('রশিদ নং'), __('তারিখ'), __('গ্রাহক'), __('টাকা'), __('মাধ্যম'), __('রেফারেন্স'), __('অবস্থা')],
+                (clone $q)->orderBy('date')->orderBy('id')->lazy()->map(fn (Receipt $r) => [$r->receipt_no, $r->date?->toDateString(), $r->payer_name, $r->amount,
+                    $methods[$r->method] ?? $r->method, $r->reference, $statuses[$r->status] ?? $r->status]));
+        }
+        $valid = (clone $q)->where('status', '!=', 'cancelled');
+        $total = (clone $valid)->sum('amount');
+        // the cards: whatever is filtered, plus today and this month on their own
+        $cards = [
+            'count' => (clone $valid)->count(),
+            'amount' => round((float) $total, 2),
+            'today' => round((float) Receipt::where('module', 'water')->where('status', '!=', 'cancelled')->whereDate('date', now()->toDateString())->sum('amount'), 2),
+            'month' => round((float) Receipt::where('module', 'water')->where('status', '!=', 'cancelled')->whereDate('date', '>=', now()->startOfMonth()->toDateString())->sum('amount'), 2),
+            'cancelled' => (clone $q)->where('status', 'cancelled')->count(),
+        ];
 
         return response()->json($q->with('creator:id,name_bn,name_en')->orderByDesc('date')->orderByDesc('id')->paginate($this->perPage($request))->toArray()
-            + ['total_amount' => round((float) $total, 2), 'methods' => Tr::map(Receipt::METHODS), 'statuses' => Tr::map(Receipt::STATUSES)]);
+            + ['total_amount' => round((float) $total, 2), 'cards' => $cards, 'methods' => Tr::map(Receipt::METHODS), 'statuses' => Tr::map(Receipt::STATUSES)]);
     }
 
     public function showReceipt(Receipt $receipt): JsonResponse
@@ -556,7 +578,10 @@ class WaterController extends Controller
         $all = (clone $q)->get();
 
         return response()->json($q->orderByDesc('due')->paginate($this->perPage($request))->toArray() + [
-            'totals' => ['connections' => $all->count(), 'due' => round($all->sum(fn ($c) => (float) $c->due), 2), 'bills' => (int) $all->sum('open_bills')],
+            'totals' => ['connections' => $all->count(), 'due' => round($all->sum(fn ($c) => (float) $c->due), 2), 'bills' => (int) $all->sum('open_bills'),
+                // three or more months unpaid: the ones to warn or disconnect
+                'long_due' => $all->filter(fn ($c) => (int) $c->open_bills >= 3)->count(),
+                'disconnected' => $all->where('status', 'disconnected')->count()],
         ]);
     }
 }
