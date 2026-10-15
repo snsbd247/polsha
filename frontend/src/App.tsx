@@ -2,6 +2,7 @@ import { Fragment, lazy, Suspense, type ReactNode } from 'react'
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { Result, Spin } from 'antd'
 import { useAuth } from './auth/AuthContext'
+import { useLicense } from './auth/LicenseContext'
 import AppLayout from './components/AppLayout'
 import { FUND_KINDS } from './lib/funds'
 import { t as tx } from './lib/i18n'
@@ -56,6 +57,7 @@ const BrandingSettingsPage = lazy(() => import('./pages/settings/BrandingSetting
 const ReceiptSettingsPage = lazy(() => import('./pages/settings/ReceiptSettingsPage'))
 const PreferencesPage = lazy(() => import('./pages/settings/PreferencesPage'))
 const LicensePage = lazy(() => import('./pages/settings/LicensePage'))
+const LicenseVerificationPage = lazy(() => import('./pages/license/LicenseVerificationPage'))
 const WebsiteSettingsPage = lazy(() => import('./pages/settings/WebsiteSettingsPage'))
 const LandTypesPage = lazy(() => import('./pages/settings/LandTypesPage'))
 const ChartOfAccountsPage = lazy(() => import('./pages/accounting/ChartOfAccountsPage'))
@@ -175,6 +177,7 @@ const REPORT_ROUTES: { path: string; title: string; keys: string[]; section: { l
 
 function RequireAuth({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth()
+  const { blocked } = useLicense()
   const location = useLocation()
 
   if (loading) return <Spin fullscreen />
@@ -182,6 +185,8 @@ function RequireAuth({ children }: { children: ReactNode }) {
   if (!user && location.pathname === '/') return <LandingPage />
   if (!user) return <Navigate to="/login" replace state={{ from: location.pathname }} />
   if (user.must_change_password) return <Navigate to="/change-password" replace />
+  // a locked installation: every page (typed URLs too) leads to the license page
+  if (blocked && location.pathname !== '/license-verification') return <Navigate to="/license-verification" replace />
   return <>{children}</>
 }
 
@@ -247,6 +252,7 @@ export default function App() {
       >
         <Route index element={<Home />} />
         <Route path="profile" element={<ProfilePage />} />
+        <Route path="license-verification" element={<LicenseVerificationPage />} />
 
         <Route path="admin/users" element={<Perm perm="user.view"><UserListPage /></Perm>} />
         <Route path="admin/users/new" element={<Perm perm="user.create"><UserFormPage /></Perm>} />

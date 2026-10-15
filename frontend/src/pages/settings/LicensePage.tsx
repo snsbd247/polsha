@@ -1,17 +1,15 @@
-import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Alert, App, Button, Card, Col, Descriptions, Form, Input, Row, Spin, Tag, Typography } from 'antd'
+import { Alert, Button, Card, Col, Descriptions, Row, Spin, Tag, Typography } from 'antd'
 import { SafetyCertificateOutlined } from '@ant-design/icons'
-import { useAuth } from '../../auth/AuthContext'
-import { api, applyFormErrors, errorMessage } from '../../lib/api'
+import { api } from '../../lib/api'
 import { digits, fmtBytes, fmtDate, fmtDateTime } from '../../lib/format'
-import { required } from '../../lib/rules'
 import { t as tx } from '../../lib/i18n'
-import type { AuthUser, LicenseState, LicenseStatus } from '../../lib/types'
+import type { LicenseInfo } from '../../lib/types'
 import SettingsShell from './SettingsShell'
 
 type SystemInfo = {
-  license: LicenseStatus
+  license: LicenseInfo
   installation_id: string
   system: {
     app_version: string
@@ -27,69 +25,45 @@ type SystemInfo = {
   }
 }
 
-// eslint-disable-next-line react-refresh/only-export-components
-export const LICENSE_STATE: Record<LicenseState, { label: string; color: string }> = {
-  valid: { label: tx('বৈধ'), color: 'green' },
-  expiring: { label: tx('মেয়াদ শেষ হতে চলেছে'), color: 'orange' },
-  expired: { label: tx('মেয়াদ শেষ'), color: 'red' },
-  missing: { label: tx('লাইসেন্স নেই'), color: 'red' },
-  invalid: { label: tx('অবৈধ লাইসেন্স'), color: 'red' },
+const STATE: Record<LicenseInfo['state'], { label: string; color: string }> = {
+  active: { label: tx('সক্রিয়'), color: 'green' },
+  grace: { label: tx('গ্রেস পিরিয়ড'), color: 'orange' },
+  blocked: { label: tx('বন্ধ'), color: 'red' },
 }
 
+/** What support needs to know about this installation, and a short view of the license. */
 export default function LicensePage() {
-  const { message } = App.useApp()
-  const { user, setUser } = useAuth()
-  const [form] = Form.useForm<{ key: string }>()
-  const [saving, setSaving] = useState(false)
-  const { data, isLoading, refetch } = useQuery({
+  const { data, isLoading } = useQuery({
     queryKey: ['system-license'],
     queryFn: async () => (await api.get<SystemInfo>('/system/license')).data,
   })
 
-  const install = async ({ key }: { key: string }) => {
-    setSaving(true)
-    try {
-      const r = await api.post<{ license: LicenseStatus }>('/system/license', { key: key.trim() })
-      message.success(tx('লাইসেন্স ইনস্টল হয়েছে।'))
-      form.resetFields()
-      if (user) setUser({ ...user, license: r.data.license } as AuthUser)
-      refetch()
-    } catch (e) {
-      if (!applyFormErrors(form, e)) message.error(errorMessage(e))
-    } finally {
-      setSaving(false)
-    }
-  }
-
   if (isLoading || !data) return <Spin />
   const { license: l, system: s } = data
-  const st = LICENSE_STATE[l.state]
+  const st = STATE[l.state]
 
   return (
-    <SettingsShell title={tx('লাইসেন্স ও ইনস্টলেশন')} subtitle={tx('এই ইনস্টলেশনের আইডি, লাইসেন্সের মেয়াদ ও নতুন লাইসেন্স কী বসানো।')}>
-      {l.locked && (
-        <Alert
-          type="error"
-          showIcon
-          style={{ marginBottom: 16 }}
-          title={tx('সিস্টেম এখন শুধু দেখার জন্য (Read-only)')}
-          description={tx('নতুন লাইসেন্স কী ইনস্টল না করা পর্যন্ত কোনো তথ্য যোগ বা পরিবর্তন করা যাবে না। নিচের ইনস্টলেশন আইডি সরবরাহকারীকে পাঠান।')}
-        />
-      )}
+    <SettingsShell title={tx('সিস্টেম ও ইনস্টলেশন')} subtitle={tx('এই ইনস্টলেশনের আইডি, লাইসেন্সের সংক্ষেপ ও সার্ভারের তথ্য।')}>
       <Row gutter={[16, 16]}>
         <Col xs={24} lg={12}>
-          <Card title={tx('লাইসেন্স')}>
+          <Card
+            title={tx('লাইসেন্স')}
+            extra={
+              <Link to="/license-verification">
+                <Button icon={<SafetyCertificateOutlined />}>{tx('লাইসেন্স পাতা')}</Button>
+              </Link>
+            }
+          >
             <Descriptions size="small" column={1} bordered>
               <Descriptions.Item label={tx('অবস্থা')}>
                 <Tag color={st.color}>{st.label}</Tag>
-                {!l.enforced && <Tag>{tx('লক চালু নেই')}</Tag>}
               </Descriptions.Item>
-              <Descriptions.Item label={tx('লাইসেন্সধারী')}>{l.licensed_to ?? '—'}</Descriptions.Item>
-              <Descriptions.Item label={tx('ইস্যু')}>{l.issued ? fmtDate(l.issued) : '—'}</Descriptions.Item>
+              <Descriptions.Item label={tx('ডোমেইন')}>{l.domain ?? l.current_domain}</Descriptions.Item>
               <Descriptions.Item label={tx('মেয়াদ')}>
-                {l.expires ? fmtDate(l.expires) : '—'}
-                {l.days_left !== null && l.days_left >= 0 && ` (${tx('আর {{p0}} দিন', { p0: digits(l.days_left) })})`}
+                {l.expires_at ? fmtDate(l.expires_at) : '—'}
+                {l.days_until_expiry !== null && l.days_until_expiry >= 0 && ` (${tx('আর {{p0}} দিন', { p0: digits(l.days_until_expiry) })})`}
               </Descriptions.Item>
+              <Descriptions.Item label={tx('শেষ সফল যাচাই')}>{l.last_ok_at ? fmtDateTime(l.last_ok_at) : '—'}</Descriptions.Item>
               <Descriptions.Item label={tx('ইনস্টলেশন আইডি')}>
                 <Typography.Text copyable code>
                   {data.installation_id}
@@ -97,18 +71,6 @@ export default function LicensePage() {
               </Descriptions.Item>
             </Descriptions>
           </Card>
-          {user?.is_super_admin && (
-            <Card title={tx('নতুন লাইসেন্স কী ইনস্টল')} style={{ marginTop: 16 }}>
-              <Form form={form} layout="vertical" onFinish={install}>
-                <Form.Item name="key" label={tx('লাইসেন্স কী')} rules={[required(tx('কী দিন'))]} extra={tx('সরবরাহকারীর দেওয়া পুরো কী (POLSHA1. দিয়ে শুরু) পেস্ট করুন।')}>
-                  <Input.TextArea rows={4} style={{ fontFamily: 'monospace' }} />
-                </Form.Item>
-                <Button type="primary" htmlType="submit" icon={<SafetyCertificateOutlined />} loading={saving}>
-                  {tx('ইনস্টল')}
-                </Button>
-              </Form>
-            </Card>
-          )}
         </Col>
         <Col xs={24} lg={12}>
           <Card title={tx('সিস্টেমের তথ্য')}>
@@ -131,7 +93,7 @@ export default function LicensePage() {
                 type="warning"
                 showIcon
                 style={{ marginTop: 12 }}
-                title={tx('cron চালু না থাকলে স্বয়ংক্রিয় ব্যাকআপ, SMS ও জরিমানা হিসাব হবে না।')}
+                title={tx('cron চালু না থাকলে স্বয়ংক্রিয় ব্যাকআপ, SMS, জরিমানা হিসাব ও লাইসেন্স যাচাই হবে না।')}
                 description={<code>* * * * * php artisan schedule:run</code>}
               />
             )}

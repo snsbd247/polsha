@@ -13,18 +13,28 @@ export type AuthUser = {
   roles: RoleRef[]
   permissions: string[]
   is_super_admin: boolean
-  license?: LicenseStatus
+  license?: LicenseInfo
 }
 
-export type LicenseState = 'valid' | 'expiring' | 'expired' | 'missing' | 'invalid'
-export type LicenseStatus = {
-  state: LicenseState
-  licensed_to: string | null
-  expires: string | null
-  issued: string | null
-  days_left: number | null
-  enforced: boolean
-  locked: boolean
+/** The license as the backend judges it (GET /license/status). */
+export type LicenseInfo = {
+  state: 'active' | 'grace' | 'blocked'
+  blocked: boolean
+  reason: string | null
+  status: string | null
+  message: string
+  server_message: string
+  license_key: string | null
+  domain: string | null
+  current_domain: string
+  expires_at: string | null
+  activated_at: string | null
+  days_until_expiry: number | null
+  warn_days: number
+  last_checked_at: string | null
+  last_check_ok: boolean
+  last_ok_at: string | null
+  recheck_seconds: number
 }
 
 export type UserRow = {

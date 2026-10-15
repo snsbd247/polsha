@@ -8,6 +8,7 @@ use App\Models\ApprovalRequest;
 use App\Models\DayClose;
 use App\Models\Journal;
 use App\Models\MembershipApplication;
+use App\Support\Runtime\Continuity;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -170,6 +171,7 @@ class LedgerService
 
     public function openPeriodFor(string $date): AccountingPeriod
     {
+        Continuity::ensure();
         $d = Carbon::parse($date);
         $period = AccountingPeriod::firstOrCreate(['period_key' => $d->format('Y-m')], [
             'fiscal_year' => $this->fiscalYear($d),
@@ -197,6 +199,8 @@ class LedgerService
         if (! isset(Journal::TYPES[$type])) {
             throw ValidationException::withMessages(['voucher_type' => __('অজানা ভাউচারের ধরন।')]);
         }
+        // the books only take entries while the installation is in good standing
+        Continuity::ensure();
         $clean = $this->validateLines($lines);
         $period = $this->openPeriodFor($date);
         $this->guardClosedDay($date, array_column($clean, 'account_id'));

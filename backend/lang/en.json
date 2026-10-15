@@ -1416,5 +1416,20 @@
     "পুরনো বকেয়া": "Old due",
     "সবচেয়ে পুরনো বিল": "Oldest bill",
     "মাসিক পানির বিল তৈরি হলে গ্রাহককে এসএমএস": "SMS the customer when the monthly water bill is made",
-    "একটি সংযোগে সর্বোচ্চ ২০টি ডকুমেন্ট রাখা যায়।": "A connection can keep at most 20 documents."
+    "একটি সংযোগে সর্বোচ্চ ২০টি ডকুমেন্ট রাখা যায়।": "A connection can keep at most 20 documents.",
+    "অনেক দিন লাইসেন্স সার্ভারের সাথে যোগাযোগ হয়নি। ইন্টারনেট সংযোগ দেখে আবার যাচাই করুন।": "The license server has not been reached for too long. Check the internet connection and recheck.",
+    "এই ডোমেইনে লাইসেন্স গ্রহণযোগ্য নয়।": "The license is not valid on this domain.",
+    "কোনো লাইসেন্স কী সক্রিয় করা নেই।": "No license key is activated.",
+    "লাইসেন্স কী গ্রহণ করা হয়নি।": "The license key was not accepted.",
+    "লাইসেন্স কী দিন।": "Enter the license key.",
+    "লাইসেন্স বাতিল করা হয়েছে। সফটওয়্যার সরবরাহকারীর সাথে যোগাযোগ করুন।": "The license has been revoked. Contact your software supplier.",
+    "লাইসেন্স সক্রিয় হয়েছে।": "License activated.",
+    "লাইসেন্স সাময়িকভাবে স্থগিত করা হয়েছে। সফটওয়্যার সরবরাহকারীর সাথে যোগাযোগ করুন।": "The license is suspended. Contact your software supplier.",
+    "লাইসেন্স সার্ভারের উত্তর যাচাই করা যায়নি।": "The license server's answer could not be verified.",
+    "লাইসেন্স সার্ভারের সাথে যোগাযোগ করা যায়নি।": "Could not reach the license server.",
+    "লাইসেন্স সার্ভারের সাথে যোগাযোগ করা যায়নি। ইন্টারনেট সংযোগ দেখে আবার চেষ্টা করুন।": "Could not reach the license server. Check the internet connection and try again.",
+    "লাইসেন্সটি অন্য ডোমেইনের জন্য সক্রিয় করা।": "The license is activated for another domain.",
+    "লাইসেন্সের তথ্য মেলেনি। আবার সক্রিয় করুন।": "The license details do not match. Activate again.",
+    "লাইসেন্সের মেয়াদ শেষ হয়ে গেছে। নবায়ন করে নতুন করে সক্রিয় করুন।": "The license has expired. Renew and activate again.",
+    "সফটওয়্যারটি এখনো সক্রিয় করা হয়নি। লাইসেন্স কী দিয়ে সক্রিয় করুন।": "The software is not activated yet. Activate it with a license key."
 }

@@ -32,6 +32,7 @@ use App\Http\Controllers\Api\IrrigationTypeController;
 use App\Http\Controllers\Api\JournalController;
 use App\Http\Controllers\Api\LandActivityController;
 use App\Http\Controllers\Api\LandController;
+use App\Http\Controllers\Api\LicenseController;
 use App\Http\Controllers\Api\LandRegisterController;
 use App\Http\Controllers\Api\LandReportController;
 use App\Http\Controllers\Api\LandTransferController;
@@ -80,6 +81,7 @@ Route::post('public/payments', [PublicPaymentController::class, 'submit'])->midd
 Route::get('public/payments/status', [PublicPaymentController::class, 'status'])->middleware('throttle:20,1,pay-status');
 
 // ---- Authenticated ----
+// Signed in, but open even when the installation may not work: sign out, own profile, and the license itself
 Route::middleware(['auth:sanctum', 'usable'])->group(function () {
     Route::post('auth/logout', [AuthController::class, 'logout']);
     Route::get('me', [AuthController::class, 'me']);
@@ -87,6 +89,12 @@ Route::middleware(['auth:sanctum', 'usable'])->group(function () {
     Route::post('me/password', [ProfileController::class, 'changePassword']);
     Route::post('me/logout-all', [ProfileController::class, 'logoutAll']);
     Route::post('me/locale', [ProfileController::class, 'locale']);
+    Route::get('license/status', [LicenseController::class, 'status']);
+    Route::post('license/activate', [LicenseController::class, 'activate'])->middleware('throttle:10,1,license-activate');
+    Route::post('license/recheck', [LicenseController::class, 'recheck'])->middleware('throttle:license-recheck');
+});
+
+Route::middleware(['auth:sanctum', 'usable', 'ready'])->group(function () {
     Route::get('settings/images/{slot}', [SettingController::class, 'image'])->whereIn('slot', ['logo', 'signature', 'seal']);
 
     // Users
@@ -147,7 +155,6 @@ Route::middleware(['auth:sanctum', 'usable'])->group(function () {
         Route::post('settings/images/{slot}', [SettingController::class, 'uploadImage'])->whereIn('slot', ['logo', 'signature', 'seal']);
         Route::delete('settings/images/{slot}', [SettingController::class, 'removeImage'])->whereIn('slot', ['logo', 'signature', 'seal']);
         Route::get('system/license', [SystemController::class, 'license']);
-        Route::post('system/license', [SystemController::class, 'installLicense']);
         Route::get('settings/website', [WebsiteController::class, 'edit']);
         Route::put('settings/website', [WebsiteController::class, 'update']);
         Route::post('settings/website/images', [WebsiteController::class, 'upload']);

@@ -1,7 +1,7 @@
 import { Suspense, useEffect, useMemo, useState } from 'react'
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Alert, Avatar, Button, ConfigProvider, Drawer, Dropdown, Grid, Layout, Menu, Spin, Typography, type MenuProps } from 'antd'
+import { Alert, Avatar, Button, ConfigProvider, Drawer, Dropdown, Grid, Layout, Menu, Modal, Spin, Typography, type MenuProps } from 'antd'
 import {
   DownOutlined,
   BankFilled,
@@ -23,6 +23,7 @@ import {
 } from '@ant-design/icons'
 import { TeamSolid, UserSolid } from './SideIcons'
 import { useAuth } from '../auth/AuthContext'
+import { useLicense } from '../auth/LicenseContext'
 import { api } from '../lib/api'
 import { digits, fmtDate } from '../lib/format'
 import { logoUrl, usePublicSettings } from '../lib/settings'
@@ -712,8 +713,12 @@ const GROUPS: Group[] = [
       },
       {
         path: '/settings/license',
-        label: m('লাইসেন্স ও ইনস্টলেশন', 'License & Installation'),
+        label: m('সিস্টেম ও ইনস্টলেশন', 'System & Installation'),
         perm: 'settings.admin',
+      },
+      {
+        path: '/license-verification',
+        label: m('লাইসেন্স', 'License'),
       },
     ],
   },
@@ -745,6 +750,7 @@ const APP_VERSION = '1.0.0'
 
 export default function AppLayout() {
   const { user, can, logout } = useAuth()
+  const license = useLicense()
   const { data: site } = usePublicSite()
   const { data: settings } = usePublicSettings()
   const location = useLocation()
@@ -771,27 +777,38 @@ export default function AppLayout() {
     }
   }, [idleMinutes, logout, navigate])
 
-  const license = user?.license
-  const banner = license?.locked ? (
-    <Alert
-      type="error"
-      banner
-      title={tx('লাইসেন্সের মেয়াদ শেষ — সিস্টেম এখন শুধু দেখার জন্য। নতুন তথ্য যোগ বা পরিবর্তন করা যাবে না।')}
-      action={<Link to="/settings/license">{tx('লাইসেন্স')}</Link>}
-    />
-  ) : license?.state === 'expiring' ? (
-    <Alert
-      type="warning"
-      banner
-      closable
-      title={tx('লাইসেন্সের মেয়াদ {{p0}} তারিখে শেষ হবে (আর {{p1}} দিন)। সময়মতো নবায়ন করুন।', { p0: fmtDate(license.expires), p1: digits(license.days_left ?? 0) })}
-    />
-  ) : null
+  // after the expiry date (2-day grace): on every page until renewed
+  const banner =
+    license.status === 'grace' ? (
+      <Alert
+        type="error"
+        banner
+        title={tx('লাইসেন্সের মেয়াদ শেষ হয়ে গেছে, গ্রেস পিরিয়ড চলছে — তাড়াতাড়ি নবায়ন করুন।')}
+        action={<Link to="/license-verification">{tx('নবায়ন করুন')}</Link>}
+      />
+    ) : null
+
+  // before the expiry date: once per sign-in session, when 3 days or fewer remain
+  const days = license.daysUntilExpiry
+  const nearExpiry = license.status === 'active' && days != null && days >= 0 && days <= (license.info?.warn_days ?? 3)
+  const [expiryNotice, setExpiryNotice] = useState(false)
+  useEffect(() => {
+    if (!nearExpiry) return
+    try {
+      if (sessionStorage.getItem('polsha.expiry-notice') === '1') return
+      sessionStorage.setItem('polsha.expiry-notice', '1')
+    } catch {
+      /* storage unavailable: show it anyway */
+    }
+    setExpiryNotice(true)
+  }, [nearExpiry])
 
   const { data: counts } = useQuery({
     queryKey: ['approvals', 'pending-count'],
     queryFn: async () => (await api.get<{ count: number; applications?: number; alerts?: BellAlert[] }>('/approvals/pending-count')).data,
     refetchInterval: 60_000,
+    // nothing to count while the installation is locked
+    enabled: !license.blocked,
   })
   const pending = counts?.count ?? 0
   const applications = counts?.applications ?? 0
@@ -882,8 +899,43 @@ export default function AppLayout() {
   )
   const roleLabel = user?.roles.map((r) => r.label ?? r.name).join(', ')
 
+  // locked: no menus at all, only the license page (RequireAuth sends every path there)
+  if (license.blocked) {
+    return (
+      <Suspense fallback={<Spin fullscreen />}>
+        <Outlet />
+      </Suspense>
+    )
+  }
+
   return (
     <Layout style={{ minHeight: '100vh' }}>
+      <Modal
+        open={expiryNotice}
+        title={tx('লাইসেন্সের মেয়াদ শেষ হতে চলেছে')}
+        onCancel={() => setExpiryNotice(false)}
+        footer={[
+          <Button key="later" onClick={() => setExpiryNotice(false)}>
+            {tx('পরে')}
+          </Button>,
+          <Button
+            key="renew"
+            type="primary"
+            onClick={() => {
+              setExpiryNotice(false)
+              navigate('/license-verification')
+            }}
+          >
+            {tx('নবায়ন করুন')}
+          </Button>,
+        ]}
+      >
+        <p style={{ margin: 0 }}>
+          {days === 0
+            ? tx('আপনার লাইসেন্সের মেয়াদ আজই শেষ হয়ে যাবে, নবায়ন করুন।')
+            : tx('আপনার লাইসেন্সের মেয়াদ {{p0}} দিনের মধ্যে শেষ হয়ে যাবে ({{p1}}), নবায়ন করুন।', { p0: digits(days ?? 0), p1: fmtDate(license.expiresAt) })}
+        </p>
+      </Modal>
       {!isMobile && (
         <Sider
           width={255}

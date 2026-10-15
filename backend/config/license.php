@@ -1,29 +1,35 @@
 <?php
 
 /*
-| Offline license. Keys are signed on the vendor's machine with
-| `php artisan license:issue` (private key kept outside the repo);
-| only this public key ships with the app.
+| Online license, checked against the vendor's license server.
+| Every answer from the server is signed (RSA-2048 / SHA-256); only answers
+| whose signature verifies against the public key built into the app are kept.
+| There is deliberately no setting that turns the check off.
 */
 
 return [
-    // When on, an expired/missing license makes the system read-only (HTTP 423 on writes).
-    'enforce' => (bool) env('LICENSE_ENFORCE', false),
+    'server_url' => rtrim((string) env('LICENSE_SERVER_URL', 'https://syncsolutionbd.com/api/v1'), '/'),
 
-    // Warn this many days before expiry.
-    'warn_days' => 30,
+    'product_slug' => (string) env('LICENSE_PRODUCT_SLUG', 'irrigation'),
+
+    // Informational: the key that counts is the one built into App\Support\Runtime\TrustAnchor;
+    // a different key here is ignored, so swapping it cannot be used to accept forged answers.
+    'public_key_pem' => env('LICENSE_PUBLIC_KEY_PEM'),
+
+    // a fresh answer from the server is reused this long before asking again
+    'cache_hours' => 6,
+
+    // the server cannot be reached: keep trusting the last signed answer this long
+    'offline_days' => 5,
+
+    // after the expiry date the software keeps working this long, asking for renewal
+    'grace_days' => 2,
+
+    // warn before the expiry date
+    'warn_days' => 3,
+
+    // "Recheck now": once per this many seconds per user
+    'recheck_seconds' => 30,
 
     'app_version' => '1.0.0',
-
-    'public_key' => env('LICENSE_PUBLIC_KEY', <<<'PEM'
------BEGIN PUBLIC KEY-----
-MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAsZXKe8DDfbn7+i7PK0Mu
-AvaY/Gj6Slc7UAl35hAdVejEGBeDJi9yp5gADsJoo8sC22RolPMEyq3apolP98U5
-ANY8UI0zBDiJbxGf5KT/qkL/Q/+3Ba2B/bu+0e+tA2m/c8tsiFDt60vBA1UWzNRz
-fVk9jsY3epJAd0Am8YXOddbTm3G6ZSqsElRO7bfjSLpz4K6Sfen5egc9Gnqa3Kdg
-ABSjM5W8Xav0gGHVZ1ED/afFDfDWmZs7rvhhNDKDTbuNb5hROzX8kz0o07wH07XI
-XeCGy702VKh3FI6zRLJfwxfAPirCdZM+fS3QgEArB41RHFJr143wkTLiAzQYrSU4
-rQIDAQAB
------END PUBLIC KEY-----
-PEM),
 ];

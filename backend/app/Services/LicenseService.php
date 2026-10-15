@@ -2,17 +2,26 @@
 
 namespace App\Services;
 
-use Illuminate\Support\Carbon;
+use App\Support\Runtime\Continuity;
+use App\Support\Runtime\TrustAnchor;
+use Carbon\CarbonImmutable;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
+use Throwable;
 
 /**
- * Offline license: POLSHA1.<base64url json>.<base64url RSA-SHA256 signature>.
- * Only the public key ships with the app, so a key cannot be forged here;
- * after expiry (when enforced) the system turns read-only until a new key is installed.
+ * Talks to the vendor's license server: activate a key for this domain, and
+ * verify it now and then (an answer is reused for 6 hours unless forced).
+ * An answer is stored only when its signature verifies; otherwise the last
+ * signed answer stays, and Continuity keeps trusting it for up to 5 days.
  */
 class LicenseService
 {
-    public const PREFIX = 'POLSHA1';
+    /** Ask the server again sooner than the 6 hours when the last attempt failed. */
+    private const RETRY_MINUTES = 15;
+
+    public function __construct(private TrustAnchor $anchor) {}
 
     public static function installationId(): string
     {
@@ -25,95 +34,160 @@ class LicenseService
         return $id;
     }
 
-    public static function b64(string $raw): string
+    private function row(): ?object
     {
-        return rtrim(strtr(base64_encode($raw), '+/', '-_'), '=');
+        return DB::table('license_state')->orderBy('id')->first();
     }
 
-    private static function unb64(string $s): string|false
+    private function save(array $values): void
     {
-        return base64_decode(strtr($s, '-_', '+/').str_repeat('=', (4 - strlen($s) % 4) % 4), true);
+        $row = $this->row();
+        $values['updated_at'] = now();
+        $row ? DB::table('license_state')->where('id', $row->id)->update($values) : DB::table('license_state')->insert($values + ['created_at' => now()]);
     }
 
-    /** Signs a payload with a PEM private key (used by license:issue on the vendor's machine). */
-    public static function sign(array $payload, string $privateKeyPem): string
+    /**
+     * @return array{ok:bool, http:int|null, body:array|null, error:?string}
+     */
+    private function call(string $path, array $payload): array
     {
-        $body = self::PREFIX.'.'.self::b64(json_encode($payload, JSON_UNESCAPED_UNICODE));
-        $key = openssl_pkey_get_private($privateKeyPem);
-        if (! $key || ! openssl_sign($body, $sig, $key, OPENSSL_ALGO_SHA256)) {
-            throw new \RuntimeException('Could not sign the license.');
-        }
+        try {
+            $r = Http::acceptJson()->asJson()->connectTimeout(5)->timeout(10)
+                ->post(config('license.server_url').$path, $payload);
+            $body = $r->json();
 
-        return $body.'.'.self::b64($sig);
+            return ['ok' => is_array($body), 'http' => $r->status(), 'body' => is_array($body) ? $body : null, 'error' => is_array($body) ? null : 'bad_response'];
+        } catch (Throwable $e) {
+            return ['ok' => false, 'http' => null, 'body' => null, 'error' => 'unreachable'];
+        }
     }
 
-    /** Returns the payload when the signature is genuine, otherwise null. */
-    public static function decode(string $key): ?array
+    /** True when the answer carries a valid signature over status|license_key|domain|expires_at. */
+    private function signed(array $b): bool
     {
-        $parts = explode('.', trim($key));
-        if (count($parts) !== 3 || $parts[0] !== self::PREFIX) {
-            return null;
-        }
-        $pub = openssl_pkey_get_public((string) config('license.public_key'));
-        $sig = self::unb64($parts[2]);
-        $json = self::unb64($parts[1]);
-        if (! $pub || $sig === false || $json === false || openssl_verify($parts[0].'.'.$parts[1], $sig, $pub, OPENSSL_ALGO_SHA256) !== 1) {
-            return null;
-        }
-        $payload = json_decode($json, true);
-
-        return is_array($payload) && ! empty($payload['to']) && ! empty($payload['expires']) ? $payload : null;
+        return $this->anchor->accepts(
+            Continuity::canonical($b['status'] ?? null, $b['license_key'] ?? null, $b['domain'] ?? null, $b['expires_at'] ?? null),
+            $b['signature'] ?? null,
+        );
     }
 
-    /** Why a key cannot be installed here, or null when it can. */
-    public static function problem(string $key): ?string
+    /**
+     * Activate a key for this domain.
+     *
+     * @return array{ok:bool, message:string, status:?string}
+     */
+    public function activate(string $key): array
     {
-        $p = self::decode($key);
-        if (! $p) {
-            return __('লাইসেন্স কী সঠিক নয়।');
+        $key = trim($key);
+        $r = $this->call('/license/activate', ['license_key' => $key, 'domain' => Continuity::host(), 'product_slug' => config('license.product_slug')]);
+        if (! $r['ok']) {
+            return ['ok' => false, 'message' => __('লাইসেন্স সার্ভারের সাথে যোগাযোগ করা যায়নি। ইন্টারনেট সংযোগ দেখে আবার চেষ্টা করুন।'), 'status' => null];
         }
-        if (! empty($p['installation']) && $p['installation'] !== self::installationId()) {
-            return __('এই লাইসেন্স অন্য ইনস্টলেশনের জন্য ইস্যু করা।');
+        $b = $r['body'];
+        $message = (string) ($b['message'] ?? '');
+        // Only a signed success is stored. The server signs refusals too ("key not found", wrong
+        // domain …): those are shown but never replace the current state — a mistyped key must
+        // not lock an installation that is working.
+        if (! isset($b['signature']) || ! $this->signed($b) || ! in_array($b['status'] ?? '', ['activated', 'already_active'], true)) {
+            return ['ok' => false, 'message' => $message ?: __('লাইসেন্স কী গ্রহণ করা হয়নি।'), 'status' => $b['status'] ?? null];
         }
-        if (Carbon::parse($p['expires'])->endOfDay()->isPast()) {
-            return __('এই লাইসেন্সের মেয়াদ শেষ হয়ে গেছে।');
-        }
+        $this->save([
+            // exactly the signed values, so the stored row still matches the signature
+            'license_key' => $b['license_key'] ?? null, 'domain' => $b['domain'] ?? null, 'status' => $b['status'] ?? null,
+            'expires_at' => $b['expires_at'] ?? null, 'activated_at' => $b['activated_at'] ?? null, 'signature' => $b['signature'],
+            'message' => mb_substr($message, 0, 500), 'last_checked_at' => now(), 'last_check_ok' => true, 'last_ok_at' => now(),
+        ]);
+        $ok = in_array($b['status'] ?? '', ['activated', 'already_active'], true) && Continuity::usable();
 
-        return null;
+        return ['ok' => $ok, 'message' => $message ?: ($ok ? __('লাইসেন্স সক্রিয় হয়েছে।') : __('লাইসেন্স কী গ্রহণ করা হয়নি।')), 'status' => $b['status'] ?? null];
     }
 
-    public static function install(string $key): array
+    /** Ask the server about the stored key; skipped while the last answer is under 6 hours old, unless forced. */
+    public function verify(bool $force = false): array
     {
-        SettingService::setMany(['license_key' => trim($key)]);
+        $row = $this->row();
+        if (! $row || ! $row->license_key) {
+            return ['ok' => false, 'checked' => false, 'message' => __('কোনো লাইসেন্স কী সক্রিয় করা নেই।')];
+        }
+        if (! $force && ! $this->due($row)) {
+            return ['ok' => (bool) $row->last_check_ok, 'checked' => false, 'message' => (string) $row->message];
+        }
+        $r = $this->call('/license/verify', ['license_key' => $row->license_key, 'domain' => Continuity::host()]);
+        if (! $r['ok'] || ! isset($r['body']['signature']) || ! $this->signed($r['body'])) {
+            // keep the last signed answer; only note that this attempt did not count
+            $this->save(['last_checked_at' => now(), 'last_check_ok' => false]);
 
-        return self::status();
+            return ['ok' => false, 'checked' => true, 'message' => $r['ok']
+                ? (string) ($r['body']['message'] ?? __('লাইসেন্স সার্ভারের উত্তর যাচাই করা যায়নি।'))
+                : __('লাইসেন্স সার্ভারের সাথে যোগাযোগ করা যায়নি।')];
+        }
+        $b = $r['body'];
+        $this->save([
+            'license_key' => $b['license_key'] ?? null, 'domain' => $b['domain'] ?? null, 'status' => $b['status'] ?? null,
+            'expires_at' => $b['expires_at'] ?? null, 'signature' => $b['signature'], 'message' => mb_substr((string) ($b['message'] ?? ''), 0, 500),
+            'last_checked_at' => now(), 'last_check_ok' => true, 'last_ok_at' => now(),
+        ]);
+
+        return ['ok' => true, 'checked' => true, 'message' => (string) ($b['message'] ?? '')];
     }
 
-    /** state: valid | expiring | expired | missing | invalid; locked only when enforced. */
-    public static function status(): array
+    private function due(?object $row): bool
     {
-        $key = (string) SettingService::get('license_key', '');
-        $payload = $key !== '' ? self::decode($key) : null;
-        $state = match (true) {
-            $key === '' => 'missing',
-            ! $payload, ! empty($payload['installation']) && $payload['installation'] !== self::installationId() => 'invalid',
-            default => null,
-        };
-        $daysLeft = null;
-        if (! $state) {
-            $daysLeft = (int) now()->startOfDay()->diffInDays(Carbon::parse($payload['expires'])->startOfDay(), false);
-            $state = $daysLeft < 0 ? 'expired' : ($daysLeft <= (int) config('license.warn_days') ? 'expiring' : 'valid');
+        if (! $row || ! $row->license_key) {
+            return false;
         }
-        $enforced = (bool) config('license.enforce');
+        $okAt = $row->last_ok_at ? CarbonImmutable::parse($row->last_ok_at) : null;
+        $triedAt = $row->last_checked_at ? CarbonImmutable::parse($row->last_checked_at) : null;
+        $fresh = $okAt && $okAt->addHours((int) config('license.cache_hours', 6))->isFuture();
+        $recentlyTried = $triedAt && $triedAt->addMinutes(self::RETRY_MINUTES)->isFuture();
+
+        return ! $fresh && ! $recentlyTried;
+    }
+
+    /** The state to act on: refresh from the server when the cached answer is stale, then judge offline. */
+    public function getEffectiveStatus(): array
+    {
+        try {
+            if ($this->due($this->row())) {
+                $this->verify();
+            }
+        } catch (Throwable) {
+            // the offline judgement below still applies
+        }
+
+        return Continuity::snapshot();
+    }
+
+    public function daysUntilExpiry(): ?int
+    {
+        return Continuity::snapshot()['days_left'];
+    }
+
+    /** What the app shows: blocked or not, why, the key (masked), the dates. */
+    public function status(): array
+    {
+        $s = $this->getEffectiveStatus();
+        $row = $s['row'];
+        $key = (string) ($row->license_key ?? '');
 
         return [
-            'state' => $state,
-            'licensed_to' => $payload['to'] ?? null,
-            'expires' => $payload['expires'] ?? null,
-            'issued' => $payload['issued'] ?? null,
-            'days_left' => $daysLeft,
-            'enforced' => $enforced,
-            'locked' => $enforced && in_array($state, ['missing', 'invalid', 'expired'], true),
+            'state' => $s['state'],
+            'blocked' => $s['state'] === 'blocked',
+            'reason' => $s['reason'],
+            'status' => $s['status'],
+            'message' => $s['state'] === 'blocked' ? \App\Support\Runtime\WorkspaceUnavailable::text($s['reason'] ?? 'inactive') : (string) ($row->message ?? ''),
+            'server_message' => (string) ($row->message ?? ''),
+            'license_key' => $key !== '' ? (strlen($key) > 8 ? substr($key, 0, 4).str_repeat('•', max(4, strlen($key) - 8)).substr($key, -4) : $key) : null,
+            'domain' => $row->domain ?? null,
+            'current_domain' => Continuity::host(),
+            'expires_at' => $s['expires_at'],
+            'activated_at' => $row->activated_at ?? null,
+            'days_until_expiry' => $s['days_left'],
+            'warn_days' => (int) config('license.warn_days', 3),
+            'last_checked_at' => $row->last_checked_at ?? null,
+            'last_check_ok' => (bool) ($row->last_check_ok ?? false),
+            'last_ok_at' => $row->last_ok_at ?? null,
+            'recheck_seconds' => (int) config('license.recheck_seconds', 30),
         ];
     }
 }

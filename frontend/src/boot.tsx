@@ -10,6 +10,7 @@ import 'dayjs/locale/bn'
 import { lang, t as tx } from './lib/i18n'
 import { DEFAULT_BRAND, usePublicSettings } from './lib/settings'
 import { AuthProvider } from './auth/AuthContext'
+import { LicenseProvider } from './auth/LicenseContext'
 import App from './App'
 import './index.css'
 
@@ -46,7 +47,9 @@ createRoot(document.getElementById('root')!).render(
       <Themed>
         <BrowserRouter basename={import.meta.env.BASE_URL}>
           <AuthProvider>
-            <App />
+            <LicenseProvider>
+              <App />
+            </LicenseProvider>
           </AuthProvider>
         </BrowserRouter>
       </Themed>

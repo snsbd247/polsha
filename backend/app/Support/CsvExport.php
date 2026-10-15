@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Models\ExportLog;
+use App\Support\Runtime\Continuity;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class CsvExport
@@ -15,6 +16,7 @@ class CsvExport
      */
     public static function download(string $filename, array $headers, iterable $rows): StreamedResponse
     {
+        Continuity::ensure();
         $request = request();
         $userId = $request->user()?->id;
         $filters = collect($request->query())->except('export')->all();

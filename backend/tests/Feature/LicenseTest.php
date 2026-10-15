@@ -2,23 +2,27 @@
 
 namespace Tests\Feature;
 
+use App\Http\Middleware\EnsureWorkspaceReady;
+use App\Models\Account;
+use App\Services\LedgerService;
 use App\Services\LicenseService;
-use App\Services\SettingService;
-use Illuminate\Http\UploadedFile;
+use App\Services\SequenceService;
+use App\Support\CsvExport;
+use App\Support\Runtime\TrustAnchor;
+use App\Support\Runtime\WorkspaceUnavailable;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 
 class LicenseTest extends Phase2TestCase
 {
-    private string $privateKey;
+    private const URL = 'https://syncsolutionbd.com/api/v1';
 
     protected function setUp(): void
     {
         parent::setUp();
-        Carbon::setTestNow('2026-06-30 10:00:00');
-        // test-only key pair; production keys never touch the repo
-        $this->privateKey = file_get_contents(base_path('tests/fixtures/license-test.key'));
-        config(['license.public_key' => file_get_contents(base_path('tests/fixtures/license-test.pub')), 'license.enforce' => true]);
+        Carbon::setTestNow('2026-10-10 10:00:00');
+        $this->signedLicense(expires: '2027-10-10T00:00:00Z');
     }
 
     protected function tearDown(): void
@@ -27,111 +31,188 @@ class LicenseTest extends Phase2TestCase
         parent::tearDown();
     }
 
-    private function key(string $expires, ?string $installation = null): string
+    /** A signed answer from the (faked) license server. */
+    private function answer(string $status, ?string $expires = '2027-10-10T00:00:00Z', string $key = 'KEY-NEW-1234', string $domain = 'localhost', ?string $signature = null): array
     {
-        return LicenseService::sign(['id' => 'x', 'to' => 'টেস্ট সমিতি', 'expires' => $expires, 'issued' => '2026-01-01', 'installation' => $installation], $this->privateKey);
+        return [
+            'status' => $status, 'message' => 'from server', 'license_key' => $key, 'domain' => $domain,
+            'activated_at' => '2026-10-10T10:00:00Z', 'expires_at' => $expires,
+            'signature' => $signature ?? self::licenseSignature($status, $key, $domain, $expires),
+        ];
     }
 
-    private function superAdmin()
+    private function cashier()
     {
-        $u = $this->userWithRole('admin');
-        $u->assignRole('super_admin');
-
-        return $u;
+        return $this->userWithRole('cashier');
     }
 
-    public function test_missing_or_expired_license_makes_the_system_read_only(): void
+    private function blocked(string $status = 'expired', string $expires = '2026-09-01T00:00:00Z'): void
     {
-        $admin = $this->userWithRole('data_entry');
-
-        // no key yet → locked: reads work, writes get 423, login/profile stay open
-        $this->actingAs($admin)->getJson('/api/me')->assertOk()->assertJsonPath('user.license.state', 'missing')->assertJsonPath('user.license.locked', true);
-        $this->actingAs($admin)->getJson('/api/farmers')->assertOk();
-        $this->actingAs($admin)->postJson('/api/farmers', ['name_bn' => 'x'])->assertStatus(423)->assertJsonPath('license.state', 'missing');
-        $this->actingAs($admin)->postJson('/api/me/locale', ['locale' => 'en'])->assertOk();
-
-        // a genuine key unlocks
-        SettingService::setMany(['license_key' => $this->key('2027-06-30')]);
-        $this->actingAs($admin)->getJson('/api/me')->assertJsonPath('user.license.state', 'valid')->assertJsonPath('user.license.days_left', 365);
-        $this->actingAs($admin)->postJson('/api/farmers', [])->assertStatus(422);
-
-        // near the end → warning, still writable
-        Carbon::setTestNow('2027-06-10 10:00:00');
-        $this->actingAs($admin)->getJson('/api/me')->assertJsonPath('user.license.state', 'expiring')->assertJsonPath('user.license.locked', false);
-
-        // expiry day is still valid; the day after is locked
-        Carbon::setTestNow('2027-06-30 23:00:00');
-        $this->actingAs($admin)->postJson('/api/farmers', [])->assertStatus(422);
-        Carbon::setTestNow('2027-07-01 09:00:00');
-        $this->actingAs($admin)->postJson('/api/farmers', [])->assertStatus(423);
-
-        // not enforced (e.g. local dev) → never locked
-        config(['license.enforce' => false]);
-        $this->actingAs($admin)->postJson('/api/farmers', [])->assertStatus(422);
+        $this->signedLicense($status, $expires);
     }
 
-    public function test_forged_or_foreign_keys_are_refused_and_only_super_admin_installs(): void
+    public function test_activation_stores_only_a_signed_answer_and_any_user_may_activate(): void
     {
-        $admin = $this->userWithRole('admin');
-        $super = $this->superAdmin();
-        $good = $this->key('2027-06-30');
+        DB::table('license_state')->delete();
+        $user = $this->cashier();
+        $this->actingAs($user)->getJson('/api/farmers')->assertForbidden()->assertJsonPath('code', 'WORKSPACE_LOCKED');
 
-        // a tampered payload fails the signature check
-        [$p, $body, $sig] = explode('.', $good);
-        $forged = $p.'.'.LicenseService::b64(json_encode(['to' => 'x', 'expires' => '2099-01-01'])).'.'.$sig;
-        $this->actingAs($super)->postJson('/api/system/license', ['key' => $forged])->assertStatus(422)->assertJsonValidationErrors('key');
+        Http::fake([self::URL.'/license/activate' => Http::sequence()
+            ->push($this->answer('activated', signature: base64_encode('forged')))
+            ->push(['status' => 'denied', 'message' => 'License key not found'], 404)
+            ->push($this->answer('activated'))]);
+        // a forged answer is shown as a failure and never saved
+        $this->actingAs($user)->postJson('/api/license/activate', ['license_key' => 'KEY-NEW-1234'])->assertStatus(422);
+        $this->assertSame(0, DB::table('license_state')->count());
 
-        // bound to another installation
-        $this->actingAs($super)->postJson('/api/system/license', ['key' => $this->key('2027-06-30', 'other-installation')])->assertStatus(422);
-        // already expired
-        $this->actingAs($super)->postJson('/api/system/license', ['key' => $this->key('2026-01-01')])->assertStatus(422);
+        // key not found: unsigned 404, nothing saved
+        $this->actingAs($user)->postJson('/api/license/activate', ['license_key' => 'NOPE-0000'])->assertStatus(422)->assertJsonPath('message', 'License key not found');
 
-        // an admin can see the page but not install
-        $this->actingAs($admin)->getJson('/api/system/license')->assertOk()->assertJsonStructure(['license', 'installation_id', 'system' => ['php', 'laravel', 'database', 'scheduler_ok']]);
-        $this->actingAs($admin)->postJson('/api/system/license', ['key' => $good])->assertForbidden();
-
-        // installing works even while locked, and the key itself never reaches the browser
-        $id = LicenseService::installationId();
-        $this->actingAs($super)->postJson('/api/system/license', ['key' => $this->key('2027-06-30', $id)])
-            ->assertOk()->assertJsonPath('license.state', 'valid')->assertJsonPath('license.licensed_to', 'টেস্ট সমিতি');
-        $settings = $this->actingAs($admin)->getJson('/api/settings')->assertOk()->json();
-        $this->assertArrayNotHasKey('license_key', $settings);
-        $this->assertTrue($settings['license_key_set']);
-        $this->assertDatabaseHas('audit_logs', ['module' => 'license', 'action' => 'install']);
+        $this->actingAs($user)->postJson('/api/license/activate', ['license_key' => 'KEY-NEW-1234'])->assertOk()
+            ->assertJsonPath('ok', true)->assertJsonPath('license.state', 'active')->assertJsonPath('license.blocked', false);
+        Http::assertSent(fn ($r) => $r['domain'] === 'localhost' && $r['product_slug'] === config('license.product_slug') && $r['license_key'] === 'KEY-NEW-1234');
+        $this->actingAs($user)->getJson('/api/farmers')->assertOk();
+        // the key is shown masked
+        $this->actingAs($user)->getJson('/api/license/status')->assertOk()->assertJsonPath('license_key', 'KEY-••••1234');
     }
 
-    public function test_branding_receipt_and_preference_settings(): void
+    public function test_a_signed_refusal_for_a_mistyped_key_does_not_lock_a_working_installation(): void
     {
-        config(['license.enforce' => false]);
-        Storage::fake('local');
-        $admin = $this->userWithRole('admin');
+        // the real server signs refusals too: {"status":"denied","message":"License key not found.","signature":…}
+        Http::fake([self::URL.'/license/activate' => Http::response([
+            'status' => 'denied', 'message' => 'License key not found.', 'signature' => self::licenseSignature('denied', '', '', null),
+        ], 404)]);
+        $this->actingAs($this->cashier())->postJson('/api/license/activate', ['license_key' => 'TYPO-0000'])
+            ->assertStatus(422)->assertJsonPath('message', 'License key not found.');
+        $this->assertSame('TEST-KEY-0001', DB::table('license_state')->value('license_key'));
+        $this->actingAs($this->cashier())->getJson('/api/farmers')->assertOk();
+    }
 
-        $this->actingAs($admin)->putJson('/api/settings/receipt', [
-            'receipt_sign_left' => 'গ্রাহক', 'receipt_sign_right' => 'ক্যাশিয়ার', 'receipt_footer_note' => null,
-            'receipt_show_qr' => false, 'receipt_show_due' => true, 'receipt_copies' => 2, 'receipt_paper' => 'a5',
-        ])->assertOk()->assertJsonPath('receipt_copies', 2)->assertJsonPath('receipt_footer_note', '');
-        $this->actingAs($admin)->putJson('/api/settings/branding', ['brand_color' => 'blue'])->assertStatus(422);
-        $this->actingAs($admin)->putJson('/api/settings/branding', ['brand_color' => '#0a7d3b', 'letterhead_text' => 'স্থাপিত ১৯৯০'])->assertOk();
-        $this->actingAs($admin)->putJson('/api/settings/preferences', [
-            'default_locale' => 'en', 'page_size' => 50, 'idle_logout_minutes' => 30, 'go_live_date' => '2026-07-01',
-        ])->assertOk();
-        $this->actingAs($admin)->putJson('/api/settings/unknown', [])->assertNotFound();
+    public function test_verify_reuses_a_fresh_answer_for_six_hours_unless_forced(): void
+    {
+        Http::fake([self::URL.'/license/verify' => Http::response($this->answer('active', key: 'TEST-KEY-0001'))]);
+        $svc = app(LicenseService::class);
+        $svc->verify();
+        Http::assertNothingSent();
 
-        // images: signature is served only to signed-in users
-        $this->actingAs($admin)->post('/api/settings/images/signature', ['image' => UploadedFile::fake()->image('sign.png', 200, 60)])
-            ->assertOk()->assertJsonPath('signature_set', true);
-        $this->actingAs($admin)->get('/api/settings/images/signature')->assertOk();
+        Carbon::setTestNow(now()->addHours(7));
+        $svc->getEffectiveStatus();
+        Http::assertSentCount(1);
+        $svc->verify(true);
+        Http::assertSentCount(2);
+    }
 
-        // the society block every printed document uses
-        $society = SettingService::society();
-        $this->assertSame(['ক্যাশিয়ার', 2, 'a5', false, true, '#0a7d3b'], [$society['sign_right'], $society['copies'], $society['paper'], $society['show_qr'], $society['signature'], $society['brand_color']]);
+    public function test_expired_suspended_and_revoked_answers_block_everything_but_the_license_routes(): void
+    {
+        $user = $this->cashier();
+        $answers = Http::sequence();
+        foreach (['expired', 'suspended', 'revoked'] as $status) {
+            $answers->push($this->answer($status, '2026-09-01T00:00:00Z', 'TEST-KEY-0001'), $status === 'expired' ? 200 : 403);
+        }
+        Http::fake([self::URL.'/license/verify' => $answers]);
+        foreach (['expired', 'suspended', 'revoked'] as $status) {
+            $this->actingAs($user)->postJson('/api/license/recheck')->assertOk()->assertJsonPath('license.blocked', true)->assertJsonPath('license.reason', $status);
+            $this->actingAs($user)->getJson('/api/farmers')->assertForbidden()->assertJsonPath('code', 'WORKSPACE_LOCKED');
+            $this->actingAs($user)->getJson('/api/me')->assertOk()->assertJsonPath('user.license.blocked', true);
+            $this->actingAs($user)->getJson('/api/license/status')->assertOk();
+            $this->travel(31)->seconds();
+        }
+    }
 
-        // public settings carry what the login page and layout need, nothing secret
-        $public = $this->getJson('/api/public/settings')->assertOk()->json();
-        $this->assertSame(['#0a7d3b', 'en', 50, 30], [$public['brand_color'], $public['default_locale'], $public['page_size'], $public['idle_logout_minutes']]);
-        $this->assertArrayNotHasKey('license_key', $public);
+    public function test_grace_keeps_working_and_the_signed_expiry_is_enforced_offline(): void
+    {
+        $this->signedLicense('active', '2026-10-09T00:00:00Z'); // expired yesterday
+        $this->actingAs($this->cashier())->getJson('/api/farmers')->assertOk();
+        $this->assertSame('grace', app(LicenseService::class)->getEffectiveStatus()['state']);
 
-        // ordinary users cannot change settings
-        $this->actingAs($this->userWithRole('data_entry'))->putJson('/api/settings/preferences', ['default_locale' => 'bn', 'page_size' => 25, 'idle_logout_minutes' => 0])->assertForbidden();
+        // more than the 2-day grace past expiry: blocked even though the stored status says active
+        $this->signedLicense('active', '2026-10-07T00:00:00Z');
+        $this->actingAs($this->cashier())->getJson('/api/farmers')->assertForbidden()->assertJsonPath('reason', 'expired');
+    }
+
+    public function test_server_out_of_reach_trusts_the_last_signed_answer_for_five_days(): void
+    {
+        Http::fake([self::URL.'/*' => Http::failedConnection()]);
+        DB::table('license_state')->update(['last_ok_at' => now()->subDays(4), 'last_checked_at' => now()->subDays(4)]);
+        $this->actingAs($this->cashier())->getJson('/api/farmers')->assertOk();
+
+        DB::table('license_state')->update(['last_ok_at' => now()->subDays(6), 'last_checked_at' => now()->subDays(6)]);
+        $this->actingAs($this->cashier())->getJson('/api/farmers')->assertForbidden()->assertJsonPath('reason', 'unverified');
+
+        // a bad signature from the server is not stored either: the old answer stays
+        $this->signedLicense();
+        Http::fake([self::URL.'/license/verify' => Http::response($this->answer('expired', key: 'TEST-KEY-0001', signature: base64_encode('x')))]);
+        app(LicenseService::class)->verify(true);
+        $this->assertSame('active', DB::table('license_state')->value('status'));
+    }
+
+    public function test_editing_the_stored_row_or_moving_the_database_is_caught(): void
+    {
+        $this->blocked();
+        // someone writes "active" and a far expiry straight into the database
+        DB::table('license_state')->update(['status' => 'active', 'expires_at' => '2030-01-01T00:00:00Z']);
+        $this->actingAs($this->cashier())->getJson('/api/farmers')->assertForbidden()->assertJsonPath('reason', 'tampered');
+
+        // a genuine row signed for another domain does not work here
+        $expires = '2027-10-10T00:00:00Z';
+        DB::table('license_state')->update(['status' => 'active', 'domain' => 'other.com', 'expires_at' => $expires,
+            'signature' => self::licenseSignature('active', 'TEST-KEY-0001', 'other.com', $expires)]);
+        $this->actingAs($this->cashier())->getJson('/api/farmers')->assertForbidden()->assertJsonPath('reason', 'domain');
+    }
+
+    public function test_a_public_key_from_the_environment_cannot_replace_the_built_in_one(): void
+    {
+        // pretend someone signed the row with their own key and put that key in .env
+        config(['license.public_key_pem' => file_get_contents(base_path('tests/fixtures/license-test.pub'))]);
+        $this->app->forgetInstance(TrustAnchor::class);
+        $this->app->bind(TrustAnchor::class, fn () => new TrustAnchor);
+        $this->actingAs($this->cashier())->getJson('/api/farmers')->assertForbidden()->assertJsonPath('reason', 'tampered');
+    }
+
+    public function test_without_the_middleware_the_other_layers_still_block(): void
+    {
+        $this->blocked();
+        $user = $this->cashier();
+        // as if the middleware file were deleted
+        $this->withoutMiddleware(EnsureWorkspaceReady::class);
+        $this->actingAs($user)->getJson('/api/farmers')->assertForbidden()->assertJsonPath('code', 'WORKSPACE_LOCKED');
+        $this->actingAs($this->manager)->postJson('/api/farmers', $this->farmerPayload())->assertForbidden();
+
+        // the business core refuses on its own too (scheduler, imports, anything that skips controllers)
+        $this->actingAs($this->manager);
+        foreach ([
+            fn () => SequenceService::next('receipt'),
+            fn () => app(LedgerService::class)->postNow('receipt', now()->toDateString(), 'x', [
+                ['account_id' => Account::where('code', '1111')->value('id'), 'debit' => 10],
+                ['account_id' => Account::where('code', '4100')->value('id'), 'credit' => 10],
+            ]),
+            fn () => app(LedgerService::class)->openPeriodFor(now()->toDateString()),
+            fn () => CsvExport::download('x.csv', ['a'], []),
+        ] as $i => $call) {
+            try {
+                $call();
+                $this->fail("layer {$i} did not block");
+            } catch (WorkspaceUnavailable $e) {
+                $this->assertSame('expired', $e->reason);
+            }
+        }
+    }
+
+    public function test_recheck_is_limited_to_once_per_thirty_seconds_per_user(): void
+    {
+        Http::fake([self::URL.'/license/verify' => Http::response($this->answer('active', key: 'TEST-KEY-0001'))]);
+        $user = $this->cashier();
+        $this->actingAs($user)->postJson('/api/license/recheck')->assertOk();
+        $this->actingAs($user)->postJson('/api/license/recheck')->assertStatus(429);
+        $this->actingAs($this->manager)->postJson('/api/license/recheck')->assertOk();
+        $this->travel(31)->seconds();
+        $this->actingAs($user)->postJson('/api/license/recheck')->assertOk();
+    }
+
+    public function test_days_until_expiry_for_the_near_expiry_popup(): void
+    {
+        $this->signedLicense('active', '2026-10-12T10:00:00Z');
+        $this->assertSame(2, app(LicenseService::class)->daysUntilExpiry());
+        $this->actingAs($this->cashier())->getJson('/api/license/status')->assertJsonPath('days_until_expiry', 2)->assertJsonPath('warn_days', 3);
     }
 }

@@ -104,7 +104,7 @@ class AuthController extends Controller
             'roles' => $user->roles->map(fn ($r) => ['name' => $r->name, 'label' => Tr::label($r->label)])->values(),
             'permissions' => $user->permissionNames(),
             'is_super_admin' => $user->isSuperAdmin(),
-            'license' => LicenseService::status(),
+            'license' => app(LicenseService::class)->status(),
         ];
     }
 

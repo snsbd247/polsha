@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Sequence;
+use App\Support\Runtime\Continuity;
 use Illuminate\Support\Facades\DB;
 
 class SequenceService
@@ -15,6 +16,9 @@ class SequenceService
      */
     public static function next(string $key): string
     {
+        // no new document numbers while the installation may not work
+        Continuity::ensure();
+
         return DB::transaction(function () use ($key) {
             $seq = Sequence::where('key', $key)->lockForUpdate()->firstOrFail();
 

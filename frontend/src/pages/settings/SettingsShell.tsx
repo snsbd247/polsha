@@ -1,7 +1,7 @@
 import { useEffect, useRef, type ReactNode } from 'react'
 import { Link, NavLink } from 'react-router-dom'
 import { ConfigProvider } from 'antd'
-import { CalendarOutlined, ControlOutlined, FileTextOutlined, GlobalOutlined, HomeOutlined, MessageOutlined, PictureOutlined, RightOutlined, SafetyCertificateOutlined, SettingOutlined } from '@ant-design/icons'
+import { CalendarOutlined, ControlOutlined, KeyOutlined, FileTextOutlined, GlobalOutlined, HomeOutlined, MessageOutlined, PictureOutlined, RightOutlined, SafetyCertificateOutlined, SettingOutlined } from '@ant-design/icons'
 import { useAuth } from '../../auth/AuthContext'
 import { t as tx } from '../../lib/i18n'
 import './settings.css'
@@ -14,7 +14,9 @@ const TABS = [
   { to: '/settings/sms', icon: <MessageOutlined />, label: tx('SMS সেটিংস'), perm: ['settings.admin', 'sms.admin'] },
   { to: '/settings/preferences', icon: <SettingOutlined />, label: tx('সিস্টেম পছন্দসমূহ'), perm: 'settings.admin' },
   { to: '/settings/website', icon: <GlobalOutlined />, label: tx('ওয়েবসাইট'), perm: 'settings.admin' },
-  { to: '/settings/license', icon: <SafetyCertificateOutlined />, label: tx('লাইসেন্স ও ইনস্টলেশন'), perm: 'settings.admin' },
+  { to: '/settings/license', icon: <SafetyCertificateOutlined />, label: tx('সিস্টেম ও ইনস্টলেশন'), perm: 'settings.admin' },
+  // every signed-in user may see and renew the license
+  { to: '/license-verification', icon: <KeyOutlined />, label: tx('লাইসেন্স'), perm: '' },
 ]
 
 /**
@@ -24,7 +26,7 @@ const TABS = [
 export default function SettingsShell({ title, subtitle, extra, children }: { title: string; subtitle: string; extra?: ReactNode; children: ReactNode }) {
   const { can } = useAuth()
   const tabs = useRef<HTMLElement>(null)
-  // eight tabs overflow a narrow screen: bring the open one into view
+  // nine tabs overflow a narrow screen: bring the open one into view
   useEffect(() => {
     const active = tabs.current?.querySelector<HTMLElement>('a.active')
     if (tabs.current && active) tabs.current.scrollLeft = active.offsetLeft - (tabs.current.clientWidth - active.offsetWidth) / 2
@@ -51,7 +53,7 @@ export default function SettingsShell({ title, subtitle, extra, children }: { ti
           {extra && <div className="st-head-extra">{extra}</div>}
         </div>
         <nav className="st-tabs" ref={tabs}>
-          {TABS.filter((t) => (Array.isArray(t.perm) ? t.perm.some((p) => can(p)) : can(t.perm))).map((t) => (
+          {TABS.filter((t) => (!t.perm ? true : Array.isArray(t.perm) ? t.perm.some((p) => can(p)) : can(t.perm))).map((t) => (
             <NavLink key={t.to} to={t.to} className={({ isActive }) => (isActive ? 'active' : '')}>
               {t.icon}
               {t.label}

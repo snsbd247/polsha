@@ -1,7 +1,7 @@
 <?php
 
-use App\Http\Middleware\EnsureLicensed;
 use App\Http\Middleware\EnsureUserIsUsable;
+use App\Http\Middleware\EnsureWorkspaceReady;
 use App\Http\Middleware\SetLocale;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -18,13 +18,14 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        $middleware->api(prepend: [SetLocale::class], append: [EnsureLicensed::class]);
+        $middleware->api(prepend: [SetLocale::class]);
         // there is no server-side login page: a guest on the API gets 401, the SPA shows its own login
         $middleware->redirectGuestsTo(fn (Request $request) => $request->is('api/*') ? null : '/login');
         $middleware->alias([
             'permission' => PermissionMiddleware::class,
             'role' => RoleMiddleware::class,
             'usable' => EnsureUserIsUsable::class,
+            'ready' => EnsureWorkspaceReady::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
