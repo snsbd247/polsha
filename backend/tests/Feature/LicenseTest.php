@@ -88,6 +88,19 @@ class LicenseTest extends Phase2TestCase
         $this->actingAs($this->cashier())->getJson('/api/farmers')->assertOk();
     }
 
+    public function test_a_rate_limited_server_counts_as_offline_not_as_invalid(): void
+    {
+        Http::fake([self::URL.'/license/*' => Http::response(['message' => 'Too Many Attempts.'], 429)]);
+        $user = $this->cashier();
+        $this->actingAs($user)->postJson('/api/license/recheck')->assertOk()
+            ->assertJsonPath('ok', false)->assertJsonPath('license.blocked', false)->assertJsonPath('license.state', 'active');
+        $this->assertSame('active', DB::table('license_state')->value('status'));
+        $this->assertSame(0, (int) DB::table('license_state')->value('last_check_ok'));
+        $this->actingAs($user)->getJson('/api/farmers')->assertOk();
+        $this->actingAs($user)->postJson('/api/license/activate', ['license_key' => 'KEY-NEW-1234'])->assertStatus(422);
+        $this->assertSame('TEST-KEY-0001', DB::table('license_state')->value('license_key'));
+    }
+
     public function test_verify_reuses_a_fresh_answer_for_six_hours_unless_forced(): void
     {
         Http::fake([self::URL.'/license/verify' => Http::response($this->answer('active', key: 'TEST-KEY-0001'))]);

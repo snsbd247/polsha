@@ -1431,5 +1431,6 @@
     "লাইসেন্সটি অন্য ডোমেইনের জন্য সক্রিয় করা।": "The license is activated for another domain.",
     "লাইসেন্সের তথ্য মেলেনি। আবার সক্রিয় করুন।": "The license details do not match. Activate again.",
     "লাইসেন্সের মেয়াদ শেষ হয়ে গেছে। নবায়ন করে নতুন করে সক্রিয় করুন।": "The license has expired. Renew and activate again.",
-    "সফটওয়্যারটি এখনো সক্রিয় করা হয়নি। লাইসেন্স কী দিয়ে সক্রিয় করুন।": "The software is not activated yet. Activate it with a license key."
+    "সফটওয়্যারটি এখনো সক্রিয় করা হয়নি। লাইসেন্স কী দিয়ে সক্রিয় করুন।": "The software is not activated yet. Activate it with a license key.",
+    "লাইসেন্স সার্ভার এখন ব্যস্ত। একটু পরে আবার চেষ্টা করুন।": "The license server is busy. Please try again in a moment."
 }

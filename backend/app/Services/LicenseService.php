@@ -54,6 +54,10 @@ class LicenseService
         try {
             $r = Http::acceptJson()->asJson()->connectTimeout(5)->timeout(10)
                 ->post(config('license.server_url').$path, $payload);
+            // the server allows only so many calls a minute: being turned away is like being offline, never "invalid"
+            if ($r->status() === 429) {
+                return ['ok' => false, 'http' => 429, 'body' => null, 'error' => 'rate_limited'];
+            }
             $body = $r->json();
 
             return ['ok' => is_array($body), 'http' => $r->status(), 'body' => is_array($body) ? $body : null, 'error' => is_array($body) ? null : 'bad_response'];
@@ -81,7 +85,9 @@ class LicenseService
         $key = trim($key);
         $r = $this->call('/license/activate', ['license_key' => $key, 'domain' => Continuity::host(), 'product_slug' => config('license.product_slug')]);
         if (! $r['ok']) {
-            return ['ok' => false, 'message' => __('লাইসেন্স সার্ভারের সাথে যোগাযোগ করা যায়নি। ইন্টারনেট সংযোগ দেখে আবার চেষ্টা করুন।'), 'status' => null];
+            return ['ok' => false, 'status' => null, 'message' => $r['error'] === 'rate_limited'
+                ? __('লাইসেন্স সার্ভার এখন ব্যস্ত। একটু পরে আবার চেষ্টা করুন।')
+                : __('লাইসেন্স সার্ভারের সাথে যোগাযোগ করা যায়নি। ইন্টারনেট সংযোগ দেখে আবার চেষ্টা করুন।')];
         }
         $b = $r['body'];
         $message = (string) ($b['message'] ?? '');
@@ -117,9 +123,11 @@ class LicenseService
             // keep the last signed answer; only note that this attempt did not count
             $this->save(['last_checked_at' => now(), 'last_check_ok' => false]);
 
-            return ['ok' => false, 'checked' => true, 'message' => $r['ok']
-                ? (string) ($r['body']['message'] ?? __('লাইসেন্স সার্ভারের উত্তর যাচাই করা যায়নি।'))
-                : __('লাইসেন্স সার্ভারের সাথে যোগাযোগ করা যায়নি।')];
+            return ['ok' => false, 'checked' => true, 'message' => match (true) {
+                $r['error'] === 'rate_limited' => __('লাইসেন্স সার্ভার এখন ব্যস্ত। একটু পরে আবার চেষ্টা করুন।'),
+                $r['ok'] => (string) ($r['body']['message'] ?? __('লাইসেন্স সার্ভারের উত্তর যাচাই করা যায়নি।')),
+                default => __('লাইসেন্স সার্ভারের সাথে যোগাযোগ করা যায়নি।'),
+            }];
         }
         $b = $r['body'];
         $this->save([
