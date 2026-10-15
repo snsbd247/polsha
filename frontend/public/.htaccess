@@ -9,6 +9,12 @@ Options -Indexes
   RewriteEngine On
   RewriteBase /
 
+  # Always the secure address. The free certificate's renewal check (/.well-known/) stays on plain http.
+  RewriteCond %{HTTPS} off
+  RewriteCond %{HTTP:X-Forwarded-Proto} !https
+  RewriteCond %{REQUEST_URI} !^/\.well-known/
+  RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
   # Shared hosts often drop the Authorization header — pass the Bearer token through.
   RewriteCond %{HTTP:Authorization} .
   RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
