@@ -5,7 +5,10 @@ import { lang } from './i18n'
 /** A text the society writes in Bangla, with an optional English version. */
 export type Bi = { bn: string; en: string }
 
-export type SiteNotice = { date: string; title: Bi; tag: Bi }
+/** id: the notice's page address (/notices/:id); attachment: a photo or PDF in the site's folder. */
+export type SiteNotice = { id?: string; date: string; title: Bi; tag: Bi; body?: Bi; attachment?: string | null; attachment_name?: string }
+export type SitePresident = { name: Bi; role: Bi; photo: string | null; message: Bi }
+export type SiteWaterType = { code: string; name: Bi; monthly_fee: number; connection_fee: number }
 export type SitePerson = { name: Bi; role: Bi; photo: string | null }
 export type SitePhoto = { photo: string; caption: Bi }
 export type SiteFaq = { q: Bi; a: Bi }
@@ -33,6 +36,7 @@ export type SiteContent = {
   work_area: Bi
   about_photo: string | null
   notices: SiteNotice[]
+  president: SitePresident
   committee: SitePerson[]
   gallery: SitePhoto[]
   phone: string
@@ -45,7 +49,7 @@ export type SiteContent = {
 export type SiteStat = { key: 'members' | 'farmers' | 'irrigated_acres' | 'water_connections' | 'years'; value: number }
 
 /** What the public landing page receives: the content plus contact fallbacks and live numbers. */
-export type PublicSite = SiteContent & { registration_no: string; stats: SiteStat[] }
+export type PublicSite = SiteContent & { registration_no: string; stats: SiteStat[]; water_types: SiteWaterType[] }
 
 export const emptyBi = (): Bi => ({ bn: '', en: '' })
 

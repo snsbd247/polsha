@@ -127,4 +127,83 @@ class WebsiteTest extends Phase2TestCase
             'faqs' => [['q' => ['bn' => ''], 'a' => ['bn' => 'উত্তর।']]],
         ]))->assertStatus(422)->assertJsonValidationErrors(['facebook', 'hero_photos.0', 'faqs.0.q.bn']);
     }
+
+    public function test_notices_keep_their_page_address_and_carry_text_and_a_pdf(): void
+    {
+        Storage::fake('local');
+        $admin = $this->userWithRole('super_admin');
+        $pdf = $this->actingAs($admin)->post('/api/settings/website/files', ['file' => UploadedFile::fake()->create('schedule.pdf', 200, 'application/pdf')])
+            ->assertOk()->assertJsonPath('name', 'schedule.pdf')->json('path');
+        $this->assertMatchesRegularExpression('#^website/[A-Za-z0-9]{40}\.pdf$#', $pdf);
+
+        $notices = [['date' => '2026-10-01', 'title' => ['bn' => 'সেচের সময়সূচি', 'en' => ''], 'tag' => ['bn' => 'নোটিশ', 'en' => ''],
+            'body' => ['bn' => "প্রথম লাইন\nদ্বিতীয় লাইন", 'en' => ''], 'attachment' => $pdf, 'attachment_name' => 'schedule.pdf']];
+        $saved = $this->actingAs($admin)->putJson('/api/settings/website', $this->page(['notices' => $notices]))->assertOk()->json('notices.0');
+        $this->assertMatchesRegularExpression('/^[a-z0-9]{10}$/', $saved['id']);
+
+        // editing the notice keeps its address
+        $notices[0]['id'] = $saved['id'];
+        $notices[0]['title']['bn'] = 'সেচের নতুন সময়সূচি';
+        $this->actingAs($admin)->putJson('/api/settings/website', $this->page(['notices' => $notices]))->assertOk()->assertJsonPath('notices.0.id', $saved['id']);
+
+        $this->getJson('/api/public/website')->assertOk()->assertJsonPath('notices.0.body.bn', "প্রথম লাইন\nদ্বিতীয় লাইন")
+            ->assertJsonPath('notices.0.attachment', $pdf);
+        $this->get('/api/public/website/images/'.basename($pdf))->assertOk();
+
+        // taken off the page: the PDF goes too
+        $this->actingAs($admin)->putJson('/api/settings/website', $this->page(['notices' => []]))->assertOk();
+        Storage::disk('local')->assertMissing($pdf);
+        // only PDFs, only from the site's own folder
+        $this->actingAs($admin)->post('/api/settings/website/files', ['file' => UploadedFile::fake()->create('x.exe', 10)], ['Accept' => 'application/json'])->assertStatus(422);
+        $this->actingAs($admin)->putJson('/api/settings/website', $this->page(['notices' => [array_replace($notices[0], ['attachment' => '../.env'])]]))
+            ->assertStatus(422);
+    }
+
+    public function test_old_notices_without_an_id_get_a_stable_one(): void
+    {
+        SettingService::setMany(['site' => ['notices' => [['date' => '2026-09-01', 'title' => ['bn' => 'পুরোনো', 'en' => ''], 'tag' => ['bn' => '', 'en' => '']]]]]);
+        $a = $this->getJson('/api/public/website')->json('notices.0.id');
+        $this->assertSame($a, $this->getJson('/api/public/website')->json('notices.0.id'));
+        $this->assertSame(10, strlen($a));
+    }
+
+    public function test_president_message_and_water_tariff_reach_the_public_site(): void
+    {
+        $this->actingAs($this->userWithRole('super_admin'))->putJson('/api/settings/website', $this->page([
+            'president' => ['name' => ['bn' => 'আব্দুল করিম', 'en' => ''], 'role' => ['bn' => 'সভাপতি', 'en' => ''], 'photo' => null, 'message' => ['bn' => 'সবাইকে শুভেচ্ছা', 'en' => '']],
+        ]))->assertOk();
+        $site = $this->getJson('/api/public/website')->assertOk()->assertJsonPath('president.message.bn', 'সবাইকে শুভেচ্ছা')->json();
+        $this->assertNotEmpty($site['water_types']);
+        $this->assertArrayHasKey('monthly_fee', $site['water_types'][0]);
+    }
+
+    public function test_contact_form_reaches_the_office_inbox(): void
+    {
+        $msg = ['name' => 'রহিম', 'mobile' => '০১৭১১০০০০০১', 'subject' => 'নতুন সংযোগ', 'message' => 'আমার বাড়িতে পানির সংযোগ দরকার।'];
+        $this->postJson('/api/public/website/messages', $msg)->assertCreated();
+        // a filled hidden field = a bot
+        $this->postJson('/api/public/website/messages', $msg + ['website' => 'http://spam'])->assertStatus(422);
+        $this->postJson('/api/public/website/messages', ['mobile' => '123'] + $msg)->assertStatus(422)->assertJsonValidationErrors('mobile');
+
+        $admin = $this->userWithRole('super_admin');
+        $list = $this->actingAs($admin)->getJson('/api/website-messages')->assertOk()->assertJsonPath('unread', 1)->assertJsonPath('data.0.mobile', '01711000001');
+        $this->assertArrayNotHasKey('ip', $list->json('data.0'));
+        $id = $list->json('data.0.id');
+        $this->actingAs($admin)->putJson("/api/website-messages/{$id}", ['read' => true, 'note' => 'ফোন করা হয়েছে'])->assertOk()->assertJsonPath('note', 'ফোন করা হয়েছে');
+        $this->actingAs($admin)->getJson('/api/website-messages?status=unread')->assertOk()->assertJsonPath('total', 0);
+        // the inbox is for settings admins only
+        $this->actingAs($this->userWithRole('cashier'))->getJson('/api/website-messages')->assertForbidden();
+        $this->actingAs($admin)->deleteJson("/api/website-messages/{$id}")->assertOk();
+    }
+
+    public function test_one_mobile_cannot_flood_the_inbox(): void
+    {
+        $msg = ['name' => 'রহিম', 'mobile' => '01711000002', 'subject' => 'প্রশ্ন', 'message' => 'একটি প্রশ্ন আছে।'];
+        foreach (range(1, 3) as $i) {
+            $this->travel(61)->seconds(); // past the per-minute route limit
+            $this->postJson('/api/public/website/messages', $msg)->assertCreated();
+        }
+        $this->travel(61)->seconds();
+        $this->postJson('/api/public/website/messages', $msg)->assertStatus(422)->assertJsonValidationErrors('mobile');
+    }
 }

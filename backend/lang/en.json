@@ -1432,5 +1432,9 @@
     "লাইসেন্সের তথ্য মেলেনি। আবার সক্রিয় করুন।": "The license details do not match. Activate again.",
     "লাইসেন্সের মেয়াদ শেষ হয়ে গেছে। নবায়ন করে নতুন করে সক্রিয় করুন।": "The license has expired. Renew and activate again.",
     "সফটওয়্যারটি এখনো সক্রিয় করা হয়নি। লাইসেন্স কী দিয়ে সক্রিয় করুন।": "The software is not activated yet. Activate it with a license key.",
-    "লাইসেন্স সার্ভার এখন ব্যস্ত। একটু পরে আবার চেষ্টা করুন।": "The license server is busy. Please try again in a moment."
+    "লাইসেন্স সার্ভার এখন ব্যস্ত। একটু পরে আবার চেষ্টা করুন।": "The license server is busy. Please try again in a moment.",
+    "আপনার বার্তা পাঠানো হয়েছে। অফিস থেকে শীঘ্রই যোগাযোগ করা হবে।": "Your message has been sent. The office will contact you soon.",
+    "এই নম্বর থেকে আজ আর বার্তা পাঠানো যাবে না। প্রয়োজনে ফোন করুন।": "No more messages can be sent from this number today. Please call if needed.",
+    "বার্তা পাঠানো যায়নি।": "The message could not be sent.",
+    "বার্তা মুছে ফেলা হয়েছে।": "The message has been deleted."
 }

@@ -1,7 +1,7 @@
 import { useEffect, useRef, type ReactNode } from 'react'
 import { Link, NavLink } from 'react-router-dom'
 import { ConfigProvider } from 'antd'
-import { CalendarOutlined, ControlOutlined, KeyOutlined, FileTextOutlined, GlobalOutlined, HomeOutlined, MessageOutlined, PictureOutlined, RightOutlined, SafetyCertificateOutlined, SettingOutlined } from '@ant-design/icons'
+import { CalendarOutlined, ControlOutlined, KeyOutlined, FileTextOutlined, GlobalOutlined, HomeOutlined, MailOutlined, MessageOutlined, PictureOutlined, RightOutlined, SafetyCertificateOutlined, SettingOutlined } from '@ant-design/icons'
 import { useAuth } from '../../auth/AuthContext'
 import { t as tx } from '../../lib/i18n'
 import './settings.css'
@@ -14,6 +14,7 @@ const TABS = [
   { to: '/settings/sms', icon: <MessageOutlined />, label: tx('SMS সেটিংস'), perm: ['settings.admin', 'sms.admin'] },
   { to: '/settings/preferences', icon: <SettingOutlined />, label: tx('সিস্টেম পছন্দসমূহ'), perm: 'settings.admin' },
   { to: '/settings/website', icon: <GlobalOutlined />, label: tx('ওয়েবসাইট'), perm: 'settings.admin' },
+  { to: '/settings/website-messages', icon: <MailOutlined />, label: tx('ওয়েবসাইটের বার্তা'), perm: 'settings.admin' },
   { to: '/settings/license', icon: <SafetyCertificateOutlined />, label: tx('সিস্টেম ও ইনস্টলেশন'), perm: 'settings.admin' },
   // every signed-in user may see and renew the license
   { to: '/license-verification', icon: <KeyOutlined />, label: tx('লাইসেন্স'), perm: '' },

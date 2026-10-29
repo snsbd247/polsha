@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Farmer;
 use App\Models\Invoice;
 use App\Models\Member;
+use App\Models\WaterConnectionType;
 use App\Services\ImageService;
 use App\Services\SettingService;
 use App\Support\Bn;
@@ -14,6 +15,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 /**
  * The society's public website (landing page at "/"). Its text and photos live in
@@ -69,6 +71,8 @@ class WebsiteController extends Controller
         'about_photo' => null,
         'show_stats' => true,
         'notices' => [],
+        // "From the president" on the About page
+        'president' => ['name' => ['bn' => '', 'en' => ''], 'role' => ['bn' => 'সভাপতি', 'en' => 'President'], 'photo' => null, 'message' => ['bn' => '', 'en' => '']],
         'committee' => [],
         'gallery' => [],
         'phone' => '',
@@ -95,13 +99,28 @@ class WebsiteController extends Controller
         }
         $c['registration_no'] = $s['registration_no'];
         $c['stats'] = $c['show_stats'] ? $this->stats($c['founded_year']) : [];
+        $c['notices'] = self::withIds($c['notices']);
+        // the water service page shows the tariff straight from the system
+        $c['water_types'] = WaterConnectionType::where('is_active', true)->orderBy('sort_order')->orderBy('id')
+            ->get(['code', 'name_bn', 'name_en', 'monthly_fee', 'connection_fee'])
+            ->map(fn ($w) => ['code' => $w->code, 'name' => ['bn' => $w->name_bn, 'en' => (string) $w->name_en], 'monthly_fee' => (float) $w->monthly_fee, 'connection_fee' => (float) $w->connection_fee])
+            ->values();
 
         return response()->json($c);
     }
 
     public function edit(): JsonResponse
     {
-        return response()->json(self::content());
+        $c = self::content();
+        $c['notices'] = self::withIds($c['notices']);
+
+        return response()->json($c);
+    }
+
+    /** Notices saved before they had an id get a stable one (from date + title), so their page link never changes. */
+    private static function withIds(array $notices): array
+    {
+        return array_map(fn ($n) => $n + ['id' => substr(md5(($n['date'] ?? '').'|'.($n['title']['bn'] ?? '')), 0, 10)], $notices);
     }
 
     public function update(Request $request): JsonResponse
@@ -130,10 +149,18 @@ class WebsiteController extends Controller
             'founded_year' => ['nullable', 'digits:4', 'integer', 'min:1900', 'max:'.now()->year],
             'work_area.bn' => ['nullable', 'string', 'max:150'], 'work_area.en' => ['nullable', 'string', 'max:150'],
             'about_photo' => ['nullable', 'string', 'regex:/^website\/[A-Za-z0-9]{40}\.jpg$/'],
-            'notices' => ['array', 'max:12'],
+            'notices' => ['array', 'max:30'],
+            'notices.*.id' => ['nullable', 'string', 'regex:/^[a-z0-9]{6,16}$/'],
             'notices.*.date' => ['required', 'date'],
             'notices.*.title.bn' => ['required', 'string', 'max:250'], 'notices.*.title.en' => ['nullable', 'string', 'max:250'],
             'notices.*.tag.bn' => ['nullable', 'string', 'max:40'], 'notices.*.tag.en' => ['nullable', 'string', 'max:40'],
+            'notices.*.body.bn' => ['nullable', 'string', 'max:5000'], 'notices.*.body.en' => ['nullable', 'string', 'max:5000'],
+            'notices.*.attachment' => ['nullable', 'string', 'regex:/^website\/[A-Za-z0-9]{40}\.(jpg|pdf)$/'],
+            'notices.*.attachment_name' => ['nullable', 'string', 'max:150'],
+            'president.name.bn' => ['nullable', 'string', 'max:100'], 'president.name.en' => ['nullable', 'string', 'max:100'],
+            'president.role.bn' => ['nullable', 'string', 'max:60'], 'president.role.en' => ['nullable', 'string', 'max:60'],
+            'president.photo' => ['nullable', 'string', 'regex:/^website\/[A-Za-z0-9]{40}\.jpg$/'],
+            'president.message.bn' => ['nullable', 'string', 'max:3000'], 'president.message.en' => ['nullable', 'string', 'max:3000'],
             'committee' => ['array', 'max:20'],
             'committee.*.name.bn' => ['required', 'string', 'max:100'], 'committee.*.name.en' => ['nullable', 'string', 'max:100'],
             'committee.*.role.bn' => ['required', 'string', 'max:60'], 'committee.*.role.en' => ['nullable', 'string', 'max:60'],
@@ -159,8 +186,17 @@ class WebsiteController extends Controller
             'founded_year' => (string) ($data['founded_year'] ?? ''),
             'work_area' => $pair($data['work_area'] ?? []),
             'about_photo' => $data['about_photo'] ?? null,
-            'notices' => collect($data['notices'] ?? [])->map(fn ($n) => ['date' => date('Y-m-d', strtotime($n['date'])), 'title' => $pair($n['title']), 'tag' => $pair($n['tag'] ?? [])])
-                ->sortByDesc('date')->values()->all(),
+            'notices' => collect($data['notices'] ?? [])->map(fn ($n) => [
+                // the id is the notice's page address: kept when edited, made once when added
+                'id' => $n['id'] ?? Str::lower(Str::random(10)),
+                'date' => date('Y-m-d', strtotime($n['date'])), 'title' => $pair($n['title']), 'tag' => $pair($n['tag'] ?? []),
+                'body' => $pair($n['body'] ?? []), 'attachment' => $n['attachment'] ?? null,
+                'attachment_name' => isset($n['attachment']) ? trim((string) ($n['attachment_name'] ?? '')) : '',
+            ])->sortByDesc('date')->values()->all(),
+            'president' => [
+                'name' => $pair($data['president']['name'] ?? []), 'role' => $pair($data['president']['role'] ?? []),
+                'photo' => $data['president']['photo'] ?? null, 'message' => $pair($data['president']['message'] ?? []),
+            ],
             'committee' => collect($data['committee'] ?? [])->map(fn ($m) => ['name' => $pair($m['name']), 'role' => $pair($m['role']), 'photo' => $m['photo'] ?? null])->values()->all(),
             'gallery' => collect($data['gallery'] ?? [])->map(fn ($g) => ['photo' => $g['photo'], 'caption' => $pair($g['caption'] ?? [])])->values()->all(),
             'phone' => trim((string) ($data['phone'] ?? '')),
@@ -204,7 +240,16 @@ class WebsiteController extends Controller
         return response()->json(['path' => $path]);
     }
 
-    /** Public: a photo used on the site. */
+    /** A PDF for a notice; saved with the page on the next "সংরক্ষণ". */
+    public function uploadFile(Request $request): JsonResponse
+    {
+        $request->validate(['file' => ['required', 'file', 'mimes:pdf', 'max:10240']]);
+        $path = $request->file('file')->storeAs(self::DIR, Str::random(40).'.pdf', 'local');
+
+        return response()->json(['path' => $path, 'name' => mb_substr($request->file('file')->getClientOriginalName(), 0, 150)]);
+    }
+
+    /** Public: a photo or a notice's PDF used on the site. */
     public function image(string $name)
     {
         $path = self::DIR.'/'.$name;
@@ -218,6 +263,8 @@ class WebsiteController extends Controller
         return array_values(array_filter([
             $c['about_photo'] ?? null,
             ...($c['hero_photos'] ?? []),
+            $c['president']['photo'] ?? null,
+            ...array_column($c['notices'] ?? [], 'attachment'),
             ...array_column($c['committee'] ?? [], 'photo'),
             ...array_column($c['gallery'] ?? [], 'photo'),
         ]));

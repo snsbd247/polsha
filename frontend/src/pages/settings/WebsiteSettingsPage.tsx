@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react'
+import { Link } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import dayjs, { type Dayjs } from 'dayjs'
 import { App, Button, Col, DatePicker, Form, Input, Row, Spin, Switch, Upload } from 'antd'
@@ -8,6 +9,8 @@ import {
   DeleteOutlined,
   EnvironmentOutlined,
   ExportOutlined,
+  FilePdfOutlined,
+  MailOutlined,
   GlobalOutlined,
   NotificationOutlined,
   PictureOutlined,
@@ -17,6 +20,7 @@ import {
   PlusOutlined,
   TeamOutlined,
   UploadOutlined,
+  UserOutlined,
 } from '@ant-design/icons'
 import { api, applyFormErrors, errorMessage } from '../../lib/api'
 import { t as tx } from '../../lib/i18n'
@@ -45,6 +49,57 @@ function BiInput({ name, label, max, area, rows = 4, required, extra }: { name: 
         </Form.Item>
       </Col>
     </Row>
+  )
+}
+
+/** A notice's attachment: a PDF or a photo; the path is saved with the page. */
+function AttachmentField({ value, onChange, onName, nameOf }: { value?: string | null; onChange?: (v: string | null) => void; onName: (n: string) => void; nameOf: () => string | undefined }) {
+  const { message } = App.useApp()
+  const [busy, setBusy] = useState(false)
+  const upload = async (file: File) => {
+    setBusy(true)
+    try {
+      const pdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')
+      const body = new FormData()
+      body.append(pdf ? 'file' : 'image', file)
+      const r = await api.post<{ path: string }>(pdf ? '/settings/website/files' : '/settings/website/images', body)
+      onChange?.(r.data.path)
+      onName(file.name.slice(0, 150))
+    } catch (e) {
+      message.error(errorMessage(e))
+    } finally {
+      setBusy(false)
+    }
+    return false
+  }
+  const isPdf = value?.endsWith('.pdf')
+  return (
+    <div className="ws-attach">
+      {value && (
+        <a href={sitePhotoUrl(value)} target="_blank" rel="noreferrer" className="ws-attach-file">
+          {isPdf ? <FilePdfOutlined /> : <PictureOutlined />} {nameOf() || (isPdf ? 'PDF' : tx('ছবি'))}
+        </a>
+      )}
+      <Upload accept="application/pdf,image/png,image/jpeg,image/webp" showUploadList={false} beforeUpload={upload}>
+        <Button size="small" icon={<UploadOutlined />} loading={busy}>
+          {value ? tx('বদলান') : tx('ফাইল দিন')}
+        </Button>
+      </Upload>
+      {value && (
+        <Button
+          size="small"
+          type="text"
+          danger
+          icon={<DeleteOutlined />}
+          onClick={() => {
+            onChange?.(null)
+            onName('')
+          }}
+        >
+          {tx('সরান')}
+        </Button>
+      )}
+    </div>
   )
 }
 
@@ -147,11 +202,16 @@ export default function WebsiteSettingsPage() {
   return (
     <SettingsShell
       title={tx('ওয়েবসাইট')}
-      subtitle={tx('লগইন ছাড়া মূল ঠিকানা খুললে যে পাতা দেখায় — পরিচিতি, সেবা, নোটিশ, প্রশ্নোত্তর, কমিটি, গ্যালারি ও যোগাযোগ।')}
+      subtitle={tx('লগইন ছাড়া যে ওয়েবসাইট দেখায় — হোম, আমাদের সম্পর্কে, সেবা, নোটিশ, গ্যালারি, প্রশ্নোত্তর ও যোগাযোগ, প্রতিটি আলাদা পাতা।')}
       extra={
-        <Button icon={<ExportOutlined />} href={appPath('/site')} target="_blank">
-          {tx('ওয়েবসাইট দেখুন')}
-        </Button>
+        <>
+          <Link to="/settings/website-messages">
+            <Button icon={<MailOutlined />}>{tx('ওয়েবসাইটের বার্তা')}</Button>
+          </Link>
+          <Button icon={<ExportOutlined />} href={appPath('/site')} target="_blank">
+            {tx('ওয়েবসাইট দেখুন')}
+          </Button>
+        </>
       }
     >
       <Form form={form} layout="vertical" onFinish={save} className="ws">
@@ -206,6 +266,19 @@ export default function WebsiteSettingsPage() {
           </Form.Item>
         </SettingsCard>
 
+        <SettingsCard icon={<UserOutlined />} title={tx('সভাপতির বাণী')} subtitle={tx('"আমাদের সম্পর্কে" পাতায় দেখাবে; বাণী খালি থাকলে অংশটি লুকানো থাকে।')}>
+          <div className="ws-person">
+            <Form.Item name={['president', 'photo']} className="ws-person-photo">
+              <PhotoField round />
+            </Form.Item>
+            <div className="ws-person-fields">
+              <BiInput name={['president', 'name']} label={tx('নাম')} max={100} />
+              <BiInput name={['president', 'role']} label={tx('পদবি')} max={60} />
+            </div>
+          </div>
+          <BiInput name={['president', 'message']} label={tx('বাণী')} max={3000} area rows={5} />
+        </SettingsCard>
+
         <SettingsCard icon={<NotificationOutlined />} title={tx('নোটিশ বোর্ড')} subtitle={tx('নতুন নোটিশ আগে দেখায়; কোনো নোটিশ না থাকলে অংশটি লুকানো থাকে।')}>
           <Form.List name="notices">
             {(fields, { add, remove }) => (
@@ -235,9 +308,20 @@ export default function WebsiteSettingsPage() {
                       </Col>
                     </Row>
                     <BiInput name={[f.name, 'title']} label={tx('নোটিশ')} max={250} required />
+                    <BiInput name={[f.name, 'body']} label={tx('নোটিশের পুরো লেখা')} max={5000} area rows={4} extra={tx('নোটিশের নিজের পাতায় দেখাবে; খালি রাখা যায়।')} />
+                    {/* the notice's page address; kept when edited */}
+                    <Form.Item name={[f.name, 'id']} hidden>
+                      <Input />
+                    </Form.Item>
+                    <Form.Item name={[f.name, 'attachment_name']} hidden>
+                      <Input />
+                    </Form.Item>
+                    <Form.Item name={[f.name, 'attachment']} label={tx('সংযুক্তি (PDF বা ছবি, ঐচ্ছিক)')}>
+                      <AttachmentField nameOf={() => form.getFieldValue(['notices', f.name, 'attachment_name'])} onName={(n) => form.setFieldValue(['notices', f.name, 'attachment_name'], n)} />
+                    </Form.Item>
                   </div>
                 ))}
-                <Button icon={<PlusOutlined />} onClick={() => add({ date: dayjs(), title: emptyBi(), tag: emptyBi() }, 0)} disabled={fields.length >= 12}>
+                <Button icon={<PlusOutlined />} onClick={() => add({ date: dayjs(), title: emptyBi(), tag: emptyBi(), body: emptyBi(), attachment: null }, 0)} disabled={fields.length >= 30}>
                   {tx('নোটিশ যোগ করুন')}
                 </Button>
               </>

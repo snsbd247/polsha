@@ -442,3 +442,20 @@
   min-width: 0;
   max-width: 100%;
 }
+
+/* website messages: new ones stand out until marked read */
+.wm-unread td {
+  background: #f3f8ff;
+}
+.wm-unread td:nth-child(4) {
+  font-weight: 600;
+}
+.wm-detail {
+  display: grid;
+  gap: 10px;
+  max-width: 760px;
+}
+.wm-text {
+  margin: 0;
+  white-space: pre-line;
+}

@@ -63,6 +63,7 @@ use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\VoterListController;
 use App\Http\Controllers\Api\WaterController;
 use App\Http\Controllers\Api\WebsiteController;
+use App\Http\Controllers\Api\WebsiteMessageController;
 use Illuminate\Support\Facades\Route;
 
 // ---- Public ----
@@ -74,7 +75,8 @@ Route::get('public/combined-receipts/{token}', [CombinedPaymentController::class
 Route::post('auth/forgot-password', [PasswordResetController::class, 'forgot'])->middleware('throttle:5,1,forgot-password');
 Route::post('auth/reset-password', [PasswordResetController::class, 'reset'])->middleware('throttle:10,1,reset-password');
 Route::get('public/website', [WebsiteController::class, 'show'])->middleware('throttle:60,1,website');
-Route::get('public/website/images/{name}', [WebsiteController::class, 'image'])->where('name', '[A-Za-z0-9]{40}\.jpg')->middleware('throttle:240,1,website-img');
+Route::get('public/website/images/{name}', [WebsiteController::class, 'image'])->where('name', '[A-Za-z0-9]{40}\.(jpg|pdf)')->middleware('throttle:240,1,website-img');
+Route::post('public/website/messages', [WebsiteMessageController::class, 'store'])->middleware('throttle:3,1,website-message');
 Route::get('public/payment-info', [PublicPaymentController::class, 'info'])->middleware('throttle:30,1,pay-info');
 Route::get('public/payments/farmer', [PublicPaymentController::class, 'farmer'])->middleware('throttle:20,1,pay-farmer');
 Route::post('public/payments', [PublicPaymentController::class, 'submit'])->middleware('throttle:5,1,pay-submit');
@@ -158,6 +160,10 @@ Route::middleware(['auth:sanctum', 'usable', 'ready'])->group(function () {
         Route::get('settings/website', [WebsiteController::class, 'edit']);
         Route::put('settings/website', [WebsiteController::class, 'update']);
         Route::post('settings/website/images', [WebsiteController::class, 'upload']);
+        Route::post('settings/website/files', [WebsiteController::class, 'uploadFile']);
+        Route::get('website-messages', [WebsiteMessageController::class, 'index']);
+        Route::put('website-messages/{message}', [WebsiteMessageController::class, 'update']);
+        Route::delete('website-messages/{message}', [WebsiteMessageController::class, 'destroy']);
         Route::get('sequences', [SettingController::class, 'sequences']);
         Route::put('sequences/{sequence}', [SettingController::class, 'updateSequence']);
     });

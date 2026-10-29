@@ -712,6 +712,16 @@ const GROUPS: Group[] = [
         perm: 'settings.admin',
       },
       {
+        path: '/settings/website',
+        label: m('ওয়েবসাইট', 'Website'),
+        perm: 'settings.admin',
+      },
+      {
+        path: '/settings/website-messages',
+        label: m('ওয়েবসাইটের বার্তা', 'Website Messages'),
+        perm: 'settings.admin',
+      },
+      {
         path: '/settings/license',
         label: m('সিস্টেম ও ইনস্টলেশন', 'System & Installation'),
         perm: 'settings.admin',

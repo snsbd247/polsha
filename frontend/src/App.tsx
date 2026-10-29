@@ -59,6 +59,7 @@ const PreferencesPage = lazy(() => import('./pages/settings/PreferencesPage'))
 const LicensePage = lazy(() => import('./pages/settings/LicensePage'))
 const LicenseVerificationPage = lazy(() => import('./pages/license/LicenseVerificationPage'))
 const WebsiteSettingsPage = lazy(() => import('./pages/settings/WebsiteSettingsPage'))
+const WebsiteMessagesPage = lazy(() => import('./pages/settings/WebsiteMessagesPage'))
 const LandTypesPage = lazy(() => import('./pages/settings/LandTypesPage'))
 const ChartOfAccountsPage = lazy(() => import('./pages/accounting/ChartOfAccountsPage'))
 const JournalListPage = lazy(() => import('./pages/accounting/JournalListPage'))
@@ -153,6 +154,15 @@ const SmsLogsPage = lazy(() => import('./pages/settings/SmsLogsPage'))
 const FinancialYearPage = lazy(() => import('./pages/settings/FinancialYearPage'))
 const PublicPaymentPage = lazy(() => import('./pages/PublicPaymentPage'))
 const LandingPage = lazy(() => import('./pages/site/LandingPage'))
+const SiteLayout = lazy(() => import('./pages/site/SiteLayout'))
+const SiteAboutPage = lazy(() => import('./pages/site/AboutPage'))
+const SiteServicesPage = lazy(() => import('./pages/site/ServicesPage').then((m) => ({ default: m.ServicesPage })))
+const SiteServiceDetailPage = lazy(() => import('./pages/site/ServicesPage').then((m) => ({ default: m.ServiceDetailPage })))
+const SiteNoticesPage = lazy(() => import('./pages/site/NoticesPage').then((m) => ({ default: m.NoticesPage })))
+const SiteNoticeDetailPage = lazy(() => import('./pages/site/NoticesPage').then((m) => ({ default: m.NoticeDetailPage })))
+const SiteGalleryPage = lazy(() => import('./pages/site/GalleryFaqPages').then((m) => ({ default: m.GalleryPage })))
+const SiteFaqPage = lazy(() => import('./pages/site/GalleryFaqPages').then((m) => ({ default: m.FaqPage })))
+const SiteContactPage = lazy(() => import('./pages/site/ContactPage'))
 const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage'))
 
 const ACC_SECTION = { label: tx('হিসাব'), to: '/accounting/summary' }
@@ -242,6 +252,17 @@ export default function App() {
       <Route path="/verify/:kind/:token" element={<VerifyReceiptPage />} />
       <Route path="/pay" element={<PublicPaymentPage />} />
       <Route path="/site" element={<LandingPage />} />
+      {/* the public website: one page per menu item, all in the same frame */}
+      <Route element={<SiteLayout />}>
+        <Route path="/about" element={<SiteAboutPage />} />
+        <Route path="/services" element={<SiteServicesPage />} />
+        <Route path="/services/:key" element={<SiteServiceDetailPage />} />
+        <Route path="/notices" element={<SiteNoticesPage />} />
+        <Route path="/notices/:id" element={<SiteNoticeDetailPage />} />
+        <Route path="/gallery" element={<SiteGalleryPage />} />
+        <Route path="/faq" element={<SiteFaqPage />} />
+        <Route path="/contact" element={<SiteContactPage />} />
+      </Route>
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       <Route
         element={
@@ -294,6 +315,7 @@ export default function App() {
         <Route path="settings/preferences" element={<Perm perm="settings.admin"><PreferencesPage /></Perm>} />
         <Route path="settings/license" element={<Perm perm="settings.admin"><LicensePage /></Perm>} />
         <Route path="settings/website" element={<Perm perm="settings.admin"><WebsiteSettingsPage /></Perm>} />
+        <Route path="settings/website-messages" element={<Perm perm="settings.admin"><WebsiteMessagesPage /></Perm>} />
         <Route path="settings/sequences" element={<Perm perm="settings.admin"><SequencePage /></Perm>} />
         <Route path="settings/land-types" element={<Perm perm="settings.admin"><LandTypesPage /></Perm>} />
         <Route path="settings/irrigation-types" element={<Perm perm="settings.admin"><IrrigationTypesPage /></Perm>} />
