@@ -169,3 +169,10 @@
     grid-column: auto;
   }
 }
+
+/* split of the chosen bills by lift, under the summary */
+.bi-lifts { list-style: none; margin: 4px 16px 14px; padding: 10px 0 0; border-top: 1px dashed #d8dee8; display: grid; gap: 6px; }
+.bi-lifts li { display: grid; grid-template-columns: 1fr auto auto; gap: 10px; font-size: 13px; }
+.bi-lifts li span:first-child { font-weight: 600; color: #1f2937; }
+.bi-lifts li span:nth-child(2) { color: #6b7280; }
+.bi-nolift { margin-bottom: 14px; }

@@ -7,9 +7,9 @@ import { money } from '../../lib/accounting'
 import { digits } from '../../lib/format'
 import { t as tx } from '../../lib/i18n'
 
-type Row = { irrigation_type_id: number; land_type_id: number | null; irrigation_type: string; land_type: string | null; rate: number; exists: boolean }
+type Row = { irrigation_type_id: number; lift_id: number | null; land_type_id: number | null; irrigation_type: string; lift: string | null; land_type: string | null; rate: number; exists: boolean }
 type Preview = { from: { id: number; name_bn: string } | null; to: { id: number; name_bn: string; start_date: string }; rows: Row[] }
-const keyOf = (r: Pick<Row, 'irrigation_type_id' | 'land_type_id'>) => `${r.irrigation_type_id}-${r.land_type_id ?? 0}`
+const keyOf = (r: Pick<Row, 'irrigation_type_id' | 'lift_id' | 'land_type_id'>) => `${r.irrigation_type_id}-${r.lift_id ?? 0}-${r.land_type_id ?? 0}`
 
 /**
  * A new season takes the previous season's rates in one step: every source
@@ -54,7 +54,7 @@ export default function CopyRatesModal({ open, seasons, onClose }: { open: boole
         from_season_id: p.from.id,
         to_season_id: to,
         effective_from: date.format('YYYY-MM-DD'),
-        rows: rows.filter((r) => (rates[keyOf(r)] ?? 0) > 0).map((r) => ({ irrigation_type_id: r.irrigation_type_id, land_type_id: r.land_type_id, rate: rates[keyOf(r)] })),
+        rows: rows.filter((r) => (rates[keyOf(r)] ?? 0) > 0).map((r) => ({ irrigation_type_id: r.irrigation_type_id, lift_id: r.lift_id, land_type_id: r.land_type_id, rate: rates[keyOf(r)] })),
       })
       message.success(res.data.message)
       queryClient.invalidateQueries({ queryKey: ['irrigation-rates'] })
@@ -109,6 +109,7 @@ export default function CopyRatesModal({ open, seasons, onClose }: { open: boole
             scroll={{ x: 'max-content', y: 320 }}
             columns={[
               { title: tx('সেচের উৎস'), dataIndex: 'irrigation_type' },
+              { title: tx('লিফট'), dataIndex: 'lift', render: (v: string | null) => v ?? tx('সব লিফট') },
               { title: tx('জমির ধরন'), dataIndex: 'land_type', render: (v: string | null) => v ?? tx('সব ধরনের জমি') },
               { title: tx('আগের রেট (প্রতি শতক)'), dataIndex: 'rate', align: 'right', render: (v: number) => `৳ ${money(v)}` },
               {

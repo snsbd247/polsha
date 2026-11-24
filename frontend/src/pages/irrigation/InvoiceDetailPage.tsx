@@ -206,7 +206,13 @@ export default function InvoiceDetailPage() {
 
       <Box icon={<DashIcon name="drop" size={20} color="#1769e0" stroke={2.2} />} title={tx('সেচের বিবরণ')}>
         <div className="id-grid3">
-          <KV rows={[[tx('সেচের উৎস'), inv.irrigation_type], [tx('সেচের জমি'), `${digits(inv.area_decimal)} ${tx('শতক')}`]]} />
+          <KV
+            rows={[
+              [tx('সেচের উৎস'), inv.irrigation_type],
+              [tx('লিফট'), inv.lift ? nameOf({ name_bn: inv.lift, name_en: inv.lift_en }) : '—'],
+              [tx('সেচের জমি'), `${digits(inv.area_decimal)} ${tx('শতক')}`],
+            ]}
+          />
           <KV rows={[[tx('সেচের তারিখ'), fmtDate(inv.invoice_date)], [tx('রেট (৳/শতক)'), money(inv.rate)]]} />
           <KV
             rows={[

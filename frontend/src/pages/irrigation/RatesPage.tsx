@@ -10,7 +10,7 @@ import { money } from '../../lib/accounting'
 import { digits, fmtDate } from '../../lib/format'
 import { RATE_STATE_TONE, useInvoiceMeta, type RatePage, type RateRow } from '../../lib/irrigation'
 import { useLandMeta } from '../../lib/land'
-import { t as tx } from '../../lib/i18n'
+import { nameOf, t as tx } from '../../lib/i18n'
 import ListFrame, { Field, n0 } from '../lands/ListFrame'
 import CopyRatesModal from './CopyRatesModal'
 import '../lands/land-list.css'
@@ -18,7 +18,7 @@ import '../farmers/farmer-merge-list.css'
 import '../settings/land-types.css'
 import './rates.css'
 
-type Filters = { search?: string; season_id?: number; irrigation_type_id?: number; land_type_id?: number; state?: string }
+type Filters = { search?: string; season_id?: number; irrigation_type_id?: number; lift_id?: number; land_type_id?: number; state?: string }
 
 /** Every irrigation rate — per season, source and land type — with its period and state. */
 export default function RatesPage({ tabs }: { tabs?: ReactNode } = {}) {
@@ -48,7 +48,7 @@ export default function RatesPage({ tabs }: { tabs?: ReactNode } = {}) {
     setFilters(f)
     setPage(1)
   }
-  const propose = (r?: RateRow) => navigate(r ? `/irrigation/rates/new?season_id=${r.season_id}&irrigation_type_id=${r.irrigation_type_id}${r.land_type_id ? `&land_type_id=${r.land_type_id}` : ''}` : '/irrigation/rates/new')
+  const propose = (r?: RateRow) => navigate(r ? `/irrigation/rates/new?season_id=${r.season_id}&irrigation_type_id=${r.irrigation_type_id}${r.lift_id ? `&lift_id=${r.lift_id}` : ''}${r.land_type_id ? `&land_type_id=${r.land_type_id}` : ''}` : '/irrigation/rates/new')
 
   const cards = [
     { key: 'total', label: tx('মোট রেট'), value: s?.total, icon: 'layers', color: '#8b3fe0', tint: '#efe4fc', onClick: () => show({}) },
@@ -69,6 +69,7 @@ export default function RatesPage({ tabs }: { tabs?: ReactNode } = {}) {
       ),
     },
     { title: tx('সেচের উৎস'), render: (_, r) => `${r.irrigation_type ?? '—'}${r.irrigation_code ? ` (${r.irrigation_code})` : ''}` },
+    { title: tx('লিফট'), dataIndex: 'lift', render: (v) => v ?? tx('সব লিফট') },
     { title: tx('জমির ধরন'), dataIndex: 'land_type' },
     { title: tx('রেট (৳/শতক)'), dataIndex: 'rate', align: 'right', render: money },
     { title: tx('মাপের একক'), render: () => tx('প্রতি শতক') },
@@ -140,6 +141,13 @@ export default function RatesPage({ tabs }: { tabs?: ReactNode } = {}) {
               value={draft.irrigation_type_id ?? ''}
               options={[{ value: '', label: tx('সব উৎস') }, ...(meta?.irrigation_types ?? []).map((t) => ({ value: t.id, label: t.name_bn }))]}
               onChange={(v) => setDraft((d) => ({ ...d, irrigation_type_id: v === '' ? undefined : Number(v) }))}
+            />
+          </Field>
+          <Field label={tx('লিফট')}>
+            <Select
+              value={draft.lift_id ?? ''}
+              options={[{ value: '', label: tx('সব লিফট') }, ...(meta?.lifts ?? []).map((l) => ({ value: l.id, label: nameOf(l) }))]}
+              onChange={(v) => setDraft((d) => ({ ...d, lift_id: v === '' ? undefined : Number(v) }))}
             />
           </Field>
           <Field label={tx('জমির ধরন')}>

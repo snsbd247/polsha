@@ -23,11 +23,11 @@ class IrrigationRateController extends Controller
         $season = Season::findOrFail($request->query('season_id'));
         $date = $request->query('date', now()->toDateString());
         $rows = IrrigationRate::where('season_id', $season->id)
-            ->with(['irrigationType:id,name_bn', 'landType:id,name_bn', 'creator:id,name_bn,name_en', 'approver:id,name_bn,name_en'])
+            ->with(['irrigationType:id,name_bn', 'landType:id,name_bn', 'lift:id,name_bn,name_en,sort_order', 'creator:id,name_bn,name_en', 'approver:id,name_bn,name_en'])
             ->orderByDesc('effective_from')->orderByDesc('id')->get();
 
         $current = $rows->where('status', 'approved')
-            ->groupBy(fn ($r) => $r->irrigation_type_id.'-'.($r->land_type_id ?? 0))
+            ->groupBy(fn ($r) => IrrigationService::comboKey($r->irrigation_type_id, $r->lift_id, $r->land_type_id))
             ->map(function ($group) use ($date) {
                 // Rows are newest-first, so the first one already started is the one in force.
                 $first = $group->first();
@@ -37,6 +37,9 @@ class IrrigationRateController extends Controller
                 return [
                     'irrigation_type_id' => $first->irrigation_type_id,
                     'irrigation_type' => Tr::label($first->irrigationType?->name_bn),
+                    'lift_id' => $first->lift_id,
+                    'lift' => $first->lift ? Tr::label($first->lift->name_bn) : null,
+                    'lift_order' => $first->lift?->sort_order ?? 0,
                     'land_type_id' => $first->land_type_id,
                     'land_type' => Tr::label($first->landType?->name_bn),
                     'rate' => $live ? (float) $live->rate : null,
@@ -45,7 +48,7 @@ class IrrigationRateController extends Controller
                     'next_from' => $next?->effective_from?->toDateString(),
                     'changes' => $group->count(),
                 ];
-            })->sortBy(['irrigation_type', 'land_type'])->values();
+            })->sortBy(['irrigation_type', 'lift_order', 'land_type'])->values();
 
         return response()->json([
             'season' => $season,
@@ -53,6 +56,7 @@ class IrrigationRateController extends Controller
             'history' => $rows->map(fn ($r) => $r->toArray() + [
                 'irrigation_type_name' => Tr::label($r->irrigationType?->name_bn),
                 'land_type_name' => Tr::label($r->landType?->name_bn),
+                'lift_name' => $r->lift ? Tr::label($r->lift->name_bn) : null,
             ]),
             'statuses' => Tr::map(IrrigationRate::STATUSES),
         ]);
@@ -68,12 +72,12 @@ class IrrigationRateController extends Controller
     {
         $request->validate(['from' => ['nullable', 'date'], 'to' => ['nullable', 'date']]);
         $today = now()->toDateString();
-        $rows = IrrigationRate::with(['season:id,name_bn,end_date', 'irrigationType:id,name_bn,code', 'landType:id,name_bn', 'creator:id,name_bn,name_en', 'approver:id,name_bn,name_en'])
+        $rows = IrrigationRate::with(['season:id,name_bn,end_date', 'irrigationType:id,name_bn,code', 'landType:id,name_bn', 'lift:id,name_bn,code,sort_order', 'creator:id,name_bn,name_en', 'approver:id,name_bn,name_en'])
             ->withCount(['invoices' => fn ($q) => $q->where('status', '!=', 'cancelled')])
             ->orderBy('effective_from')->orderBy('id')->get();
 
         $out = collect();
-        foreach ($rows->groupBy(fn ($r) => $r->season_id.'-'.$r->irrigation_type_id.'-'.($r->land_type_id ?? 0)) as $group) {
+        foreach ($rows->groupBy(fn ($r) => $r->season_id.'-'.IrrigationService::comboKey($r->irrigation_type_id, $r->lift_id, $r->land_type_id)) as $group) {
             $approved = $group->where('status', 'approved')->values();
             foreach ($group as $r) {
                 $prev = $approved->filter(fn ($a) => $a->id !== $r->id && ($a->effective_from < $r->effective_from || ($a->effective_from == $r->effective_from && $a->id < $r->id)))->last();
@@ -92,6 +96,9 @@ class IrrigationRateController extends Controller
                     'irrigation_type_id' => $r->irrigation_type_id,
                     'irrigation_type' => Tr::label($r->irrigationType?->name_bn),
                     'irrigation_code' => $r->irrigationType?->code,
+                    'lift_id' => $r->lift_id,
+                    'lift' => $r->lift ? Tr::label($r->lift->name_bn) : null,
+                    'lift_order' => $r->lift?->sort_order ?? 0,
                     'land_type_id' => $r->land_type_id,
                     'land_type' => $r->landType ? Tr::label($r->landType->name_bn) : __('সব ধরনের জমি'),
                     'rate' => (float) $r->rate,
@@ -112,7 +119,7 @@ class IrrigationRateController extends Controller
         }
 
         $f = $out;
-        foreach (['season_id', 'irrigation_type_id', 'land_type_id'] as $k) {
+        foreach (['season_id', 'irrigation_type_id', 'lift_id', 'land_type_id'] as $k) {
             if ($request->filled($k)) {
                 $f = $f->where($k, (int) $request->query($k));
             }
@@ -132,12 +139,12 @@ class IrrigationRateController extends Controller
         }
         if ($s = trim((string) $request->query('search'))) {
             $en = Bn::toEnDigits($s);
-            $f = $f->filter(fn ($r) => str_contains(mb_strtolower($r['season'].' '.$r['irrigation_type'].' '.$r['land_type'].' '.$r['irrigation_code'].' '.$r['reason'].' '.($r['creator']['name_bn'] ?? '').' '.($r['creator']['name_en'] ?? '')), mb_strtolower($s))
+            $f = $f->filter(fn ($r) => str_contains(mb_strtolower($r['season'].' '.$r['irrigation_type'].' '.$r['lift'].' '.$r['land_type'].' '.$r['irrigation_code'].' '.$r['reason'].' '.($r['creator']['name_bn'] ?? '').' '.($r['creator']['name_en'] ?? '')), mb_strtolower($s))
                 || (string) $r['rate'] === $en || (string) $r['old_rate'] === $en);
         }
         // newest change first for history; list pages sort themselves
         $f = $request->query('sort') === 'history' ? $f->sortByDesc(fn ($r) => (string) $r['created_at'].sprintf('%09d', $r['id']))->values()
-            : $f->sortBy([['season_id', 'desc'], ['irrigation_type', 'asc'], ['land_type', 'asc'], ['effective_from', 'desc']])->values();
+            : $f->sortBy([['season_id', 'desc'], ['irrigation_type', 'asc'], ['lift_order', 'asc'], ['land_type', 'asc'], ['effective_from', 'desc']])->values();
 
         $perPage = $this->perPage($request);
         $page = max(1, $request->integer('page', 1));
@@ -156,7 +163,7 @@ class IrrigationRateController extends Controller
                 'created' => $out->where('change', 'created')->count(),
                 'updated' => $out->where('change', 'updated')->count(),
                 'rejected' => $out->where('status', 'rejected')->count(),
-                'combinations' => $out->where('state', 'active')->map(fn ($r) => $r['irrigation_type_id'].'-'.$r['land_type_id'])->unique()->count(),
+                'combinations' => $out->where('state', 'active')->map(fn ($r) => IrrigationService::comboKey($r['irrigation_type_id'], $r['lift_id'], $r['land_type_id']))->unique()->count(),
                 'sources' => IrrigationType::where('is_active', true)->count(),
             ],
             'states' => Tr::map(self::STATES),
@@ -170,6 +177,7 @@ class IrrigationRateController extends Controller
         $data = $request->validate([
             'season_id' => ['required', 'exists:seasons,id'],
             'irrigation_type_id' => ['required', Rule::exists('irrigation_types', 'id')],
+            'lift_id' => ['nullable', Rule::exists('irrigation_lifts', 'id')],
             'land_type_id' => ['nullable', Rule::exists('land_types', 'id')],
             'rate' => ['required', 'numeric', 'gt:0', 'max:99999999'],
             'effective_from' => ['required', 'date'],
@@ -204,6 +212,7 @@ class IrrigationRateController extends Controller
             'effective_from' => ['required', 'date'],
             'rows' => ['required', 'array', 'min:1', 'max:200'],
             'rows.*.irrigation_type_id' => ['required', 'integer'],
+            'rows.*.lift_id' => ['nullable', 'integer'],
             'rows.*.land_type_id' => ['nullable', 'integer'],
             'rows.*.rate' => ['required', 'numeric', 'gt:0', 'max:99999999'],
         ]);

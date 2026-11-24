@@ -104,11 +104,12 @@ class IrrigationReportController extends Controller
         $q = DB::table('invoices')->leftJoinSub($collected, 'c', 'c.invoice_id', '=', 'invoices.id')
             ->leftJoin('seasons', 'seasons.id', '=', 'invoices.season_id')->leftJoin('farmers', 'farmers.id', '=', 'invoices.farmer_id')
             ->leftJoin('land_types', 'land_types.id', '=', 'invoices.land_type_id')->leftJoin('irrigation_types', 'irrigation_types.id', '=', 'invoices.irrigation_type_id')
+            ->leftJoin('irrigation_lifts', 'irrigation_lifts.id', '=', 'invoices.lift_id')
             ->where('invoices.status', '!=', 'cancelled')
             ->selectRaw("invoices.id, invoices.invoice_no, invoices.invoice_date, invoices.amount as expected, COALESCE(c.got, 0) as collected, invoices.snapshot,
-                invoices.farmer_id, farmers.name_bn, farmers.name_en, farmers.mobile, seasons.name_bn as season, land_types.name_bn as land_type, irrigation_types.name_bn as irrigation_type,
+                invoices.farmer_id, farmers.name_bn, farmers.name_en, farmers.mobile, seasons.name_bn as season, land_types.name_bn as land_type, irrigation_types.name_bn as irrigation_type, irrigation_lifts.name_bn as lift,
                 case when COALESCE(c.got, 0) > invoices.amount then 'over' when COALESCE(c.got, 0) < invoices.amount then 'under' else 'matched' end as state");
-        foreach (['season_id', 'land_type_id', 'irrigation_type_id'] as $f) {
+        foreach (['season_id', 'land_type_id', 'irrigation_type_id', 'lift_id'] as $f) {
             if ($request->filled($f)) {
                 $q->where("invoices.$f", $request->integer($f));
             }
@@ -132,7 +133,7 @@ class IrrigationReportController extends Controller
                 'id' => $r->id, 'invoice_no' => $r->invoice_no, 'invoice_date' => $r->invoice_date, 'farmer_id' => $r->farmer_id,
                 'name_bn' => $r->name_bn, 'name_en' => $r->name_en, 'mobile' => $r->mobile, 'season' => $r->season,
                 'dag_no' => $snap['dag_no'] ?? null, 'land_code' => $snap['land_code'] ?? null,
-                'land_type' => Tr::label($r->land_type), 'irrigation_type' => Tr::label($r->irrigation_type),
+                'land_type' => Tr::label($r->land_type), 'irrigation_type' => Tr::label($r->irrigation_type), 'lift' => $r->lift,
                 'expected' => round((float) $r->expected, 2), 'collected' => round((float) $r->collected, 2),
                 'difference' => round((float) $r->collected - (float) $r->expected, 2), 'state' => $r->state,
             ];
@@ -217,10 +218,11 @@ class IrrigationReportController extends Controller
     public function rateAudit(Request $request): JsonResponse
     {
         $season = Season::findOrFail($request->query('season_id'));
+        $this->irrigation->forgetLiftCache();
 
-        $invoiceIssues = Invoice::where('season_id', $season->id)->where('status', '!=', 'cancelled')->orderBy('id')->get()
+        $invoiceIssues =Invoice::with('land:id,lift_id')->where('season_id', $season->id)->where('status', '!=', 'cancelled')->orderBy('id')->get()
             ->map(function (Invoice $i) use ($season) {
-                $rate = $this->irrigation->rateFor($season->id, $i->land_type_id, $i->irrigation_type_id, $i->invoice_date->toDateString());
+                $rate = $this->irrigation->rateFor($season->id, $i->land_type_id, $i->irrigation_type_id, $i->invoice_date->toDateString(), $i->lift_id ?? $i->land?->lift_id);
                 $expected = $rate ? round((float) $i->area_decimal * (float) $rate->rate, 2) : null;
                 $problems = [];
                 if (! $rate) {
@@ -237,26 +239,31 @@ class IrrigationReportController extends Controller
 
                 return $problems ? [
                     'id' => $i->id, 'invoice_no' => $i->invoice_no, 'name' => $i->snapshot['cultivator']['name_bn'] ?? '', 'dag_no' => $i->snapshot['dag_no'] ?? '',
-                    'area_decimal' => (float) $i->area_decimal, 'rate' => (float) $i->rate, 'amount' => (float) $i->amount,
+                    'area_decimal' => (float) $i->area_decimal, 'rate' => (float) $i->rate, 'amount' => (float) $i->amount, 'lift' => $i->snapshot['lift'] ?? null,
                     'current_rate' => $rate ? (float) $rate->rate : null, 'expected' => $expected, 'problems' => $problems,
                 ] : null;
             })->filter()->values();
 
         // Cultivated, cultivator-assigned lands the season can't bill because no rate covers them.
         $combos = Land::where('status', 'cultivated')->whereHas('cultivation')->whereNotNull('irrigation_type_id')
-            ->groupBy('land_type_id', 'irrigation_type_id')->selectRaw('land_type_id, irrigation_type_id, COUNT(*) c, SUM(area_decimal) a')->get();
+            ->groupBy('land_type_id', 'irrigation_type_id', 'lift_id')->selectRaw('land_type_id, irrigation_type_id, lift_id, COUNT(*) c, SUM(area_decimal) a')->get();
         $today = min(now()->toDateString(), $season->end_date->toDateString());
-        $noRate = $combos->filter(fn ($c) => ! $this->irrigation->rateFor($season->id, $c->land_type_id, $c->irrigation_type_id, max($today, $season->start_date->toDateString())))
+        $on = max($today, $season->start_date->toDateString());
+        // a plot with no lift on a source priced by lift is counted below, not as "no rate"
+        $noRate = $combos->filter(fn ($c) => ! ($this->irrigation->liftsInUse($season->id, $c->irrigation_type_id, $on) && ! $c->lift_id)
+                && ! $this->irrigation->rateFor($season->id, $c->land_type_id, $c->irrigation_type_id, $on, $c->lift_id))
             ->map(fn ($c) => [
                 'land_type' => Tr::label(DB::table('land_types')->where('id', $c->land_type_id)->value('name_bn')),
                 'irrigation_type' => Tr::label(DB::table('irrigation_types')->where('id', $c->irrigation_type_id)->value('name_bn')),
+                'lift' => $c->lift_id ? DB::table('irrigation_lifts')->where('id', $c->lift_id)->value('name_bn') : null,
                 'lands' => (int) $c->c, 'area' => round((float) $c->a, 4),
             ])->values();
         $noType = Land::where('status', 'cultivated')->whereHas('cultivation')->whereNull('irrigation_type_id')->count();
+        $noLift = $combos->filter(fn ($c) => ! $c->lift_id && $this->irrigation->liftsInUse($season->id, $c->irrigation_type_id, $on))->sum('c');
 
-        $changes = IrrigationRate::where('season_id', $season->id)->with(['irrigationType:id,name_bn', 'landType:id,name_bn', 'creator:id,name_bn,name_en', 'approver:id,name_bn,name_en'])
+        $changes = IrrigationRate::where('season_id', $season->id)->with(['irrigationType:id,name_bn', 'landType:id,name_bn', 'lift:id,name_bn', 'creator:id,name_bn,name_en', 'approver:id,name_bn,name_en'])
             ->orderByDesc('id')->get()->map(fn ($r) => $r->toArray() + [
-                'irrigation_type_name' => Tr::label($r->irrigationType?->name_bn), 'land_type_name' => Tr::label($r->landType?->name_bn),
+                'irrigation_type_name' => Tr::label($r->irrigationType?->name_bn), 'land_type_name' => Tr::label($r->landType?->name_bn), 'lift_name' => $r->lift?->name_bn,
                 'invoices' => Invoice::where('rate_id', $r->id)->where('status', '!=', 'cancelled')->count(),
             ]);
 
@@ -265,6 +272,7 @@ class IrrigationReportController extends Controller
             'invoice_issues' => $invoiceIssues,
             'no_rate' => $noRate,
             'lands_without_irrigation_type' => $noType,
+            'lands_without_lift' => (int) $noLift,
             'changes' => $changes,
             'problems' => ([
                 'no_rate_now' => __('এখন কোনো অনুমোদিত রেট নেই'),

@@ -10,7 +10,7 @@ import { money } from '../../lib/accounting'
 import { digits, fmtDate } from '../../lib/format'
 import { useInvoiceMeta, type RatePage, type RateRow } from '../../lib/irrigation'
 import { useLandMeta } from '../../lib/land'
-import { t as tx } from '../../lib/i18n'
+import { nameOf, t as tx } from '../../lib/i18n'
 import { DashIcon } from '../dashboard/DashIcons'
 import '../lands/land-form.css'
 import './invoices.css'
@@ -35,6 +35,7 @@ export default function RateProposePage() {
   const seasonId: number | undefined = Form.useWatch('season_id', form)
   const typeId: number | undefined = Form.useWatch('irrigation_type_id', form)
   const landTypeId: number | null | undefined = Form.useWatch('land_type_id', form)
+  const liftId: number | null | undefined = Form.useWatch('lift_id', form)
   const rate: number | undefined = Form.useWatch('rate', form)
   const from: Dayjs | undefined = Form.useWatch('effective_from', form)
 
@@ -46,7 +47,7 @@ export default function RateProposePage() {
   })
   if (!meta || !landMeta) return <Spin />
 
-  const combo = (history.data?.data ?? []).filter((r) => (r.land_type_id ?? null) === (landTypeId ?? null))
+  const combo = (history.data?.data ?? []).filter((r) => (r.land_type_id ?? null) === (landTypeId ?? null) && (r.lift_id ?? null) === (liftId ?? null))
   const current = combo.find((r) => r.season_id === seasonId && r.state === 'active') ?? null
   const pendingHere = combo.find((r) => r.season_id === seasonId && r.state === 'pending')
   const season = meta.seasons.find((x) => x.id === seasonId)
@@ -61,6 +62,7 @@ export default function RateProposePage() {
       await api.post('/irrigation-rates', {
         season_id: v.season_id,
         irrigation_type_id: v.irrigation_type_id,
+        lift_id: v.lift_id ?? null,
         land_type_id: v.land_type_id ?? null,
         rate: v.rate,
         effective_from: (v.effective_from as Dayjs).format('YYYY-MM-DD'),
@@ -98,6 +100,7 @@ export default function RateProposePage() {
             season_id: num(sp.get('season_id')) ?? meta.seasons.find((x) => x.status === 'open')?.id,
             irrigation_type_id: num(sp.get('irrigation_type_id')),
             land_type_id: num(sp.get('land_type_id')) ?? null,
+            lift_id: num(sp.get('lift_id')) ?? null,
             effective_from: dayjs(),
             reason_kind: REASONS[0],
           }}
@@ -114,6 +117,9 @@ export default function RateProposePage() {
                 </Form.Item>
                 <Form.Item name="irrigation_type_id" label={tx('সেচের উৎস')} rules={[{ required: true, message: tx('সেচের উৎস বাছাই করুন') }]}>
                   <Select prefix={<DashIcon name="drop" size={16} color="#1769e0" stroke={2.2} />} placeholder={tx('সেচের উৎস বাছাই করুন')} options={meta.irrigation_types.map((t) => ({ value: t.id, label: t.name_bn }))} />
+                </Form.Item>
+                <Form.Item name="lift_id" label={tx('লিফট')} extra={tx('যে লিফটের জমির রেট; সব লিফটে একই হলে "সব লিফট"')}>
+                  <Select options={[{ value: null, label: tx('সব লিফট') }, ...(meta.lifts ?? []).map((l) => ({ value: l.id, label: nameOf(l) }))]} />
                 </Form.Item>
                 <Form.Item name="land_type_id" label={tx('জমির ধরন')}>
                   <Select prefix={<DashIcon name="sprout" size={16} color="#1f9d55" stroke={2.2} />} options={[{ value: null, label: tx('সব ধরনের জমি') }, ...landMeta.land_types.map((t) => ({ value: t.id, label: t.name_bn }))]} />

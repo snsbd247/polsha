@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { keepPreviousData, useQuery } from '@tanstack/react-query'
+import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query'
 import { App, Button, Checkbox, Dropdown, Input, Select, Table, Tag, Tooltip } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { AppstoreFilled, DownloadOutlined, DownOutlined, EditOutlined, EyeFilled, MoreOutlined, PlusOutlined, PrinterOutlined, SearchOutlined, UploadOutlined } from '@ant-design/icons'
@@ -25,6 +25,7 @@ type Filters = {
   upazila_id?: number
   district_id?: number
   land_type_id?: number
+  lift_id?: number | 'none'
   ownership?: string
   status?: string
   cultivation?: string
@@ -49,6 +50,7 @@ export default function LandListPage() {
     search: urlSearch,
     mouza_id: sp.get('mouza_id') ? Number(sp.get('mouza_id')) : undefined,
     land_type_id: sp.get('land_type_id') ? Number(sp.get('land_type_id')) : undefined,
+    lift_id: sp.get('lift_id') === 'none' ? 'none' : sp.get('lift_id') ? Number(sp.get('lift_id')) : undefined,
   }
   const [page, setPage] = useState(1)
   const [perPage, setPerPage] = useState(10)
@@ -56,6 +58,9 @@ export default function LandListPage() {
   const [filters, setFilters] = useState<Filters>(initial)
   const [selected, setSelected] = useState<number[]>([])
   const [hidden, setHidden] = useState<string[]>([])
+  const [assignLift, setAssignLift] = useState<number | null>(null)
+  const [assigning, setAssigning] = useState(false)
+  const queryClient = useQueryClient()
   // the top-bar search opens this list with ?search=
   useEffect(() => {
     setDraft((d) => ({ ...d, search: urlSearch }))
@@ -92,6 +97,21 @@ export default function LandListPage() {
       message.error(errorMessage(e)),
     )
 
+  // put the ticked plots on one lift (or clear it); each change lands in the plot's history
+  const applyLift = async () => {
+    setAssigning(true)
+    try {
+      const r = await api.post<{ message: string }>('/irrigation-lifts/assign', { land_ids: selected, lift_id: assignLift })
+      message.success(r.data.message)
+      setSelected([])
+      queryClient.invalidateQueries({ queryKey: ['lands'] })
+      queryClient.invalidateQueries({ queryKey: ['irrigation-lifts'] })
+    } catch (e) {
+      message.error(errorMessage(e))
+    } finally {
+      setAssigning(false)
+    }
+  }
   const typeTone = (name: string | null) => {
     const i = meta?.land_types.findIndex((t) => t.name_bn === name) ?? -1
     return i < 0 ? 'll-gray' : TYPE_TONES[i % TYPE_TONES.length]
@@ -133,6 +153,7 @@ export default function LandListPage() {
     { key: 'khatian', title: tx('খতিয়ান নং'), dataIndex: 'khatian_no', render: (v, l) => <Tooltip title={meta?.surveys[l.survey]}>{digits(v)}</Tooltip> },
     { key: 'dag', title: tx('দাগ নং'), dataIndex: 'dag_no', render: (v) => digits(v) },
     { key: 'type', title: tx('জমির ধরন'), dataIndex: 'land_type', render: (v) => (v ? <Tag className={`fl-tag ll-type ${typeTone(v)}`}>{v}</Tag> : '—') },
+    { key: 'lift', title: tx('লিফট'), dataIndex: 'lift', render: (v) => v || <span className="ll-nolift">{tx('বসানো নেই')}</span> },
     { key: 'area', title: tx('মোট পরিমাণ (একর)'), dataIndex: 'area_decimal', render: (v) => acres(v) },
     {
       key: 'cultivator',
@@ -249,6 +270,13 @@ export default function LandListPage() {
           <Field label={tx('জমির ধরন')}>
             <Select value={draft.land_type_id ?? ''} options={[...all(tx('সকল')), ...(meta?.land_types ?? []).map((t) => ({ value: t.id, label: t.name_bn }))]} onChange={(v) => set({ land_type_id: v === '' ? undefined : Number(v) })} />
           </Field>
+          <Field label={tx('লিফট')}>
+            <Select
+              value={draft.lift_id ?? ''}
+              options={[...all(tx('সকল')), ...(meta?.lifts ?? []).map((l) => ({ value: l.id as number | string, label: nameOf(l) })), { value: 'none', label: tx('লিফট বসানো নেই') }]}
+              onChange={(v) => set({ lift_id: v === '' ? undefined : v === 'none' ? 'none' : Number(v) })}
+            />
+          </Field>
           <span className="ll-break" />
           <Field label={tx('মালিকানার ধরন')}>
             <Select
@@ -281,6 +309,21 @@ export default function LandListPage() {
       tableTitle={tx('জমির তালিকা ({{p0}})', { p0: n0(total) })}
       tableTools={
         <>
+          {can('land.edit') && selected.length > 0 && (
+            <span className="ll-assign">
+              <span>{tx('বাছাই করা {{p0}}টি জমিতে লিফট:', { p0: n0(selected.length) })}</span>
+              <Select
+                size="middle"
+                style={{ minWidth: 150 }}
+                value={assignLift ?? ''}
+                options={[{ value: '', label: tx('লিফট সরান') }, ...(meta?.lifts ?? []).map((l) => ({ value: l.id as number | string, label: nameOf(l) }))]}
+                onChange={(v) => setAssignLift(v === '' ? null : Number(v))}
+              />
+              <Button type="primary" loading={assigning} onClick={applyLift}>
+                {tx('বসান')}
+              </Button>
+            </span>
+          )}
           <Dropdown
             trigger={['click']}
             placement="bottomRight"

@@ -3,6 +3,8 @@ import { api } from './api'
 import { lang, t as tx } from './i18n'
 
 export type Named = { id: number; name_bn: string }
+/** A pumping stage (1st, 2nd, 3rd lift …) — the lift a plot sits on sets its rate. */
+export type Lift = { id: number; code: string; name_bn: string; name_en: string | null }
 export type Person = { id: number; farmer_code: string; name_bn: string; name_en: string | null; father_name: string; mobile?: string | null }
 export type Owner = { id: number; farmer_code: string; name_bn: string; name_en: string | null; father_name: string; share_percent: number }
 
@@ -25,12 +27,15 @@ export type Season = {
 export type InvoiceMeta = {
   seasons: (Named & { status: string; start_date: string; end_date: string; due_date: string | null })[]
   irrigation_types: Named[]
+  lifts: Lift[]
   statuses: Record<string, string>
   cultivation_types: Record<string, string>
   skip_reasons: Record<string, string>
 }
 
 export type InvoiceRow = {
+  lift?: string | null
+  lift_en?: string | null
   id: number
   invoice_no: string
   invoice_date: string
@@ -175,6 +180,8 @@ export type RateRow = {
   irrigation_type_id: number
   irrigation_type: string | null
   irrigation_code: string | null
+  lift_id: number | null
+  lift: string | null
   land_type_id: number | null
   land_type: string
   rate: number

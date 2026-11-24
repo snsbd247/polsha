@@ -274,7 +274,7 @@ class LandActivityController extends Controller
                     $detail = __('জমির তথ্য পরিবর্তন');
                     $title = __('জমির তথ্য পরিবর্তন হয়েছে।');
                     $labels = ['khatian_no' => 'খতিয়ান', 'dag_no' => 'দাগ', 'status' => 'অবস্থা', 'remarks' => 'মন্তব্য', 'land_type_id' => 'জমির ধরন',
-                        'irrigation_type_id' => 'সেচের ধরন', 'mouza_id' => 'মৌজা', 'village_id' => 'গ্রাম', 'survey' => 'জরিপ', 'irrigable_decimal' => 'সেচযোগ্য পরিমাণ',
+                        'irrigation_type_id' => 'সেচের ধরন', 'lift_id' => 'লিফট', 'mouza_id' => 'মৌজা', 'village_id' => 'গ্রাম', 'survey' => 'জরিপ', 'irrigable_decimal' => 'সেচযোগ্য পরিমাণ',
                         'area_decimal' => 'পরিমাণ', 'latitude' => 'অবস্থান', 'longitude' => 'অবস্থান', 'location_note' => 'অবস্থান'];
                     if (array_key_exists('area_decimal', $new) && array_key_exists('area_decimal', $old)) {
                         $detail2 = __('(পরিমাণ: :p0 → :p1 একর)', ['p0' => $acres($old['area_decimal']), 'p1' => $acres($new['area_decimal'])]);
@@ -289,6 +289,7 @@ class LandActivityController extends Controller
                             'mouza_id' => DB::table('mouzas')->where('id', $v)->value('name_bn'),
                             'village_id' => DB::table('villages')->where('id', $v)->value('name_bn'),
                             'irrigation_type_id' => DB::table('irrigation_types')->where('id', $v)->value('name_bn'),
+                            'lift_id' => DB::table('irrigation_lifts')->where('id', $v)->value('name_bn'),
                             default => $v,
                         };
                         $old_value = array_key_exists($k, $old) && in_array($k, ['area_decimal', 'irrigable_decimal'], true) ? $acres($old[$k]).' → ' : '';

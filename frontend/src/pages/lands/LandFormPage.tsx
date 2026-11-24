@@ -256,6 +256,7 @@ function LandForm({ id, existing }: { id?: string; existing?: LandDetail }) {
       irrigable_area: v.irrigable_area ?? null,
       land_type_id: v.land_type_id,
       irrigation_type_id: v.irrigation_type_id ?? null,
+      lift_id: v.lift_id ?? null,
       status: v.status,
       remarks: v.remarks ?? null,
       village_id: v.village_id ?? null,
@@ -400,6 +401,9 @@ function LandForm({ id, existing }: { id?: string; existing?: LandDetail }) {
                 </Form.Item>
                 <Form.Item name="irrigation_type_id" label={tx('সেচের ধরন')} extra={tx('সেচের রেট এই ধরন অনুযায়ী ঠিক হয়')}>
                   <Select allowClear placeholder={tx('বাছাই করুন')} options={meta?.irrigation_types.map((t) => ({ value: t.id, label: t.name_bn }))} />
+                </Form.Item>
+                <Form.Item name="lift_id" label={tx('লিফট')} extra={tx('পানি কোন লিফটে (ধাপে) জমিতে আসে — রেট এই লিফট অনুযায়ী')}>
+                  <Select allowClear placeholder={tx('বাছাই করুন')} options={meta?.lifts.map((l) => ({ value: l.id, label: nameOf(l) }))} />
                 </Form.Item>
               </div>
             </Section>

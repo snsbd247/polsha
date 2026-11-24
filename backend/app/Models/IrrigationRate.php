@@ -14,7 +14,7 @@ class IrrigationRate extends Model
     protected string $auditModule = 'irrigation';
 
     protected $fillable = [
-        'season_id', 'land_type_id', 'irrigation_type_id', 'rate', 'effective_from', 'status', 'reason',
+        'season_id', 'land_type_id', 'irrigation_type_id', 'lift_id', 'rate', 'effective_from', 'status', 'reason',
         'approval_request_id', 'created_by', 'approved_by', 'approved_at',
     ];
 
@@ -38,6 +38,11 @@ class IrrigationRate extends Model
     public function irrigationType()
     {
         return $this->belongsTo(IrrigationType::class);
+    }
+
+    public function lift()
+    {
+        return $this->belongsTo(IrrigationLift::class, 'lift_id');
     }
 
     public function creator()

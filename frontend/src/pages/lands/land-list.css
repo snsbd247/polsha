@@ -119,3 +119,7 @@
 .bg-table .ant-table-tbody > tr > td {
   white-space: nowrap;
 }
+
+/* lift: plots without one stand out; bulk "put on a lift" for the ticked rows */
+.ll-nolift { color: #e5383b; font-size: 12px; }
+.ll-assign { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-right: 8px; padding: 4px 10px; border-radius: 8px; background: #e8f1fd; font-size: 13px; }

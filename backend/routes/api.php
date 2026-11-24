@@ -26,6 +26,7 @@ use App\Http\Controllers\Api\HouseholdController;
 use App\Http\Controllers\Api\ImportController;
 use App\Http\Controllers\Api\IntegrityScanController;
 use App\Http\Controllers\Api\InvoiceController;
+use App\Http\Controllers\Api\IrrigationLiftController;
 use App\Http\Controllers\Api\IrrigationRateController;
 use App\Http\Controllers\Api\IrrigationReportController;
 use App\Http\Controllers\Api\IrrigationTypeController;
@@ -370,6 +371,11 @@ Route::middleware(['auth:sanctum', 'usable', 'ready'])->group(function () {
     Route::post('irrigation-types', [IrrigationTypeController::class, 'store'])->middleware('permission:settings.admin');
     Route::put('irrigation-types/{irrigationType}', [IrrigationTypeController::class, 'update'])->middleware('permission:settings.admin');
     Route::delete('irrigation-types/{irrigationType}', [IrrigationTypeController::class, 'destroy'])->middleware('permission:settings.admin');
+    Route::get('irrigation-lifts', [IrrigationLiftController::class, 'index']);
+    Route::post('irrigation-lifts', [IrrigationLiftController::class, 'store'])->middleware('permission:settings.admin');
+    Route::put('irrigation-lifts/{lift}', [IrrigationLiftController::class, 'update'])->middleware('permission:settings.admin');
+    Route::delete('irrigation-lifts/{lift}', [IrrigationLiftController::class, 'destroy'])->middleware('permission:settings.admin');
+    Route::post('irrigation-lifts/assign', [IrrigationLiftController::class, 'assign'])->middleware('permission:land.edit');
     Route::middleware('permission:irrigation.view')->group(function () {
         Route::get('seasons', [SeasonController::class, 'index']);
         Route::get('seasons/{season}', [SeasonController::class, 'show'])->whereNumber('season');

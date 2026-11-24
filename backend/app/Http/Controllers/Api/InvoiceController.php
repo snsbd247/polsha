@@ -25,6 +25,7 @@ class InvoiceController extends Controller
             'seasons' => Season::orderByDesc('start_date')->get(['id', 'name_bn', 'crop', 'status', 'start_date', 'end_date', 'due_date']),
             'irrigation_types' => IrrigationType::where('is_active', true)->orderBy('sort_order')->get(['id', 'name_bn'])
                 ->map(fn ($t) => ['id' => $t->id, 'name_bn' => __($t->name_bn)]),
+            'lifts' => \App\Models\IrrigationLift::where('is_active', true)->orderBy('sort_order')->orderBy('id')->get(['id', 'code', 'name_bn', 'name_en']),
             'statuses' => Tr::map(Invoice::STATUSES),
             'cultivation_types' => Tr::map(Land::CULTIVATION_TYPES),
             'skip_reasons' => Tr::map(IrrigationService::SKIP_REASONS),
@@ -95,6 +96,7 @@ class InvoiceController extends Controller
     public function quote(Request $request): JsonResponse
     {
         $data = $this->validatedSingle($request);
+        $this->irrigation->forgetLiftCache();
         $c = $this->irrigation->candidate(Land::findOrFail($data['land_id']), Season::findOrFail($data['season_id']), $data['invoice_date'],
             $data['irrigation_type_id'] ?? null, isset($data['area_decimal']) ? (float) $data['area_decimal'] : null);
 
@@ -122,6 +124,7 @@ class InvoiceController extends Controller
                 'dag_no' => $c['snapshot']['dag_no'], 'khatian_no' => $c['snapshot']['khatian_no'], 'cultivator' => $c['snapshot']['cultivator'], 'farmer_id' => $c['farmer_id'],
                 'owners' => $c['snapshot']['owners'], 'cultivation_type' => $c['cultivation_type'],
                 'land_type' => Tr::label($c['snapshot']['land_type']), 'irrigation_type' => Tr::label($c['snapshot']['irrigation_type']),
+                'lift_id' => $c['lift_id'], 'lift' => $c['snapshot']['lift'] ?? null, 'lift_en' => $c['snapshot']['lift_en'] ?? null,
                 'area_decimal' => $c['area_decimal'], 'rate' => $c['rate'], 'amount' => $c['amount'],
             ])->values(),
         ]);
@@ -166,6 +169,12 @@ class InvoiceController extends Controller
             'mouza_id' => ['nullable', 'exists:mouzas,id'],
             'invoice_date' => ['required', 'date', 'before_or_equal:today'],
             'irrigation_type_id' => ['nullable', 'exists:irrigation_types,id'],
+            // a lift id, or 'none' for plots that have no lift yet
+            'lift_id' => ['nullable', function ($attr, $v, $fail) {
+                if ($v !== 'none' && ! \App\Models\IrrigationLift::whereKey((int) $v)->exists()) {
+                    $fail(__('লিফট পাওয়া যায়নি।'));
+                }
+            }],
             'land_ids' => ['nullable', 'array', 'max:5000'],
             'land_ids.*' => ['integer'],
         ]);
@@ -173,13 +182,13 @@ class InvoiceController extends Controller
 
     private function only(array $data): array
     {
-        return ['irrigation_type_id' => $data['irrigation_type_id'] ?? null, 'land_ids' => $data['land_ids'] ?? null];
+        return ['irrigation_type_id' => $data['irrigation_type_id'] ?? null, 'lift_id' => $data['lift_id'] ?? null, 'land_ids' => $data['land_ids'] ?? null];
     }
 
     private function filtered(Request $request): Builder
     {
         $q = Invoice::query()->with(['season:id,name_bn', 'land:id,mouza_id', 'farmer:id,photo']);
-        foreach (['season_id', 'status', 'farmer_id', 'land_id', 'batch_id', 'irrigation_type_id', 'land_type_id', 'cultivation_type'] as $f) {
+        foreach (['season_id', 'status', 'farmer_id', 'land_id', 'batch_id', 'irrigation_type_id', 'lift_id', 'land_type_id', 'cultivation_type'] as $f) {
             if ($request->filled($f)) {
                 $q->where($f, $request->query($f));
             }
@@ -233,6 +242,8 @@ class InvoiceController extends Controller
             'khatian_no' => $s['khatian_no'] ?? null,
             'land_type' => Tr::label($s['land_type'] ?? null),
             'irrigation_type' => Tr::label($s['irrigation_type'] ?? null),
+            'lift' => $s['lift'] ?? null,
+            'lift_en' => $s['lift_en'] ?? null,
             'area_decimal' => (float) $i->area_decimal,
             'rate' => (float) $i->rate,
             'charges' => $i->charges ?? [],

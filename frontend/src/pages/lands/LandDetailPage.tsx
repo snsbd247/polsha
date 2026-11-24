@@ -702,7 +702,7 @@ export default function LandDetailPage() {
       children: (
         <div className="lp-card lp-block">
           <SectionTitle icon={<span className="lp-ico lp-ico-area" />}>
-            {tx('সেচ')} · {land.irrigation_type || tx('সেচের ধরন দেওয়া নেই')}
+            {tx('সেচ')} · {land.irrigation_type || tx('সেচের ধরন দেওয়া নেই')} · {land.lift || tx('লিফট বসানো নেই')}
             {land.irrigation.season && <span className="lp-sub"> — {tx('সর্বশেষ মৌসুম: {{p0}}, সেচকৃত {{p1}} একর', { p0: land.irrigation.season, p1: acres(irrigated) })}</span>}
           </SectionTitle>
           <Table<Invoice>

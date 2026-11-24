@@ -18,8 +18,8 @@ import '../settings/land-types.css'
 import './rates.css'
 
 type InvoiceIssue = { id: number; invoice_no: string; name: string; dag_no: string; area_decimal: number; rate: number; amount: number; current_rate: number | null; expected: number | null; problems: string[] }
-type NoRate = { land_type: string | null; irrigation_type: string | null; lands: number; area: number }
-type Checks = { invoice_issues: InvoiceIssue[]; no_rate: NoRate[]; lands_without_irrigation_type: number; problems: Record<string, string> }
+type NoRate = { land_type: string | null; irrigation_type: string | null; lift: string | null; lands: number; area: number }
+type Checks = { invoice_issues: InvoiceIssue[]; no_rate: NoRate[]; lands_without_irrigation_type: number; lands_without_lift: number; problems: Record<string, string> }
 type Filters = { search?: string; season_id?: number; land_type_id?: number; irrigation_type_id?: number; kind?: string; from?: string; to?: string }
 
 // what a rate row did, as the design names it: created, updated, no change — or rejected / waiting
@@ -71,7 +71,7 @@ export default function RateAuditPage({ tabs }: { tabs?: ReactNode } = {}) {
     queryFn: async () => (await api.get<Checks>('/irrigation/rate-audit', { params: { season_id: checkSeason } })).data,
     enabled: !!checkSeason,
   })
-  const issueCount = checks.data ? checks.data.invoice_issues.length + checks.data.no_rate.length + (checks.data.lands_without_irrigation_type ? 1 : 0) : 0
+  const issueCount = checks.data ? checks.data.invoice_issues.length + checks.data.no_rate.length + (checks.data.lands_without_irrigation_type ? 1 : 0) + (checks.data.lands_without_lift ? 1 : 0) : 0
 
   const s = data?.summary
   const total = data?.total ?? 0
@@ -215,6 +215,19 @@ export default function RateAuditPage({ tabs }: { tabs?: ReactNode } = {}) {
         {!!checks.data?.lands_without_irrigation_type && (
           <Alert type="warning" showIcon style={{ marginBottom: 12 }} title={tx('{{p0}}টি চাষকৃত জমিতে সেচের ধরন দেওয়া নেই — এগুলোর ইনভয়েস হবে না।', { p0: digits(checks.data.lands_without_irrigation_type) })} />
         )}
+        {!!checks.data?.lands_without_lift && (
+          <Alert
+            type="warning"
+            showIcon
+            style={{ marginBottom: 12 }}
+            title={tx('{{p0}}টি চাষকৃত জমিতে লিফট বসানো নেই — এই মৌসুমে লিফটের রেট চালু, তাই এগুলোর বিল হবে না।', { p0: digits(checks.data.lands_without_lift) })}
+            action={
+              <Button size="small" onClick={() => navigate('/lands?lift_id=none')}>
+                {tx('লিফট বসান')}
+              </Button>
+            }
+          />
+        )}
         {!!checks.data?.invoice_issues.length && (
           <Table<InvoiceIssue>
             rowKey="id"
@@ -244,13 +257,14 @@ export default function RateAuditPage({ tabs }: { tabs?: ReactNode } = {}) {
         )}
         {!!checks.data?.no_rate.length && (
           <Table<NoRate>
-            rowKey={(r) => `${r.land_type}-${r.irrigation_type}`}
+            rowKey={(r) => `${r.land_type}-${r.irrigation_type}-${r.lift}`}
             size="small"
             dataSource={checks.data.no_rate}
             pagination={false}
             title={() => tx('রেট নেই এমন জমি')}
             columns={[
               { title: tx('সেচের ধরন'), dataIndex: 'irrigation_type' },
+              { title: tx('লিফট'), dataIndex: 'lift', render: (v) => v || '—' },
               { title: tx('জমির ধরন'), dataIndex: 'land_type', render: (v) => v || tx('সব ধরনের জমি') },
               { title: tx('জমি'), dataIndex: 'lands', align: 'right', render: (v: number) => digits(v) },
             ]}

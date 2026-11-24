@@ -21,7 +21,7 @@ class Land extends Model
     protected string $auditModule = 'land';
 
     protected $fillable = [
-        'land_code', 'mouza_id', 'survey', 'khatian_no', 'dag_no', 'area_decimal', 'land_type_id', 'irrigation_type_id',
+        'land_code', 'mouza_id', 'survey', 'khatian_no', 'dag_no', 'area_decimal', 'land_type_id', 'irrigation_type_id', 'lift_id',
         'status', 'remarks', 'created_by', 'import_batch_id', 'village_id', 'latitude', 'longitude', 'location_note', 'irrigable_decimal',
     ];
 
@@ -40,6 +40,11 @@ class Land extends Model
     public function irrigationType()
     {
         return $this->belongsTo(IrrigationType::class);
+    }
+
+    public function lift()
+    {
+        return $this->belongsTo(IrrigationLift::class, 'lift_id');
     }
 
     public function invoices()

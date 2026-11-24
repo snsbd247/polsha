@@ -1,8 +1,8 @@
 # Database — পল্লী সমবায় সমিতি + কৃষি সেচ ERP (Polsha)
 
-> এই ফাইলটি লোকাল ডাটাবেজ `polsha` (লাইভ `pmpbssl.com`-এর ২৪/১১/২০২৬ তারিখের কপি, সব 56টি migration চালানো) থেকে `information_schema` পড়ে তৈরি। কলাম, টাইপ, ইন্ডেক্স ও Foreign Key হুবহু ডাটাবেজের; "Eloquent সম্পর্ক" অংশ `backend/app/Models`-এর কোড থেকে।
+> এই ফাইলটি লোকাল ডাটাবেজ `polsha` (লাইভ `pmpbssl.com`-এর ২৪/১১/২০২৬ তারিখের কপি, সব 57টি migration চালানো) থেকে `information_schema` পড়ে তৈরি। কলাম, টাইপ, ইন্ডেক্স ও Foreign Key হুবহু ডাটাবেজের; "Eloquent সম্পর্ক" অংশ `backend/app/Models`-এর কোড থেকে।
 
-**সংক্ষেপে:** 101 টেবিল · 1196 কলাম · 425 ইন্ডেক্স · 214 Foreign Key · 86 Eloquent মডেল · Engine InnoDB · Charset utf8mb4 · MariaDB 10.11 (লাইভ) / 10.4 (লোকাল XAMPP)
+**সংক্ষেপে:** 102 টেবিল · 1208 কলাম · 431 ইন্ডেক্স · 217 Foreign Key · 87 Eloquent মডেল · Engine InnoDB · Charset utf8mb4 · MariaDB 10.11 (লাইভ) / 10.4 (লোকাল XAMPP)
 
 ## সূচিপত্র
 
@@ -163,7 +163,7 @@ erDiagram
 
 | টেবিল | কলাম | ইন্ডেক্স | FK (বাইরে যায়) | FK (ভেতরে আসে) | মডেল | সারি (২৪/১১) |
 |---|---:|---:|---:|---:|---|---:|
-| [`lands`](#lands) | 21 | 8 | 6 | 6 | Land | 0 |
+| [`lands`](#lands) | 22 | 9 | 7 | 6 | Land | 0 |
 | [`land_types`](#land_types) | 10 | 2 | 0 | 3 | LandType | 6 |
 | [`land_owners`](#land_owners) | 10 | 4 | 3 | 0 | LandOwner | 0 |
 | [`land_cultivations`](#land_cultivations) | 13 | 4 | 3 | 0 | LandCultivation | 0 |
@@ -177,9 +177,10 @@ erDiagram
 |---|---:|---:|---:|---:|---|---:|
 | [`seasons`](#seasons) | 13 | 3 | 1 | 3 | Season | 0 |
 | [`irrigation_types`](#irrigation_types) | 8 | 3 | 0 | 3 | IrrigationType | 4 |
-| [`irrigation_rates`](#irrigation_rates) | 14 | 7 | 6 | 1 | IrrigationRate | 0 |
+| [`irrigation_lifts`](#irrigation_lifts) | 9 | 3 | 0 | 3 | IrrigationLift | 3 |
+| [`irrigation_rates`](#irrigation_rates) | 15 | 8 | 7 | 1 | IrrigationRate | 0 |
 | [`invoice_batches`](#invoice_batches) | 10 | 4 | 3 | 1 | InvoiceBatch | 0 |
-| [`invoices`](#invoices) | 29 | 15 | 11 | 0 | Invoice | 0 |
+| [`invoices`](#invoices) | 30 | 16 | 12 | 0 | Invoice | 0 |
 
 ### রশিদ, পেমেন্ট ও দিন বন্ধ
 
@@ -272,8 +273,8 @@ erDiagram
 
 | টেবিল | কলাম | ইন্ডেক্স | FK (বাইরে যায়) | FK (ভেতরে আসে) | মডেল | সারি (২৪/১১) |
 |---|---:|---:|---:|---:|---|---:|
-| [`migrations`](#migrations) | 3 | 1 | 0 | 0 | — | 56 |
-| [`cache`](#cache) | 3 | 2 | 0 | 0 | — | 0 |
+| [`migrations`](#migrations) | 3 | 1 | 0 | 0 | — | 57 |
+| [`cache`](#cache) | 3 | 2 | 0 | 0 | — | 6 |
 | [`cache_locks`](#cache_locks) | 3 | 2 | 0 | 0 | — | 0 |
 | [`jobs`](#jobs) | 7 | 2 | 0 | 0 | — | 0 |
 | [`job_batches`](#job_batches) | 10 | 1 | 0 | 0 | — | 0 |
@@ -362,6 +363,7 @@ erDiagram
 | `invoices.journal_id` | `journals.id` | RESTRICT | RESTRICT | `invoices_journal_id_foreign` |
 | `invoices.land_id` | `lands.id` | RESTRICT | RESTRICT | `invoices_land_id_foreign` |
 | `invoices.land_type_id` | `land_types.id` | RESTRICT | RESTRICT | `invoices_land_type_id_foreign` |
+| `invoices.lift_id` | `irrigation_lifts.id` | RESTRICT | RESTRICT | `invoices_lift_id_foreign` |
 | `invoices.rate_id` | `irrigation_rates.id` | RESTRICT | RESTRICT | `invoices_rate_id_foreign` |
 | `invoices.season_id` | `seasons.id` | RESTRICT | RESTRICT | `invoices_season_id_foreign` |
 | `invoice_batches.created_by` | `users.id` | RESTRICT | RESTRICT | `invoice_batches_created_by_foreign` |
@@ -372,6 +374,7 @@ erDiagram
 | `irrigation_rates.created_by` | `users.id` | RESTRICT | RESTRICT | `irrigation_rates_created_by_foreign` |
 | `irrigation_rates.irrigation_type_id` | `irrigation_types.id` | RESTRICT | RESTRICT | `irrigation_rates_irrigation_type_id_foreign` |
 | `irrigation_rates.land_type_id` | `land_types.id` | RESTRICT | RESTRICT | `irrigation_rates_land_type_id_foreign` |
+| `irrigation_rates.lift_id` | `irrigation_lifts.id` | RESTRICT | RESTRICT | `irrigation_rates_lift_id_foreign` |
 | `irrigation_rates.season_id` | `seasons.id` | RESTRICT | RESTRICT | `irrigation_rates_season_id_foreign` |
 | `journals.approval_request_id` | `approval_requests.id` | RESTRICT | RESTRICT | `journals_approval_request_id_foreign` |
 | `journals.created_by` | `users.id` | RESTRICT | RESTRICT | `journals_created_by_foreign` |
@@ -386,6 +389,7 @@ erDiagram
 | `lands.import_batch_id` | `import_batches.id` | SET NULL | RESTRICT | `lands_import_batch_id_foreign` |
 | `lands.irrigation_type_id` | `irrigation_types.id` | RESTRICT | RESTRICT | `lands_irrigation_type_id_foreign` |
 | `lands.land_type_id` | `land_types.id` | RESTRICT | RESTRICT | `lands_land_type_id_foreign` |
+| `lands.lift_id` | `irrigation_lifts.id` | RESTRICT | RESTRICT | `lands_lift_id_foreign` |
 | `lands.mouza_id` | `mouzas.id` | RESTRICT | RESTRICT | `lands_mouza_id_foreign` |
 | `lands.village_id` | `villages.id` | SET NULL | RESTRICT | `lands_village_id_foreign` |
 | `land_cultivations.created_by` | `users.id` | RESTRICT | RESTRICT | `land_cultivations_created_by_foreign` |
@@ -1627,6 +1631,7 @@ erDiagram
 | `irrigable_decimal` | `decimal(12,4)` | হ্যাঁ | NULL |  |  |
 | `land_type_id` | `bigint(20) unsigned` | হ্যাঁ | NULL | MUL |  |
 | `irrigation_type_id` | `bigint(20) unsigned` | হ্যাঁ | NULL | MUL |  |
+| `lift_id` | `bigint(20) unsigned` | হ্যাঁ | NULL | MUL |  |
 | `status` | `varchar(20)` | না | `'cultivated'` |  |  |
 | `remarks` | `text` | হ্যাঁ | NULL |  |  |
 | `created_by` | `bigint(20) unsigned` | হ্যাঁ | NULL | MUL |  |
@@ -1645,6 +1650,7 @@ erDiagram
 | `lands_irrigation_type_id_foreign` | INDEX | `irrigation_type_id` |
 | `lands_land_code_unique` | UNIQUE | `land_code` |
 | `lands_land_type_id_foreign` | INDEX | `land_type_id` |
+| `lands_lift_id_foreign` | INDEX | `lift_id` |
 | `lands_mouza_id_survey_khatian_no_dag_no_index` | INDEX | `mouza_id`, `survey`, `khatian_no`, `dag_no` |
 | `lands_village_id_foreign` | INDEX | `village_id` |
 
@@ -1654,12 +1660,13 @@ erDiagram
 - `import_batch_id` → `import_batches.id` (ON DELETE SET NULL)
 - `irrigation_type_id` → `irrigation_types.id` (ON DELETE RESTRICT)
 - `land_type_id` → `land_types.id` (ON DELETE RESTRICT)
+- `lift_id` → `irrigation_lifts.id` (ON DELETE RESTRICT)
 - `mouza_id` → `mouzas.id` (ON DELETE RESTRICT)
 - `village_id` → `villages.id` (ON DELETE SET NULL)
 
 **যে টেবিলগুলো একে নির্দেশ করে:** `invoices.land_id`, `land_cultivations.land_id`, `land_documents.land_id`, `land_notes.land_id`, `land_owners.land_id`, `land_transfers.land_id`
 
-**Eloquent সম্পর্ক:** `mouza()` belongsTo `Mouza` · `landType()` belongsTo `LandType` · `irrigationType()` belongsTo `IrrigationType` · `invoices()` hasMany `Invoice` · `owners()` hasMany `LandOwner` · `ownerHistory()` hasMany `LandOwner` · `cultivation()` hasOne `LandCultivation` · `cultivationHistory()` hasMany `LandCultivation` · `documents()` hasMany `LandDocument` · `notes()` hasMany `LandNote`
+**Eloquent সম্পর্ক:** `mouza()` belongsTo `Mouza` · `landType()` belongsTo `LandType` · `irrigationType()` belongsTo `IrrigationType` · `lift()` belongsTo `IrrigationLift` · `invoices()` hasMany `Invoice` · `owners()` hasMany `LandOwner` · `ownerHistory()` hasMany `LandOwner` · `cultivation()` hasOne `LandCultivation` · `cultivationHistory()` hasMany `LandCultivation` · `documents()` hasMany `LandDocument` · `notes()` hasMany `LandNote`
 
 #### land_types
 
@@ -1931,6 +1938,34 @@ erDiagram
 
 **Eloquent সম্পর্ক:** `lands()` hasMany `Land` · `rates()` hasMany `IrrigationRate`
 
+#### irrigation_lifts
+
+মডেল: `App\Models\IrrigationLift` · সারি (২৪/১১/২০২৬): 3
+
+| কলাম | টাইপ | Null | Default | Key | Extra / মন্তব্য |
+|---|---|---|---|---|---|
+| `id` | `bigint(20) unsigned` | না |  | PK | auto_increment |
+| `code` | `varchar(12)` | না |  | UNI |  |
+| `name_bn` | `varchar(100)` | না |  | UNI |  |
+| `name_en` | `varchar(100)` | হ্যাঁ | NULL |  |  |
+| `description` | `varchar(500)` | হ্যাঁ | NULL |  |  |
+| `is_active` | `tinyint(1)` | না | `1` |  |  |
+| `sort_order` | `int(10) unsigned` | না | `0` |  |  |
+| `created_at` | `timestamp` | হ্যাঁ | NULL |  |  |
+| `updated_at` | `timestamp` | হ্যাঁ | NULL |  |  |
+
+**ইন্ডেক্স**
+
+| নাম | ধরন | কলাম |
+|---|---|---|
+| `PRIMARY` | PRIMARY | `id` |
+| `irrigation_lifts_code_unique` | UNIQUE | `code` |
+| `irrigation_lifts_name_bn_unique` | UNIQUE | `name_bn` |
+
+**যে টেবিলগুলো একে নির্দেশ করে:** `invoices.lift_id`, `irrigation_rates.lift_id`, `lands.lift_id`
+
+**Eloquent সম্পর্ক:** `lands()` hasMany `Land` · `rates()` hasMany `IrrigationRate`
+
 #### irrigation_rates
 
 মডেল: `App\Models\IrrigationRate` · সারি (২৪/১১/২০২৬): 0
@@ -1941,6 +1976,7 @@ erDiagram
 | `season_id` | `bigint(20) unsigned` | না |  | MUL |  |
 | `land_type_id` | `bigint(20) unsigned` | হ্যাঁ | NULL | MUL |  |
 | `irrigation_type_id` | `bigint(20) unsigned` | না |  | MUL |  |
+| `lift_id` | `bigint(20) unsigned` | হ্যাঁ | NULL | MUL |  |
 | `rate` | `decimal(12,4)` | না |  |  |  |
 | `effective_from` | `date` | না |  |  |  |
 | `status` | `varchar(10)` | না | `'pending'` |  |  |
@@ -1962,6 +1998,7 @@ erDiagram
 | `irrigation_rates_created_by_foreign` | INDEX | `created_by` |
 | `irrigation_rates_irrigation_type_id_foreign` | INDEX | `irrigation_type_id` |
 | `irrigation_rates_land_type_id_foreign` | INDEX | `land_type_id` |
+| `irrigation_rates_lift_id_foreign` | INDEX | `lift_id` |
 | `irrigation_rates_lookup` | INDEX | `season_id`, `irrigation_type_id`, `land_type_id`, `status` |
 
 **Foreign Key**
@@ -1971,11 +2008,12 @@ erDiagram
 - `created_by` → `users.id` (ON DELETE RESTRICT)
 - `irrigation_type_id` → `irrigation_types.id` (ON DELETE RESTRICT)
 - `land_type_id` → `land_types.id` (ON DELETE RESTRICT)
+- `lift_id` → `irrigation_lifts.id` (ON DELETE RESTRICT)
 - `season_id` → `seasons.id` (ON DELETE RESTRICT)
 
 **যে টেবিলগুলো একে নির্দেশ করে:** `invoices.rate_id`
 
-**Eloquent সম্পর্ক:** `invoices()` hasMany `Invoice` · `season()` belongsTo `Season` · `landType()` belongsTo `LandType` · `irrigationType()` belongsTo `IrrigationType` · `creator()` belongsTo `User` · `approver()` belongsTo `User`
+**Eloquent সম্পর্ক:** `invoices()` hasMany `Invoice` · `season()` belongsTo `Season` · `landType()` belongsTo `LandType` · `irrigationType()` belongsTo `IrrigationType` · `lift()` belongsTo `IrrigationLift` · `creator()` belongsTo `User` · `approver()` belongsTo `User`
 
 #### invoice_batches
 
@@ -2027,6 +2065,7 @@ erDiagram
 | `cultivation_type` | `varchar(10)` | না |  |  |  |
 | `land_type_id` | `bigint(20) unsigned` | হ্যাঁ | NULL | MUL |  |
 | `irrigation_type_id` | `bigint(20) unsigned` | না |  | MUL |  |
+| `lift_id` | `bigint(20) unsigned` | হ্যাঁ | NULL | MUL |  |
 | `rate_id` | `bigint(20) unsigned` | হ্যাঁ | NULL | MUL |  |
 | `invoice_date` | `date` | না |  | MUL |  |
 | `due_date` | `date` | হ্যাঁ | NULL |  |  |
@@ -2065,6 +2104,7 @@ erDiagram
 | `invoices_journal_id_foreign` | INDEX | `journal_id` |
 | `invoices_land_id_foreign` | INDEX | `land_id` |
 | `invoices_land_type_id_foreign` | INDEX | `land_type_id` |
+| `invoices_lift_id_foreign` | INDEX | `lift_id` |
 | `invoices_rate_id_foreign` | INDEX | `rate_id` |
 | `invoices_season_id_land_id_status_index` | INDEX | `season_id`, `land_id`, `status` |
 | `invoices_status_index` | INDEX | `status` |
@@ -2080,10 +2120,11 @@ erDiagram
 - `journal_id` → `journals.id` (ON DELETE RESTRICT)
 - `land_id` → `lands.id` (ON DELETE RESTRICT)
 - `land_type_id` → `land_types.id` (ON DELETE RESTRICT)
+- `lift_id` → `irrigation_lifts.id` (ON DELETE RESTRICT)
 - `rate_id` → `irrigation_rates.id` (ON DELETE RESTRICT)
 - `season_id` → `seasons.id` (ON DELETE RESTRICT)
 
-**Eloquent সম্পর্ক:** `season()` belongsTo `Season` · `land()` belongsTo `Land` · `farmer()` belongsTo `Farmer` · `irrigationType()` belongsTo `IrrigationType` · `landType()` belongsTo `LandType` · `rateRow()` belongsTo `IrrigationRate` · `batch()` belongsTo `InvoiceBatch` · `journal()` belongsTo `Journal` · `creator()` belongsTo `User` · `receiptItems()` morphMany `ReceiptItem`
+**Eloquent সম্পর্ক:** `season()` belongsTo `Season` · `land()` belongsTo `Land` · `farmer()` belongsTo `Farmer` · `irrigationType()` belongsTo `IrrigationType` · `lift()` belongsTo `IrrigationLift` · `landType()` belongsTo `LandType` · `rateRow()` belongsTo `IrrigationRate` · `batch()` belongsTo `InvoiceBatch` · `journal()` belongsTo `Journal` · `creator()` belongsTo `User` · `receiptItems()` morphMany `ReceiptItem`
 
 ### মডিউল: রশিদ, পেমেন্ট ও দিন বন্ধ
 
@@ -3932,7 +3973,7 @@ erDiagram
 
 #### migrations
 
-সারি (২৪/১১/২০২৬): 56
+সারি (২৪/১১/২০২৬): 57
 
 | কলাম | টাইপ | Null | Default | Key | Extra / মন্তব্য |
 |---|---|---|---|---|---|
@@ -3948,7 +3989,7 @@ erDiagram
 
 #### cache
 
-সারি (২৪/১১/২০২৬): 0
+সারি (২৪/১১/২০২৬): 6
 
 | কলাম | টাইপ | Null | Default | Key | Extra / মন্তব্য |
 |---|---|---|---|---|---|

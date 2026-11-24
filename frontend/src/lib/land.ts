@@ -12,6 +12,7 @@ export type LandMeta = {
   unit_factors: Record<string, number>
   land_types: { id: number; name_bn: string; category: string | null }[]
   irrigation_types: { id: number; name_bn: string }[]
+  lifts: { id: number; code: string; name_bn: string; name_en: string | null }[]
 }
 
 export function useLandMeta() {
@@ -62,6 +63,8 @@ export type LandRow = {
   land_type: string | null
   irrigation_type_id?: number | null
   irrigation_type?: string | null
+  lift_id?: number | null
+  lift?: string | null
   status: string
   owners: OwnerRow[]
   cultivation: CultivationRow | null

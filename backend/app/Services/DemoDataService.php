@@ -104,6 +104,8 @@ class DemoDataService
 
     private array $irrigationTypes = [];
 
+    private array $lifts = [];
+
     private array $landTypes = [];
 
     private int $bankAccountId = 0;
@@ -475,6 +477,7 @@ class DemoDataService
         ($this->log)('এলাকা, মৌজা, মৌসুম, হিসাব ও কৃষক তৈরি হচ্ছে…');
         $this->unit = (float) SettingService::get('share_unit_price', 10) ?: 10.0;
         $this->irrigationTypes = IrrigationType::where('is_active', true)->orderBy('id')->limit(3)->pluck('id')->all();
+        $this->lifts = DB::table('irrigation_lifts')->where('is_active', true)->orderBy('sort_order')->pluck('id')->all();
         $this->landTypes = LandType::where('is_active', true)->orderBy('sort_order')->limit(4)->pluck('id')->all();
 
         $this->area();
@@ -785,7 +788,10 @@ class DemoDataService
                 $this->api('irrigation', 'POST', 'lands', [
                     'mouza_id' => $v['mouza_id'], 'survey' => $this->pick(['RS', 'RS', 'BS', 'SA']), 'khatian_no' => (string) mt_rand(100, 999), 'dag_no' => (string) ($dag += mt_rand(1, 7)),
                     'area' => mt_rand(8, 165), 'area_unit' => 'decimal', 'land_type_id' => $this->pick($this->landTypes),
-                    'irrigation_type_id' => $this->pick($this->irrigationTypes), 'status' => $cultivated ? 'cultivated' : 'fallow',
+                    'irrigation_type_id' => $this->pick($this->irrigationTypes),
+                    // plots sit on a lift; demo rates stay lift-free, so they bill as before
+                    'lift_id' => $this->lifts ? $this->pick($this->lifts) : null,
+                    'status' => $cultivated ? 'cultivated' : 'fallow',
                     'owners' => [['farmer_id' => $id, 'share_percent' => 100]], 'owned_since' => Carbon::create(mt_rand(1995, 2021), mt_rand(1, 12), 1)->toDateString(),
                     'cultivation' => $cultivated ? ($borga
                         // borga agreements run 3 years at a 50–75% crop share; some ran out and were never renewed

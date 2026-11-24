@@ -1436,5 +1436,17 @@
     "আপনার বার্তা পাঠানো হয়েছে। অফিস থেকে শীঘ্রই যোগাযোগ করা হবে।": "Your message has been sent. The office will contact you soon.",
     "এই নম্বর থেকে আজ আর বার্তা পাঠানো যাবে না। প্রয়োজনে ফোন করুন।": "No more messages can be sent from this number today. Please call if needed.",
     "বার্তা পাঠানো যায়নি।": "The message could not be sent.",
-    "বার্তা মুছে ফেলা হয়েছে।": "The message has been deleted."
+    "বার্তা মুছে ফেলা হয়েছে।": "The message has been deleted.",
+    ":n টি জমির লিফট বদলানো হয়েছে।": "Lift changed on :n land(s).",
+    "এই লিফট জমি, রেট বা ইনভয়েসে ব্যবহৃত হয়েছে; মুছে না ফেলে নিষ্ক্রিয় করুন।": "This lift is used by lands, rates or invoices; make it inactive instead of deleting it.",
+    "জমিতে লিফট বসানো নেই": "No lift set on the land",
+    "লিফট": "Lift",
+    "লিফট \":p0\" তালিকায় নেই": "Lift \":p0\" is not in the list",
+    "লিফট ছাড়া": "Without lift",
+    "লিফট পাওয়া যায়নি।": "Lift not found.",
+    "লিফটভিত্তিক সেচ সারসংক্ষেপ": "Irrigation summary by lift",
+    "সব লিফট": "All lifts",
+    "১ম লিফট": "1st Lift",
+    "২য় লিফট": "2nd Lift",
+    "৩য় লিফট": "3rd Lift"
 }

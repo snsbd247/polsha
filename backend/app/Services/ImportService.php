@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Farmer;
 use App\Models\ImportBatch;
 use App\Models\Land;
+use App\Models\IrrigationLift;
 use App\Models\LandType;
 use App\Models\Member;
 use App\Models\Mouza;
@@ -59,7 +60,7 @@ class ImportService
             'dag_no' => ['দাগ', 'dag'], 'area' => ['পরিমাণ', 'area'], 'area_unit' => ['একক', 'unit'], 'land_type' => ['জমির ধরন', 'type'],
             'status' => ['অবস্থা'], 'owners' => ['মালিক', 'owner'], 'owned_since' => ['মালিকানার তারিখ'],
             'cultivator' => ['চাষি', 'cultivator'], 'cultivation_type' => ['চাষের ধরন'], 'cultivation_since' => ['চাষ শুরুর তারিখ'],
-            'terms' => ['শর্ত', 'বর্গার শর্ত'],
+            'terms' => ['শর্ত', 'বর্গার শর্ত'], 'lift' => ['লিফট', 'lift'],
         ],
         'savings_opening' => [
             'member_ref' => ['সদস্য নং', 'member no', 'সদস্য', 'nid', 'farmer id'], 'amount' => ['জের', 'টাকা', 'balance', 'amount', 'স্থিতি'],
@@ -111,7 +112,7 @@ class ImportService
         'farmers' => ['আব্দুল করিম', 'Abdul Karim', 'রহিম উদ্দিন', 'রহিমা খাতুন', 'পুরুষ', '1985123456', '01711223344',
             'সাভার', 'আশুলিয়া', 'পলাশবাড়ী', '12', 'উত্তর পাড়া', '96', '01/01/2010'],
         'lands' => ['সাভার', '12', 'RS', '145', '1023', '33', 'শতক', 'মাঝারি উঁচু জমি', 'চাষাধীন',
-            'F-000001:50; F-000002:50', '01/01/2015', 'F-000003', 'বর্গা', '01/01/2024', 'ফসলের অর্ধেক'],
+            'F-000001:50; F-000002:50', '01/01/2015', 'F-000003', 'বর্গা', '01/01/2024', 'ফসলের অর্ধেক', '২য় লিফট'],
         'savings_opening' => ['96', '12,500', '', 'খাতা নং ৩, পৃষ্ঠা ১২'],
         'share_opening' => ['96', '5000', '', ''],
         'loan_opening' => ['96', 'কৃষি ঋণ', '50000', '15/01/2026', '', '30000', '', 'পুরনো-১২'],
@@ -477,6 +478,11 @@ class ImportService
         if (($r['land_type'] ?? '') !== '' && ! $type) {
             $e[] = __('জমির ধরন ":p0" তালিকায় নেই', ['p0' => $r['land_type']]);
         }
+        $liftRef = trim((string) ($r['lift'] ?? ''));
+        $lift = $liftRef !== '' ? IrrigationLift::where('name_bn', $liftRef)->orWhere('name_en', $liftRef)->orWhere('code', strtoupper(Bn::toEnDigits($liftRef)))->first() : null;
+        if ($liftRef !== '' && ! $lift) {
+            $e[] = __('লিফট ":p0" তালিকায় নেই', ['p0' => $liftRef]);
+        }
         $status = array_search($r['status'] ?? '', Land::STATUSES, true) ?: (array_key_exists($r['status'] ?? '', Land::STATUSES) ? $r['status'] : 'cultivated');
 
         $owners = [];
@@ -539,7 +545,7 @@ class ImportService
 
         return [[
             'mouza_id' => $mouza?->id, 'mouza' => $mouza?->name_bn, 'survey' => $survey, 'khatian_no' => $khatian, 'dag_no' => $dag,
-            'area_decimal' => $area, 'land_type_id' => $type?->id, 'status' => $status,
+            'area_decimal' => $area, 'land_type_id' => $type?->id, 'lift_id' => $lift?->id, 'status' => $status,
             'owners' => $owners, 'owned_since' => $ownedSince, 'cultivation' => $cultivation,
         ], $e, $w];
     }
@@ -569,7 +575,7 @@ class ImportService
         unset($cult['name']);
         $this->lands->create(
             ['mouza_id' => $r['mouza_id'], 'survey' => $r['survey'], 'khatian_no' => $r['khatian_no'], 'dag_no' => $r['dag_no'],
-                'area_decimal' => $r['area_decimal'], 'land_type_id' => $r['land_type_id'], 'status' => $r['status']],
+                'area_decimal' => $r['area_decimal'], 'land_type_id' => $r['land_type_id'], 'lift_id' => $r['lift_id'] ?? null, 'status' => $r['status']],
             array_map(fn ($o) => ['farmer_id' => $o['farmer_id'], 'share_percent' => $o['share_percent']], $r['owners']),
             $r['owned_since'],
             $cult ?: null,

@@ -41,6 +41,8 @@ type Item = {
     owners: (Owner & { farmer_code?: string; is_member?: boolean })[]
     cultivation_type: string
     land_type: string | null
+    lift?: string | null
+    lift_en?: string | null
     is_current: boolean
     penalty: number
     patwari: { name: string; mobile: string | null } | null
@@ -346,6 +348,8 @@ export default function ReceiptDetailPage() {
               [tx('মৌজা'), invoices.length ? uniq(invoices.map((it) => (it.invoice!.mouza ? nameOf({ name_bn: it.invoice!.mouza, name_en: it.invoice!.mouza_en }) : '—'))) : null],
               [tx('জমির ধরন/ চার্জ রেট (প্রতি শতক)'), invoices.length ? uniq(invoices.map((it) => `${it.invoice!.land_type ?? '—'}/${money(it.invoice!.rate)}৳`)) : null],
               [tx('দাগ নং'), invoices.length ? uniq(invoices.map((it) => digits(it.invoice!.dag_no ?? '—'))) : null],
+              // only bills priced by lift print the row
+              [tx('লিফট'), invoices.some((it) => it.invoice!.lift) ? uniq(invoices.map((it) => (it.invoice!.lift ? nameOf({ name_bn: it.invoice!.lift, name_en: it.invoice!.lift_en ?? null }) : '—'))) : null],
               [
                 tx('জমির পরিমাণ'),
                 invoices.length ? `${digits(round4([...new Map(invoices.map((it) => [`${it.invoice!.mouza}|${it.invoice!.dag_no}`, Number(it.invoice!.area_decimal)])).values()].reduce((n, v) => n + v, 0)))} ${tx('শতক')}` : null,

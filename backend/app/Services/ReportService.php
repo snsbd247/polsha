@@ -128,6 +128,8 @@ class ReportService
                 'options' => fn () => $opts(DB::table('land_types')->orderBy('sort_order')->get(['id', 'name_bn']))],
             'irrigation_type' => ['name' => 'irrigation_type_id', 'type' => 'select', 'label' => __('সেচের ধরন'),
                 'options' => fn () => $opts(DB::table('irrigation_types')->orderBy('sort_order')->get(['id', 'name_bn']))],
+            'lift' => ['name' => 'lift_id', 'type' => 'select', 'label' => __('লিফট'),
+                'options' => fn () => $opts(DB::table('irrigation_lifts')->orderBy('sort_order')->orderBy('id')->get(['id', 'name_bn', 'name_en']))],
             'loan_product' => ['name' => 'product_id', 'type' => 'select', 'label' => __('ঋণের ধরন'),
                 'options' => fn () => $opts(DB::table('loan_products')->orderBy('code')->get(['id', 'name_bn', 'name_en']))],
             'voter_list' => ['name' => 'voter_list_id', 'type' => 'select', 'label' => __('ভোটার তালিকা'),
@@ -654,14 +656,15 @@ class ReportService
         $invoiceBase = fn ($f) => DB::table('invoices')->join('farmers', 'farmers.id', '=', 'invoices.farmer_id')->join('lands', 'lands.id', '=', 'invoices.land_id')
             ->join('seasons', 'seasons.id', '=', 'invoices.season_id')
             ->when($f['season_id'] ?? null, fn ($q, $v) => $q->where('invoices.season_id', $v))
-            ->when($f['mouza_id'] ?? null, fn ($q, $v) => $q->where('lands.mouza_id', $v));
+            ->when($f['mouza_id'] ?? null, fn ($q, $v) => $q->where('lands.mouza_id', $v))
+            ->when($f['lift_id'] ?? null, fn ($q, $v) => $q->where('invoices.lift_id', $v));
 
         return [
             'invoices' => [
                 'categories' => ['irrigation'], 'perm' => 'irrigation.view', 'title' => __('সেচ ইনভয়েস রিপোর্ট'),
-                'filters' => ['season', 'mouza', 'invoice_status'],
+                'filters' => ['season', 'mouza', 'lift', 'invoice_status'],
                 'columns' => [['invoice_no', __('ইনভয়েস নং')], ['date', __('তারিখ'), 'date'], ['season', __('মৌসুম')], ['land_code', __('জমি কোড')],
-                    ['farmer', __('চাষি')], ['type', __('চাষের ধরন')], ['area', __('পরিমাণ (শতক)'), 'decimal', true], ['rate', __('রেট'), 'money'],
+                    ['farmer', __('চাষি')], ['type', __('চাষের ধরন')], ['lift', __('লিফট')], ['area', __('পরিমাণ (শতক)'), 'decimal', true], ['rate', __('রেট'), 'money'],
                     ['amount', __('বিলের পরিমাণ'), 'money', true], ['paid', __('আদায়'), 'money', true], ['due', __('বকেয়া'), 'money', true], ['status', __('অবস্থা')]],
                 'rows' => fn ($f) => $invoiceBase($f)->when($f['status'], fn ($q, $v) => $q->where('invoices.status', $v))
                     ->orderBy('invoices.invoice_no')->limit(self::MAX_ROWS + 1)
@@ -669,6 +672,7 @@ class ReportService
                     ->map(fn ($r) => [
                         'invoice_no' => $r->invoice_no, 'date' => $r->invoice_date, 'season' => $r->season, 'land_code' => $r->land_code,
                         'farmer' => $this->farmerName($r).' ('.$r->farmer_code.')', 'type' => $this->lbl(Land::CULTIVATION_TYPES, $r->cultivation_type),
+                        'lift' => json_decode($r->snapshot ?? '{}', true)['lift'] ?? '',
                         'area' => (float) $r->area_decimal, 'rate' => (float) $r->rate, 'amount' => $r->status === 'cancelled' ? 0.0 : (float) $r->amount,
                         'paid' => (float) $r->paid_amount, 'due' => $r->status === 'cancelled' ? 0.0 : round((float) $r->amount - (float) $r->paid_amount, 2),
                         'status' => $this->lbl(Invoice::STATUSES, $r->status),
@@ -686,7 +690,7 @@ class ReportService
             ],
             'irrigation_due' => [
                 'categories' => ['irrigation', 'due'], 'perm' => 'irrigation.view', 'title' => __('কৃষকভিত্তিক সেচ বকেয়া'),
-                'filters' => ['season', 'mouza'],
+                'filters' => ['season', 'mouza', 'lift'],
                 'columns' => [['farmer_code', __('কৃষক আইডি')], ['farmer', __('চাষি')], ['mobile', __('মোবাইল')], ['invoices', __('ইনভয়েস'), 'number', true],
                     ['amount', __('বিলের পরিমাণ'), 'money', true], ['paid', __('আদায়'), 'money', true], ['due', __('বকেয়া'), 'money', true], ['oldest_due', __('প্রথম শেষ তারিখ'), 'date']],
                 'rows' => fn ($f) => $invoiceBase($f)->whereIn('invoices.status', ['unpaid', 'partial'])
@@ -710,16 +714,28 @@ class ReportService
                         'billed' => (float) $r->billed, 'collected' => (float) $r->collected, 'due' => round((float) $r->billed - (float) $r->collected, 2),
                         'rate' => (float) $r->billed > 0 ? round((float) $r->collected * 100 / (float) $r->billed, 1) : 0.0]),
             ],
+            'lift_summary' => [
+                'categories' => ['irrigation'], 'perm' => 'irrigation.view', 'title' => __('লিফটভিত্তিক সেচ সারসংক্ষেপ'),
+                'filters' => ['season', 'mouza'],
+                'columns' => [['lift', __('লিফট')], ['invoices', __('ইনভয়েস'), 'number', true], ['area', __('পরিমাণ (শতক)'), 'decimal', true],
+                    ['billed', __('বিলের পরিমাণ'), 'money', true], ['collected', __('আদায়'), 'money', true], ['due', __('বকেয়া'), 'money', true], ['rate', __('আদায়ের হার (%)'), 'decimal']],
+                'rows' => fn ($f) => $invoiceBase($f)->leftJoin('irrigation_lifts', 'irrigation_lifts.id', '=', 'invoices.lift_id')->where('invoices.status', '!=', 'cancelled')
+                    ->groupBy('invoices.lift_id', 'irrigation_lifts.name_bn', 'irrigation_lifts.sort_order')->orderByRaw('irrigation_lifts.sort_order IS NULL')->orderBy('irrigation_lifts.sort_order')
+                    ->selectRaw('irrigation_lifts.name_bn as lift, count(*) as invoices, sum(invoices.area_decimal) as area, sum(invoices.amount) as billed, sum(invoices.paid_amount) as collected')->get()
+                    ->map(fn ($r) => ['lift' => $r->lift ?? __('লিফট ছাড়া'), 'invoices' => (int) $r->invoices, 'area' => (float) $r->area,
+                        'billed' => (float) $r->billed, 'collected' => (float) $r->collected, 'due' => round((float) $r->billed - (float) $r->collected, 2),
+                        'rate' => (float) $r->billed > 0 ? round((float) $r->collected * 100 / (float) $r->billed, 1) : 0.0]),
+            ],
             'irrigation_rates' => [
                 'categories' => ['irrigation'], 'perm' => 'irrigation.view', 'title' => __('সেচ রেট রিপোর্ট'),
                 'filters' => ['season'],
-                'columns' => [['season', __('মৌসুম')], ['irrigation_type', __('সেচের ধরন')], ['land_type', __('জমির ধরন')], ['rate', __('রেট (প্রতি শতক)'), 'money'],
+                'columns' => [['season', __('মৌসুম')], ['irrigation_type', __('সেচের ধরন')], ['lift', __('লিফট')], ['land_type', __('জমির ধরন')], ['rate', __('রেট (প্রতি শতক)'), 'money'],
                     ['effective_from', __('কার্যকর তারিখ'), 'date'], ['status', __('অবস্থা')]],
                 'rows' => fn ($f) => DB::table('irrigation_rates as r')->join('seasons', 'seasons.id', '=', 'r.season_id')->join('irrigation_types as it', 'it.id', '=', 'r.irrigation_type_id')
-                    ->leftJoin('land_types as lt', 'lt.id', '=', 'r.land_type_id')->when($f['season_id'], fn ($q, $v) => $q->where('r.season_id', $v))
-                    ->orderByDesc('seasons.start_date')->orderBy('it.sort_order')->orderBy('r.effective_from')
-                    ->get(['r.*', 'seasons.name_bn as season', 'it.name_bn as irr', 'lt.name_bn as lt'])
-                    ->map(fn ($r) => ['season' => $r->season, 'irrigation_type' => Tr::label($r->irr), 'land_type' => $r->lt ? Tr::label($r->lt) : __('সব ধরনের জমি'),
+                    ->leftJoin('land_types as lt', 'lt.id', '=', 'r.land_type_id')->leftJoin('irrigation_lifts as il', 'il.id', '=', 'r.lift_id')->when($f['season_id'], fn ($q, $v) => $q->where('r.season_id', $v))
+                    ->orderByDesc('seasons.start_date')->orderBy('it.sort_order')->orderBy('il.sort_order')->orderBy('r.effective_from')
+                    ->get(['r.*', 'seasons.name_bn as season', 'it.name_bn as irr', 'lt.name_bn as lt', 'il.name_bn as lift'])
+                    ->map(fn ($r) => ['season' => $r->season, 'irrigation_type' => Tr::label($r->irr), 'lift' => $r->lift ?? __('সব লিফট'), 'land_type' => $r->lt ? Tr::label($r->lt) : __('সব ধরনের জমি'),
                         'rate' => (float) $r->rate, 'effective_from' => $r->effective_from, 'status' => $this->lbl(IrrigationRate::STATUSES, $r->status)]),
             ],
             'rate_matrix' => $this->rateMatrix(),

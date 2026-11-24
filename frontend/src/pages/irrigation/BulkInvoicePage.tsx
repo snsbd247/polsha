@@ -1,7 +1,7 @@
 import { useMemo, useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { App, Button, DatePicker, Form, Input, Modal, Select, Spin, Table, Tag } from 'antd'
+import { Alert, App, Button, DatePicker, Form, Input, Modal, Select, Spin, Table, Tag } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { CalendarOutlined, CloseOutlined, EnvironmentOutlined, EyeOutlined, FileTextFilled, ReloadOutlined, SaveOutlined, SearchOutlined, SettingFilled, UserOutlined } from '@ant-design/icons'
 import dayjs, { type Dayjs } from 'dayjs'
@@ -34,6 +34,8 @@ type Line = {
   cultivation_type: string | null
   land_type: string | null
   irrigation_type: string | null
+  lift: string | null
+  lift_en: string | null
   area_decimal: number
   rate: number | null
   amount: number
@@ -80,6 +82,7 @@ export default function BulkInvoicePage({ tabs }: { tabs?: ReactNode } = {}) {
 
   const seasonId: number | undefined = Form.useWatch('season_id', form)
   const typeId: number | undefined = Form.useWatch('irrigation_type_id', form)
+  const liftId: number | 'none' | undefined = Form.useWatch('lift_id', form)
   const mouzaId: number | undefined = Form.useWatch('mouza_id', form)
   const date: Dayjs | undefined = Form.useWatch('invoice_date', form)
 
@@ -92,7 +95,7 @@ export default function BulkInvoicePage({ tabs }: { tabs?: ReactNode } = {}) {
 
   const load = async () => {
     const v = await form.validateFields()
-    const body = { season_id: v.season_id, mouza_id: v.mouza_id ?? null, irrigation_type_id: v.irrigation_type_id ?? null, invoice_date: (v.invoice_date as Dayjs).format('YYYY-MM-DD') }
+    const body = { season_id: v.season_id, mouza_id: v.mouza_id ?? null, irrigation_type_id: v.irrigation_type_id ?? null, lift_id: v.lift_id ?? null, invoice_date: (v.invoice_date as Dayjs).format('YYYY-MM-DD') }
     setBusy(true)
     try {
       const p = (await api.post<Preview>('/invoices/bulk/preview', body)).data
@@ -136,6 +139,19 @@ export default function BulkInvoicePage({ tabs }: { tabs?: ReactNode } = {}) {
   const typeName = meta.irrigation_types.find((t) => t.id === typeId)?.name_bn ?? tx('সব উৎস')
   const mouzaName = mouzas.data?.find((m) => m.id === mouzaId)
   const skipped = preview ? preview.lines.length - ok.length : 0
+  const liftName = liftId === 'none' ? tx('লিফট বসানো নেই') : liftId ? nameOf(meta.lifts.find((l) => l.id === liftId)) : tx('সব লিফট')
+  const noLift = preview?.summary.skipped?.no_lift ?? 0
+  // the chosen bills split by lift: count × rate = amount
+  const byLift = Object.values(
+    chosen.reduce<Record<string, { name: string; count: number; amount: number; rates: Set<number> }>>((m, l) => {
+      const k = l.lift ?? ''
+      m[k] ??= { name: l.lift ? nameOf({ name_bn: l.lift, name_en: l.lift_en }) : tx('লিফট ছাড়া'), count: 0, amount: 0, rates: new Set() }
+      m[k].count++
+      m[k].amount += l.amount
+      if (l.rate !== null) m[k].rates.add(l.rate)
+      return m
+    }, {}),
+  )
 
   const columns: ColumnsType<Line> = [
     { title: '#', width: 44, align: 'center', render: (_, __, i) => digits(i + 1) },
@@ -145,6 +161,7 @@ export default function BulkInvoicePage({ tabs }: { tabs?: ReactNode } = {}) {
     { title: tx('মৌজা'), render: (_, l) => nameOf({ name_bn: l.mouza, name_en: l.mouza_en }) || '—' },
     { title: tx('দাগ / জমি নং'), render: (_, l) => `${digits(l.dag_no)} · ${l.land_code}` },
     { title: tx('চাষ'), dataIndex: 'cultivation_type', render: (v: string | null) => (v ? <Tag color={CULTIVATION_COLOR[v]}>{meta.cultivation_types[v] ?? v}</Tag> : '—') },
+    { title: tx('লিফট'), render: (_, l) => (l.lift ? nameOf({ name_bn: l.lift, name_en: l.lift_en }) : '—') },
     { title: tx('পরিমাণ (একর)'), dataIndex: 'area_decimal', align: 'right', render: (v: number) => acres(v) },
     { title: tx('রেট (৳/শতক)'), dataIndex: 'rate', align: 'right', render: (v: number | null) => (v === null ? '—' : money(v)) },
     tab === 'skipped' ? { title: tx('কারণ'), dataIndex: 'reason', render: (v: string) => <Tag color="orange">{meta.skip_reasons[v] ?? v}</Tag> } : { title: tx('টাকা (৳)'), dataIndex: 'amount', align: 'right', render: money },
@@ -187,6 +204,13 @@ export default function BulkInvoicePage({ tabs }: { tabs?: ReactNode } = {}) {
                 <Form.Item name="irrigation_type_id" label={tx('সেচের উৎস')}>
                   <Select allowClear prefix={<DashIcon name="drop" size={16} color="#1769e0" stroke={2.2} />} placeholder={tx('সব উৎস')} options={meta.irrigation_types.map((t) => ({ value: t.id, label: t.name_bn }))} />
                 </Form.Item>
+                <Form.Item name="lift_id" label={tx('লিফট')}>
+                  <Select
+                    allowClear
+                    placeholder={tx('সব লিফট')}
+                    options={[...meta.lifts.map((l) => ({ value: l.id as number | string, label: nameOf(l) })), { value: 'none', label: tx('লিফট বসানো নেই') }]}
+                  />
+                </Form.Item>
                 <Form.Item name="mouza_id" label={tx('মৌজা')}>
                   <Select allowClear prefix={<EnvironmentOutlined />} placeholder={tx('সব মৌজা')} showSearch={{ optionFilterProp: 'label' }} options={mouzas.data?.map((m) => ({ value: m.id, label: nameOf(m) }))} />
                 </Form.Item>
@@ -194,7 +218,7 @@ export default function BulkInvoicePage({ tabs }: { tabs?: ReactNode } = {}) {
                   <DatePicker prefix={<CalendarOutlined />} format="DD/MM/YYYY" style={{ width: '100%' }} disabledDate={(d) => d.isAfter(dayjs())} />
                 </Form.Item>
                 <Form.Item label={tx('রেট')} className="bi-span2">
-                  <Input disabled value={tx('প্রতিটি জমির ধরন ও সেচের উৎস অনুযায়ী অনুমোদিত রেট (৳/শতক)')} />
+                  <Input disabled value={tx('প্রতিটি জমির লিফট, ধরন ও সেচের উৎস অনুযায়ী অনুমোদিত রেট (৳/শতক)')} />
                 </Form.Item>
               </div>
             </Form>
@@ -209,15 +233,40 @@ export default function BulkInvoicePage({ tabs }: { tabs?: ReactNode } = {}) {
           <dl className="id-kv bi-kv">
             <Row2 k={tx('মৌসুম')} v={season?.name_bn ?? '—'} />
             <Row2 k={tx('সেচের উৎস')} v={typeName} />
+            <Row2 k={tx('লিফট')} v={liftName} />
             <Row2 k={tx('মৌজা')} v={mouzaName ? nameOf(mouzaName) : tx('সব মৌজা')} />
             <Row2 k={tx('ইনভয়েসের তারিখ')} v={date ? fmtDate(date.format('YYYY-MM-DD')) : '—'} />
             <Row2 k={tx('বাছাই করা ইনভয়েস')} v={<strong>{preview ? digits(chosen.length) : '—'}</strong>} />
             <Row2 k={tx('বাদ পড়বে')} v={preview ? digits(skipped) : '—'} />
             <Row2 k={tx('আনুমানিক টাকা')} v={<strong>{preview ? `৳ ${money(chosenAmount)}` : '—'}</strong>} />
           </dl>
+          {byLift.some((g) => g.name !== tx('লিফট ছাড়া')) && (
+            <ul className="bi-lifts">
+              {byLift.map((g) => (
+                <li key={g.name}>
+                  <span>{g.name}</span>
+                  <span>{g.rates.size === 1 ? tx('{{p0}} জমি × {{p1}} ৳', { p0: digits(g.count), p1: money([...g.rates][0]) }) : tx('{{p0}} জমি', { p0: digits(g.count) })}</span>
+                  <b>৳ {money(g.amount)}</b>
+                </li>
+              ))}
+            </ul>
+          )}
         </aside>
       </div>
 
+      {noLift > 0 && (
+        <Alert
+          className="bi-nolift"
+          type="warning"
+          showIcon
+          title={tx('{{p0}}টি জমিতে লিফট বসানো নেই — এগুলোর বিল হবে না।', { p0: digits(noLift) })}
+          action={
+            <Button size="small" onClick={() => navigate('/lands?lift_id=none')}>
+              {tx('তালিকা দেখুন / লিফট বসান')}
+            </Button>
+          }
+        />
+      )}
       {done && (
         <div className="bi-done">
           <strong>{tx('{{p0}}টি ইনভয়েস তৈরি হয়েছে', { p0: digits(done.invoice_count) })}</strong>

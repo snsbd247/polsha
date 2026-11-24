@@ -6,6 +6,7 @@ use App\Models\Account;
 use App\Models\ApprovalRequest;
 use App\Models\Invoice;
 use App\Models\InvoiceBatch;
+use App\Models\IrrigationLift;
 use App\Models\IrrigationRate;
 use App\Models\IrrigationType;
 use App\Models\Land;
@@ -26,21 +27,65 @@ class IrrigationService
         'land_status' => 'জমি চাষাধীন নয়',
         'no_cultivator' => 'চাষি নির্ধারিত নেই',
         'no_irrigation_type' => 'সেচের ধরন নেই',
+        'no_lift' => 'জমিতে লিফট বসানো নেই',
         'no_rate' => 'অনুমোদিত রেট নেই',
         'already_invoiced' => 'এই মৌসুমে ইনভয়েস হয়ে গেছে',
         'zero_amount' => 'টাকার পরিমাণ শূন্য',
     ];
 
+    /** @var array<string, bool> per-request memo of liftsInUse() — a bulk run asks once per plot */
+    private array $liftsInUse = [];
+
     public function __construct(private LedgerService $ledger, private ApprovalService $approvals) {}
 
-    /** Approved rate in force on a date: exact land type beats the "all land types" row, later start date wins. */
-    public function rateFor(int $seasonId, ?int $landTypeId, int $irrigationTypeId, string $date): ?IrrigationRate
+    /**
+     * Approved rate in force on a date. Once a season prices a source by lift,
+     * only that lift's rate counts for it (a plot without a lift gets none);
+     * otherwise the lift-free rows apply as before. Within those, an exact land
+     * type beats the "all land types" row and the later start date wins.
+     */
+    public function rateFor(int $seasonId, ?int $landTypeId, int $irrigationTypeId, string $date, ?int $liftId = null): ?IrrigationRate
     {
+        $byLift = $this->liftsInUse($seasonId, $irrigationTypeId, $date);
+        if ($byLift && ! $liftId) {
+            return null;
+        }
+
         return IrrigationRate::where('season_id', $seasonId)->where('irrigation_type_id', $irrigationTypeId)
             ->where('status', 'approved')->whereDate('effective_from', '<=', $date)
+            ->when($byLift, fn ($q) => $q->where('lift_id', $liftId), fn ($q) => $q->whereNull('lift_id'))
             ->where(fn ($q) => $q->whereNull('land_type_id')->when($landTypeId, fn ($w) => $w->orWhere('land_type_id', $landTypeId)))
             ->orderByRaw('land_type_id IS NULL')->orderByDesc('effective_from')->orderByDesc('id')
             ->first();
+    }
+
+    /** Drop the liftsInUse() memo — each billing run starts from the rates as they are now. */
+    public function forgetLiftCache(): void
+    {
+        $this->liftsInUse = [];
+    }
+
+    /** Does the season price this source by lift (an approved lift rate already in force)? */
+    public function liftsInUse(int $seasonId, int $irrigationTypeId, string $date): bool
+    {
+        return $this->liftsInUse["$seasonId-$irrigationTypeId-$date"] ??= IrrigationRate::where('season_id', $seasonId)
+            ->where('irrigation_type_id', $irrigationTypeId)->whereNotNull('lift_id')
+            ->where('status', 'approved')->whereDate('effective_from', '<=', $date)->exists();
+    }
+
+    /** The approved rate of exactly this season × source × lift × land type in force on a date (the one a proposal would replace). */
+    private function exactRate(int $seasonId, int $irrigationTypeId, ?int $liftId, ?int $landTypeId, string $date): ?IrrigationRate
+    {
+        return IrrigationRate::where('season_id', $seasonId)->where('irrigation_type_id', $irrigationTypeId)
+            ->where('lift_id', $liftId)->where('land_type_id', $landTypeId)
+            ->where('status', 'approved')->whereDate('effective_from', '<=', $date)
+            ->orderByDesc('effective_from')->orderByDesc('id')->first();
+    }
+
+    /** Key of a rate combination: source, lift, land type. */
+    public static function comboKey(int $irrigationTypeId, ?int $liftId, ?int $landTypeId): string
+    {
+        return $irrigationTypeId.'-'.($liftId ?? 0).'-'.($landTypeId ?? 0);
     }
 
     /** A rate change is a new row, live only after approval. */
@@ -49,24 +94,26 @@ class IrrigationService
         $season = Season::findOrFail($data['season_id']);
         $this->guardSeasonOpen($season);
         $exists = IrrigationRate::where('season_id', $season->id)->where('irrigation_type_id', $data['irrigation_type_id'])
-            ->where('land_type_id', $data['land_type_id'] ?? null)->where('status', 'pending')->exists();
+            ->where('lift_id', $data['lift_id'] ?? null)->where('land_type_id', $data['land_type_id'] ?? null)->where('status', 'pending')->exists();
         if ($exists) {
             throw ValidationException::withMessages(['rate' => __('এই রেটের একটি পরিবর্তন আগেই অনুমোদনের অপেক্ষায় আছে।')]);
         }
 
         return DB::transaction(function () use ($data, $season) {
             $rate = IrrigationRate::create($data + ['status' => 'pending', 'created_by' => auth()->id()]);
-            $rate->load('irrigationType', 'landType');
-            $current = $this->rateFor($season->id, $rate->land_type_id, $rate->irrigation_type_id, $rate->effective_from->toDateString());
+            $rate->load('irrigationType', 'landType', 'lift');
+            $current = $this->exactRate($season->id, $rate->irrigation_type_id, $rate->lift_id, $rate->land_type_id, $rate->effective_from->toDateString());
             $landType = $rate->landType ? $rate->landType->name_bn : 'সব ধরনের জমি';
+            $type = $rate->irrigationType->name_bn.($rate->lift ? ' — '.$rate->lift->name_bn : '');
 
             $request = $this->approvals->submit(
                 'irrigation.rate',
-                __('সেচের রেট: :season — :type', ['season' => $season->name_bn, 'type' => $rate->irrigationType->name_bn]),
+                __('সেচের রেট: :season — :type', ['season' => $season->name_bn, 'type' => $type]),
                 $rate,
                 [
                     'মৌসুম' => $season->name_bn,
                     'সেচের ধরন' => $rate->irrigationType->name_bn,
+                    'লিফট' => $rate->lift?->name_bn ?? 'সব লিফট',
                     'জমির ধরন' => $landType,
                     'নতুন রেট (প্রতি শতক)' => (float) $rate->rate,
                     'কার্যকর তারিখ' => $rate->effective_from->format('d/m/Y'),
@@ -82,51 +129,52 @@ class IrrigationService
 
     /**
      * The rates a season would take over from another: the latest approved
-     * rate of each source × land type there, beside what the target season
-     * already has (those are not copied again).
+     * rate of each source × lift × land type there, beside what the target
+     * season already has (those are not copied again).
      *
-     * @return list<array{irrigation_type_id:int, land_type_id:?int, irrigation_type:string, land_type:?string, rate:float, exists:bool}>
+     * @return list<array{irrigation_type_id:int, lift_id:?int, land_type_id:?int, irrigation_type:string, lift:?string, land_type:?string, rate:float, exists:bool}>
      */
     public function copyPreview(Season $from, Season $to): array
     {
         $taken = IrrigationRate::where('season_id', $to->id)->whereIn('status', ['approved', 'pending'])
-            ->get(['irrigation_type_id', 'land_type_id'])->map(fn ($r) => $r->irrigation_type_id.'-'.($r->land_type_id ?? 0))->flip();
+            ->get(['irrigation_type_id', 'lift_id', 'land_type_id'])->map(fn ($r) => self::comboKey($r->irrigation_type_id, $r->lift_id, $r->land_type_id))->flip();
 
-        return IrrigationRate::with(['irrigationType:id,name_bn', 'landType:id,name_bn'])->where('season_id', $from->id)->where('status', 'approved')
+        return IrrigationRate::with(['irrigationType:id,name_bn', 'landType:id,name_bn', 'lift:id,name_bn,sort_order'])->where('season_id', $from->id)->where('status', 'approved')
             ->orderByDesc('effective_from')->orderByDesc('id')->get()
-            ->unique(fn ($r) => $r->irrigation_type_id.'-'.($r->land_type_id ?? 0))
+            ->unique(fn ($r) => self::comboKey($r->irrigation_type_id, $r->lift_id, $r->land_type_id))
             ->map(fn (IrrigationRate $r) => [
-                'irrigation_type_id' => $r->irrigation_type_id, 'land_type_id' => $r->land_type_id,
-                'irrigation_type' => $r->irrigationType?->name_bn, 'land_type' => $r->landType?->name_bn, 'rate' => (float) $r->rate,
-                'exists' => isset($taken[$r->irrigation_type_id.'-'.($r->land_type_id ?? 0)]),
-            ])->sortBy(['irrigation_type', 'land_type'])->values()->all();
+                'irrigation_type_id' => $r->irrigation_type_id, 'lift_id' => $r->lift_id, 'land_type_id' => $r->land_type_id,
+                'irrigation_type' => $r->irrigationType?->name_bn, 'lift' => $r->lift?->name_bn, 'land_type' => $r->landType?->name_bn, 'rate' => (float) $r->rate,
+                'lift_order' => $r->lift?->sort_order ?? 0,
+                'exists' => isset($taken[self::comboKey($r->irrigation_type_id, $r->lift_id, $r->land_type_id)]),
+            ])->sortBy(['irrigation_type', 'lift_order', 'land_type'])->values()->all();
     }
 
     /**
      * Copy another season's rates (with any changes) into a season. All of
      * them go for approval together in one request, and go live together.
      *
-     * @param  array<int, array{irrigation_type_id:int, land_type_id:?int, rate:float}>  $rows
+     * @param  array<int, array{irrigation_type_id:int, lift_id?:?int, land_type_id:?int, rate:float}>  $rows
      * @return list<IrrigationRate>
      */
     public function copyRates(Season $from, Season $to, array $rows, string $effectiveFrom): array
     {
         $this->guardSeasonOpen($to);
-        $allowed = collect($this->copyPreview($from, $to))->reject(fn ($r) => $r['exists'])->keyBy(fn ($r) => $r['irrigation_type_id'].'-'.($r['land_type_id'] ?? 0));
-        $rows = collect($rows)->filter(fn ($r) => $allowed->has($r['irrigation_type_id'].'-'.($r['land_type_id'] ?? 0)) && (float) $r['rate'] > 0)->values();
+        $allowed = collect($this->copyPreview($from, $to))->reject(fn ($r) => $r['exists'])->keyBy(fn ($r) => self::comboKey($r['irrigation_type_id'], $r['lift_id'], $r['land_type_id']));
+        $rows = collect($rows)->filter(fn ($r) => $allowed->has(self::comboKey((int) $r['irrigation_type_id'], $r['lift_id'] ?? null, $r['land_type_id'] ?? null)) && (float) $r['rate'] > 0)->values();
         if ($rows->isEmpty()) {
             throw ValidationException::withMessages(['rows' => __('কপি করার মতো কোনো রেট নেই — এই মৌসুমে সব রেট আগে থেকেই আছে বা অনুমোদনের অপেক্ষায়।')]);
         }
 
         return DB::transaction(function () use ($from, $to, $rows, $effectiveFrom) {
             $rates = $rows->map(fn ($r) => IrrigationRate::create([
-                'season_id' => $to->id, 'irrigation_type_id' => $r['irrigation_type_id'], 'land_type_id' => $r['land_type_id'] ?? null,
+                'season_id' => $to->id, 'irrigation_type_id' => $r['irrigation_type_id'], 'lift_id' => $r['lift_id'] ?? null, 'land_type_id' => $r['land_type_id'] ?? null,
                 'rate' => round((float) $r['rate'], 2), 'effective_from' => $effectiveFrom, 'status' => 'pending', 'created_by' => auth()->id(),
                 'reason' => __(':season থেকে কপি', ['season' => $from->name_bn]),
-            ])->load('irrigationType:id,name_bn', 'landType:id,name_bn'));
+            ])->load('irrigationType:id,name_bn', 'landType:id,name_bn', 'lift:id,name_bn'));
             $payload = ['মৌসুম' => $to->name_bn, 'কপি করা হয়েছে' => $from->name_bn, 'কার্যকর তারিখ' => date('d/m/Y', strtotime($effectiveFrom))];
             foreach ($rates as $r) {
-                $payload[$r->irrigationType->name_bn.' — '.($r->landType?->name_bn ?? 'সব ধরনের জমি').' (প্রতি শতক)'] = (float) $r->rate;
+                $payload[$r->irrigationType->name_bn.($r->lift ? ' — '.$r->lift->name_bn : '').' — '.($r->landType?->name_bn ?? 'সব ধরনের জমি').' (প্রতি শতক)'] = (float) $r->rate;
             }
             // one request for all; without an approval rule the handler has already put them live
             $request = $this->approvals->submit('irrigation.rate_batch', __('সেচের রেট (:n টি): :season', ['n' => $rates->count(), 'season' => $to->name_bn]), $to, $payload);
@@ -143,18 +191,20 @@ class IrrigationService
      */
     public function candidate(Land $land, Season $season, string $date, ?int $irrigationTypeId = null, ?float $area = null, bool $skipDuplicateCheck = false): array
     {
-        $land->loadMissing(['mouza:id,name_bn,name_en,jl_no', 'landType:id,name_bn', 'irrigationType:id,name_bn',
+        $land->loadMissing(['mouza:id,name_bn,name_en,jl_no', 'landType:id,name_bn', 'irrigationType:id,name_bn', 'lift:id,name_bn,name_en',
             'owners.farmer:id,farmer_code,name_bn,name_en,father_name', 'cultivation.farmer:id,farmer_code,name_bn,name_en,father_name,mobile']);
         $typeId = $irrigationTypeId ?: $land->irrigation_type_id;
         $area = round($area ?? (float) $land->area_decimal, 4);
         $cult = $land->cultivation;
-        $rate = $typeId ? $this->rateFor($season->id, $land->land_type_id, $typeId, $date) : null;
+        $byLift = $typeId && $this->liftsInUse($season->id, $typeId, $date);
+        $rate = $typeId ? $this->rateFor($season->id, $land->land_type_id, $typeId, $date, $land->lift_id) : null;
         $amount = $rate ? round($area * (float) $rate->rate, 2) : 0.0;
 
         $reason = match (true) {
             $land->status !== 'cultivated' => 'land_status',
             ! $cult => 'no_cultivator',
             ! $typeId => 'no_irrigation_type',
+            $byLift && ! $land->lift_id => 'no_lift',
             ! $rate => 'no_rate',
             ! $skipDuplicateCheck && $this->hasInvoice($land->id, $season->id) => 'already_invoiced',
             $amount <= 0 => 'zero_amount',
@@ -171,6 +221,8 @@ class IrrigationService
             'cultivation_type' => $cult?->type,
             'land_type_id' => $land->land_type_id,
             'irrigation_type_id' => $typeId,
+            // the lift is kept on the bill only when the rate was priced by it
+            'lift_id' => $rate?->lift_id,
             'area_decimal' => $area,
             'rate' => $rate ? (float) $rate->rate : null,
             'rate_id' => $rate?->id,
@@ -188,6 +240,8 @@ class IrrigationService
                 'land_area' => (float) $land->area_decimal,
                 'land_type' => $land->landType?->name_bn,
                 'irrigation_type' => $irrigationType?->name_bn,
+                'lift' => $land->lift?->name_bn,
+                'lift_en' => $land->lift?->name_en,
                 'cultivator' => $cult ? [
                     'id' => $cult->farmer_id, 'farmer_code' => $cult->farmer?->farmer_code, 'name_bn' => $cult->farmer?->name_bn,
                     'name_en' => $cult->farmer?->name_en, 'father_name' => $cult->farmer?->father_name, 'mobile' => $cult->farmer?->mobile,
@@ -203,6 +257,7 @@ class IrrigationService
     public function createInvoice(Land $land, Season $season, array $opts): Invoice
     {
         $this->guardSeasonOpen($season);
+        $this->forgetLiftCache();
         $date = $opts['invoice_date'];
 
         return DB::transaction(function () use ($land, $season, $opts, $date) {
@@ -218,13 +273,17 @@ class IrrigationService
     }
 
     /** @return array{lines: Collection, summary: array} */
-    /** @param array{irrigation_type_id?: ?int, land_ids?: ?array} $only narrows the run to one irrigation source and/or chosen plots */
+    /** @param array{irrigation_type_id?: ?int, lift_id?: int|string|null, land_ids?: ?array} $only narrows the run to one source, one lift ('none' = plots without a lift) and/or chosen plots */
     public function preview(Season $season, ?int $mouzaId, string $date, array $only = []): array
     {
+        $this->forgetLiftCache();
+        $lift = $only['lift_id'] ?? null;
         $lands = Land::query()->when($mouzaId, fn ($q) => $q->where('mouza_id', $mouzaId))
             ->when($only['irrigation_type_id'] ?? null, fn ($q, $v) => $q->where('irrigation_type_id', $v))
+            ->when($lift === 'none', fn ($q) => $q->whereNull('lift_id'))
+            ->when($lift && $lift !== 'none', fn ($q) => $q->where('lift_id', (int) $lift))
             ->when($only['land_ids'] ?? null, fn ($q, $v) => $q->whereIn('id', $v))
-            ->with(['mouza:id,name_bn,name_en,jl_no', 'landType:id,name_bn', 'irrigationType:id,name_bn',
+            ->with(['mouza:id,name_bn,name_en,jl_no', 'landType:id,name_bn', 'irrigationType:id,name_bn', 'lift:id,name_bn,name_en',
                 'owners.farmer:id,farmer_code,name_bn,name_en,father_name', 'cultivation.farmer:id,farmer_code,name_bn,name_en,father_name,mobile'])
             ->orderBy('mouza_id')->orderBy('land_code')->get();
         $invoiced = Invoice::where('season_id', $season->id)->where('status', '!=', 'cancelled')->pluck('land_id')->flip();
@@ -240,6 +299,13 @@ class IrrigationService
 
         $ok = $lines->where('ok', true);
         $byType = $ok->groupBy('cultivation_type')->map(fn ($g) => ['count' => $g->count(), 'area' => round($g->sum('area_decimal'), 4), 'amount' => round($g->sum('amount'), 2)]);
+        // one line per lift the run bills at (rate shown when every plot of the lift shares it)
+        $lifts = IrrigationLift::orderBy('sort_order')->orderBy('id')->get(['id', 'name_bn', 'name_en'])->keyBy('id');
+        $byLift = $ok->whereNotNull('lift_id')->groupBy('lift_id')->map(fn ($g, $id) => [
+            'lift_id' => (int) $id, 'name_bn' => $lifts[$id]->name_bn ?? '', 'name_en' => $lifts[$id]->name_en ?? null,
+            'count' => $g->count(), 'area' => round($g->sum('area_decimal'), 4), 'amount' => round($g->sum('amount'), 2),
+            'rate' => $g->pluck('rate')->unique()->count() === 1 ? $g->first()['rate'] : null,
+        ])->sortBy(fn ($r) => array_search($r['lift_id'], $lifts->keys()->all(), true))->values();
 
         return [
             'lines' => $lines,
@@ -250,6 +316,7 @@ class IrrigationService
                 'area' => round($ok->sum('area_decimal'), 4),
                 'amount' => round($ok->sum('amount'), 2),
                 'by_cultivation' => $byType,
+                'by_lift' => $byLift,
                 'skipped' => $lines->where('ok', false)->countBy('reason'),
             ],
         ];
@@ -348,6 +415,7 @@ class IrrigationService
             'cultivation_type' => $c['cultivation_type'],
             'land_type_id' => $c['land_type_id'],
             'irrigation_type_id' => $c['irrigation_type_id'],
+            'lift_id' => $c['lift_id'] ?? null,
             'rate_id' => $c['rate_id'],
             'invoice_date' => $opts['invoice_date'],
             'due_date' => $opts['due_date'] ?? null,

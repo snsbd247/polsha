@@ -18,7 +18,7 @@ class Invoice extends Model implements Payable
     protected $auditExclude = ['snapshot'];
 
     protected $fillable = [
-        'invoice_no', 'season_id', 'land_id', 'farmer_id', 'cultivation_type', 'land_type_id', 'irrigation_type_id', 'rate_id',
+        'invoice_no', 'season_id', 'land_id', 'farmer_id', 'cultivation_type', 'land_type_id', 'irrigation_type_id', 'lift_id', 'rate_id',
         'invoice_date', 'due_date', 'area_decimal', 'rate', 'charges', 'discount', 'amount', 'paid_amount', 'status', 'snapshot', 'remarks',
         'batch_id', 'journal_id', 'created_by', 'cancelled_at', 'cancelled_by', 'cancel_reason', 'import_batch_id',
     ];
@@ -46,6 +46,11 @@ class Invoice extends Model implements Payable
     public function irrigationType()
     {
         return $this->belongsTo(IrrigationType::class);
+    }
+
+    public function lift()
+    {
+        return $this->belongsTo(IrrigationLift::class, 'lift_id');
     }
 
     public function landType()

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\AuditLog;
 use App\Models\Farmer;
+use App\Models\IrrigationLift;
 use App\Models\IrrigationType;
 use App\Models\Land;
 use App\Models\LandCultivation;
@@ -38,6 +39,7 @@ class LandController extends Controller
             'document_types' => Tr::map(Land::DOCUMENT_TYPES),
             'units' => Tr::map(AreaUnit::LABELS),
             'unit_factors' => AreaUnit::factors(),
+            'lifts' => IrrigationLift::where('is_active', true)->orderBy('sort_order')->orderBy('id')->get(['id', 'code', 'name_bn', 'name_en']),
             'irrigation_types' => IrrigationType::where('is_active', true)->orderBy('sort_order')->get(['id', 'name_bn'])->map(fn ($t) => ['id' => $t->id, 'name_bn' => __($t->name_bn)]),
             'land_types' => LandType::where('is_active', true)->orderBy('sort_order')->get(['id', 'name_bn', 'category'])->map(fn ($t) => ['id' => $t->id, 'name_bn' => __($t->name_bn), 'category' => $t->category ? __(LandType::CATEGORIES[$t->category] ?? $t->category) : null]),
         ]);
@@ -74,7 +76,7 @@ class LandController extends Controller
     public function show(Land $land): JsonResponse
     {
         $land->load([
-            'mouza.union.upazila.district', 'mouza.villages:id,name_bn', 'landType:id,name_bn', 'irrigationType:id,name_bn',
+            'mouza.union.upazila.district', 'mouza.villages:id,name_bn', 'landType:id,name_bn', 'irrigationType:id,name_bn', 'lift:id,name_bn,name_en',
             'ownerHistory.farmer:id,farmer_code,name_bn,father_name',
             'cultivationHistory.farmer:id,farmer_code,name_bn,father_name',
             'documents.uploader:id,name_bn,name_en', 'notes.creator:id,name_bn,name_en',
@@ -297,7 +299,7 @@ class LandController extends Controller
     private function listRelations(): array
     {
         return [
-            'mouza:id,name_bn,jl_no', 'landType:id,name_bn', 'irrigationType:id,name_bn',
+            'mouza:id,name_bn,jl_no', 'landType:id,name_bn', 'irrigationType:id,name_bn', 'lift:id,name_bn,name_en',
             'owners.farmer:id,farmer_code,name_bn,name_en,father_name,photo',
             'cultivation.farmer:id,farmer_code,name_bn,name_en,father_name,photo',
         ];
@@ -329,6 +331,11 @@ class LandController extends Controller
                 ->orWhere('dag_no', $en)->orWhere('khatian_no', $en)
                 ->orWhereHas('owners.farmer', fn ($f) => $f->where('name_bn', 'like', "%$search%")->orWhere('name_en', 'like', "%$search%")->orWhere('farmer_code', $en)->orWhere('mobile', 'like', "%$en%")->orWhere('nid', $en))
                 ->orWhereHas('cultivation.farmer', fn ($f) => $f->where('name_bn', 'like', "%$search%")->orWhere('name_en', 'like', "%$search%")->orWhere('farmer_code', $en)->orWhere('mobile', 'like', "%$en%")->orWhere('nid', $en)));
+        }
+        if ($request->query('lift_id') === 'none') {
+            $q->whereNull('lift_id');
+        } elseif ($request->filled('lift_id')) {
+            $q->where('lift_id', $request->integer('lift_id'));
         }
         foreach (['mouza_id', 'land_type_id', 'irrigation_type_id', 'status', 'survey'] as $f) {
             if ($request->filled($f)) {
@@ -389,6 +396,7 @@ class LandController extends Controller
             'area_unit' => ['required', Rule::in(array_keys(AreaUnit::LABELS))],
             'land_type_id' => ['required', Rule::exists('land_types', 'id')],
             'irrigation_type_id' => ['nullable', Rule::exists('irrigation_types', 'id')],
+            'lift_id' => ['nullable', Rule::exists('irrigation_lifts', 'id')],
             'status' => ['required', Rule::in(array_keys(Land::STATUSES))],
             'remarks' => ['nullable', 'string', 'max:2000'],
             // the village must be one the chosen mouza covers
@@ -437,6 +445,8 @@ class LandController extends Controller
             'land_type' => Tr::label($l->landType?->name_bn),
             'irrigation_type_id' => $l->irrigation_type_id,
             'irrigation_type' => Tr::label($l->irrigationType?->name_bn),
+            'lift_id' => $l->lift_id,
+            'lift' => $l->lift ? (app()->getLocale() === 'en' && $l->lift->name_en ? $l->lift->name_en : $l->lift->name_bn) : null,
             'status' => $l->status,
             'owners' => $l->owners->map(fn ($o) => [
                 'id' => $o->id, 'farmer_id' => $o->farmer_id, 'farmer_code' => $o->farmer?->farmer_code,
