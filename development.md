@@ -9,10 +9,10 @@
 |---|---|
 | রিপোজিটরি | https://github.com/snsbd247/polsha (branch `main`) |
 | প্রথম commit | ২৩/০৯/২০২৬ — Phase 1 |
-| শেষ commit | ২৪/১১/২০২৬ — লিফট অনুযায়ী সেচের রেট (ফেজ ১৩) |
-| মোট commit | ৯৭ (Md Ismail Hosain-এর নামে; ২৪/১১ থেকে Claude সহ-লেখক) |
+| শেষ commit | ২৫/১১/২০২৬ — পরিচালনা কমিটির প্রোফাইল পাতা |
+| মোট commit | ১০১ (Md Ismail Hosain-এর নামে; ২৪/১১ থেকে Claude সহ-লেখক) |
 | কোডের পরিবর্তন | ১,৮৬১ বার ফাইল বদল, +১,৪৭,৪৮১ / −২০,০০৮ লাইন; এখন ৬৯৯টি ফাইল |
-| Feature test | ১৯৭টি test (২৯টি ফাইল) — ২৫/১১/২০২৬-এর পূর্ণ রানে সব পাস (২,৮৯৪ assertion) |
+| Feature test | ১৯৮টি test (২৯টি ফাইল) — ২৫/১১/২০২৬-এর পূর্ণ রানে সব পাস (২,৯১৫ assertion) |
 | ডাটাবেজ | ৬০টি migration, ১০৪টি টেবিল |
 | প্রথম লাইভ | https://smartirrigation.click (২৩/০৯/২০২৬) |
 | এখনকার লাইভ | https://pmpbssl.com (cPanel `pmwmcs`, ১৫/১০/২০২৬ থেকে; সার্ভার ২৪/১১-এর আগে `169.40.116.146`-এ সরেছে) |
@@ -33,6 +33,7 @@
 ২৪/১১ ─ নতুন সার্ভার থেকে লোকাল ডেটা হালনাগাদ, এই ৫টি ডকুমেন্ট
 ২৪/১১ ─ ফেজ ১৩: লিফট অনুযায়ী সেচের রেট → GitHub ও লাইভে deploy
 ২৪–২৫/১১ ─ ফেজ ১৪: সমিতির কাগজের নকশায় রিপোর্ট (জমা-খরচ বিবরণী, এক নজরে), রশিদ ও ভাউচার, আবেদন ফর্ম → তিন ধাপে লাইভে
+২৫/১১ ─ লাইভে সব মডিউলে ডেমো ডাটা; ওয়েবসাইটে পরিচালনা কমিটির প্রোফাইল পাতা
 ```
 
 ---
@@ -118,6 +119,9 @@
 | ২৪/১১/২০২৬ | ফেজ ১৩ (লিফট অনুযায়ী সেচের রেট) — commit `64e5783`, GitHub-এ push; `server-deploy.sh` দিয়ে লাইভে: আগে ব্যাকআপ `polsha-20261124-145912.sql.gz`, migration `2026_11_24_100000_irrigation_lifts`, নতুন bundle `index-BOLA9UZ1.js`; লাইভে ৩টি লিফট, সেদিনের লগে কোনো error নেই। লোকাল XAMPP-এও একই build (`F:\Lovable\polsha-web`) ও migration |
 | ২৪/১১/২০২৬ | লিফট কমানো ও সব জমিতে একই রেট — commit `6f17e8b`, লাইভে deploy (আগে ব্যাকআপ `polsha-20261124-221134.sql.gz`, নতুন migration নেই, bundle `index-heLDja10.js`); লোকালেও নতুন build |
 | ২৪–২৫/১১/২০২৬ | ফেজ ১৪ (সমিতির ১২টি কাগজের নকশা) তিন ধাপে, প্রতিবার আগে ব্যাকআপ নিয়ে লাইভে: ধাপ ১ `3a39307` (জমা-খরচ বিবরণী ও এক নজরে; migration `statement_heads`, ১৮৬টি খাত, ১২৩টি নতুন হিসাব), ধাপ ২ `7ce0975` (সেচ/পানি/শেয়ার-সঞ্চয় রশিদ, ক্যাশ ক্রেডিট ভাউচার; migration `water_ward_and_commitment_fee`), ধাপ ৩ `4e38300` (সদস্যপদ ও ঋণের আবেদন, অঙ্গীকারনামা, উত্তোলনের আবেদন; migration `paper_form_fields`); শেষ bundle `index-BnErWoyO.js`। প্রিন্টের নকশা headless Chrome-এ PDF বানিয়ে যাচাই করা |
+
+| ২৫/১১/২০২৬ | লাইভে ডেমো ডাটা: প্রথম চেষ্টা পানির বিলের তারিখে থামল (নিজে ফিরে গেল); ঠিক করে `77928c3` deploy (শুধু backend, bundle একই), তারপর `demo:seed --farmers=100` — ৬.২ মিনিট, ৯৮ কৃষক, ৮৪ সদস্য, ৫,১৬৬টি কাজ; আগে ব্যাকআপ `polsha-20261125-003052.sql.gz` |
+| ২৫/১১/২০২৬ | কমিটির প্রোফাইল পাতা `069bd68` — GitHub-এ push ও লোকাল XAMPP build; লাইভে deploy ব্যবহারকারীর অনুমতির অপেক্ষায় |
 
 **লোকালে যা বাকি:** লোকাল ডোমেইনের লাইসেন্স key (এখন `pmpbssl.com`-এ বাঁধা, তাই লোকালে signed-in কাজ বন্ধ)। Windows Firewall-এ পোর্ট 80 খোলা হয়েছে ২৪/১১/২০২৬-এ।
 
@@ -237,4 +241,8 @@
 | 95 | 25/11/2026 | `3a39307` | Receipts & payments statements and the society at a glance | 20 | ফেজ ১৪ ধাপ ১ |
 | 96 | 25/11/2026 | `7ce0975` | Receipts and the cash voucher in the society's paper layout | 32 | ফেজ ১৪ ধাপ ২ |
 | 97 | 25/11/2026 | `4e38300` | Membership, loan, undertaking and withdrawal forms on the society's paper | 25 | ফেজ ১৪ ধাপ ৩ |
+| 98 | 25/11/2026 | `d6bb2ee` | Docs: paper forms phases in the development and chat history | — | ডকুমেন্ট |
+| 99 | 25/11/2026 | `77928c3` | Demo seed: water bill due date never before the bill date | 1 | ডেমো ঠিক |
+| 100 | 25/11/2026 | `306bb3a` | Demo seed: a partial land transfer never exceeds the owner's share | 1 | ডেমো ঠিক |
+| 101 | 25/11/2026 | `069bd68` | Website: a profile page for each managing committee member | 13 | কমিটির প্রোফাইল |
 
