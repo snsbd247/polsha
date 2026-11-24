@@ -1875,7 +1875,7 @@ class DemoDataService
                 if (! $preview['count']) {
                     return;
                 }
-                $this->api('water', 'POST', 'water/billing', ['period' => $period, 'bill_date' => $d, 'due_date' => $month->copy()->day(20)->toDateString()]);
+                $this->api('water', 'POST', 'water/billing', ['period' => $period, 'bill_date' => $d, 'due_date' => $month->copy()->day(20)->max(Carbon::parse($d)->addDays(7))->toDateString()]);
                 foreach ($this->water as $id => $c) {
                     $this->waterPayment($id, $c['payer'], $month, Carbon::parse($d));
                 }
