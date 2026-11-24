@@ -2,11 +2,12 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import dayjs, { type Dayjs } from 'dayjs'
-import { App, Button, Col, DatePicker, Form, Input, Row, Spin, Switch, Upload } from 'antd'
+import { App, Button, Col, DatePicker, Form, Input, Row, Spin, Switch, Upload, type FormInstance } from 'antd'
 import {
   ArrowDownOutlined,
   ArrowUpOutlined,
   DeleteOutlined,
+  DownOutlined,
   EnvironmentOutlined,
   ExportOutlined,
   FilePdfOutlined,
@@ -25,7 +26,8 @@ import {
 import { api, applyFormErrors, errorMessage } from '../../lib/api'
 import { t as tx } from '../../lib/i18n'
 import { appPath } from '../../lib/phase8'
-import { emptyBi, sitePhotoUrl, type SiteContent, type SiteNotice } from '../../lib/website'
+import FundMemberPicker from '../../components/FundMemberPicker'
+import { emptyBi, sitePhotoUrl, type Bi, type SiteContent, type SiteNotice, type SitePerson } from '../../lib/website'
 import SettingsShell, { SettingsCard } from './SettingsShell'
 import './website-settings.css'
 
@@ -49,6 +51,80 @@ function BiInput({ name, label, max, area, rows = 4, required, extra }: { name: 
         </Form.Item>
       </Col>
     </Row>
+  )
+}
+
+/** A date kept as "YYYY-MM-DD" in the form, shown in a date picker. */
+const dateField = {
+  getValueProps: (v?: string | null) => ({ value: v ? dayjs(v) : null }),
+  normalize: (d?: Dayjs | null) => (d ? d.format('YYYY-MM-DD') : null),
+}
+
+/** The extra details on a committee member's own page of the website. */
+function CommitteeProfile({ form, index }: { form: FormInstance; index: number }) {
+  const { message } = App.useApp()
+  const path = (k: string) => ['committee', index, k]
+  const pickMember = async (id: number | null) => {
+    form.setFieldValue(path('member_id'), id)
+    if (!id) return
+    try {
+      const r = (await api.get<Required<Pick<SitePerson, 'name' | 'village' | 'occupation' | 'education' | 'phone' | 'email'>> & { photo: string | null }>(`/settings/website/member-profile/${id}`)).data
+      // only the empty boxes are filled: what was typed stays
+      const fill = (k: 'name' | 'village' | 'occupation' | 'education') => {
+        const cur = (form.getFieldValue(path(k)) ?? {}) as Partial<Bi>
+        form.setFieldValue(path(k), { bn: cur.bn?.trim() || r[k].bn, en: cur.en?.trim() || r[k].en })
+      }
+      ;(['name', 'village', 'occupation', 'education'] as const).forEach(fill)
+      for (const k of ['phone', 'email', 'photo'] as const) {
+        if (!form.getFieldValue(path(k)) && r[k]) form.setFieldValue(path(k), r[k])
+      }
+      message.success(tx('সদস্যের রেকর্ড থেকে খালি ঘরগুলো পূরণ হয়েছে।'))
+    } catch (e) {
+      message.error(errorMessage(e))
+    }
+  }
+
+  return (
+    <div className="ws-profile">
+      <Form.Item name={[index, 'member_id']} label={tx('সমিতির সদস্য হলে বেছে নিন')} extra={tx('নাম, ছবি, গ্রাম, পেশা, শিক্ষা ও মোবাইল সদস্যের রেকর্ড থেকে নেওয়া হবে; সদস্য নং প্রোফাইলে দেখাবে।')}>
+        <FundMemberPicker kind="share" plain onChange={pickMember} />
+      </Form.Item>
+      <Row gutter={12}>
+        <Col xs={24} md={12}>
+          <Form.Item name={[index, 'term_from']} label={tx('মেয়াদ শুরু')} {...dateField}>
+            <DatePicker style={{ width: '100%' }} format="DD/MM/YYYY" />
+          </Form.Item>
+        </Col>
+        <Col xs={24} md={12}>
+          <Form.Item name={[index, 'term_to']} label={tx('মেয়াদ শেষ')} {...dateField}>
+            <DatePicker style={{ width: '100%' }} format="DD/MM/YYYY" />
+          </Form.Item>
+        </Col>
+      </Row>
+      <BiInput name={[index, 'village']} label={tx('গ্রাম/ঠিকানা')} max={150} />
+      <BiInput name={[index, 'occupation']} label={tx('পেশা')} max={100} />
+      <BiInput name={[index, 'education']} label={tx('শিক্ষাগত যোগ্যতা')} max={100} />
+      <BiInput name={[index, 'bio']} label={tx('পরিচিতি')} max={3000} area rows={4} />
+      <BiInput name={[index, 'message']} label={tx('বাণী/উক্তি')} max={1000} area rows={2} />
+      <BiInput name={[index, 'responsibilities']} label={tx('দায়িত্ব ও উপ-কমিটি')} max={500} area rows={2} />
+      <Row gutter={12}>
+        <Col xs={24} md={9}>
+          <Form.Item name={[index, 'phone']} label={tx('মোবাইল')}>
+            <Input maxLength={30} />
+          </Form.Item>
+        </Col>
+        <Col xs={24} md={9}>
+          <Form.Item name={[index, 'email']} label={tx('ইমেইল')} rules={[{ type: 'email', message: tx('সঠিক ইমেইল দিন') }]}>
+            <Input maxLength={100} />
+          </Form.Item>
+        </Col>
+        <Col xs={24} md={6}>
+          <Form.Item name={[index, 'show_contact']} label={tx('ওয়েবসাইটে মোবাইল/ইমেইল')} valuePropName="checked">
+            <Switch checkedChildren={tx('দেখাবে')} unCheckedChildren={tx('দেখাবে না')} />
+          </Form.Item>
+        </Col>
+      </Row>
+    </div>
   )
 }
 
@@ -162,6 +238,9 @@ export default function WebsiteSettingsPage() {
   const { message } = App.useApp()
   const queryClient = useQueryClient()
   const [saving, setSaving] = useState(false)
+  // committee rows whose profile details are open
+  const [openProfiles, setOpenProfiles] = useState<number[]>([])
+  const toggleProfile = (i: number) => setOpenProfiles((o) => (o.includes(i) ? o.filter((x) => x !== i) : [...o, i]))
 
   const { data, isLoading } = useQuery({
     queryKey: ['settings-website'],
@@ -186,6 +265,9 @@ export default function WebsiteSettingsPage() {
       message.success(tx('ওয়েবসাইট সংরক্ষণ হয়েছে।'))
     } catch (e) {
       if (!applyFormErrors(form, e)) message.error(errorMessage(e))
+      // a mistake inside a closed profile must be visible
+      const bad = form.getFieldsError().filter((f) => f.errors.length && f.name[0] === 'committee').map((f) => Number(f.name[1]))
+      if (bad.length) setOpenProfiles((o) => Array.from(new Set([...o, ...bad])))
     } finally {
       setSaving(false)
     }
@@ -354,27 +436,55 @@ export default function WebsiteSettingsPage() {
           </Form.List>
         </SettingsCard>
 
-        <SettingsCard icon={<TeamOutlined />} title={tx('পরিচালনা কমিটি')} subtitle={tx('যে ক্রমে সাজাবেন সেই ক্রমে দেখাবে; ছবি না দিলে নামের আদ্যক্ষর দেখাবে।')}>
+        <SettingsCard
+          icon={<TeamOutlined />}
+          title={tx('পরিচালনা কমিটি')}
+          subtitle={tx('যে ক্রমে সাজাবেন সেই ক্রমে দেখাবে; ছবি না দিলে নামের আদ্যক্ষর দেখাবে। প্রত্যেকের আলাদা প্রোফাইল পাতা থাকে — "প্রোফাইল" চেপে বিস্তারিত দিন।')}
+        >
           <Form.List name="committee">
             {(fields, { add, remove, move }) => (
               <>
-                {fields.map((f, i) => (
-                  <div className="ws-item ws-person" key={f.key}>
-                    <Form.Item name={[f.name, 'photo']} className="ws-person-photo">
-                      <PhotoField round />
-                    </Form.Item>
-                    <div className="ws-person-fields">
-                      <BiInput name={[f.name, 'name']} label={tx('নাম')} max={100} required />
-                      <BiInput name={[f.name, 'role']} label={tx('পদবি')} max={60} required />
+                {fields.map((f, i) => {
+                  const open = openProfiles.includes(i)
+                  const id = form.getFieldValue(['committee', f.name, 'id']) as string | undefined
+                  return (
+                    <div className="ws-item" key={f.key}>
+                      <div className="ws-person">
+                        <Form.Item name={[f.name, 'photo']} className="ws-person-photo">
+                          <PhotoField round />
+                        </Form.Item>
+                        <div className="ws-person-fields">
+                          <BiInput name={[f.name, 'name']} label={tx('নাম')} max={100} required />
+                          <BiInput name={[f.name, 'role']} label={tx('পদবি')} max={60} required />
+                          <div className="ws-profile-bar">
+                            <Button icon={<DownOutlined rotate={open ? 180 : 0} />} onClick={() => toggleProfile(i)} aria-expanded={open}>
+                              {open ? tx('প্রোফাইল বন্ধ করুন') : tx('প্রোফাইল')}
+                            </Button>
+                            {id && (
+                              <Button type="link" icon={<ExportOutlined />} href={appPath(`/committee/${id}`)} target="_blank">
+                                {tx('প্রোফাইল পাতা দেখুন')}
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                        <div className="ws-person-tools">
+                          <Button type="text" icon={<ArrowUpOutlined />} disabled={i === 0} onClick={() => (move(i, i - 1), setOpenProfiles([]))} aria-label={tx('উপরে')} />
+                          <Button type="text" icon={<ArrowDownOutlined />} disabled={i === fields.length - 1} onClick={() => (move(i, i + 1), setOpenProfiles([]))} aria-label={tx('নিচে')} />
+                          <Button type="text" danger icon={<DeleteOutlined />} onClick={() => (remove(f.name), setOpenProfiles([]))} aria-label={tx('মুছুন')} />
+                        </div>
+                      </div>
+                      {/* kept mounted while closed so its values are saved with the page */}
+                      <div hidden={!open}>
+                        <CommitteeProfile form={form} index={f.name} />
+                      </div>
                     </div>
-                    <div className="ws-person-tools">
-                      <Button type="text" icon={<ArrowUpOutlined />} disabled={i === 0} onClick={() => move(i, i - 1)} aria-label={tx('উপরে')} />
-                      <Button type="text" icon={<ArrowDownOutlined />} disabled={i === fields.length - 1} onClick={() => move(i, i + 1)} aria-label={tx('নিচে')} />
-                      <Button type="text" danger icon={<DeleteOutlined />} onClick={() => remove(f.name)} aria-label={tx('মুছুন')} />
-                    </div>
-                  </div>
-                ))}
-                <Button icon={<PlusOutlined />} onClick={() => add({ name: emptyBi(), role: emptyBi(), photo: null })} disabled={fields.length >= 20}>
+                  )
+                })}
+                <Button
+                  icon={<PlusOutlined />}
+                  onClick={() => (add({ name: emptyBi(), role: emptyBi(), photo: null, show_contact: false }), setOpenProfiles((o) => [...o, fields.length]))}
+                  disabled={fields.length >= 20}
+                >
                   {tx('সদস্য যোগ করুন')}
                 </Button>
               </>

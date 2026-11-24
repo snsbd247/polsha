@@ -9,7 +9,27 @@ export type Bi = { bn: string; en: string }
 export type SiteNotice = { id?: string; date: string; title: Bi; tag: Bi; body?: Bi; attachment?: string | null; attachment_name?: string }
 export type SitePresident = { name: Bi; role: Bi; photo: string | null; message: Bi }
 export type SiteWaterType = { code: string; name: Bi; monthly_fee: number; connection_fee: number }
-export type SitePerson = { name: Bi; role: Bi; photo: string | null }
+export type SitePerson = {
+  id?: string
+  name: Bi
+  role: Bi
+  photo: string | null
+  member_id?: number | null
+  /** public only: from the member record */
+  member_no?: number | null
+  term_from?: string | null
+  term_to?: string | null
+  village?: Bi
+  education?: Bi
+  occupation?: Bi
+  responsibilities?: Bi
+  bio?: Bi
+  message?: Bi
+  /** public: empty unless the society allows showing them */
+  phone?: string
+  email?: string
+  show_contact?: boolean
+}
 export type SitePhoto = { photo: string; caption: Bi }
 export type SiteFaq = { q: Bi; a: Bi }
 

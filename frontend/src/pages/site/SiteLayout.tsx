@@ -61,6 +61,8 @@ export default function SiteLayout({ children }: { children?: ReactNode }) {
   const nav = [
     { to: '/', label: tx('হোম'), end: true },
     { to: '/about', label: tx('আমাদের সম্পর্কে') },
+    // only once the committee has been entered
+    ...(site?.committee?.length ? [{ to: '/committee', label: tx('কমিটি') }] : []),
     { to: '/services', label: tx('আমাদের সেবা') },
     { to: '/notices', label: tx('নোটিশ') },
     { to: '/gallery', label: tx('গ্যালারি') },

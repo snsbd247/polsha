@@ -100,6 +100,7 @@ class WebsiteController extends Controller
         $c['registration_no'] = $s['registration_no'];
         $c['stats'] = $c['show_stats'] ? $this->stats($c['founded_year']) : [];
         $c['notices'] = self::withIds($c['notices']);
+        $c['committee'] = self::publicCommittee($c['committee']);
         // the water service page shows the tariff straight from the system
         $c['water_types'] = WaterConnectionType::where('is_active', true)->orderBy('sort_order')->orderBy('id')
             ->get(['code', 'name_bn', 'name_en', 'monthly_fee', 'connection_fee'])
@@ -113,8 +114,62 @@ class WebsiteController extends Controller
     {
         $c = self::content();
         $c['notices'] = self::withIds($c['notices']);
+        $c['committee'] = self::committeeIds($c['committee']);
 
         return response()->json($c);
+    }
+
+    /** Committee members saved before they had an id get a stable one, so their profile link never changes. */
+    private static function committeeIds(array $people): array
+    {
+        return array_map(fn ($p) => $p + ['id' => substr(md5('committee|'.($p['name']['bn'] ?? '').'|'.($p['role']['bn'] ?? '')), 0, 10)], $people);
+    }
+
+    /** The committee as visitors see it: member number from the records, contact details only when allowed. */
+    private static function publicCommittee(array $people): array
+    {
+        $people = self::committeeIds($people);
+        $nos = Member::whereIn('id', array_filter(array_column($people, 'member_id')))->pluck('member_no', 'id');
+
+        return array_map(function ($p) use ($nos) {
+            $p['member_no'] = ! empty($p['member_id']) ? ($nos[$p['member_id']] ?? null) : null;
+            if (empty($p['show_contact'])) {
+                $p['phone'] = '';
+                $p['email'] = '';
+            }
+            unset($p['member_id'], $p['show_contact']);
+
+            return $p;
+        }, $people);
+    }
+
+    /** A committee profile filled from a member's record; the member's photo is copied for the site. */
+    public function memberProfile(Member $member): JsonResponse
+    {
+        $f = $member->farmer()->with('village')->first();
+        abort_unless($f, 404);
+        $photo = null;
+        if ($f->photo && str_ends_with(strtolower($f->photo), '.jpg') && Storage::disk('local')->exists($f->photo)) {
+            $photo = self::DIR.'/'.Str::random(40).'.jpg';
+            Storage::disk('local')->copy($f->photo, $photo);
+        }
+        $label = function (string $list, ?string $key) {
+            $bn = $key ? (string) (config("erp.farmer.$list")[$key] ?? '') : '';
+
+            return ['bn' => $bn, 'en' => $bn === '' ? '' : (string) __($bn, [], 'en')];
+        };
+
+        return response()->json([
+            'member_id' => $member->id,
+            'member_no' => $member->member_no,
+            'name' => ['bn' => (string) $f->name_bn, 'en' => (string) $f->name_en],
+            'village' => ['bn' => (string) $f->village?->name_bn, 'en' => (string) $f->village?->name_en],
+            'occupation' => $label('occupations', $f->occupation),
+            'education' => $label('education_levels', $f->education_level),
+            'phone' => (string) $f->mobile,
+            'email' => (string) $f->email,
+            'photo' => $photo,
+        ]);
     }
 
     /** Notices saved before they had an id get a stable one (from date + title), so their page link never changes. */
@@ -165,6 +220,19 @@ class WebsiteController extends Controller
             'committee.*.name.bn' => ['required', 'string', 'max:100'], 'committee.*.name.en' => ['nullable', 'string', 'max:100'],
             'committee.*.role.bn' => ['required', 'string', 'max:60'], 'committee.*.role.en' => ['nullable', 'string', 'max:60'],
             'committee.*.photo' => ['nullable', 'string', 'regex:/^website\/[A-Za-z0-9]{40}\.jpg$/'],
+            'committee.*.id' => ['nullable', 'string', 'regex:/^[a-z0-9]{6,16}$/'],
+            'committee.*.member_id' => ['nullable', 'integer', 'exists:members,id'],
+            'committee.*.term_from' => ['nullable', 'date'],
+            'committee.*.term_to' => ['nullable', 'date', 'after_or_equal:committee.*.term_from'],
+            'committee.*.village.bn' => ['nullable', 'string', 'max:150'], 'committee.*.village.en' => ['nullable', 'string', 'max:150'],
+            'committee.*.education.bn' => ['nullable', 'string', 'max:100'], 'committee.*.education.en' => ['nullable', 'string', 'max:100'],
+            'committee.*.occupation.bn' => ['nullable', 'string', 'max:100'], 'committee.*.occupation.en' => ['nullable', 'string', 'max:100'],
+            'committee.*.responsibilities.bn' => ['nullable', 'string', 'max:500'], 'committee.*.responsibilities.en' => ['nullable', 'string', 'max:500'],
+            'committee.*.bio.bn' => ['nullable', 'string', 'max:3000'], 'committee.*.bio.en' => ['nullable', 'string', 'max:3000'],
+            'committee.*.message.bn' => ['nullable', 'string', 'max:1000'], 'committee.*.message.en' => ['nullable', 'string', 'max:1000'],
+            'committee.*.phone' => ['nullable', 'string', 'max:30'],
+            'committee.*.email' => ['nullable', 'email', 'max:100'],
+            'committee.*.show_contact' => ['nullable', 'boolean'],
             'gallery' => ['array', 'max:12'],
             'gallery.*.photo' => ['required', 'string', 'regex:/^website\/[A-Za-z0-9]{40}\.jpg$/'],
             'gallery.*.caption.bn' => ['nullable', 'string', 'max:120'], 'gallery.*.caption.en' => ['nullable', 'string', 'max:120'],
@@ -197,7 +265,18 @@ class WebsiteController extends Controller
                 'name' => $pair($data['president']['name'] ?? []), 'role' => $pair($data['president']['role'] ?? []),
                 'photo' => $data['president']['photo'] ?? null, 'message' => $pair($data['president']['message'] ?? []),
             ],
-            'committee' => collect($data['committee'] ?? [])->map(fn ($m) => ['name' => $pair($m['name']), 'role' => $pair($m['role']), 'photo' => $m['photo'] ?? null])->values()->all(),
+            'committee' => collect($data['committee'] ?? [])->map(fn ($m) => [
+                // the id is the profile page's address: kept when edited, made once when added
+                'id' => $m['id'] ?? Str::lower(Str::random(10)),
+                'name' => $pair($m['name']), 'role' => $pair($m['role']), 'photo' => $m['photo'] ?? null,
+                'member_id' => isset($m['member_id']) ? (int) $m['member_id'] : null,
+                'term_from' => ! empty($m['term_from']) ? date('Y-m-d', strtotime($m['term_from'])) : null,
+                'term_to' => ! empty($m['term_to']) ? date('Y-m-d', strtotime($m['term_to'])) : null,
+                'village' => $pair($m['village'] ?? []), 'education' => $pair($m['education'] ?? []), 'occupation' => $pair($m['occupation'] ?? []),
+                'responsibilities' => $pair($m['responsibilities'] ?? []), 'bio' => $pair($m['bio'] ?? []), 'message' => $pair($m['message'] ?? []),
+                'phone' => trim((string) ($m['phone'] ?? '')), 'email' => trim((string) ($m['email'] ?? '')),
+                'show_contact' => (bool) ($m['show_contact'] ?? false),
+            ])->values()->all(),
             'gallery' => collect($data['gallery'] ?? [])->map(fn ($g) => ['photo' => $g['photo'], 'caption' => $pair($g['caption'] ?? [])])->values()->all(),
             'phone' => trim((string) ($data['phone'] ?? '')),
             'email' => trim((string) ($data['email'] ?? '')),

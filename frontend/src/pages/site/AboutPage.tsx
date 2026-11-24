@@ -2,6 +2,7 @@ import { UserOutlined } from '@ant-design/icons'
 import { digits } from '../../lib/format'
 import { t as tx } from '../../lib/i18n'
 import { pick, sitePhotoUrl } from '../../lib/website'
+import { CommitteeGrid } from './CommitteePages'
 import { JoinBanner } from './HomePage'
 import { asset, DiamondIcon, HandshakeIcon, PageBanner, StatsBand, TargetIcon, usePageTitle, useSite } from './kit'
 
@@ -92,21 +93,7 @@ export default function AboutPage() {
           <div className="ld-wrap">
             <span className="ld-kicker">{tx('পরিচালনা কমিটি')}</span>
             <h2 className="ld-page-title">{tx('যাঁরা সমিতি পরিচালনা করছেন')}</h2>
-            <div className="ld-committee">
-              {committee.map((c, i) => (
-                <div className="ld-person" key={i}>
-                  {c.photo ? (
-                    <img className="ld-avatar" src={sitePhotoUrl(c.photo)} alt={pick(c.name)} />
-                  ) : (
-                    <span className="ld-avatar">
-                      <UserOutlined />
-                    </span>
-                  )}
-                  <b>{pick(c.name)}</b>
-                  <small>{pick(c.role)}</small>
-                </div>
-              ))}
-            </div>
+            <CommitteeGrid people={committee} />
           </div>
         </section>
       )}

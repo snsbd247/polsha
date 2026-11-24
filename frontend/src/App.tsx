@@ -165,6 +165,8 @@ const SiteNoticeDetailPage = lazy(() => import('./pages/site/NoticesPage').then(
 const SiteGalleryPage = lazy(() => import('./pages/site/GalleryFaqPages').then((m) => ({ default: m.GalleryPage })))
 const SiteFaqPage = lazy(() => import('./pages/site/GalleryFaqPages').then((m) => ({ default: m.FaqPage })))
 const SiteContactPage = lazy(() => import('./pages/site/ContactPage'))
+const SiteCommitteePage = lazy(() => import('./pages/site/CommitteePages').then((m) => ({ default: m.CommitteePage })))
+const SiteCommitteeProfilePage = lazy(() => import('./pages/site/CommitteePages').then((m) => ({ default: m.CommitteeProfilePage })))
 const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage'))
 
 const ACC_SECTION = { label: tx('হিসাব'), to: '/accounting/summary' }
@@ -257,6 +259,8 @@ export default function App() {
       {/* the public website: one page per menu item, all in the same frame */}
       <Route element={<SiteLayout />}>
         <Route path="/about" element={<SiteAboutPage />} />
+        <Route path="/committee" element={<SiteCommitteePage />} />
+        <Route path="/committee/:id" element={<SiteCommitteeProfilePage />} />
         <Route path="/services" element={<SiteServicesPage />} />
         <Route path="/services/:key" element={<SiteServiceDetailPage />} />
         <Route path="/notices" element={<SiteNoticesPage />} />

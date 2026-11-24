@@ -163,6 +163,7 @@ Route::middleware(['auth:sanctum', 'usable', 'ready'])->group(function () {
         Route::put('settings/website', [WebsiteController::class, 'update']);
         Route::post('settings/website/images', [WebsiteController::class, 'upload']);
         Route::post('settings/website/files', [WebsiteController::class, 'uploadFile']);
+        Route::get('settings/website/member-profile/{member}', [WebsiteController::class, 'memberProfile']);
         Route::get('website-messages', [WebsiteMessageController::class, 'index']);
         Route::put('website-messages/{message}', [WebsiteMessageController::class, 'update']);
         Route::delete('website-messages/{message}', [WebsiteMessageController::class, 'destroy']);

@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Member;
 use App\Services\SettingService;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -175,6 +176,46 @@ class WebsiteTest extends Phase2TestCase
         $site = $this->getJson('/api/public/website')->assertOk()->assertJsonPath('president.message.bn', 'সবাইকে শুভেচ্ছা')->json();
         $this->assertNotEmpty($site['water_types']);
         $this->assertArrayHasKey('monthly_fee', $site['water_types'][0]);
+    }
+
+    public function test_committee_profiles_keep_their_address_and_hide_contact_unless_allowed(): void
+    {
+        $admin = $this->userWithRole('super_admin');
+        $member = Member::create([
+            'farmer_id' => $this->makeFarmer(['name_bn' => 'রহিম উদ্দিন', 'mobile' => '01711000002', 'occupation' => 'farmer'])->id,
+            'member_no' => 57, 'admitted_on' => '2020-01-01', 'status' => Member::ACTIVE,
+        ]);
+        // filled from the member's record
+        $this->actingAs($admin)->getJson("/api/settings/website/member-profile/{$member->id}")->assertOk()
+            ->assertJsonPath('name.bn', 'রহিম উদ্দিন')->assertJsonPath('member_no', 57)
+            ->assertJsonPath('phone', '01711000002')->assertJsonPath('occupation.bn', 'কৃষক');
+        $this->actingAs($this->userWithRole('cashier'))->getJson("/api/settings/website/member-profile/{$member->id}")->assertForbidden();
+
+        $person = [
+            'name' => ['bn' => 'রহিম উদ্দিন', 'en' => 'Rahim Uddin'], 'role' => ['bn' => 'সম্পাদক', 'en' => 'Secretary'], 'photo' => null,
+            'member_id' => $member->id, 'term_from' => '2024-07-01', 'term_to' => '2027-06-30',
+            'village' => ['bn' => 'পলাশ', 'en' => ''], 'bio' => ['bn' => 'দশ বছর ধরে সমিতির সাথে আছেন।', 'en' => ''],
+            'message' => ['bn' => 'একসাথে এগিয়ে যাই', 'en' => ''], 'phone' => '01711000002', 'email' => 'rahim@example.com', 'show_contact' => false,
+        ];
+        $saved = $this->actingAs($admin)->putJson('/api/settings/website', $this->page(['committee' => [$person]]))->assertOk()->json('committee.0');
+        $this->assertMatchesRegularExpression('/^[a-z0-9]{10}$/', $saved['id']);
+
+        $public = $this->getJson('/api/public/website')->assertOk()->json('committee.0');
+        $this->assertSame($saved['id'], $public['id']);
+        $this->assertSame(57, $public['member_no']);
+        $this->assertSame('', $public['phone']);
+        $this->assertSame('', $public['email']);
+        $this->assertSame('দশ বছর ধরে সমিতির সাথে আছেন।', $public['bio']['bn']);
+        $this->assertArrayNotHasKey('member_id', $public);
+
+        // allowed: contact shows; the address stays the same after an edit
+        $person = ['id' => $saved['id'], 'show_contact' => true, 'role' => ['bn' => 'সভাপতি', 'en' => '']] + $person;
+        $this->actingAs($admin)->putJson('/api/settings/website', $this->page(['committee' => [$person]]))->assertOk();
+        $this->getJson('/api/public/website')->assertJsonPath('committee.0.id', $saved['id'])->assertJsonPath('committee.0.phone', '01711000002');
+
+        // the term cannot end before it starts
+        $this->actingAs($admin)->putJson('/api/settings/website', $this->page(['committee' => [['term_to' => '2020-01-01'] + $person]]))
+            ->assertStatus(422)->assertJsonValidationErrors('committee.0.term_to');
     }
 
     public function test_contact_form_reaches_the_office_inbox(): void

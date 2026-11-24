@@ -22,10 +22,12 @@ type Props = {
   /** without: members with no account of this kind yet (for opening one). */
   filter?: 'without' | 'with'
   exclude?: number[]
+  /** hide the account balance (when the pick is not about money) */
+  plain?: boolean
 }
 
 /** Remote-search member select that also shows the member's account of `kind`. */
-export default function FundMemberPicker({ kind, value, onChange, filter, exclude = [] }: Props) {
+export default function FundMemberPicker({ kind, value, onChange, filter, exclude = [], plain }: Props) {
   const [term, setTerm] = useState('')
   const { data, isFetching } = useQuery({
     queryKey: ['fund-lookup', kind, term],
@@ -47,7 +49,7 @@ export default function FundMemberPicker({ kind, value, onChange, filter, exclud
         label:
           tx('সদস্য নং {{p0}} — {{p1}}', { p0: digits(m.member_no), p1: nameOf(m.farmer) }) +
           (m.farmer?.father_name ? ` (${tx('পিতা: {{p0}}', { p0: m.farmer.father_name })})` : '') +
-          (m.account ? ` · ${digits(m.account.account_no)}: ৳${money(m.account.balance)}` : ''),
+          (m.account && !plain ? ` · ${digits(m.account.account_no)}: ৳${money(m.account.balance)}` : ''),
       }))}
       onChange={(v, opt) => onChange?.(v ?? null, (opt as { row?: FundLookup } | undefined)?.row)}
       style={{ width: '100%' }}
