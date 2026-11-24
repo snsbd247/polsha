@@ -10,10 +10,10 @@
 | রিপোজিটরি | https://github.com/snsbd247/polsha (branch `main`) |
 | প্রথম commit | ২৩/০৯/২০২৬ — Phase 1 |
 | শেষ commit | ২৪/১১/২০২৬ — লিফট অনুযায়ী সেচের রেট (ফেজ ১৩) |
-| মোট commit | ৯১+ (Md Ismail Hosain-এর নামে; ২৪/১১ থেকে Claude সহ-লেখক) |
+| মোট commit | ৯৭ (Md Ismail Hosain-এর নামে; ২৪/১১ থেকে Claude সহ-লেখক) |
 | কোডের পরিবর্তন | ১,৮৬১ বার ফাইল বদল, +১,৪৭,৪৮১ / −২০,০০৮ লাইন; এখন ৬৯৯টি ফাইল |
-| Feature test | ১৯০টি test (২৮টি ফাইল) — ২৪/১১/২০২৬-এর পূর্ণ রানে সব পাস (২,৭৯৭ assertion) |
-| ডাটাবেজ | ৫৭টি migration, ১০২টি টেবিল |
+| Feature test | ১৯৭টি test (২৯টি ফাইল) — ২৫/১১/২০২৬-এর পূর্ণ রানে সব পাস (২,৮৯৪ assertion) |
+| ডাটাবেজ | ৬০টি migration, ১০৪টি টেবিল |
 | প্রথম লাইভ | https://smartirrigation.click (২৩/০৯/২০২৬) |
 | এখনকার লাইভ | https://pmpbssl.com (cPanel `pmwmcs`, ১৫/১০/২০২৬ থেকে; সার্ভার ২৪/১১-এর আগে `169.40.116.146`-এ সরেছে) |
 
@@ -32,6 +32,7 @@
 ০৫/১১ ─ লোকাল XAMPP-এ লাইভের কপি
 ২৪/১১ ─ নতুন সার্ভার থেকে লোকাল ডেটা হালনাগাদ, এই ৫টি ডকুমেন্ট
 ২৪/১১ ─ ফেজ ১৩: লিফট অনুযায়ী সেচের রেট → GitHub ও লাইভে deploy
+২৪–২৫/১১ ─ ফেজ ১৪: সমিতির কাগজের নকশায় রিপোর্ট (জমা-খরচ বিবরণী, এক নজরে), রশিদ ও ভাউচার, আবেদন ফর্ম → তিন ধাপে লাইভে
 ```
 
 ---
@@ -116,6 +117,7 @@
 | ২৪/১১/২০২৬ | পুরোনো IP বন্ধ — লাইভ সরেছে `169.40.116.146`-এ (srv3.syncsolutionbd.com); সেখান থেকে নতুন ডাটাবেজ ও ফাইল লোকালে (আগের লোকাল DB-র ব্যাকআপ রেখে); কোড এখনো একই। Database.md, plan.md, UI.md, chat_history.md, development.md তৈরি |
 | ২৪/১১/২০২৬ | ফেজ ১৩ (লিফট অনুযায়ী সেচের রেট) — commit `64e5783`, GitHub-এ push; `server-deploy.sh` দিয়ে লাইভে: আগে ব্যাকআপ `polsha-20261124-145912.sql.gz`, migration `2026_11_24_100000_irrigation_lifts`, নতুন bundle `index-BOLA9UZ1.js`; লাইভে ৩টি লিফট, সেদিনের লগে কোনো error নেই। লোকাল XAMPP-এও একই build (`F:\Lovable\polsha-web`) ও migration |
 | ২৪/১১/২০২৬ | লিফট কমানো ও সব জমিতে একই রেট — commit `6f17e8b`, লাইভে deploy (আগে ব্যাকআপ `polsha-20261124-221134.sql.gz`, নতুন migration নেই, bundle `index-heLDja10.js`); লোকালেও নতুন build |
+| ২৪–২৫/১১/২০২৬ | ফেজ ১৪ (সমিতির ১২টি কাগজের নকশা) তিন ধাপে, প্রতিবার আগে ব্যাকআপ নিয়ে লাইভে: ধাপ ১ `3a39307` (জমা-খরচ বিবরণী ও এক নজরে; migration `statement_heads`, ১৮৬টি খাত, ১২৩টি নতুন হিসাব), ধাপ ২ `7ce0975` (সেচ/পানি/শেয়ার-সঞ্চয় রশিদ, ক্যাশ ক্রেডিট ভাউচার; migration `water_ward_and_commitment_fee`), ধাপ ৩ `4e38300` (সদস্যপদ ও ঋণের আবেদন, অঙ্গীকারনামা, উত্তোলনের আবেদন; migration `paper_form_fields`); শেষ bundle `index-BnErWoyO.js`। প্রিন্টের নকশা headless Chrome-এ PDF বানিয়ে যাচাই করা |
 
 **লোকালে যা বাকি:** লোকাল ডোমেইনের লাইসেন্স key (এখন `pmpbssl.com`-এ বাঁধা, তাই লোকালে signed-in কাজ বন্ধ)। Windows Firewall-এ পোর্ট 80 খোলা হয়েছে ২৪/১১/২০২৬-এ।
 
@@ -231,4 +233,8 @@
 | 91 | 24/11/2026 | `64e5783` | Irrigation rates by lift (1st, 2nd, 3rd lift) | 43 | লিফট মডিউল |
 | 92 | 24/11/2026 | `5c43ac6` | Docs: lift rates in the development and chat history | 2 | ডকুমেন্ট |
 | 93 | 24/11/2026 | `6f17e8b` | Lifts can be dropped; one lift rate for every land type | 14 | লিফট কমানো, জমির ধরন বাদ |
+| 94 | 24/11/2026 | `212c6e8` | Docs: lift changes in the development and chat history | 2 | ডকুমেন্ট |
+| 95 | 25/11/2026 | `3a39307` | Receipts & payments statements and the society at a glance | 20 | ফেজ ১৪ ধাপ ১ |
+| 96 | 25/11/2026 | `7ce0975` | Receipts and the cash voucher in the society's paper layout | 32 | ফেজ ১৪ ধাপ ২ |
+| 97 | 25/11/2026 | `4e38300` | Membership, loan, undertaking and withdrawal forms on the society's paper | 25 | ফেজ ১৪ ধাপ ৩ |
 
