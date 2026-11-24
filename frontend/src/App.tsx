@@ -70,6 +70,8 @@ const LedgerPage = lazy(() => import('./pages/accounting/LedgerPage'))
 const FundStatementPage = lazy(() => import('./pages/cashbook/FundStatementPage'))
 const IncomeExpenseBookPage = lazy(() => import('./pages/cashbook/IncomeExpenseHub'))
 const ExportAuditPage = lazy(() => import('./pages/cashbook/ExportAuditPage'))
+const ReceiptPaymentPage = lazy(() => import('./pages/cashbook/ReceiptPaymentPage'))
+const AtAGlancePage = lazy(() => import('./pages/reports/AtAGlancePage'))
 const BankAccountsPage = lazy(() => import('./pages/accounting/BankAccountsPage'))
 const TrialBalancePage = lazy(() => import('./pages/accounting/TrialBalancePage'))
 const PeriodsPage = lazy(() => import('./pages/accounting/PeriodsPage'))
@@ -348,6 +350,8 @@ export default function App() {
         <Route path="cashbook/irrigation" element={<Perm perm={['accounting.view', 'cash.view', 'bank.view']}><FundStatementPage key="irrigation" stream="irrigation" /></Perm>} />
         <Route path="cashbook/society" element={<Perm perm={['accounting.view', 'cash.view', 'bank.view']}><FundStatementPage key="society" stream="society" /></Perm>} />
         <Route path="cashbook/income-expense" element={<Perm perm={['accounting.view', 'cash.view', 'bank.view']}><IncomeExpenseBookPage /></Perm>} />
+        <Route path="cashbook/receipt-payment" element={<Perm perm={['accounting.view', 'cash.view', 'bank.view']}><ReceiptPaymentPage /></Perm>} />
+        <Route path="reports/at-a-glance" element={<Perm perm={['accounting.view', 'report.view']}><AtAGlancePage /></Perm>} />
         <Route path="audit/exports" element={<Perm perm="audit.view"><ExportAuditPage /></Perm>} />
         <Route path="accounting/bank-accounts" element={<Perm perm="bank.view"><BankAccountsPage /></Perm>} />
         <Route path="accounting/journals" element={<Perm perm="accounting.view"><JournalListPage /></Perm>} />

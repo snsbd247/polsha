@@ -1,8 +1,8 @@
 # Database — পল্লী সমবায় সমিতি + কৃষি সেচ ERP (Polsha)
 
-> এই ফাইলটি লোকাল ডাটাবেজ `polsha` (লাইভ `pmpbssl.com`-এর ২৪/১১/২০২৬ তারিখের কপি, সব 57টি migration চালানো) থেকে `information_schema` পড়ে তৈরি। কলাম, টাইপ, ইন্ডেক্স ও Foreign Key হুবহু ডাটাবেজের; "Eloquent সম্পর্ক" অংশ `backend/app/Models`-এর কোড থেকে।
+> এই ফাইলটি লোকাল ডাটাবেজ `polsha` (লাইভ `pmpbssl.com`-এর ২৪/১১/২০২৬ তারিখের কপি, সব 58টি migration চালানো) থেকে `information_schema` পড়ে তৈরি। কলাম, টাইপ, ইন্ডেক্স ও Foreign Key হুবহু ডাটাবেজের; "Eloquent সম্পর্ক" অংশ `backend/app/Models`-এর কোড থেকে।
 
-**সংক্ষেপে:** 102 টেবিল · 1208 কলাম · 431 ইন্ডেক্স · 217 Foreign Key · 87 Eloquent মডেল · Engine InnoDB · Charset utf8mb4 · MariaDB 10.11 (লাইভ) / 10.4 (লোকাল XAMPP)
+**সংক্ষেপে:** 104 টেবিল · 1225 কলাম · 438 ইন্ডেক্স · 219 Foreign Key · 88 Eloquent মডেল · Engine InnoDB · Charset utf8mb4 · MariaDB 10.11 (লাইভ) / 10.4 (লোকাল XAMPP)
 
 ## সূচিপত্র
 
@@ -219,7 +219,7 @@ erDiagram
 
 | টেবিল | কলাম | ইন্ডেক্স | FK (বাইরে যায়) | FK (ভেতরে আসে) | মডেল | সারি (২৪/১১) |
 |---|---:|---:|---:|---:|---|---:|
-| [`chart_of_accounts`](#chart_of_accounts) | 13 | 5 | 1 | 11 | Account | 43 |
+| [`chart_of_accounts`](#chart_of_accounts) | 13 | 5 | 1 | 12 | Account | 166 |
 | [`accounting_periods`](#accounting_periods) | 10 | 3 | 1 | 1 | AccountingPeriod | 0 |
 | [`fiscal_year_closes`](#fiscal_year_closes) | 13 | 4 | 2 | 0 | FiscalYearClose | 0 |
 | [`journals`](#journals) | 19 | 13 | 6 | 17 | Journal | 0 |
@@ -227,6 +227,8 @@ erDiagram
 | [`bank_accounts`](#bank_accounts) | 14 | 3 | 2 | 1 | BankAccount | 0 |
 | [`bank_reconciliations`](#bank_reconciliations) | 13 | 4 | 3 | 1 | BankReconciliation | 0 |
 | [`bank_statement_lines`](#bank_statement_lines) | 9 | 3 | 2 | 0 | BankStatementLine | 0 |
+| [`statement_heads`](#statement_heads) | 10 | 3 | 0 | 1 | StatementHead | 186 |
+| [`statement_head_accounts`](#statement_head_accounts) | 7 | 4 | 2 | 0 | — | 172 |
 
 ### সম্পদ (Assets)
 
@@ -273,7 +275,7 @@ erDiagram
 
 | টেবিল | কলাম | ইন্ডেক্স | FK (বাইরে যায়) | FK (ভেতরে আসে) | মডেল | সারি (২৪/১১) |
 |---|---:|---:|---:|---:|---|---:|
-| [`migrations`](#migrations) | 3 | 1 | 0 | 0 | — | 57 |
+| [`migrations`](#migrations) | 3 | 1 | 0 | 0 | — | 58 |
 | [`cache`](#cache) | 3 | 2 | 0 | 0 | — | 6 |
 | [`cache_locks`](#cache_locks) | 3 | 2 | 0 | 0 | — | 0 |
 | [`jobs`](#jobs) | 7 | 2 | 0 | 0 | — | 0 |
@@ -478,6 +480,8 @@ erDiagram
 | `seasons.created_by` | `users.id` | RESTRICT | RESTRICT | `seasons_created_by_foreign` |
 | `sms_logs.created_by` | `users.id` | RESTRICT | RESTRICT | `sms_logs_created_by_foreign` |
 | `sms_otps.user_id` | `users.id` | CASCADE | RESTRICT | `sms_otps_user_id_foreign` |
+| `statement_head_accounts.account_id` | `chart_of_accounts.id` | RESTRICT | RESTRICT | `statement_head_accounts_account_id_foreign` |
+| `statement_head_accounts.statement_head_id` | `statement_heads.id` | CASCADE | RESTRICT | `statement_head_accounts_statement_head_id_foreign` |
 | `unions.upazila_id` | `upazilas.id` | RESTRICT | RESTRICT | `unions_upazila_id_foreign` |
 | `upazilas.district_id` | `districts.id` | RESTRICT | RESTRICT | `upazilas_district_id_foreign` |
 | `villages.union_id` | `unions.id` | RESTRICT | RESTRICT | `villages_union_id_foreign` |
@@ -2915,7 +2919,7 @@ erDiagram
 
 #### chart_of_accounts
 
-মডেল: `App\Models\Account` · সারি (২৪/১১/২০২৬): 43
+মডেল: `App\Models\Account` · সারি (২৪/১১/২০২৬): 166
 
 | কলাম | টাইপ | Null | Default | Key | Extra / মন্তব্য |
 |---|---|---|---|---|---|
@@ -2947,7 +2951,7 @@ erDiagram
 
 - `parent_id` → `chart_of_accounts.id` (ON DELETE RESTRICT)
 
-**যে টেবিলগুলো একে নির্দেশ করে:** `assets.fund_account_id`, `asset_maintenances.fund_account_id`, `bank_accounts.account_id`, `chart_of_accounts.parent_id`, `combined_payments.fund_account_id`, `journal_lines.account_id`, `loans.fund_account_id`, `loan_payments.fund_account_id`, `member_transactions.counter_account_id`, `member_transactions.fund_account_id`, `receipts.fund_account_id`
+**যে টেবিলগুলো একে নির্দেশ করে:** `assets.fund_account_id`, `asset_maintenances.fund_account_id`, `bank_accounts.account_id`, `chart_of_accounts.parent_id`, `combined_payments.fund_account_id`, `journal_lines.account_id`, `loans.fund_account_id`, `loan_payments.fund_account_id`, `member_transactions.counter_account_id`, `member_transactions.fund_account_id`, `receipts.fund_account_id`, `statement_head_accounts.account_id`
 
 **Eloquent সম্পর্ক:** `parent()` belongsTo `self` · `children()` hasMany `self` · `lines()` hasMany `JournalLine` · `bankAccount()` hasOne `BankAccount`
 
@@ -3218,6 +3222,63 @@ erDiagram
 - `reconciliation_id` → `bank_reconciliations.id` (ON DELETE CASCADE)
 
 **Eloquent সম্পর্ক:** `reconciliation()` belongsTo `BankReconciliation` · `journalLine()` belongsTo `JournalLine`
+
+#### statement_heads
+
+মডেল: `App\Models\StatementHead` · সারি (২৪/১১/২০২৬): 186
+
+| কলাম | টাইপ | Null | Default | Key | Extra / মন্তব্য |
+|---|---|---|---|---|---|
+| `id` | `bigint(20) unsigned` | না |  | PK | auto_increment |
+| `fund` | `varchar(20)` | না |  | MUL |  |
+| `side` | `varchar(10)` | না |  |  |  |
+| `name_bn` | `varchar(150)` | না |  |  |  |
+| `name_en` | `varchar(150)` | হ্যাঁ | NULL |  |  |
+| `kind` | `varchar(20)` | হ্যাঁ | NULL |  |  |
+| `sort_order` | `int(10) unsigned` | না | `0` |  |  |
+| `is_active` | `tinyint(1)` | না | `1` |  |  |
+| `created_at` | `timestamp` | হ্যাঁ | NULL |  |  |
+| `updated_at` | `timestamp` | হ্যাঁ | NULL |  |  |
+
+**ইন্ডেক্স**
+
+| নাম | ধরন | কলাম |
+|---|---|---|
+| `PRIMARY` | PRIMARY | `id` |
+| `statement_heads_fund_side_name_bn_unique` | UNIQUE | `fund`, `side`, `name_bn` |
+| `statement_heads_fund_side_sort_order_index` | INDEX | `fund`, `side`, `sort_order` |
+
+**যে টেবিলগুলো একে নির্দেশ করে:** `statement_head_accounts.statement_head_id`
+
+**Eloquent সম্পর্ক:** `accounts()` belongsToMany `Account`
+
+#### statement_head_accounts
+
+সারি (২৪/১১/২০২৬): 172
+
+| কলাম | টাইপ | Null | Default | Key | Extra / মন্তব্য |
+|---|---|---|---|---|---|
+| `id` | `bigint(20) unsigned` | না |  | PK | auto_increment |
+| `statement_head_id` | `bigint(20) unsigned` | না |  | MUL |  |
+| `account_id` | `bigint(20) unsigned` | না |  | MUL |  |
+| `fund` | `varchar(20)` | না |  | MUL |  |
+| `side` | `varchar(10)` | না |  |  |  |
+| `created_at` | `timestamp` | হ্যাঁ | NULL |  |  |
+| `updated_at` | `timestamp` | হ্যাঁ | NULL |  |  |
+
+**ইন্ডেক্স**
+
+| নাম | ধরন | কলাম |
+|---|---|---|
+| `PRIMARY` | PRIMARY | `id` |
+| `statement_head_accounts_account_id_foreign` | INDEX | `account_id` |
+| `statement_head_accounts_fund_side_account_id_unique` | UNIQUE | `fund`, `side`, `account_id` |
+| `statement_head_accounts_statement_head_id_foreign` | INDEX | `statement_head_id` |
+
+**Foreign Key**
+
+- `account_id` → `chart_of_accounts.id` (ON DELETE RESTRICT)
+- `statement_head_id` → `statement_heads.id` (ON DELETE CASCADE)
 
 ### মডিউল: সম্পদ (Assets)
 
@@ -3973,7 +4034,7 @@ erDiagram
 
 #### migrations
 
-সারি (২৪/১১/২০২৬): 57
+সারি (২৪/১১/২০২৬): 58
 
 | কলাম | টাইপ | Null | Default | Key | Extra / মন্তব্য |
 |---|---|---|---|---|---|

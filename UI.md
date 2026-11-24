@@ -446,6 +446,7 @@
 | 1 | সেচ নগদ বিবরণী | Irrigation Cash Statement | `/cashbook/irrigation` | `accounting.view`, `cash.view`, `bank.view` |
 | 2 | সমিতির নগদ বিবরণী | Society Cash Statement | `/cashbook/society` | `accounting.view`, `cash.view`, `bank.view` |
 | 3 | আয়-ব্যয় নগদ বই | Income & Expense Cash Book | `/cashbook/income-expense` | `accounting.view`, `cash.view`, `bank.view` |
+| 3ক | জমা-খরচ বিবরণী | Receipts & Payments | `/cashbook/receipt-payment` | `accounting.view`, `cash.view`, `bank.view` |
 | 4 | ক্যাশ বই (খতিয়ান) | Cash Book (Ledger) | `/accounting/ledger` | `accounting.view`, `cash.view`, `bank.view` |
 | 5 | Export অডিট | Export Audit | `/audit/exports` | `audit.view` |
 
@@ -491,6 +492,7 @@
 | 1 | আদায়ের রিপোর্ট | Collection Reports | `/reports/collections` | `payment.view` |
 | 2 | বকেয়ার রিপোর্ট | Due Reports | `/reports/dues` | `irrigation.view`, `loan.view` |
 | 3 | অডিট রিপোর্ট | Audit Reports | `/reports/audit` | `audit.view` |
+| 4 | এক নজরে সমিতি | Society at a Glance | `/reports/at-a-glance` | `accounting.view`, `report.view` |
 
 ### 12. অডিট ও পর্যবেক্ষণ / Audit & Monitoring
 

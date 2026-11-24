@@ -388,6 +388,11 @@ const GROUPS: Group[] = [
         perm: ACC,
       },
       {
+        path: '/cashbook/receipt-payment',
+        label: m('জমা-খরচ বিবরণী', 'Receipts & Payments'),
+        perm: ACC,
+      },
+      {
         path: '/accounting/ledger',
         label: m('ক্যাশ বই (খতিয়ান)', 'Cash Book (Ledger)'),
         perm: ACC,
@@ -545,6 +550,11 @@ const GROUPS: Group[] = [
         path: '/reports/audit',
         label: m('অডিট রিপোর্ট', 'Audit Reports'),
         perm: 'audit.view',
+      },
+      {
+        path: '/reports/at-a-glance',
+        label: m('এক নজরে সমিতি', 'Society at a Glance'),
+        perm: ['accounting.view', 'report.view'],
       },
     ],
   },

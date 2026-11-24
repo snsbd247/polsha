@@ -27,6 +27,7 @@ use App\Http\Controllers\Api\ImportController;
 use App\Http\Controllers\Api\IntegrityScanController;
 use App\Http\Controllers\Api\InvoiceController;
 use App\Http\Controllers\Api\IrrigationLiftController;
+use App\Http\Controllers\Api\ReceiptPaymentController;
 use App\Http\Controllers\Api\IrrigationRateController;
 use App\Http\Controllers\Api\IrrigationReportController;
 use App\Http\Controllers\Api\IrrigationTypeController;
@@ -335,6 +336,16 @@ Route::middleware(['auth:sanctum', 'usable', 'ready'])->group(function () {
     Route::get('cashbook/society-statement', [AccountingReportController::class, 'societyStatement'])->middleware('permission:accounting.view|cash.view|bank.view');
     Route::get('cashbook/water-statement', [AccountingReportController::class, 'waterStatement'])->middleware('permission:accounting.view|cash.view|bank.view|water.view');
     Route::get('cashbook/income-expense-book', [AccountingReportController::class, 'incomeExpenseBook'])->middleware('permission:accounting.view|cash.view|bank.view');
+    Route::get('cashbook/receipt-payment', [ReceiptPaymentController::class, 'show'])->middleware('permission:accounting.view|cash.view|bank.view');
+    Route::get('statement-heads', [ReceiptPaymentController::class, 'heads'])->middleware('permission:accounting.view|cash.view|bank.view');
+    Route::get('reports-at-a-glance', [ReceiptPaymentController::class, 'glance'])->middleware('permission:accounting.view|report.view');
+    Route::put('reports-at-a-glance/info', [ReceiptPaymentController::class, 'saveGlanceInfo'])->middleware('permission:settings.admin');
+    Route::middleware('permission:accounting.edit')->group(function () {
+        Route::post('statement-heads', [ReceiptPaymentController::class, 'store']);
+        Route::post('statement-heads/reorder', [ReceiptPaymentController::class, 'reorder']);
+        Route::put('statement-heads/{head}', [ReceiptPaymentController::class, 'update']);
+        Route::delete('statement-heads/{head}', [ReceiptPaymentController::class, 'destroy']);
+    });
     Route::middleware('permission:accounting.edit')->group(function () {
         Route::post('accounts', [AccountController::class, 'store']);
         Route::put('accounts/{account}', [AccountController::class, 'update']);
