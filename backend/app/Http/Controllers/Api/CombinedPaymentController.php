@@ -87,7 +87,7 @@ class CombinedPaymentController extends Controller
 
     public function show(CombinedPayment $combinedPayment): JsonResponse
     {
-        $p = $combinedPayment->load(['parts.source', 'farmer:id,farmer_code,name_bn,name_en,father_name,mobile', 'member:id,member_no',
+        $p = $combinedPayment->load(['parts.source', 'farmer:id,farmer_code,name_bn,name_en,father_name,mobile,village_id', 'farmer.village:id,name_bn,name_en', 'member:id,member_no',
             'fund:id,code,name_bn,name_en', 'creator:id,name_bn,name_en']);
 
         return response()->json([
@@ -127,7 +127,9 @@ class CombinedPaymentController extends Controller
     private function sourceRef($src): ?array
     {
         return match (true) {
-            $src instanceof LoanPayment => ['type' => 'loan_payment', 'id' => $src->id, 'no' => $src->payment_no, 'status' => $src->status],
+            // the instalment's split prints as principal and profit (interest + penalty) on the member's slip
+            $src instanceof LoanPayment => ['type' => 'loan_payment', 'id' => $src->id, 'no' => $src->payment_no, 'status' => $src->status,
+                'principal' => (float) $src->principal, 'interest' => round((float) $src->interest + (float) $src->penalty, 2)],
             $src instanceof Receipt => ['type' => 'receipt', 'id' => $src->id, 'no' => $src->receipt_no, 'status' => $src->status],
             $src instanceof MemberTransaction => ['type' => 'member_txn', 'kind' => $src->kind, 'id' => $src->id, 'no' => $src->txn_no, 'status' => $src->status],
             default => null,

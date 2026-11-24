@@ -16,7 +16,7 @@ class WaterConnection extends Model
 
     protected $fillable = [
         'connection_no', 'type_id', 'farmer_id', 'name_bn', 'name_en', 'father_name', 'mobile', 'alt_mobile', 'nid', 'village_id', 'address',
-        'meter_no', 'pipe_size', 'latitude', 'longitude', 'photo',
+        'meter_no', 'ward_no', 'pipe_size', 'latitude', 'longitude', 'photo',
         'monthly_fee', 'connected_on', 'status', 'status_date', 'status_reason', 'remarks', 'created_by', 'import_batch_id',
     ];
 

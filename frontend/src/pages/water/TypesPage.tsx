@@ -23,7 +23,7 @@ export default function TypesPage() {
 
   const open = (t: WaterType | 'new') => {
     form.resetFields()
-    form.setFieldsValue(t === 'new' ? { is_active: true, monthly_fee: 0, connection_fee: 0 } : { ...t, monthly_fee: Number(t.monthly_fee), connection_fee: Number(t.connection_fee) })
+    form.setFieldsValue(t === 'new' ? { is_active: true, monthly_fee: 0, connection_fee: 0, commitment_fee: 0 } : { ...t, monthly_fee: Number(t.monthly_fee), connection_fee: Number(t.connection_fee), commitment_fee: Number(t.commitment_fee ?? 0) })
     setEditing(t)
   }
   const save = async (v: Partial<WaterType>) => {
@@ -94,6 +94,7 @@ export default function TypesPage() {
               render: (v) => (Number(v) > 0 ? <strong>৳ {money(v)}</strong> : <span className="wcl-tag wcl-tag-amber">{tx('ঠিক করা নেই')}</span>),
             },
             { title: tx('সংযোগ ফি'), dataIndex: 'connection_fee', width: 120, align: 'right', render: (v) => `৳ ${money(v)}` },
+            { title: tx('প্রতিশ্রুতি ফি'), dataIndex: 'commitment_fee', width: 120, align: 'right', render: (v) => `৳ ${money(v ?? 0)}` },
             { title: tx('চালু সংযোগ'), dataIndex: 'active_count', width: 120, align: 'center', render: (v: number) => <span className="wcl-count wcl-count-ok">{digits(v ?? 0)}</span> },
             { title: tx('মোট সংযোগ'), dataIndex: 'connections_count', width: 110, align: 'center', render: (v: number) => digits(v ?? 0) },
             {
@@ -141,6 +142,9 @@ export default function TypesPage() {
             <InputNumber min={0} style={{ width: '100%' }} prefix="৳" />
           </Form.Item>
           <Form.Item name="connection_fee" label={tx('সংযোগ ফি')} rules={[{ required: true }]} extra={tx('নতুন সংযোগের ফর্মে আগে থেকে বসে; সেখানে বদলানো যায়।')}>
+            <InputNumber min={0} style={{ width: '100%' }} prefix="৳" />
+          </Form.Item>
+          <Form.Item name="commitment_fee" label={tx('প্রতিশ্রুতি ফি')} extra={tx('নতুন সংযোগের সময় একবার নেওয়া হয়; নতুন সংযোগের ফর্মে আগে থেকে বসে।')}>
             <InputNumber min={0} style={{ width: '100%' }} prefix="৳" />
           </Form.Item>
           <Form.Item name="sort_order" label={tx('ক্রম')}>

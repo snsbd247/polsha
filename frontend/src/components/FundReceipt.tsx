@@ -5,6 +5,7 @@ import { METHOD_LABEL, amountInWords } from '../lib/irrigation'
 import { type Society } from '../lib/settings'
 import { nameOf, t as tx } from '../lib/i18n'
 import { ReceiptFacts, ReceiptFoot, ReceiptMeta, ReceiptPaper, ReceiptSign, ReceiptTop } from './PrintParts'
+import MemberSlip from './MemberSlip'
 
 type Acc = { code: string; name_bn: string; name_en: string | null } | null
 export type FundTxnDetail = FundTxn & {
@@ -34,44 +35,58 @@ export default function FundReceipt({ t, kind }: { t: FundTxnDetail; kind: FundK
     <ReceiptPaper society={t.society} doc={{ type: 'member_transaction', id: t.id }} payerCopy={tx('সদস্য কপি')}>
       {t.status === 'cancelled' && <div className="receipt-stamp">{tx('বাতিলকৃত')}</div>}
       {t.status === 'pending' && <div className="receipt-stamp">{tx('অনুমোদনের অপেক্ষায়')}</div>}
-      <ReceiptTop society={t.society} title={title} />
-      <ReceiptMeta
-        lines={[
-          <>
-            {tx('লেনদেন নং')}: {digits(t.txn_no)}
-          </>,
-          <>
-            {tx('{{p0}} হিসাব নং', { p0: KIND_LABEL[kind] })}: {digits(t.account.account_no)}
-          </>,
-        ]}
-        date={
-          <>
-            {tx('তারিখ')}: {fmtDate(t.date)} {tx('ইং')}
-          </>
-        }
-      />
-      <ReceiptFacts
-        rows={[
-          [tx('সদস্যের নাম ও সদস্য নং'), `${nameOf(farmer)}-${digits(t.account.member?.member_no)}`],
-          [tx('পিতা/স্বামীর নাম'), farmer?.father_name || '—'],
-          [tx('মোবাইল নং'), farmer?.mobile ? digits(farmer.mobile) : tx('নেই')],
-          [
-            tx('বিবরণ'),
-            <>
-              {t.type_label}
-              {t.pair?.account && ` — ${nameOf(t.pair.account.member?.farmer)} (${digits(t.pair.account.account_no)})`}
-              {t.run && ` — ${t.run.title}`}
-            </>,
-          ],
-          [t.direction === 'in' ? tx('জমার পরিমাণ') : tx('উত্তোলনের পরিমাণ'), <strong key="a">{money(amount)}৳</strong>],
-          [tx('কথায়'), amountInWords(amount)],
-          [tx('লেনদেনের পর জের'), t.balance_after === null ? null : `${money(t.balance_after)}৳`],
-          [tx('মাধ্যম'), t.method ? `${METHOD_LABEL[t.method] ?? t.method}${t.method !== 'cash' && t.fund ? ` — ${accountLabel(t.fund)}` : ''}${t.reference ? `, ${tx('রেফারেন্স')}: ${digits(t.reference)}` : ''}` : null],
-          [tx('মন্তব্য'), t.remarks],
-        ]}
-      />
-      <ReceiptSign society={t.society} collector={nameOf(t.creator)} left={tx('সদস্যের স্বাক্ষর')} right={tx('দায়িত্বপ্রাপ্ত কর্মকর্তার স্বাক্ষর')} />
-      <ReceiptFoot society={t.society} fallback={tx('এটি সিস্টেম-জেনারেটেড রশিদ। অনুগ্রহ করে আপনার রেকর্ডের জন্য সংরক্ষণ করুন।')} />
+      {t.direction === 'in' ? (
+        <MemberSlip
+          society={t.society}
+          serial={t.txn_no}
+          date={t.date}
+          name={nameOf(farmer)}
+          memberNo={t.account.member?.member_no}
+          father={farmer?.father_name}
+          amounts={kind === 'share' ? { share: amount } : { savings: amount }}
+        />
+      ) : (
+        <>
+          <ReceiptTop society={t.society} title={title} />
+          <ReceiptMeta
+            lines={[
+              <>
+                {tx('লেনদেন নং')}: {digits(t.txn_no)}
+              </>,
+              <>
+                {tx('{{p0}} হিসাব নং', { p0: KIND_LABEL[kind] })}: {digits(t.account.account_no)}
+              </>,
+            ]}
+            date={
+              <>
+                {tx('তারিখ')}: {fmtDate(t.date)} {tx('ইং')}
+              </>
+            }
+          />
+          <ReceiptFacts
+            rows={[
+              [tx('সদস্যের নাম ও সদস্য নং'), `${nameOf(farmer)}-${digits(t.account.member?.member_no)}`],
+              [tx('পিতা/স্বামীর নাম'), farmer?.father_name || '—'],
+              [tx('মোবাইল নং'), farmer?.mobile ? digits(farmer.mobile) : tx('নেই')],
+              [
+                tx('বিবরণ'),
+                <>
+                  {t.type_label}
+                  {t.pair?.account && ` — ${nameOf(t.pair.account.member?.farmer)} (${digits(t.pair.account.account_no)})`}
+                  {t.run && ` — ${t.run.title}`}
+                </>,
+              ],
+              [tx('উত্তোলনের পরিমাণ'), <strong key="a">{money(amount)}৳</strong>],
+              [tx('কথায়'), amountInWords(amount)],
+              [tx('লেনদেনের পর জের'), t.balance_after === null ? null : `${money(t.balance_after)}৳`],
+              [tx('মাধ্যম'), t.method ? `${METHOD_LABEL[t.method] ?? t.method}${t.method !== 'cash' && t.fund ? ` — ${accountLabel(t.fund)}` : ''}${t.reference ? `, ${tx('রেফারেন্স')}: ${digits(t.reference)}` : ''}` : null],
+              [tx('মন্তব্য'), t.remarks],
+            ]}
+          />
+          <ReceiptSign society={t.society} collector={nameOf(t.creator)} left={tx('সদস্যের স্বাক্ষর')} right={tx('দায়িত্বপ্রাপ্ত কর্মকর্তার স্বাক্ষর')} />
+          <ReceiptFoot society={t.society} fallback={tx('এটি সিস্টেম-জেনারেটেড রশিদ। অনুগ্রহ করে আপনার রেকর্ডের জন্য সংরক্ষণ করুন।')} />
+        </>
+      )}
     </ReceiptPaper>
   )
 }

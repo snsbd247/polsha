@@ -11,6 +11,7 @@ export type WaterType = {
   name_en: string | null
   monthly_fee: string
   connection_fee: string
+  commitment_fee?: string
   is_active: boolean
   sort_order: number
   connections_count?: number
@@ -31,6 +32,7 @@ export type WaterConnection = {
   alt_mobile?: string | null
   nid: string | null
   meter_no?: string | null
+  ward_no?: string | null
   pipe_size?: string | null
   latitude?: number | null
   longitude?: number | null

@@ -48,6 +48,8 @@ export type Society = {
   phone: string | null
   email?: string | null
   registration_no: string | null
+  registration_date?: string | null
+  phone_alt?: string | null
   logo: string | null
   letterhead_text?: string
   brand_color?: string

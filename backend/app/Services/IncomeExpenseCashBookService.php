@@ -31,7 +31,7 @@ class IncomeExpenseCashBookService
     {
         // irrigation and water collect their own bills; their book has one collection column
         $billed = ['irrigation' => ['irrigation_receivable', 'irrigation_income', 'cash_field'],
-            'water' => ['water_receivable', 'water_income', 'water_penalty_income', 'water_connection_fee_income', 'cash_field']][$stream] ?? null;
+            'water' => ['water_receivable', 'water_income', 'water_penalty_income', 'water_connection_fee_income', 'water_commitment_fee_income', 'cash_field']][$stream] ?? null;
         $irrigation = $billed !== null;
         $cash = Account::whereIn('key', IrrigationCashStatementService::STREAMS[$stream])->pluck('id')->flip();
         $banks = BankAccount::pluck('account_id')->flip();

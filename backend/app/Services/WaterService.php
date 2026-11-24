@@ -25,10 +25,10 @@ class WaterService
 {
     public function __construct(private LedgerService $ledger, private ReceiptService $receipts, private ApprovalService $approvals) {}
 
-    /** A new connection, with its connection-fee bill when a fee is charged. */
-    public function open(array $data, float $connectionFee): WaterConnection
+    /** A new connection, with its connection-fee and commitment-fee bills when those are charged. */
+    public function open(array $data, float $connectionFee, float $commitmentFee = 0): WaterConnection
     {
-        return DB::transaction(function () use ($data, $connectionFee) {
+        return DB::transaction(function () use ($data, $connectionFee, $commitmentFee) {
             $connection = WaterConnection::create($data + [
                 'connection_no' => SequenceService::next('water_connection'),
                 'status' => 'active',
@@ -36,6 +36,9 @@ class WaterService
             ]);
             if ($connectionFee > 0) {
                 $this->book($connection, 'connection', null, $connection->connected_on->toDateString(), null, $connectionFee);
+            }
+            if ($commitmentFee > 0) {
+                $this->book($connection, 'commitment', null, $connection->connected_on->toDateString(), null, $commitmentFee);
             }
 
             return $connection;
@@ -227,7 +230,11 @@ class WaterService
             'amount' => round($amount, 2), 'penalty' => 0, 'paid_amount' => 0, 'status' => 'unpaid',
             'snapshot' => $c->snapshot(), 'created_by' => auth()->id(),
         ]);
-        $income = $kind === 'monthly' ? 'water_income' : 'water_connection_fee_income';
+        $income = match ($kind) {
+            'monthly' => 'water_income',
+            'commitment' => 'water_commitment_fee_income',
+            default => 'water_connection_fee_income',
+        };
         $journal = $this->ledger->postNow('journal', $billDate,
             __(':what :no — :name, সংযোগ :conn', [
                 'what' => $kind === 'monthly' ? __('পানির বিল') : __(WaterBill::KINDS[$kind]),

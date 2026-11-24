@@ -65,10 +65,11 @@ function usePrintLog(doc?: PrintDoc) {
  * cut line, both on one A4 sheet. The society's name runs faintly across
  * each copy, and the seal is stamped once per copy.
  */
-export function ReceiptPaper({ society, children, doc, payerCopy }: { society: Society; children: ReactNode; doc?: PrintDoc; payerCopy?: string }) {
+export function ReceiptPaper({ society, children, doc, payerCopy, single }: { society: Society; children: ReactNode; doc?: PrintDoc; payerCopy?: string; single?: boolean }) {
   const seal = useSettingImage('seal', !!society.seal)
   const printed = usePrintLog(doc)
-  const copies = society.copies === 2 ? [payerCopy ?? tx('গ্রাহক কপি'), tx('অফিস কপি')] : [null]
+  // an office voucher prints once; receipts follow the copies set in Receipt Settings
+  const copies = society.copies === 2 && !single ? [payerCopy ?? tx('গ্রাহক কপি'), tx('অফিস কপি')] : [null]
   return (
     <div className={`rc-sheet rc-copies-${copies.length}`}>
       {copies.map((label, i) => (

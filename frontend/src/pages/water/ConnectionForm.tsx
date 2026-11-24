@@ -9,7 +9,7 @@ import { nameOf, t as tx } from '../../lib/i18n'
 import { useWaterMeta, type WaterConnection } from '../../lib/water'
 import FarmerPicker from '../../components/FarmerPicker'
 
-type Values = Omit<WaterConnection, 'connected_on' | 'id' | 'connection_no' | 'status' | 'status_date' | 'status_reason'> & { connected_on: Dayjs; connection_fee?: number }
+type Values = Omit<WaterConnection, 'connected_on' | 'id' | 'connection_no' | 'status' | 'status_date' | 'status_reason'> & { connected_on: Dayjs; connection_fee?: number; commitment_fee?: number }
 
 /** New connection (with its connection fee) or edit of the customer's details. */
 export default function ConnectionForm({ open, connection, onClose, onSaved }: { open: boolean; connection?: WaterConnection | null; onClose: () => void; onSaved: (c: WaterConnection) => void }) {
@@ -35,7 +35,7 @@ export default function ConnectionForm({ open, connection, onClose, onSaved }: {
 
   // a new connection starts with its type's connection fee
   useEffect(() => {
-    if (!connection && type) form.setFieldValue('connection_fee', Number(type.connection_fee))
+    if (!connection && type) form.setFieldsValue({ connection_fee: Number(type.connection_fee), commitment_fee: Number(type.commitment_fee ?? 0) })
   }, [type, connection, form])
 
   const save = async (v: Values) => {
@@ -142,6 +142,13 @@ export default function ConnectionForm({ open, connection, onClose, onSaved }: {
               </Form.Item>
             </Col>
           )}
+          {!connection && (
+            <Col xs={24} md={12}>
+              <Form.Item name="commitment_fee" label={tx('প্রতিশ্রুতি ফি')} extra={tx('০ দিলে কোনো ফি-র বিল হবে না।')}>
+                <InputNumber min={0} style={{ width: '100%' }} prefix="৳" />
+              </Form.Item>
+            </Col>
+          )}
           <Col xs={24} md={12}>
             <Form.Item name="nid" label={tx('NID (ঐচ্ছিক)')}>
               <Input maxLength={17} inputMode="numeric" />
@@ -150,6 +157,11 @@ export default function ConnectionForm({ open, connection, onClose, onSaved }: {
           <Col xs={12} md={6}>
             <Form.Item name="meter_no" label={tx('মিটার নং')} extra={tx('মিটার থাকলে')}>
               <Input maxLength={40} />
+            </Form.Item>
+          </Col>
+          <Col xs={12} md={6}>
+            <Form.Item name="ward_no" label={tx('ওয়ার্ড নং')}>
+              <Input maxLength={10} />
             </Form.Item>
           </Col>
           <Col xs={12} md={6}>

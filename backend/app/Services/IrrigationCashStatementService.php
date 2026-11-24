@@ -33,7 +33,7 @@ class IrrigationCashStatementService
     /** Funds that keep their own money in the bank and collect their own bills: the head their collections are shown under. */
     private const BILLED = [
         'irrigation' => ['সেচ চার্জ আদায় (বকেয়াসহ)', ['irrigation_receivable', 'irrigation_income', 'cash_field']],
-        'water' => ['পানির বিল আদায় (বকেয়াসহ)', ['water_receivable', 'water_income', 'water_penalty_income', 'water_connection_fee_income', 'cash_field']],
+        'water' => ['পানির বিল আদায় (বকেয়াসহ)', ['water_receivable', 'water_income', 'water_penalty_income', 'water_connection_fee_income', 'water_commitment_fee_income', 'cash_field']],
     ];
 
     /** @return array<string, mixed> */

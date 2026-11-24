@@ -8,6 +8,7 @@ use App\Models\BankAccount;
 use App\Models\Journal;
 use App\Models\JournalLine;
 use App\Services\LedgerService;
+use App\Services\SettingService;
 use App\Support\CsvExport;
 use App\Support\Tr;
 use Illuminate\Http\JsonResponse;
@@ -65,6 +66,8 @@ class JournalController extends Controller
             'source_label' => $journal->source_type ? class_basename($journal->source_type) : null,
             'can_reverse' => $journal->status === 'posted' && ! $journal->reversal_of_id,
             'types' => Tr::map(Journal::TYPES), 'statuses' => Tr::map(Journal::STATUSES),
+            // the printed cash voucher carries the society's letterhead
+            'society' => SettingService::society(),
         ]);
     }
 

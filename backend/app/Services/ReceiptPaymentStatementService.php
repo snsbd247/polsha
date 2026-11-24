@@ -47,6 +47,14 @@ class ReceiptPaymentStatementService
         $names = Account::pluck('name_bn', 'id');
         $banks = BankAccount::get(['account_id', 'account_no', 'bank_name'])->keyBy('account_id');
         $field = Account::where('key', 'cash_field')->value('id');
+        // water bills are all collected through one receivable; the paper shows connection and commitment fees on their own lines
+        $waterReceivable = $fund === 'water' ? Account::where('key', 'water_receivable')->value('id') : null;
+        $byKey = Account::whereIn('key', ['water_connection_fee_income', 'water_commitment_fee_income'])->pluck('id', 'key');
+        $kindHead = [
+            'connection' => $map['receipt'][$byKey['water_connection_fee_income'] ?? 0] ?? null,
+            'reconnection' => $map['receipt'][$byKey['water_connection_fee_income'] ?? 0] ?? null,
+            'commitment' => $map['receipt'][$byKey['water_commitment_fee_income'] ?? 0] ?? null,
+        ];
 
         // totals per row key: [label, month paisa, year paisa]; head rows keep the head's order
         $rows = ['receipt' => [], 'payment' => []];
@@ -92,6 +100,14 @@ class ReceiptPaymentStatementService
                 $signed = $reversal ? -abs($amount) : abs($amount);
                 $head = $map[$side][$c->account_id] ?? null;
 
+                if ($waterReceivable && $c->account_id === $waterReceivable) {
+                    foreach ($this->split($signed, $this->waterKindsOf($first->reversal_of_id ?? $first->jid)) as $kind => $part) {
+                        $h = $kindHead[$kind] ?? $head;
+                        $this->add($rows[$side], $h ? 'head:'.$h->id : 'acct:'.$c->account_id, $h?->name_bn ?? ($names[$c->account_id] ?? '—'), $h?->sort_order ?? 100001, $part, $inMonth);
+                    }
+
+                    continue;
+                }
                 if ($head && $head->kind === 'season') {
                     $seasons ??= $this->seasonsOf($first->reversal_of_id ?? $first->jid, $first);
                     foreach ($this->split($signed, $seasons) as $label => $part) {
@@ -195,6 +211,27 @@ class ReceiptPaymentStatementService
         }
 
         return [__('সেচ চার্জ আদায়') => 1.0];
+    }
+
+    /**
+     * The kinds of water bills a receipt voucher paid (monthly, connection,
+     * commitment …), each with its share.
+     *
+     * @return array<string, float>
+     */
+    private function waterKindsOf(int $journalId): array
+    {
+        $j = DB::table('journals')->where('id', $journalId)->first(['source_type', 'source_id']);
+        if ($j && $j->source_type === (new Receipt)->getMorphClass()) {
+            $rows = DB::table('receipt_items')->join('water_bills', 'water_bills.id', '=', 'receipt_items.payable_id')
+                ->where('receipt_items.receipt_id', $j->source_id)->where('receipt_items.payable_type', (new \App\Models\WaterBill)->getMorphClass())
+                ->groupBy('water_bills.kind')->selectRaw('water_bills.kind, SUM(receipt_items.amount) as amount')->pluck('amount', 'kind');
+            if ($rows->sum() > 0) {
+                return $rows->map(fn ($a) => (float) $a)->all();
+            }
+        }
+
+        return ['monthly' => 1.0];
     }
 
     /**

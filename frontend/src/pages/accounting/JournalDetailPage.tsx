@@ -4,6 +4,8 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Alert, App, Button, Form, Input, Modal, Result, Spin, Table, Tag } from 'antd'
 import { ArrowLeftOutlined, CalendarFilled, DollarCircleFilled, EditOutlined, FileTextFilled, InfoCircleFilled, PrinterOutlined, RollbackOutlined, UnorderedListOutlined, UserOutlined } from '@ant-design/icons'
 import PageFrame from '../../components/PageFrame'
+import CashVoucher from '../../components/CashVoucher'
+import type { Society } from '../../lib/settings'
 import { useAuth } from '../../auth/AuthContext'
 import { api, applyFormErrors, errorMessage } from '../../lib/api'
 import { JOURNAL_STATUS, JOURNAL_TONE, VOUCHER_TYPE_LABEL, accountLabel, money, moneyOrBlank } from '../../lib/accounting'
@@ -37,6 +39,7 @@ type Journal = {
   period: { period_key: string; status: string } | null
   can_reverse: boolean
   lines: { id: number; debit: number; credit: number; remarks: string | null; account: { id: number; code: string; name_bn: string; name_en: string | null } }[]
+  society: Society
 }
 
 const MODULE_LABEL: Record<string, string> = {
@@ -82,138 +85,145 @@ export default function JournalDetailPage() {
   const cr = j.lines.reduce((s, l) => s + Number(l.credit), 0)
 
   return (
-    <PageFrame
-      className="id-page ln-page"
-      crumbs={[{ label: tx('হিসাব'), to: '/accounting/summary' }, { label: tx('ভাউচার'), to: '/accounting/journals' }, { label: tx('ভাউচারের বিস্তারিত') }]}
-      title={tx('ভাউচারের বিস্তারিত')}
-      actions={
-        <span className="id-actions no-print">
-          <Button icon={<PrinterOutlined />} className="fm-history-btn" onClick={() => window.print()}>
-            {tx('প্রিন্ট')}
-          </Button>
-          {j.status === 'returned' && can('accounting.create') && (
-            <Button type="primary" icon={<EditOutlined />} onClick={() => navigate(`/accounting/journals/${j.id}/edit`)}>
-              {tx('সংশোধন করে আবার পাঠান')}
+    <>
+      <div className="print-only">
+        <CashVoucher society={j.society} voucherNo={j.voucher_no} type={j.voucher_type} date={j.date} narration={j.narration} lines={j.lines} cancelled={!!j.reversed_by} />
+      </div>
+      <div className="no-print">
+      <PageFrame
+        className="id-page ln-page"
+        crumbs={[{ label: tx('হিসাব'), to: '/accounting/summary' }, { label: tx('ভাউচার'), to: '/accounting/journals' }, { label: tx('ভাউচারের বিস্তারিত') }]}
+        title={tx('ভাউচারের বিস্তারিত')}
+        actions={
+          <span className="id-actions no-print">
+            <Button icon={<PrinterOutlined />} className="fm-history-btn" onClick={() => window.print()}>
+              {tx('প্রিন্ট')}
             </Button>
-          )}
-          {j.can_reverse && can('accounting.create') && (
-            <Button
-              danger
-              icon={<RollbackOutlined />}
-              onClick={() => {
-                form.resetFields()
-                setReverseOpen(true)
-              }}
-            >
-              {tx('ভাউচার বাতিল (রিভার্সাল)')}
+            {j.status === 'returned' && can('accounting.create') && (
+              <Button type="primary" icon={<EditOutlined />} onClick={() => navigate(`/accounting/journals/${j.id}/edit`)}>
+                {tx('সংশোধন করে আবার পাঠান')}
+              </Button>
+            )}
+            {j.can_reverse && can('accounting.create') && (
+              <Button
+                danger
+                icon={<RollbackOutlined />}
+                onClick={() => {
+                  form.resetFields()
+                  setReverseOpen(true)
+                }}
+              >
+                {tx('ভাউচার বাতিল (রিভার্সাল)')}
+              </Button>
+            )}
+            <Button icon={<ArrowLeftOutlined />} className="fm-history-btn" onClick={() => navigate('/accounting/journals')}>
+              {tx('তালিকায় ফিরুন')}
             </Button>
-          )}
-          <Button icon={<ArrowLeftOutlined />} className="fm-history-btn" onClick={() => navigate('/accounting/journals')}>
-            {tx('তালিকায় ফিরুন')}
-          </Button>
-        </span>
-      }
-    >
-      {j.status === 'returned' && <Alert className="id-alert" type="warning" showIcon title={tx('ভাউচারটি সংশোধনের জন্য ফেরত এসেছে। অনুমোদনের পাতায় মন্তব্য দেখুন।')} />}
-      {j.reversed_by && (
-        <Alert
-          className="id-alert"
-          type="info"
-          showIcon
-          title={
-            <>
-              {tx('এই ভাউচার বাতিল হয়েছে; বিপরীত ভাউচার:')} <Link to={`/accounting/journals/${j.reversed_by.id}`}>{digits(j.reversed_by.voucher_no)}</Link>
-            </>
-          }
-        />
-      )}
-
-      <div className="id-top">
-        <div className="id-hero">
-          <span className="id-hero-icon">
-            <FileTextFilled />
           </span>
-          <div>
-            <small>{tx('ভাউচার নং')}</small>
-            <strong>{digits(j.voucher_no)}</strong>
-            <Tag className={`fl-tag ${JOURNAL_TONE[j.status] ?? 'll-gray'}`}>● {JOURNAL_STATUS[j.status]?.label ?? j.status}</Tag>
+        }
+      >
+        {j.status === 'returned' && <Alert className="id-alert" type="warning" showIcon title={tx('ভাউচারটি সংশোধনের জন্য ফেরত এসেছে। অনুমোদনের পাতায় মন্তব্য দেখুন।')} />}
+        {j.reversed_by && (
+          <Alert
+            className="id-alert"
+            type="info"
+            showIcon
+            title={
+              <>
+                {tx('এই ভাউচার বাতিল হয়েছে; বিপরীত ভাউচার:')} <Link to={`/accounting/journals/${j.reversed_by.id}`}>{digits(j.reversed_by.voucher_no)}</Link>
+              </>
+            }
+          />
+        )}
+
+        <div className="id-top">
+          <div className="id-hero">
+            <span className="id-hero-icon">
+              <FileTextFilled />
+            </span>
+            <div>
+              <small>{tx('ভাউচার নং')}</small>
+              <strong>{digits(j.voucher_no)}</strong>
+              <Tag className={`fl-tag ${JOURNAL_TONE[j.status] ?? 'll-gray'}`}>● {JOURNAL_STATUS[j.status]?.label ?? j.status}</Tag>
+            </div>
           </div>
+          <Fact icon={<CalendarFilled />} label={tx('তারিখ')} color="#1769e0" tint="#e4edfd">
+            <strong>{fmtDate(j.date)}</strong>
+          </Fact>
+          <Fact icon={<DollarCircleFilled />} label={tx('টাকার পরিমাণ')} color="#1f9d55" tint="#dcf3e5">
+            <strong>৳ {money(j.amount)}</strong>
+          </Fact>
+          <Fact icon={<FileTextFilled />} label={tx('ধরন')} color="#8b3fe0" tint="#efe4fc">
+            <strong>{VOUCHER_TYPE_LABEL[j.voucher_type] ?? j.voucher_type}</strong>
+          </Fact>
+          <Fact icon={<InfoCircleFilled />} label={tx('উৎস')} color="#f08c00" tint="#fdefd6">
+            <strong>{(j.module && MODULE_LABEL[j.module]) ?? j.module ?? '—'}</strong>
+          </Fact>
         </div>
-        <Fact icon={<CalendarFilled />} label={tx('তারিখ')} color="#1769e0" tint="#e4edfd">
-          <strong>{fmtDate(j.date)}</strong>
-        </Fact>
-        <Fact icon={<DollarCircleFilled />} label={tx('টাকার পরিমাণ')} color="#1f9d55" tint="#dcf3e5">
-          <strong>৳ {money(j.amount)}</strong>
-        </Fact>
-        <Fact icon={<FileTextFilled />} label={tx('ধরন')} color="#8b3fe0" tint="#efe4fc">
-          <strong>{VOUCHER_TYPE_LABEL[j.voucher_type] ?? j.voucher_type}</strong>
-        </Fact>
-        <Fact icon={<InfoCircleFilled />} label={tx('উৎস')} color="#f08c00" tint="#fdefd6">
-          <strong>{(j.module && MODULE_LABEL[j.module]) ?? j.module ?? '—'}</strong>
-        </Fact>
-      </div>
 
-      <div className="id-two">
-        <Box icon={<FileTextFilled />} title={tx('ভাউচারের তথ্য')}>
-          <KV
-            rows={[
-              [tx('বিবরণ'), j.narration || '—'],
-              [tx('হিসাবের মাস'), j.period ? `${digits(j.period.period_key)}${j.period.status === 'closed' ? ` (${tx('বন্ধ')})` : ''}` : '—'],
-              [tx('মূল ভাউচার'), j.reversal_of ? <Link to={`/accounting/journals/${j.reversal_of.id}`}>{digits(j.reversal_of.voucher_no)}</Link> : '—'],
-              [tx('বিপরীত ভাউচার'), j.reversed_by ? <Link to={`/accounting/journals/${j.reversed_by.id}`}>{digits(j.reversed_by.voucher_no)}</Link> : '—'],
+        <div className="id-two">
+          <Box icon={<FileTextFilled />} title={tx('ভাউচারের তথ্য')}>
+            <KV
+              rows={[
+                [tx('বিবরণ'), j.narration || '—'],
+                [tx('হিসাবের মাস'), j.period ? `${digits(j.period.period_key)}${j.period.status === 'closed' ? ` (${tx('বন্ধ')})` : ''}` : '—'],
+                [tx('মূল ভাউচার'), j.reversal_of ? <Link to={`/accounting/journals/${j.reversal_of.id}`}>{digits(j.reversal_of.voucher_no)}</Link> : '—'],
+                [tx('বিপরীত ভাউচার'), j.reversed_by ? <Link to={`/accounting/journals/${j.reversed_by.id}`}>{digits(j.reversed_by.voucher_no)}</Link> : '—'],
+              ]}
+            />
+          </Box>
+          <Box icon={<UserOutlined />} title={tx('প্রস্তুত ও অনুমোদন')}>
+            <KV
+              rows={[
+                [tx('প্রস্তুতকারী'), `${nameOf(j.creator) || '—'} · ${fmtDateTime(j.created_at)}`],
+                [tx('পোস্ট'), j.posted_at ? `${nameOf(j.poster) || tx('সিস্টেম')} · ${fmtDateTime(j.posted_at)}` : '—'],
+                [tx('অনুমোদন'), j.approval_request_id ? <Link to={`/approvals/${j.approval_request_id}`}>{tx('অনুমোদনের বিবরণ দেখুন')}</Link> : '—'],
+              ]}
+            />
+          </Box>
+        </div>
+
+        <Box icon={<UnorderedListOutlined />} title={tx('ডেবিট ও ক্রেডিট')}>
+          <Table
+            rowKey="id"
+            size="small"
+            className="id-payments"
+            pagination={false}
+            dataSource={j.lines}
+            scroll={{ x: 'max-content' }}
+            columns={[
+              { title: '#', width: 40, align: 'center', render: (_, __, i) => digits(i + 1) },
+              { title: tx('হিসাব'), render: (_, l) => <Link to={`/accounting/ledger?account_id=${l.account.id}&from=${j.date}&to=${j.date}`}>{accountLabel(l.account)}</Link> },
+              { title: tx('মন্তব্য'), dataIndex: 'remarks', render: (v: string | null) => v || '—' },
+              { title: tx('ডেবিট (৳)'), dataIndex: 'debit', align: 'right', render: moneyOrBlank },
+              { title: tx('ক্রেডিট (৳)'), dataIndex: 'credit', align: 'right', render: moneyOrBlank },
             ]}
+            summary={() => (
+              <Table.Summary.Row className="ln-sum-row">
+                <Table.Summary.Cell index={0} colSpan={3} align="right">
+                  {tx('মোট')}
+                </Table.Summary.Cell>
+                <Table.Summary.Cell index={3} align="right">
+                  {money(dr)}
+                </Table.Summary.Cell>
+                <Table.Summary.Cell index={4} align="right">
+                  {money(cr)}
+                </Table.Summary.Cell>
+              </Table.Summary.Row>
+            )}
           />
         </Box>
-        <Box icon={<UserOutlined />} title={tx('প্রস্তুত ও অনুমোদন')}>
-          <KV
-            rows={[
-              [tx('প্রস্তুতকারী'), `${nameOf(j.creator) || '—'} · ${fmtDateTime(j.created_at)}`],
-              [tx('পোস্ট'), j.posted_at ? `${nameOf(j.poster) || tx('সিস্টেম')} · ${fmtDateTime(j.posted_at)}` : '—'],
-              [tx('অনুমোদন'), j.approval_request_id ? <Link to={`/approvals/${j.approval_request_id}`}>{tx('অনুমোদনের বিবরণ দেখুন')}</Link> : '—'],
-            ]}
-          />
-        </Box>
+
+        <Modal open={reverseOpen} forceRender title={tx('ভাউচার বাতিল (রিভার্সাল)')} onCancel={() => setReverseOpen(false)} onOk={reverse} okText={tx('অনুমোদনের জন্য পাঠান')} cancelText={tx('বাতিল')} okButtonProps={{ danger: true }}>
+          <Alert type="info" showIcon style={{ marginBottom: 12 }} title={tx('অনুমোদনের পর আজকের তারিখে একটি বিপরীত ভাউচার পোস্ট হবে; মূল ভাউচার মুছে যাবে না।')} />
+          <Form form={form} layout="vertical">
+            <Form.Item name="reason" label={tx('কারণ')} rules={[required(tx('কারণ লিখুন'))]}>
+              <Input.TextArea rows={3} maxLength={300} />
+            </Form.Item>
+          </Form>
+        </Modal>
+      </PageFrame>
       </div>
-
-      <Box icon={<UnorderedListOutlined />} title={tx('ডেবিট ও ক্রেডিট')}>
-        <Table
-          rowKey="id"
-          size="small"
-          className="id-payments"
-          pagination={false}
-          dataSource={j.lines}
-          scroll={{ x: 'max-content' }}
-          columns={[
-            { title: '#', width: 40, align: 'center', render: (_, __, i) => digits(i + 1) },
-            { title: tx('হিসাব'), render: (_, l) => <Link to={`/accounting/ledger?account_id=${l.account.id}&from=${j.date}&to=${j.date}`}>{accountLabel(l.account)}</Link> },
-            { title: tx('মন্তব্য'), dataIndex: 'remarks', render: (v: string | null) => v || '—' },
-            { title: tx('ডেবিট (৳)'), dataIndex: 'debit', align: 'right', render: moneyOrBlank },
-            { title: tx('ক্রেডিট (৳)'), dataIndex: 'credit', align: 'right', render: moneyOrBlank },
-          ]}
-          summary={() => (
-            <Table.Summary.Row className="ln-sum-row">
-              <Table.Summary.Cell index={0} colSpan={3} align="right">
-                {tx('মোট')}
-              </Table.Summary.Cell>
-              <Table.Summary.Cell index={3} align="right">
-                {money(dr)}
-              </Table.Summary.Cell>
-              <Table.Summary.Cell index={4} align="right">
-                {money(cr)}
-              </Table.Summary.Cell>
-            </Table.Summary.Row>
-          )}
-        />
-      </Box>
-
-      <Modal open={reverseOpen} forceRender title={tx('ভাউচার বাতিল (রিভার্সাল)')} onCancel={() => setReverseOpen(false)} onOk={reverse} okText={tx('অনুমোদনের জন্য পাঠান')} cancelText={tx('বাতিল')} okButtonProps={{ danger: true }}>
-        <Alert type="info" showIcon style={{ marginBottom: 12 }} title={tx('অনুমোদনের পর আজকের তারিখে একটি বিপরীত ভাউচার পোস্ট হবে; মূল ভাউচার মুছে যাবে না।')} />
-        <Form form={form} layout="vertical">
-          <Form.Item name="reason" label={tx('কারণ')} rules={[required(tx('কারণ লিখুন'))]}>
-            <Input.TextArea rows={3} maxLength={300} />
-          </Form.Item>
-        </Form>
-      </Modal>
-    </PageFrame>
+    </>
   )
 }

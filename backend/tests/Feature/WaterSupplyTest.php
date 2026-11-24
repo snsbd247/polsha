@@ -111,6 +111,29 @@ class WaterSupplyTest extends Phase2TestCase
         $this->actingAs($this->waterUser)->getJson("/api/water/bills?period=$period&kind=monthly&status=pending")->assertOk()->assertJsonPath('total', 0);
     }
 
+    public function test_ward_commitment_fee_and_the_paper_receipt_details(): void
+    {
+        $c = $this->connect(['connection_fee' => 1000, 'commitment_fee' => 300, 'ward_no' => '০২']);
+        $this->assertSame('০২', $c->ward_no);
+        $this->assertSame(-300.0, $this->balance('water_commitment_fee_income'));
+        $bills = WaterBill::where('connection_id', $c->id)->orderBy('id')->get();
+        $this->assertSame(['connection', 'commitment'], $bills->pluck('kind')->all());
+
+        $r = $this->actingAs($this->waterUser)->postJson('/api/water/collect', [
+            'connection_id' => $c->id, 'date' => now()->toDateString(), 'method' => 'cash',
+            'items' => [['bill_id' => $bills[0]->id, 'amount' => 1000], ['bill_id' => $bills[1]->id, 'amount' => 300]],
+        ])->assertCreated();
+        $receipt = $this->actingAs($this->waterUser)->getJson('/api/water/receipts/'.$r->json('id'))->assertOk();
+        $receipt->assertJsonPath('connection.ward_no', '০২')->assertJsonPath('connection.monthly_fee', 200)
+            ->assertJsonPath('connection.connected_on', $c->connected_on->toDateString());
+
+        // the receipts & payments statement shows each fee on its own head
+        $rows = collect($this->actingAs($this->userWithRole('accountant'))->getJson('/api/cashbook/receipt-payment?fund=water&month='.now()->format('Y-m'))->assertOk()->json('receipts'))->keyBy('label');
+        $this->assertEquals(1000, $rows['সংযোগ ফি']['month']);
+        $this->assertEquals(300, $rows['প্রতিশ্রুতি ফি']['month']);
+        $this->assertEquals(0, $rows['মাসিক বিল']['month']);
+    }
+
     public function test_collection_with_penalty_lands_in_water_cash_and_cancel_undoes_it(): void
     {
         $c = $this->connect();

@@ -33,9 +33,8 @@ import { APPLICATION_STATUS, openProtectedFile, toOptions, useFarmerMeta } from 
 import { required } from '../../lib/rules'
 import { nameOf, t as tx } from '../../lib/i18n'
 import PageFrame from '../../components/PageFrame'
-import { ReceiptFacts, ReceiptFoot, ReceiptMeta, ReceiptPaper, ReceiptSign, ReceiptTop } from '../../components/PrintParts'
-import { money as tk } from '../../lib/accounting'
-import { amountInWords } from '../../lib/irrigation'
+import { ReceiptPaper } from '../../components/PrintParts'
+import MemberSlip from '../../components/MemberSlip'
 import type { Society } from '../../lib/settings'
 import { appPath } from '../../lib/phase8'
 import './application-form.css'
@@ -758,47 +757,18 @@ function AdmissionReceipt({ app }: { app: Application }) {
   const paid = app.paid!
   const fee = app.fee_status === 'paid' ? Number(app.admission_fee) : 0
   const shares = Number(paid.share_txn?.amount ?? 0)
-  const total = fee + shares
   return (
     <div className="print-only">
       <ReceiptPaper society={paid.society} payerCopy={tx('সদস্য কপি')}>
-        <ReceiptTop society={paid.society} title={tx('সদস্যপদ ভর্তির রশিদ')} />
-        <ReceiptMeta
-          lines={[
-            <>
-              {tx('আবেদন নং')}: {digits(app.application_no)}
-            </>,
-            app.member && (
-              <>
-                {tx('সদস্য নং')}: {digits(app.member.member_no)}
-              </>
-            ),
-          ]}
-          date={
-            <>
-              {tx('তারিখ')}: {fmtDate(paid.share_txn?.date ?? app.applied_on)} {tx('ইং')}
-            </>
-          }
+        <MemberSlip
+          society={paid.society}
+          serial={app.application_no}
+          date={paid.share_txn?.date ?? app.applied_on}
+          name={app.farmer.name_bn}
+          memberNo={app.member?.member_no}
+          father={app.farmer.father_name}
+          amounts={{ admission: fee, share: shares }}
         />
-        <ReceiptFacts
-          rows={[
-            [tx('সদস্যের নাম ও কৃষক আইডি'), `${app.farmer.name_bn}-${digits(app.farmer.farmer_code)}`],
-            [tx('পিতা/স্বামীর নাম'), app.farmer.father_name],
-            [tx('ভর্তি ফি'), app.fee_status === 'paid' ? `${tk(fee)}৳` : tx('বাকি')],
-            [tx('প্রাথমিক শেয়ার'), paid.share_txn ? `${digits(app.initial_shares ?? 0)} × ${tk(app.share_unit_price ?? 0)}৳ = ${tk(shares)}৳` : null],
-            [tx('মোট জমা'), <strong key="t">{tk(total)}৳</strong>],
-            [tx('কথায়'), amountInWords(total)],
-            [
-              tx('ভাউচার / লেনদেন নং'),
-              [paid.fee_voucher, paid.share_txn?.txn_no]
-                .filter(Boolean)
-                .map((x) => digits(x!))
-                .join(', ') || null,
-            ],
-          ]}
-        />
-        <ReceiptSign society={paid.society} left={tx('সদস্যের স্বাক্ষর')} right={tx('দায়িত্বপ্রাপ্ত কর্মকর্তার স্বাক্ষর')} />
-        <ReceiptFoot society={paid.society} fallback={tx('এটি সিস্টেম-জেনারেটেড রশিদ। অনুগ্রহ করে আপনার রেকর্ডের জন্য সংরক্ষণ করুন।')} />
       </ReceiptPaper>
     </div>
   )

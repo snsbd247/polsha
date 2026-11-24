@@ -9,10 +9,12 @@ import { api, applyFormErrors, errorMessage } from '../../lib/api'
 import { accountLabel, money } from '../../lib/accounting'
 import { digits, fmtDate, fmtDateTime } from '../../lib/format'
 import type { FarmerBrief, MemberBrief } from '../../lib/funds'
-import { METHOD_LABEL, amountInWords } from '../../lib/irrigation'
+import { METHOD_LABEL } from '../../lib/irrigation'
 import { useLoanMeta, type LoanPayment } from '../../lib/loans'
 import { type Society } from '../../lib/settings'
-import { ReceiptFacts, ReceiptFoot, ReceiptMeta, ReceiptPaper, ReceiptSign, ReceiptTop } from '../../components/PrintParts'
+import { ReceiptPaper } from '../../components/PrintParts'
+import MemberSlip from '../../components/MemberSlip'
+import { SlipLine, slipTaka } from '../../components/PaperSlip'
 import { required } from '../../lib/rules'
 import { nameOf, t as tx } from '../../lib/i18n'
 import { Box, Fact, KV } from '../irrigation/InvoiceDetailPage'
@@ -72,11 +74,6 @@ export default function LoanPaymentDetailPage() {
 
   const amount = Number(p.amount)
   const farmer = p.loan.member?.farmer
-  const parts: [string, string][] = [
-    [tx('জরিমানা'), p.penalty],
-    [tx('সুদ'), p.interest],
-    [tx('আসল'), p.principal],
-  ]
 
   return (
     <>
@@ -174,38 +171,16 @@ export default function LoanPaymentDetailPage() {
       <div className="print-only">
         <ReceiptPaper society={p.society} doc={{ type: 'loan_payment', id: p.id }} payerCopy={tx('সদস্য কপি')}>
           {p.status === 'cancelled' && <div className="receipt-stamp">{tx('বাতিলকৃত')}</div>}
-          <ReceiptTop society={p.society} title={tx('ঋণের কিস্তি জমার রশিদ')} />
-          <ReceiptMeta
-            lines={[
-              <>
-                {tx('রশিদ নং')}: {digits(p.payment_no)}
-              </>,
-              <>
-                {tx('ঋণ নং')}: {digits(p.loan.loan_no)} — {nameOf(p.loan.product)}
-              </>,
-            ]}
-            date={
-              <>
-                {tx('তারিখ')}: {fmtDate(p.date)} {tx('ইং')}
-              </>
-            }
+          <MemberSlip
+            society={p.society}
+            serial={p.payment_no}
+            date={p.date}
+            name={nameOf(farmer)}
+            memberNo={p.loan.member?.member_no}
+            father={farmer?.father_name}
+            amounts={{ loanPrincipal: Number(p.principal), loanProfit: Number(p.interest) + Number(p.penalty) }}
+            extra={<SlipLine label={tx('ঋণ নং')} value={`${digits(p.loan.loan_no)} — ${nameOf(p.loan.product)} · ${tx('এই জমার পর আসল বাকি')}: ${slipTaka(Number(p.principal_after)) || '০'}`} />}
           />
-          <ReceiptFacts
-            rows={[
-              [tx('সদস্যের নাম ও সদস্য নং'), `${nameOf(farmer)}-${digits(p.loan.member?.member_no)}`],
-              [tx('পিতা/স্বামীর নাম'), farmer?.father_name || '—'],
-              [tx('মোবাইল নং'), farmer?.mobile ? digits(farmer.mobile) : tx('নেই')],
-              [tx('ঋণের পরিমাণ'), `${money(p.loan.amount)}৳`],
-              ...parts.map(([label, v]): [string, string] => [label, `${money(v)}৳`]),
-              [tx('মোট জমা'), <strong key="a">{money(amount)}৳</strong>],
-              [tx('কথায়'), amountInWords(amount)],
-              [tx('এই জমার পর আসল বাকি'), `${money(p.principal_after)}৳`],
-              [tx('মাধ্যম'), `${METHOD_LABEL[p.method] ?? p.method}${p.method !== 'cash' && p.fund ? ` — ${accountLabel(p.fund)}` : ''}${p.reference ? `, ${tx('রেফারেন্স')}: ${digits(p.reference)}` : ''}`],
-              [tx('মন্তব্য'), p.remarks],
-            ]}
-          />
-          <ReceiptSign society={p.society} collector={nameOf(p.creator ?? null)} left={tx('সদস্যের স্বাক্ষর')} right={tx('দায়িত্বপ্রাপ্ত কর্মকর্তার স্বাক্ষর')} />
-          <ReceiptFoot society={p.society} fallback={tx('এটি সিস্টেম-জেনারেটেড রশিদ। অনুগ্রহ করে আপনার রেকর্ডের জন্য সংরক্ষণ করুন।')} />
         </ReceiptPaper>
       </div>
 

@@ -70,6 +70,7 @@ class WaterController extends Controller
             'name_en' => ['nullable', 'string', 'max:100'],
             'monthly_fee' => ['required', 'numeric', 'min:0', 'max:1000000'],
             'connection_fee' => ['required', 'numeric', 'min:0', 'max:10000000'],
+            'commitment_fee' => ['nullable', 'numeric', 'min:0', 'max:10000000'],
             'is_active' => ['boolean'],
             'sort_order' => ['nullable', 'integer', 'min:0', 'max:999'],
         ]);
@@ -116,9 +117,12 @@ class WaterController extends Controller
     public function storeConnection(Request $request): JsonResponse
     {
         $data = $this->connectionData($request);
-        $fee = (float) ($request->validate(['connection_fee' => ['nullable', 'numeric', 'min:0', 'max:10000000']])['connection_fee'] ?? 0);
+        $fees = $request->validate([
+            'connection_fee' => ['nullable', 'numeric', 'min:0', 'max:10000000'],
+            'commitment_fee' => ['nullable', 'numeric', 'min:0', 'max:10000000'],
+        ]);
 
-        return response()->json($this->water->open($data, $fee)->load(['type', 'village']), 201);
+        return response()->json($this->water->open($data, (float) ($fees['connection_fee'] ?? 0), (float) ($fees['commitment_fee'] ?? 0))->load(['type', 'village']), 201);
     }
 
     public function showConnection(WaterConnection $connection): JsonResponse
@@ -246,6 +250,7 @@ class WaterController extends Controller
             'mobile' => ['nullable', 'regex:/^01[3-9]\d{8}$/'],
             'alt_mobile' => ['nullable', 'regex:/^01[3-9]\d{8}$/'],
             'meter_no' => ['nullable', 'string', 'max:40'],
+            'ward_no' => ['nullable', 'string', 'max:10'],
             'pipe_size' => ['nullable', 'string', 'max:40'],
             'latitude' => ['nullable', 'numeric', 'between:-90,90', 'required_with:longitude'],
             'longitude' => ['nullable', 'numeric', 'between:-180,180', 'required_with:latitude'],
@@ -534,15 +539,19 @@ class WaterController extends Controller
         $bills = WaterBill::whereIn('id', $receipt->items->pluck('payable_id'))->get()->keyBy('id');
         $first = $bills->first();
         $penalties = WaterBillPenalty::where('receipt_id', $receipt->id)->sum('amount');
+        $conn = $first ? WaterConnection::with('type:id,monthly_fee')->find($first->connection_id) : null;
 
         return response()->json([
             ...$receipt->toArray(),
             'verify_token' => $receipt->verify_token,
-            'connection' => $first ? ($first->snapshot ?? []) + ['id' => $first->connection_id] : null,
+            // the paper slip also wants the ward, monthly fee and connection date as they are now
+            'connection' => $first ? ($first->snapshot ?? []) + ['id' => $first->connection_id, 'ward_no' => $conn?->ward_no,
+                'monthly_fee' => $conn?->fee(), 'connected_on' => $conn?->connected_on?->toDateString()] : null,
             'penalty' => round((float) $penalties, 2),
             'items' => $receipt->items->map(fn ($it) => [
                 'amount' => (float) $it->amount, 'description' => $it->description, 'due_after' => $it->due_after !== null ? (float) $it->due_after : null,
-                'bill' => ($b = $bills[$it->payable_id] ?? null) ? ['id' => $b->id, 'bill_no' => $b->bill_no, 'kind' => $b->kind, 'period' => $b->period, 'amount' => (float) $b->amount] : null,
+                'bill' => ($b = $bills[$it->payable_id] ?? null) ? ['id' => $b->id, 'bill_no' => $b->bill_no, 'kind' => $b->kind, 'period' => $b->period, 'amount' => (float) $b->amount,
+                    'penalty' => (float) $b->penalty, 'due_date' => $b->due_date?->toDateString()] : null,
             ])->values(),
             'society' => SettingService::society(),
             'methods' => Tr::map(Receipt::METHODS),

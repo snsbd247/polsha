@@ -17,7 +17,7 @@ class WaterBill extends Model implements Payable
 {
     use Auditable;
 
-    public const KINDS = ['monthly' => 'মাসিক বিল', 'connection' => 'সংযোগ ফি', 'reconnection' => 'পুনঃসংযোগ ফি', 'opening' => 'পুরনো বকেয়া'];
+    public const KINDS = ['monthly' => 'মাসিক বিল', 'connection' => 'সংযোগ ফি', 'reconnection' => 'পুনঃসংযোগ ফি', 'commitment' => 'প্রতিশ্রুতি ফি', 'opening' => 'পুরনো বকেয়া'];
 
     public const STATUSES = ['unpaid' => 'অপরিশোধিত', 'partial' => 'আংশিক পরিশোধিত', 'paid' => 'পরিশোধিত', 'cancelled' => 'বাতিল'];
 

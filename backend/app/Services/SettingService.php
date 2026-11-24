@@ -134,7 +134,8 @@ class SettingService
 
         return [
             'name_bn' => $s['society_name_bn'], 'name_en' => $s['society_name_en'], 'address' => $s['print_address'] ?: $s['address'],
-            'phone' => $s['phone'], 'email' => $s['email'], 'registration_no' => $s['registration_no'], 'logo' => $s['logo'],
+            'phone' => $s['phone'], 'phone_alt' => $s['phone_alt'] ?? null, 'email' => $s['email'], 'registration_no' => $s['registration_no'],
+            'registration_date' => $s['registration_date'] ?? null, 'logo' => $s['logo'],
             'letterhead_text' => $s['letterhead_text'], 'brand_color' => $s['brand_color'],
             'signature' => (bool) $s['signature'], 'seal' => (bool) $s['seal'],
             'sign_left' => $s['receipt_sign_left'], 'sign_right' => $s['receipt_sign_right'],

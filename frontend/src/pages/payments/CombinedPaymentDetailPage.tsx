@@ -8,10 +8,11 @@ import { useAuth } from '../../auth/AuthContext'
 import { api, applyFormErrors, errorMessage } from '../../lib/api'
 import { accountLabel, money } from '../../lib/accounting'
 import { digits, fmtDate, fmtDateTime } from '../../lib/format'
-import { amountInWords } from '../../lib/irrigation'
+
 import { MODULE_TONE, appUrl, type CombinedModule } from '../../lib/phase8'
 import { type Society } from '../../lib/settings'
-import { ReceiptFacts, ReceiptFoot, ReceiptMeta, ReceiptPaper, ReceiptSign, ReceiptTop } from '../../components/PrintParts'
+import { ReceiptPaper } from '../../components/PrintParts'
+import MemberSlip from '../../components/MemberSlip'
 import { required } from '../../lib/rules'
 import { nameOf, t as tx } from '../../lib/i18n'
 import { Box, Fact, KV } from '../irrigation/InvoiceDetailPage'
@@ -37,6 +38,8 @@ type Source = {
   id: number
   no: string
   status: string
+  principal?: number
+  interest?: number
 } | null
 type Part = {
   id: number
@@ -67,6 +70,7 @@ type Detail = {
     name_en: string | null
     father_name: string
     mobile: string | null
+    village?: { name_bn: string; name_en: string | null } | null
   } | null
   member: { id: number; member_no: number } | null
   fund: {
@@ -132,6 +136,21 @@ export default function CombinedPaymentDetailPage() {
 
   const amount = Number(r.amount)
   const verifyUrl = appUrl(`/verify/combined/${r.verify_token}`)
+  // the member slip's lines: each part under its own head, a loan instalment split into principal and profit
+  const partSum = (m: string) => r.parts.filter((p) => p.module === m).reduce((n, p) => n + Number(p.amount), 0)
+  const loanParts = r.parts.filter((p) => p.module === 'loan')
+  const loanProfit = loanParts.reduce((n, p) => n + Number(p.source?.interest ?? 0), 0)
+  const known = ['loan', 'share', 'savings', 'irrigation', 'water']
+  const slipAmounts = {
+    share: partSum('share'),
+    savings: partSum('savings'),
+    loanPrincipal: partSum('loan') - loanProfit,
+    loanProfit,
+    irrigation: partSum('irrigation'),
+    water: partSum('water'),
+    misc: r.parts.filter((p) => !known.includes(p.module)).reduce((n, p) => n + Number(p.amount), 0),
+    miscNote: r.parts.filter((p) => !known.includes(p.module)).map((p) => p.description).filter(Boolean).join(', '),
+  }
 
   return (
     <>
@@ -275,33 +294,17 @@ export default function CombinedPaymentDetailPage() {
       <div className="print-only">
         <ReceiptPaper society={r.society} doc={{ type: 'combined_payment', id: r.id }} payerCopy={tx('কৃষক কপি')}>
           {r.status === 'cancelled' && <div className="receipt-stamp">{tx('বাতিলকৃত')}</div>}
-          <ReceiptTop society={r.society} title={tx('সমন্বিত টাকার রশিদ')} qr={verifyUrl} />
-          <ReceiptMeta
-            lines={[
-              <>
-                {tx('রশিদ নং')}: {digits(r.payment_no)}
-              </>,
-            ]}
-            date={
-              <>
-                {tx('সংগৃহীত তারিখ')}: {fmtDate(r.date)} {tx('ইং')}
-              </>
-            }
+          <MemberSlip
+            society={r.society}
+            qr={verifyUrl}
+            serial={r.payment_no}
+            date={r.date}
+            name={r.farmer ? nameOf(r.farmer) : r.payer_name}
+            memberNo={r.member?.member_no}
+            father={r.farmer?.father_name}
+            village={r.farmer?.village ? nameOf(r.farmer.village) : null}
+            amounts={slipAmounts}
           />
-          <ReceiptFacts
-            rows={[
-              [tx('কৃষকের নাম ও আইডি'), r.farmer ? `${nameOf(r.farmer)}-${digits(r.farmer.farmer_code)}` : r.payer_name],
-              [tx('পিতা/স্বামীর নাম'), r.farmer?.father_name || null],
-              [tx('সদস্য নং'), r.member ? digits(r.member.member_no) : null],
-              ...r.parts.map((p): [string, string] => [`${r.modules[p.module] ?? p.module} — ${p.description}${p.source ? ` (${digits(p.source.no)})` : ''}`, `${money(p.amount)}৳`]),
-              [tx('মোট আদায়ের পরিমাণ'), <strong key="a">{money(amount)}৳</strong>],
-              [tx('কথায়'), amountInWords(amount)],
-              [tx('মাধ্যম'), `${r.methods[r.method] ?? r.method}${r.method !== 'cash' && r.fund ? ` — ${accountLabel(r.fund)}` : ''}${r.reference ? `, ${tx('রেফারেন্স')}: ${digits(r.reference)}` : ''}`],
-              [tx('মন্তব্য'), r.remarks],
-            ]}
-          />
-          <ReceiptSign society={r.society} collector={nameOf(r.creator)} left={tx('সদস্যের স্বাক্ষর/প্রদানকারীর স্বাক্ষর')} />
-          <ReceiptFoot society={r.society} fallback={tx('এটি সিস্টেম-জেনারেটেড রশিদ। অনুগ্রহ করে আপনার রেকর্ডের জন্য সংরক্ষণ করুন।')} />
         </ReceiptPaper>
       </div>
 

@@ -12,9 +12,9 @@ class WaterConnectionType extends Model
 
     protected string $auditModule = 'water';
 
-    protected $fillable = ['code', 'name_bn', 'name_en', 'monthly_fee', 'connection_fee', 'is_active', 'sort_order'];
+    protected $fillable = ['code', 'name_bn', 'name_en', 'monthly_fee', 'connection_fee', 'commitment_fee', 'is_active', 'sort_order'];
 
-    protected $casts = ['monthly_fee' => 'decimal:2', 'connection_fee' => 'decimal:2', 'is_active' => 'boolean'];
+    protected $casts = ['monthly_fee' => 'decimal:2', 'connection_fee' => 'decimal:2', 'commitment_fee' => 'decimal:2', 'is_active' => 'boolean'];
 
     public function connections()
     {

@@ -12,10 +12,11 @@ import { appUrl } from '../../lib/phase8'
 import { type Society } from '../../lib/settings'
 import { nameOf, t as tx } from '../../lib/i18n'
 import { billLabel, type BillSnapshot } from '../../lib/water'
-import { ReceiptFacts, ReceiptFoot, ReceiptMeta, ReceiptPaper, ReceiptSign, ReceiptTop } from '../../components/PrintParts'
+import { ReceiptPaper } from '../../components/PrintParts'
+import { SlipHead, SlipLine, SlipRow, SlipSigns, slipTaka } from '../../components/PaperSlip'
 import PageFrame from '../../components/PageFrame'
 
-type Item = { amount: number; description: string; due_after: number | null; bill: { id: number; bill_no: string; kind: string; period: string | null; amount: number } | null }
+type Item = { amount: number; description: string; due_after: number | null; bill: { id: number; bill_no: string; kind: string; period: string | null; amount: number; penalty?: number; due_date?: string | null } | null }
 type Detail = {
   id: number
   receipt_no: string
@@ -29,7 +30,7 @@ type Detail = {
   verify_token: string
   penalty: number
   payer_name: string
-  connection: (BillSnapshot & { id: number }) | null
+  connection: (BillSnapshot & { id: number; ward_no?: string | null; monthly_fee?: number | null; connected_on?: string | null }) | null
   items: Item[]
   fund: { code: string; name_bn: string; name_en: string | null } | null
   journal: { id: number; voucher_no: string; status: string } | null
@@ -70,10 +71,27 @@ export default function ReceiptPage() {
 
   const amount = Number(r.amount)
   const c = r.connection
-  const months = r.items.map((it) => (it.bill ? billLabel(it.bill) : it.description)).join(', ')
   const dueAfter = r.items.reduce((s, it) => s + Number(it.due_after ?? 0), 0)
   const showDue = r.society.show_due !== false
-  const tk = (v: number) => `${money(v)}৳`
+
+  // the paper slip's lines: fees apart, the latest month paid, earlier months as arrears, penalty and others as misc
+  const slip = (() => {
+    const sum = (xs: Item[]) => xs.reduce((n, it) => n + Number(it.amount), 0)
+    const kind = (...k: string[]) => r.items.filter((it) => it.bill && k.includes(it.bill.kind))
+    const monthly = kind('monthly').sort((a, b) => String(a.bill!.period).localeCompare(String(b.bill!.period)))
+    const latest = monthly[monthly.length - 1]
+    const earlier = [...monthly.slice(0, -1), ...kind('opening')]
+    const label = (it: Item) => `${billLabel(it.bill!)} (${slipTaka(it.amount)})`
+    const others = r.items.filter((it) => !it.bill)
+    return {
+      connection: sum(kind('connection', 'reconnection')),
+      commitment: sum(kind('commitment')),
+      month: latest ? label(latest) : '',
+      arrears: earlier.map(label).join(', '),
+      misc: [r.penalty ? `${tx('জরিমানা')} ${slipTaka(r.penalty)}` : '', ...others.map((it) => `${it.description} ${slipTaka(it.amount)}`)].filter(Boolean).join(', '),
+      dueDate: latest?.bill?.due_date ?? null,
+    }
+  })()
 
   return (
     <>
@@ -142,39 +160,28 @@ export default function ReceiptPage() {
       <div className="print-only">
         <ReceiptPaper society={r.society} doc={{ type: 'receipt', id: r.id }} payerCopy={tx('গ্রাহক কপি')}>
           {r.status === 'cancelled' && <div className="receipt-stamp">{tx('বাতিলকৃত')}</div>}
-          <ReceiptTop society={r.society} title={tx('পানির বিল আদায় রশিদ')} qr={appUrl(`/verify/receipt/${r.verify_token}`)} />
-          <ReceiptMeta
-            lines={[
-              <>
-                {tx('রশিদ নং')}: {digits(r.receipt_no)}
-              </>,
-              <>
-                {tx('সংযোগ নং')}: {c ? digits(c.connection_no) : '—'}
-              </>,
-            ]}
-            date={
-              <>
-                {tx('সংগৃহীত তারিখ')}: {fmtDate(r.date)} {tx('ইং')}
-              </>
-            }
-          />
-          <ReceiptFacts
-            rows={[
-              [tx('গ্রাহকের নাম'), c ? nameOf(c) : r.payer_name],
-              [tx('পিতা/স্বামীর নাম'), c?.father_name || '—'],
-              [tx('গ্রাম/পাড়া/মোবাইল নং'), `${[nameOf({ name_bn: c?.village ?? '', name_en: c?.village_en }), c?.address].filter(Boolean).join(', ') || '—'}/${c?.mobile ? digits(c.mobile) : tx('নেই')}`],
-              [tx('সংযোগের ধরন'), c ? nameOf({ name_bn: c.type ?? '', name_en: c.type_en }) : null],
-              [tx('যে বিল পরিশোধ'), months],
-              [tx('জরিমানা'), r.penalty ? tk(r.penalty) : null],
-              [tx('মোট আদায়ের পরিমাণ'), <strong key="t">{tk(amount)}</strong>],
-              [tx('কথায়'), amountInWords(amount)],
-              [tx('আদায়ের পর বকেয়া'), showDue ? tk(dueAfter) : null],
-              [tx('মাধ্যম'), r.method !== 'cash' ? `${METHOD_LABEL[r.method] ?? r.method}${r.fund ? ` — ${accountLabel(r.fund)}` : ''}${r.reference ? `, ${tx('রেফারেন্স')}: ${digits(r.reference)}` : ''}` : null],
-              [tx('মন্তব্য'), r.remarks],
-            ]}
-          />
-          <ReceiptSign society={r.society} collector={nameOf(r.creator)} left={tx('গ্রাহক/প্রদানকারীর স্বাক্ষর')} />
-          <ReceiptFoot society={r.society} fallback={tx('এটি সিস্টেম-জেনারেটেড রশিদ। অনুগ্রহ করে আপনার রেকর্ডের জন্য সংরক্ষণ করুন।')} />
+          <SlipHead society={r.society} title={tx('পানির বিল আদায়ের রসিদ')} qr={appUrl(`/verify/receipt/${r.verify_token}`)} serial={digits(r.receipt_no)} date={fmtDate(r.date)} />
+          <SlipLine label={tx('সংযোগ তারিখ')} value={c?.connected_on ? fmtDate(c.connected_on) : ''} />
+          <SlipLine label={tx('গ্রাহকের নাম')} value={c ? nameOf(c) : r.payer_name} />
+          <SlipLine label={tx('পিতা/স্বামীর নাম')} value={c?.father_name ?? ''} />
+          <SlipLine label={tx('গ্রাম')} value={[nameOf({ name_bn: c?.village ?? '', name_en: c?.village_en }), c?.address].filter(Boolean).join(', ')} />
+          <SlipLine label={tx('সংযোগ ফি (ফেরতযোগ্য নহে)')} value={slipTaka(slip.connection)} />
+          <SlipRow>
+            <SlipLine label={tx('গ্রাহক নং')} value={c ? digits(c.connection_no) : ''} />
+            <SlipLine label={tx('ওয়ার্ড নং')} value={c?.ward_no ? digits(c.ward_no) : ''} />
+            <SlipLine label={tx('মাসিক ফি')} value={c?.monthly_fee ? slipTaka(c.monthly_fee) : ''} />
+          </SlipRow>
+          <SlipLine label={tx('মাসের নাম')} value={slip.month} />
+          <SlipLine label={tx('বকেয়া মাস')} value={slip.arrears} />
+          <SlipLine label={tx('বিবিধ')} value={slip.misc} />
+          <SlipLine label={tx('প্রতিশ্রুতি ফি')} value={slipTaka(slip.commitment)} />
+          <SlipLine label={tx('মোট আদায়')} value={slipTaka(amount)} strong />
+          <SlipLine label={tx('কথায়')} value={amountInWords(amount)} />
+          {showDue && dueAfter > 0 && <SlipLine label={tx('আদায়ের পর বকেয়া')} value={slipTaka(dueAfter)} />}
+          <SlipLine label={tx('বিল পরিশোধের তারিখ')} value={slip.dueDate ? fmtDate(slip.dueDate) : ''} />
+          <SlipLine label={tx('জরিমানাসহ বিল পরিশোধের তারিখ')} value="" />
+          {r.method !== 'cash' && <SlipLine label={tx('মাধ্যম')} value={`${METHOD_LABEL[r.method] ?? r.method}${r.fund ? ` — ${accountLabel(r.fund)}` : ''}${r.reference ? `, ${tx('রেফারেন্স')}: ${digits(r.reference)}` : ''}`} />}
+          <SlipSigns labels={[tx('আদায়কারীর স্বাক্ষর'), tx('হিসাব রক্ষকের স্বাক্ষর')]} />
         </ReceiptPaper>
       </div>
 

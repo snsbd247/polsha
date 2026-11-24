@@ -1,8 +1,8 @@
 # Database — পল্লী সমবায় সমিতি + কৃষি সেচ ERP (Polsha)
 
-> এই ফাইলটি লোকাল ডাটাবেজ `polsha` (লাইভ `pmpbssl.com`-এর ২৪/১১/২০২৬ তারিখের কপি, সব 58টি migration চালানো) থেকে `information_schema` পড়ে তৈরি। কলাম, টাইপ, ইন্ডেক্স ও Foreign Key হুবহু ডাটাবেজের; "Eloquent সম্পর্ক" অংশ `backend/app/Models`-এর কোড থেকে।
+> এই ফাইলটি লোকাল ডাটাবেজ `polsha` (লাইভ `pmpbssl.com`-এর ২৪/১১/২০২৬ তারিখের কপি, সব 59টি migration চালানো) থেকে `information_schema` পড়ে তৈরি। কলাম, টাইপ, ইন্ডেক্স ও Foreign Key হুবহু ডাটাবেজের; "Eloquent সম্পর্ক" অংশ `backend/app/Models`-এর কোড থেকে।
 
-**সংক্ষেপে:** 104 টেবিল · 1225 কলাম · 438 ইন্ডেক্স · 219 Foreign Key · 88 Eloquent মডেল · Engine InnoDB · Charset utf8mb4 · MariaDB 10.11 (লাইভ) / 10.4 (লোকাল XAMPP)
+**সংক্ষেপে:** 104 টেবিল · 1227 কলাম · 438 ইন্ডেক্স · 219 Foreign Key · 88 Eloquent মডেল · Engine InnoDB · Charset utf8mb4 · MariaDB 10.11 (লাইভ) / 10.4 (লোকাল XAMPP)
 
 ## সূচিপত্র
 
@@ -244,8 +244,8 @@ erDiagram
 
 | টেবিল | কলাম | ইন্ডেক্স | FK (বাইরে যায়) | FK (ভেতরে আসে) | মডেল | সারি (২৪/১১) |
 |---|---:|---:|---:|---:|---|---:|
-| [`water_connection_types`](#water_connection_types) | 10 | 2 | 0 | 1 | WaterConnectionType | 3 |
-| [`water_connections`](#water_connections) | 27 | 9 | 5 | 3 | WaterConnection | 0 |
+| [`water_connection_types`](#water_connection_types) | 11 | 2 | 0 | 1 | WaterConnectionType | 3 |
+| [`water_connections`](#water_connections) | 28 | 9 | 5 | 3 | WaterConnection | 0 |
 | [`water_connection_documents`](#water_connection_documents) | 10 | 3 | 2 | 0 | WaterConnectionDocument | 0 |
 | [`water_bills`](#water_bills) | 20 | 9 | 5 | 1 | WaterBill | 0 |
 | [`water_bill_penalties`](#water_bill_penalties) | 10 | 5 | 4 | 0 | WaterBillPenalty | 0 |
@@ -275,8 +275,8 @@ erDiagram
 
 | টেবিল | কলাম | ইন্ডেক্স | FK (বাইরে যায়) | FK (ভেতরে আসে) | মডেল | সারি (২৪/১১) |
 |---|---:|---:|---:|---:|---|---:|
-| [`migrations`](#migrations) | 3 | 1 | 0 | 0 | — | 58 |
-| [`cache`](#cache) | 3 | 2 | 0 | 0 | — | 6 |
+| [`migrations`](#migrations) | 3 | 1 | 0 | 0 | — | 59 |
+| [`cache`](#cache) | 3 | 2 | 0 | 0 | — | 8 |
 | [`cache_locks`](#cache_locks) | 3 | 2 | 0 | 0 | — | 0 |
 | [`jobs`](#jobs) | 7 | 2 | 0 | 0 | — | 0 |
 | [`job_batches`](#job_batches) | 10 | 1 | 0 | 0 | — | 0 |
@@ -3501,6 +3501,7 @@ erDiagram
 | `name_en` | `varchar(100)` | হ্যাঁ | NULL |  |  |
 | `monthly_fee` | `decimal(15,2)` | না | `0.00` |  |  |
 | `connection_fee` | `decimal(15,2)` | না | `0.00` |  |  |
+| `commitment_fee` | `decimal(12,2)` | না | `0.00` |  |  |
 | `is_active` | `tinyint(1)` | না | `1` |  |  |
 | `sort_order` | `smallint(5) unsigned` | না | `0` |  |  |
 | `created_at` | `timestamp` | হ্যাঁ | NULL |  |  |
@@ -3535,6 +3536,7 @@ erDiagram
 | `nid` | `varchar(20)` | হ্যাঁ | NULL |  |  |
 | `village_id` | `bigint(20) unsigned` | হ্যাঁ | NULL | MUL |  |
 | `address` | `varchar(250)` | হ্যাঁ | NULL |  |  |
+| `ward_no` | `varchar(10)` | হ্যাঁ | NULL |  |  |
 | `meter_no` | `varchar(40)` | হ্যাঁ | NULL |  |  |
 | `pipe_size` | `varchar(40)` | হ্যাঁ | NULL |  |  |
 | `latitude` | `decimal(10,7)` | হ্যাঁ | NULL |  |  |
@@ -4034,7 +4036,7 @@ erDiagram
 
 #### migrations
 
-সারি (২৪/১১/২০২৬): 58
+সারি (২৪/১১/২০২৬): 59
 
 | কলাম | টাইপ | Null | Default | Key | Extra / মন্তব্য |
 |---|---|---|---|---|---|
@@ -4050,7 +4052,7 @@ erDiagram
 
 #### cache
 
-সারি (২৪/১১/২০২৬): 6
+সারি (২৪/১১/২০২৬): 8
 
 | কলাম | টাইপ | Null | Default | Key | Extra / মন্তব্য |
 |---|---|---|---|---|---|
