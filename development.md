@@ -9,11 +9,11 @@
 |---|---|
 | রিপোজিটরি | https://github.com/snsbd247/polsha (branch `main`) |
 | প্রথম commit | ২৩/০৯/২০২৬ — Phase 1 |
-| শেষ commit | ২৯/১০/২০২৬ — ওয়েবসাইটের আলাদা পাতা ও যোগাযোগের ইনবক্স |
-| মোট commit | ৮৯ (সবগুলো Md Ismail Hosain-এর নামে) |
+| শেষ commit | ২৪/১১/২০২৬ — লিফট অনুযায়ী সেচের রেট (ফেজ ১৩) |
+| মোট commit | ৯১+ (Md Ismail Hosain-এর নামে; ২৪/১১ থেকে Claude সহ-লেখক) |
 | কোডের পরিবর্তন | ১,৮৬১ বার ফাইল বদল, +১,৪৭,৪৮১ / −২০,০০৮ লাইন; এখন ৬৯৯টি ফাইল |
-| Feature test | ১৮৩টি test (২৭টি ফাইল); README অনুযায়ী শেষ পূর্ণ রান ১৬৭টি পাস |
-| ডাটাবেজ | ৫৬টি migration, ১০১টি টেবিল |
+| Feature test | ১৮৯টি test (২৮টি ফাইল) — ২৪/১১/২০২৬-এর পূর্ণ রানে সব পাস (২,৭৭২ assertion) |
+| ডাটাবেজ | ৫৭টি migration, ১০২টি টেবিল |
 | প্রথম লাইভ | https://smartirrigation.click (২৩/০৯/২০২৬) |
 | এখনকার লাইভ | https://pmpbssl.com (cPanel `pmwmcs`, ১৫/১০/২০২৬ থেকে; সার্ভার ২৪/১১-এর আগে `169.40.116.146`-এ সরেছে) |
 
@@ -31,6 +31,7 @@
 ২৯/১০ ─ ওয়েবসাইট আলাদা পাতায়, যোগাযোগের ইনবক্স
 ০৫/১১ ─ লোকাল XAMPP-এ লাইভের কপি
 ২৪/১১ ─ নতুন সার্ভার থেকে লোকাল ডেটা হালনাগাদ, এই ৫টি ডকুমেন্ট
+২৪/১১ ─ ফেজ ১৩: লিফট অনুযায়ী সেচের রেট → GitHub ও লাইভে deploy
 ```
 
 ---
@@ -113,6 +114,7 @@
 | ১৫/১০/২০২৬ | নতুন cPanel অ্যাকাউন্ট `pmwmcs`, ডোমেইন https://pmpbssl.com, DB `pmwmcs_polsha`; শেষ release ২৯/১০ |
 | ০৫/১১/২০২৬ | লাইভ (`163.227.239.146`) থেকে ডাটাবেজ ও আপলোড করা ফাইল লোকালে; XAMPP-এ `Alias /polsha` (`conf/extra/httpd-polsha.conf`), PHP-তে `intl`/`gd`/`zip` চালু, backend `.env`-এ পোর্ট 3306 ও তিনটি ঠিকানা; localhost / 192.168.0.171 / 160.25.9.132 থেকে যাচাই। কোড লাইভ ও লোকালে একই (hash মিলিয়ে দেখা) |
 | ২৪/১১/২০২৬ | পুরোনো IP বন্ধ — লাইভ সরেছে `169.40.116.146`-এ (srv3.syncsolutionbd.com); সেখান থেকে নতুন ডাটাবেজ ও ফাইল লোকালে (আগের লোকাল DB-র ব্যাকআপ রেখে); কোড এখনো একই। Database.md, plan.md, UI.md, chat_history.md, development.md তৈরি |
+| ২৪/১১/২০২৬ | ফেজ ১৩ (লিফট অনুযায়ী সেচের রেট) — commit `64e5783`, GitHub-এ push; `server-deploy.sh` দিয়ে লাইভে: আগে ব্যাকআপ `polsha-20261124-145912.sql.gz`, migration `2026_11_24_100000_irrigation_lifts`, নতুন bundle `index-BOLA9UZ1.js`; লাইভে ৩টি লিফট, সেদিনের লগে কোনো error নেই। লোকাল XAMPP-এও একই build (`F:\Lovable\polsha-web`) ও migration |
 
 **লোকালে যা বাকি:** লোকাল ডোমেইনের লাইসেন্স key (এখন `pmpbssl.com`-এ বাঁধা, তাই লোকালে signed-in কাজ বন্ধ)। Windows Firewall-এ পোর্ট 80 খোলা হয়েছে ২৪/১১/২০২৬-এ।
 
@@ -224,4 +226,6 @@
 | 87 | 15/10/2026 | `586738d` | Always serve the secure address | 2 | +7 / -0 |
 | 88 | 15/10/2026 | `eb5856c` | License: a rate-limited server (429) counts as offline, never invalid | 5 | +29 / -6 |
 | 89 | 29/10/2026 | `ef47dba` | Website: one page per menu item, contact form inbox | 28 | +2834 / -878 |
+| 90 | 24/11/2026 | `947abbc` | Docs: database schema, plan, UI, chat and development history | 5 | +5450 / -0 |
+| 91 | 24/11/2026 | `64e5783` | Irrigation rates by lift (1st, 2nd, 3rd lift) | 43 | লিফট মডিউল |
 
