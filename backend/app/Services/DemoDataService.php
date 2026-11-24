@@ -1460,7 +1460,7 @@ class DemoDataService
                 $reason = $this->pick(['sale', 'sale', 'sale', 'inheritance', 'gift', 'exchange']);
                 $r = $this->api('irrigation', 'POST', 'land-transfers', [
                     'land_id' => $land->id, 'from_farmer_id' => $land->farmer_id, 'to_farmer_id' => $buyer,
-                    'type' => $partial ? 'partial' : 'full', 'share_percent' => $partial ? $this->pick([25, 30, 40, 50]) : null,
+                    'type' => $partial ? 'partial' : 'full', 'share_percent' => $partial ? $this->pick(array_values(array_filter([10, 20, 25, 30, 40, 50], fn ($p) => $p < $land->share_percent))) : null,
                     'reason' => $reason, 'transfer_date' => $d,
                     'amount' => $reason === 'sale' ? $this->money(150000, 900000, 10000) : null,
                     'remarks' => $reason === 'sale' ? 'দলিল নং '.Bn::toBnDigits((string) mt_rand(1000, 9999)) : null,
