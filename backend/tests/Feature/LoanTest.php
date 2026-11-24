@@ -238,6 +238,36 @@ class LoanTest extends Phase2TestCase
         $this->actingAs($this->loanOfficer)->getJson("/api/loans/eligibility?member_id={$m->id}&product_id={$p->id}")->assertJsonPath('open_loan', null);
     }
 
+    public function test_loan_form_fee_family_guarantor_and_the_printed_forms(): void
+    {
+        $p = $this->product(['code' => 'PF-1', 'frequency' => 'one_time', 'installments' => null, 'term_months' => 6, 'guarantors_required' => 0, 'savings_multiplier' => null]);
+        $m = $this->member('করিম');
+        $cashBefore = $this->ledger('cash_society');
+        $id = $this->actingAs($this->loanOfficer)->postJson('/api/loans', [
+            'member_id' => $m->id, 'product_id' => $p->id, 'applied_on' => '2026-06-01', 'amount' => 10000, 'guarantors' => [],
+            'purpose' => 'কৃষি', 'form_fee' => 50,
+            'family_guarantor' => ['name' => 'রহিমা', 'relation' => 'স্ত্রী', 'village' => 'পলশা', 'mobile' => '01711000099'],
+        ])->assertCreated()->json('id');
+        $loan = Loan::findOrFail($id);
+        $this->assertSame('রহিমা', $loan->family_guarantor['name']);
+        $this->assertEquals(50, (float) $loan->form_fee);
+        // the form fee is society cash in, loan-form income
+        $this->assertSame(50.0, round($this->ledger('cash_society') - $cashBefore, 2));
+        $this->assertSame(-50.0, $this->ledger('loan_form_income'));
+
+        $show = $this->actingAs($this->loanOfficer)->getJson("/api/loans/{$id}")->assertOk();
+        $show->assertJsonPath('family_guarantor.relation', 'স্ত্রী')->assertJsonPath('paper.borrower.name', 'করিম');
+        $this->assertNotNull($show->json('paper.form_fee_voucher'));
+        $this->assertNotNull($show->json('paper.last_due'));
+
+        // an empty family guarantor is not kept
+        $m2 = $this->member('সলিম');
+        $id2 = $this->actingAs($this->loanOfficer)->postJson('/api/loans', [
+            'member_id' => $m2->id, 'product_id' => $p->id, 'applied_on' => '2026-06-01', 'amount' => 5000, 'guarantors' => [], 'family_guarantor' => ['name' => null],
+        ])->assertCreated()->json('id');
+        $this->assertNull(Loan::findOrFail($id2)->family_guarantor);
+    }
+
     public function test_approved_loan_can_be_cancelled_and_one_time_loan_uses_term(): void
     {
         $p = $this->product(['code' => 'HV-1', 'frequency' => 'one_time', 'installments' => null, 'term_months' => 6, 'guarantors_required' => 0, 'savings_multiplier' => null]);

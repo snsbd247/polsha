@@ -93,7 +93,7 @@ class MembershipApplicationController extends Controller
     public function show(Request $request, MembershipApplication $application): JsonResponse
     {
         $application->load([
-            'farmer:id,farmer_code,name_bn,name_en,father_name,mobile,nid,photo,para,post_office,mouza_id,village_id',
+            'farmer:id,farmer_code,name_bn,name_en,father_name,mother_name,spouse_name,marital_status,date_of_birth,occupation,secondary_occupation,mobile,nid,photo,para,post_office,mouza_id,village_id',
             'farmer.village.union.upazila.district', 'farmer.mouza:id,name_bn',
             'nominees', 'proposer.farmer:id,name_bn', 'seconder.farmer:id,name_bn',
             'member:id,member_no', 'creator:id,name_bn,name_en', 'approvalRequest:id,status,current_step,total_steps,requested_by',
@@ -104,6 +104,8 @@ class MembershipApplicationController extends Controller
         return response()->json($application->toArray() + [
             'photo_url' => $f?->photo ? url("api/farmers/{$f->id}/photo") : null,
             'farmer_address' => $v ? implode(', ', array_filter([$f->para, $f->post_office, $v->name_bn, $v->union?->name_bn, $v->union?->upazila?->name_bn, $v->union?->upazila?->district?->name_bn])) : null,
+            'paper' => $f ? $this->paperForm($f->id) : null,
+            'society' => SettingService::society(),
             'share_unit_price' => (float) SettingService::get('share_unit_price', 10) ?: 10.0,
             'can_act' => $application->approvalRequest ? $this->approvals->canAct($request->user(), $application->approvalRequest) : false,
             // what was paid on admission, for the receipt: the fee's voucher and the first shares' transaction
@@ -114,6 +116,32 @@ class MembershipApplicationController extends Controller
                 'society' => SettingService::society(),
             ] : null,
         ]);
+    }
+
+/**
+     * The printed form's land figures, from the land records today: land the
+     * applicant owns (by share) and cultivates on borga/lease, and the part of
+     * each the irrigation scheme serves (plots with an irrigation source).
+     *
+     * @return array<string, float>
+     */
+    private function paperForm(int $farmerId): array
+    {
+        $today = now()->toDateString();
+        $current = fn ($q) => $q->where(fn ($w) => $w->whereNull('end_date')->orWhere('end_date', '>=', $today));
+        $owned = fn (bool $served) => (float) $current(\Illuminate\Support\Facades\DB::table('land_owners')->join('lands', 'lands.id', '=', 'land_owners.land_id')
+            ->where('land_owners.farmer_id', $farmerId)->whereNull('lands.deleted_at'))
+            ->when($served, fn ($q) => $q->whereNotNull('lands.irrigation_type_id'))
+            ->sum(\Illuminate\Support\Facades\DB::raw('lands.area_decimal * land_owners.share_percent / 100'));
+        $tenancy = fn (bool $served) => (float) $current(\Illuminate\Support\Facades\DB::table('land_cultivations')->join('lands', 'lands.id', '=', 'land_cultivations.land_id')
+            ->where('land_cultivations.farmer_id', $farmerId)->whereIn('land_cultivations.type', ['borga', 'lease'])->whereNull('lands.deleted_at'))
+            ->when($served, fn ($q) => $q->whereNotNull('lands.irrigation_type_id'))
+            ->sum('lands.area_decimal');
+
+        return [
+            'own' => round($owned(false), 4), 'tenancy' => round($tenancy(false), 4),
+            'own_served' => round($owned(true), 4), 'tenancy_served' => round($tenancy(true), 4),
+        ];
     }
 
     /** Defaults for a new form. */
@@ -221,6 +249,10 @@ class MembershipApplicationController extends Controller
             'fee_override_reason' => ['nullable', 'string', 'max:500'],
             'fee_status' => ['required', Rule::in(['paid', 'due'])],
             'initial_shares' => ['nullable', 'integer', 'min:0'],
+            // the printed form's second part: wetland (decimals) and the family's yearly income
+            'wetland_own_decimal' => ['nullable', 'numeric', 'min:0', 'max:99999999'],
+            'wetland_used_decimal' => ['nullable', 'numeric', 'min:0', 'max:99999999'],
+            'annual_income' => ['nullable', 'numeric', 'min:0', 'max:9999999999'],
             'resolution_no' => ['nullable', 'string', 'max:50'],
             'resolution_date' => ['nullable', 'date'],
             'form_scan' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
@@ -232,6 +264,8 @@ class MembershipApplicationController extends Controller
             'photo' => ['nullable', 'image', 'max:2048'],
             'occupation' => ['nullable', Rule::in(array_keys(config('erp.farmer.occupations')))],
             'education_level' => ['nullable', Rule::in(array_keys(config('erp.farmer.education_levels')))],
+            'marital_status' => ['nullable', Rule::in(array_keys(config('erp.farmer.marital_statuses')))],
+            'secondary_occupation' => ['nullable', 'string', 'max:50'],
             'blood_group' => ['nullable', Rule::in(array_keys(config('erp.farmer.blood_groups')))],
             'nominees' => ['required', 'array', 'min:1'],
             'nominees.*.name' => ['required', 'string', 'max:150'],
@@ -260,7 +294,7 @@ class MembershipApplicationController extends Controller
         return $data;
     }
 
-    private const FARMER_FIELDS = ['nid_front', 'nid_back', 'photo', 'occupation', 'education_level', 'blood_group'];
+    private const FARMER_FIELDS = ['marital_status', 'secondary_occupation', 'nid_front', 'nid_back', 'photo', 'occupation', 'education_level', 'blood_group'];
 
     /**
      * The application form also collects the farmer's NID copies, photo and a
@@ -268,7 +302,7 @@ class MembershipApplicationController extends Controller
      */
     private function updateFarmer(Request $request, array $data, Farmer $farmer): void
     {
-        $fields = collect($data)->only(['occupation', 'education_level', 'blood_group'])->filter(fn ($v) => $v !== null)->all();
+        $fields = collect($data)->only(['occupation', 'secondary_occupation', 'marital_status', 'education_level', 'blood_group'])->filter(fn ($v) => $v !== null)->all();
         if ($request->hasFile('photo')) {
             $old = $farmer->photo;
             $fields['photo'] = ImageService::storeCompressed($request->file('photo'), 'farmers');

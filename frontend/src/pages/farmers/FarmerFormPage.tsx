@@ -30,7 +30,7 @@ import ProtectedImage from '../../components/ProtectedImage'
 import { TeamSolid, UserSolid } from '../../components/SideIcons'
 import { api, applyFormErrors, errorMessage } from '../../lib/api'
 import { digits, toEnDigits } from '../../lib/format'
-import { toOptions, useFarmerMeta, type DuplicateMatch } from '../../lib/phase2'
+import { MARITAL_OPTIONS, toOptions, useFarmerMeta, type DuplicateMatch } from '../../lib/phase2'
 import { required } from '../../lib/rules'
 import type { Mouza } from '../../lib/types'
 import { usePublicSettings } from '../../lib/settings'
@@ -465,6 +465,9 @@ function FarmerForm({ id, existing, defaults }: { id?: string; existing?: Farmer
                 <Form.Item name="occupation" label={tx('পেশা')}>
                   <Select allowClear placeholder={tx('পেশা বাছাই করুন')} options={toOptions(meta?.occupations)} />
                 </Form.Item>
+                <Form.Item name="secondary_occupation" label={tx('অপ্রধান পেশা')}>
+                  <Input maxLength={50} placeholder={tx('থাকলে লিখুন')} />
+                </Form.Item>
                 <Form.Item name="post_office" label={tx('ডাকঘর')}>
                   <Input placeholder={tx('ডাকঘর লিখুন')} />
                 </Form.Item>
@@ -485,6 +488,9 @@ function FarmerForm({ id, existing, defaults }: { id?: string; existing?: Farmer
                 </Form.Item>
                 <Form.Item name="spouse_name" label={tx('স্বামী/স্ত্রীর নাম')}>
                   <Input placeholder={tx('স্বামী/স্ত্রীর নাম লিখুন')} />
+                </Form.Item>
+                <Form.Item name="marital_status" label={tx('বৈবাহিক অবস্থা')}>
+                  <Select allowClear placeholder={tx('বাছাই করুন')} options={MARITAL_OPTIONS} />
                 </Form.Item>
                 <Form.Item name="birth_reg_no" label={tx('জন্ম নিবন্ধন নম্বর')} rules={[digitRule(/^\d{17}$/, tx('১৭ অঙ্কের হতে হবে'))]}>
                   <Input inputMode="numeric" placeholder={tx('NID না থাকলে')} />

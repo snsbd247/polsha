@@ -6,6 +6,7 @@ import { type Society } from '../lib/settings'
 import { nameOf, t as tx } from '../lib/i18n'
 import { ReceiptFacts, ReceiptFoot, ReceiptMeta, ReceiptPaper, ReceiptSign, ReceiptTop } from './PrintParts'
 import MemberSlip from './MemberSlip'
+import { WithdrawalApplicationPaper } from './PaperForms'
 
 type Acc = { code: string; name_bn: string; name_en: string | null } | null
 export type FundTxnDetail = FundTxn & {
@@ -30,6 +31,22 @@ export default function FundReceipt({ t, kind }: { t: FundTxnDetail; kind: FundK
   const amount = Number(t.amount)
   const farmer = t.account.member?.farmer
   const title = t.direction === 'in' ? tx('{{p0}} জমার রশিদ', { p0: KIND_LABEL[kind] }) : tx('{{p0}} খরচের রশিদ', { p0: KIND_LABEL[kind] })
+
+  // a withdrawal prints as the society's withdrawal application (A4), filled in
+  if (t.direction === 'out' && t.type === 'withdrawal') {
+    return (
+      <WithdrawalApplicationPaper
+        society={t.society}
+        kind={kind}
+        date={t.date}
+        amount={amount}
+        balanceAfter={t.balance_after === null ? null : Number(t.balance_after)}
+        name={nameOf(farmer)}
+        father={farmer?.father_name}
+        memberNo={t.account.member?.member_no}
+      />
+    )
+  }
 
   return (
     <ReceiptPaper society={t.society} doc={{ type: 'member_transaction', id: t.id }} payerCopy={tx('সদস্য কপি')}>

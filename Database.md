@@ -1,8 +1,8 @@
 # Database — পল্লী সমবায় সমিতি + কৃষি সেচ ERP (Polsha)
 
-> এই ফাইলটি লোকাল ডাটাবেজ `polsha` (লাইভ `pmpbssl.com`-এর ২৪/১১/২০২৬ তারিখের কপি, সব 59টি migration চালানো) থেকে `information_schema` পড়ে তৈরি। কলাম, টাইপ, ইন্ডেক্স ও Foreign Key হুবহু ডাটাবেজের; "Eloquent সম্পর্ক" অংশ `backend/app/Models`-এর কোড থেকে।
+> এই ফাইলটি লোকাল ডাটাবেজ `polsha` (লাইভ `pmpbssl.com`-এর ২৪/১১/২০২৬ তারিখের কপি, সব 60টি migration চালানো) থেকে `information_schema` পড়ে তৈরি। কলাম, টাইপ, ইন্ডেক্স ও Foreign Key হুবহু ডাটাবেজের; "Eloquent সম্পর্ক" অংশ `backend/app/Models`-এর কোড থেকে।
 
-**সংক্ষেপে:** 104 টেবিল · 1227 কলাম · 438 ইন্ডেক্স · 219 Foreign Key · 88 Eloquent মডেল · Engine InnoDB · Charset utf8mb4 · MariaDB 10.11 (লাইভ) / 10.4 (লোকাল XAMPP)
+**সংক্ষেপে:** 104 টেবিল · 1235 কলাম · 439 ইন্ডেক্স · 220 Foreign Key · 88 Eloquent মডেল · Engine InnoDB · Charset utf8mb4 · MariaDB 10.11 (লাইভ) / 10.4 (লোকাল XAMPP)
 
 ## সূচিপত্র
 
@@ -63,6 +63,7 @@ erDiagram
     lands ||--o{ land_cultivations : "land_id"
     farmers ||--o{ land_owners : "farmer_id"
     lands ||--o{ land_owners : "land_id"
+    journals ||--o{ loans : "form_fee_journal_id"
     chart_of_accounts ||--o{ loans : "fund_account_id"
     journals ||--o{ loans : "journal_id"
     members ||--o{ loans : "member_id"
@@ -145,13 +146,13 @@ erDiagram
 
 | টেবিল | কলাম | ইন্ডেক্স | FK (বাইরে যায়) | FK (ভেতরে আসে) | মডেল | সারি (২৪/১১) |
 |---|---:|---:|---:|---:|---|---:|
-| [`farmers`](#farmers) | 38 | 13 | 7 | 18 | Farmer | 0 |
+| [`farmers`](#farmers) | 40 | 13 | 7 | 18 | Farmer | 0 |
 | [`farmer_documents`](#farmer_documents) | 11 | 3 | 2 | 0 | FarmerDocument | 0 |
 | [`farmer_family_members`](#farmer_family_members) | 9 | 2 | 1 | 0 | FarmerFamilyMember | 0 |
 | [`households`](#households) | 7 | 4 | 2 | 1 | Household | 0 |
 | [`duplicate_dismissals`](#duplicate_dismissals) | 6 | 4 | 3 | 0 | — | 0 |
 | [`members`](#members) | 10 | 5 | 2 | 11 | Member | 0 |
-| [`membership_applications`](#membership_applications) | 22 | 9 | 6 | 2 | MembershipApplication | 0 |
+| [`membership_applications`](#membership_applications) | 25 | 9 | 6 | 2 | MembershipApplication | 0 |
 | [`membership_nominees`](#membership_nominees) | 10 | 3 | 2 | 0 | MembershipNominee | 0 |
 | [`membership_status_history`](#membership_status_history) | 14 | 4 | 3 | 0 | MembershipStatusHistory | 0 |
 | [`voter_lists`](#voter_lists) | 9 | 2 | 1 | 1 | VoterList | 0 |
@@ -210,7 +211,7 @@ erDiagram
 | টেবিল | কলাম | ইন্ডেক্স | FK (বাইরে যায়) | FK (ভেতরে আসে) | মডেল | সারি (২৪/১১) |
 |---|---:|---:|---:|---:|---|---:|
 | [`loan_products`](#loan_products) | 20 | 2 | 0 | 1 | LoanProduct | 0 |
-| [`loans`](#loans) | 32 | 11 | 8 | 3 | Loan | 0 |
+| [`loans`](#loans) | 35 | 12 | 9 | 3 | Loan | 0 |
 | [`loan_guarantors`](#loan_guarantors) | 6 | 3 | 2 | 0 | LoanGuarantor | 0 |
 | [`loan_installments`](#loan_installments) | 14 | 3 | 1 | 0 | LoanInstallment | 0 |
 | [`loan_payments`](#loan_payments) | 22 | 8 | 5 | 0 | LoanPayment | 0 |
@@ -222,7 +223,7 @@ erDiagram
 | [`chart_of_accounts`](#chart_of_accounts) | 13 | 5 | 1 | 12 | Account | 166 |
 | [`accounting_periods`](#accounting_periods) | 10 | 3 | 1 | 1 | AccountingPeriod | 0 |
 | [`fiscal_year_closes`](#fiscal_year_closes) | 13 | 4 | 2 | 0 | FiscalYearClose | 0 |
-| [`journals`](#journals) | 19 | 13 | 6 | 17 | Journal | 0 |
+| [`journals`](#journals) | 19 | 13 | 6 | 18 | Journal | 0 |
 | [`journal_lines`](#journal_lines) | 8 | 4 | 3 | 1 | JournalLine | 0 |
 | [`bank_accounts`](#bank_accounts) | 14 | 3 | 2 | 1 | BankAccount | 0 |
 | [`bank_reconciliations`](#bank_reconciliations) | 13 | 4 | 3 | 1 | BankReconciliation | 0 |
@@ -275,7 +276,7 @@ erDiagram
 
 | টেবিল | কলাম | ইন্ডেক্স | FK (বাইরে যায়) | FK (ভেতরে আসে) | মডেল | সারি (২৪/১১) |
 |---|---:|---:|---:|---:|---|---:|
-| [`migrations`](#migrations) | 3 | 1 | 0 | 0 | — | 59 |
+| [`migrations`](#migrations) | 3 | 1 | 0 | 0 | — | 60 |
 | [`cache`](#cache) | 3 | 2 | 0 | 0 | — | 8 |
 | [`cache_locks`](#cache_locks) | 3 | 2 | 0 | 0 | — | 0 |
 | [`jobs`](#jobs) | 7 | 2 | 0 | 0 | — | 0 |
@@ -412,6 +413,7 @@ erDiagram
 | `loans.approval_request_id` | `approval_requests.id` | RESTRICT | RESTRICT | `loans_approval_request_id_foreign` |
 | `loans.created_by` | `users.id` | RESTRICT | RESTRICT | `loans_created_by_foreign` |
 | `loans.disbursed_by` | `users.id` | RESTRICT | RESTRICT | `loans_disbursed_by_foreign` |
+| `loans.form_fee_journal_id` | `journals.id` | SET NULL | RESTRICT | `loans_form_fee_journal_id_foreign` |
 | `loans.fund_account_id` | `chart_of_accounts.id` | RESTRICT | RESTRICT | `loans_fund_account_id_foreign` |
 | `loans.import_batch_id` | `import_batches.id` | SET NULL | RESTRICT | `loans_import_batch_id_foreign` |
 | `loans.journal_id` | `journals.id` | RESTRICT | RESTRICT | `loans_journal_id_foreign` |
@@ -1146,6 +1148,7 @@ erDiagram
 | `father_name` | `varchar(255)` | না |  |  |  |
 | `mother_name` | `varchar(255)` | হ্যাঁ | NULL |  |  |
 | `spouse_name` | `varchar(255)` | হ্যাঁ | NULL |  |  |
+| `marital_status` | `varchar(20)` | হ্যাঁ | NULL |  |  |
 | `gender` | `varchar(10)` | না |  |  |  |
 | `date_of_birth` | `date` | হ্যাঁ | NULL |  |  |
 | `nid` | `varchar(17)` | হ্যাঁ | NULL | UNI |  |
@@ -1162,6 +1165,7 @@ erDiagram
 | `household_id` | `bigint(20) unsigned` | হ্যাঁ | NULL | MUL |  |
 | `household_relation` | `varchar(30)` | হ্যাঁ | NULL |  |  |
 | `occupation` | `varchar(50)` | হ্যাঁ | NULL |  |  |
+| `secondary_occupation` | `varchar(50)` | হ্যাঁ | NULL |  |  |
 | `blood_group` | `varchar(5)` | হ্যাঁ | NULL |  |  |
 | `education_level` | `varchar(30)` | হ্যাঁ | NULL |  |  |
 | `farmer_type` | `varchar(30)` | হ্যাঁ | NULL |  |  |
@@ -1385,6 +1389,9 @@ erDiagram
 | `fee_override_reason` | `varchar(500)` | হ্যাঁ | NULL |  |  |
 | `fee_status` | `varchar(10)` | না | `'paid'` |  |  |
 | `initial_shares` | `int(10) unsigned` | হ্যাঁ | NULL |  |  |
+| `wetland_own_decimal` | `decimal(12,4)` | হ্যাঁ | NULL |  |  |
+| `wetland_used_decimal` | `decimal(12,4)` | হ্যাঁ | NULL |  |  |
+| `annual_income` | `decimal(15,2)` | হ্যাঁ | NULL |  |  |
 | `form_scan` | `varchar(255)` | হ্যাঁ | NULL |  |  |
 | `signature` | `varchar(255)` | হ্যাঁ | NULL |  |  |
 | `resolution_no` | `varchar(50)` | হ্যাঁ | NULL |  |  |
@@ -2743,6 +2750,9 @@ erDiagram
 | `applied_on` | `date` | না |  |  |  |
 | `amount` | `decimal(15,2)` | না |  |  |  |
 | `purpose` | `varchar(300)` | হ্যাঁ | NULL |  |  |
+| `family_guarantor` | `longtext` | হ্যাঁ | NULL |  |  |
+| `form_fee` | `decimal(12,2)` | না | `0.00` |  |  |
+| `form_fee_journal_id` | `bigint(20) unsigned` | হ্যাঁ | NULL | MUL |  |
 | `interest_rate` | `decimal(6,2)` | না |  |  |  |
 | `interest_method` | `varchar(10)` | না |  |  |  |
 | `frequency` | `varchar(10)` | না |  |  |  |
@@ -2777,6 +2787,7 @@ erDiagram
 | `loans_approval_request_id_foreign` | INDEX | `approval_request_id` |
 | `loans_created_by_foreign` | INDEX | `created_by` |
 | `loans_disbursed_by_foreign` | INDEX | `disbursed_by` |
+| `loans_form_fee_journal_id_foreign` | INDEX | `form_fee_journal_id` |
 | `loans_fund_account_id_foreign` | INDEX | `fund_account_id` |
 | `loans_import_batch_id_foreign` | INDEX | `import_batch_id` |
 | `loans_journal_id_foreign` | INDEX | `journal_id` |
@@ -2790,6 +2801,7 @@ erDiagram
 - `approval_request_id` → `approval_requests.id` (ON DELETE RESTRICT)
 - `created_by` → `users.id` (ON DELETE RESTRICT)
 - `disbursed_by` → `users.id` (ON DELETE RESTRICT)
+- `form_fee_journal_id` → `journals.id` (ON DELETE SET NULL)
 - `fund_account_id` → `chart_of_accounts.id` (ON DELETE RESTRICT)
 - `import_batch_id` → `import_batches.id` (ON DELETE SET NULL)
 - `journal_id` → `journals.id` (ON DELETE RESTRICT)
@@ -3077,7 +3089,7 @@ erDiagram
 - `reversal_of_id` → `journals.id` (ON DELETE RESTRICT)
 - `reversed_by_id` → `journals.id` (ON DELETE RESTRICT)
 
-**যে টেবিলগুলো একে নির্দেশ করে:** `assets.journal_id`, `asset_depreciations.journal_id`, `asset_maintenances.journal_id`, `asset_movements.journal_id`, `distribution_runs.journal_id`, `field_deposits.journal_id`, `fiscal_year_closes.journal_id`, `invoices.journal_id`, `journals.reversal_of_id`, `journals.reversed_by_id`, `journal_lines.journal_id`, `loans.journal_id`, `loan_payments.journal_id`, `member_transactions.journal_id`, `receipts.journal_id`, `water_bills.journal_id`, `water_bill_penalties.journal_id`
+**যে টেবিলগুলো একে নির্দেশ করে:** `assets.journal_id`, `asset_depreciations.journal_id`, `asset_maintenances.journal_id`, `asset_movements.journal_id`, `distribution_runs.journal_id`, `field_deposits.journal_id`, `fiscal_year_closes.journal_id`, `invoices.journal_id`, `journals.reversal_of_id`, `journals.reversed_by_id`, `journal_lines.journal_id`, `loans.form_fee_journal_id`, `loans.journal_id`, `loan_payments.journal_id`, `member_transactions.journal_id`, `receipts.journal_id`, `water_bills.journal_id`, `water_bill_penalties.journal_id`
 
 **Eloquent সম্পর্ক:** `lines()` hasMany `JournalLine` · `source()` morphTo · `period()` belongsTo `AccountingPeriod` · `creator()` belongsTo `User` · `poster()` belongsTo `User` · `reversalOf()` belongsTo `self` · `reversedBy()` belongsTo `self` · `approvalRequest()` belongsTo `ApprovalRequest`
 
@@ -4036,7 +4048,7 @@ erDiagram
 
 #### migrations
 
-সারি (২৪/১১/২০২৬): 59
+সারি (২৪/১১/২০২৬): 60
 
 | কলাম | টাইপ | Null | Default | Key | Extra / মন্তব্য |
 |---|---|---|---|---|---|

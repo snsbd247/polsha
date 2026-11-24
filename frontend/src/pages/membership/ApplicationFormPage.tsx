@@ -29,7 +29,8 @@ import ProtectedImage from '../../components/ProtectedImage'
 import { UserSolid } from '../../components/SideIcons'
 import { api, applyFormErrors, errorMessage } from '../../lib/api'
 import { digits, fmtDate, toEnDigits } from '../../lib/format'
-import { APPLICATION_STATUS, openProtectedFile, toOptions, useFarmerMeta } from '../../lib/phase2'
+import { APPLICATION_STATUS, MARITAL_OPTIONS, openProtectedFile, toOptions, useFarmerMeta } from '../../lib/phase2'
+import { MembershipApplicationPaper } from '../../components/PaperForms'
 import { required } from '../../lib/rules'
 import { nameOf, t as tx } from '../../lib/i18n'
 import PageFrame from '../../components/PageFrame'
@@ -279,7 +280,7 @@ export default function ApplicationFormPage() {
   if (!editable && app) {
     return (
       <PageFrame
-        className={`ml pl${printReceipt ? ' ma-printing' : ''}`}
+        className="ml pl ma-printing"
         crumbs={[{ label: tx('কৃষক ও সদস্য'), to: '/farmers' }, { label: tx('সদস্যপদের আবেদন'), to: '/membership/applications' }, { label: digits(app.application_no) }]}
         title={tx('আবেদন {{p0}}', { p0: digits(app.application_no) })}
         actions={
@@ -327,8 +328,14 @@ export default function ApplicationFormPage() {
             }
           />
         )}
-        {printReceipt && app.paid && <AdmissionReceipt app={app} />}
-        <Card className={printReceipt ? 'no-print' : ''}>
+        {printReceipt && app.paid ? (
+          <AdmissionReceipt app={app} />
+        ) : (
+          <div className="print-only">
+            <MembershipApplicationPaper a={app as never} occupations={meta?.occupations} />
+          </div>
+        )}
+        <Card className="no-print">
           <Descriptions bordered size="small" column={{ xs: 1, md: 2 }}>
             <Descriptions.Item label={tx('কৃষক')}>
               <Link to={`/farmers/${app.farmer.id}`}>{app.farmer.name_bn}</Link> ({app.farmer.farmer_code})
@@ -555,6 +562,21 @@ export default function ApplicationFormPage() {
                       </Form.Item>
                       <Form.Item name="blood_group" label={tx('রক্তের গ্রুপ')}>
                         <Select allowClear placeholder={tx('বাছাই করুন')} options={toOptions(meta?.blood_groups)} />
+                      </Form.Item>
+                      <Form.Item name="marital_status" label={tx('বৈবাহিক অবস্থা')}>
+                        <Select allowClear placeholder={tx('বাছাই করুন')} options={MARITAL_OPTIONS} />
+                      </Form.Item>
+                      <Form.Item name="secondary_occupation" label={tx('অপ্রধান পেশা')}>
+                        <Input maxLength={50} />
+                      </Form.Item>
+                      <Form.Item name="annual_income" label={tx('পরিবারের বাৎসরিক আয় (৳)')}>
+                        <InputNumber min={0} style={{ width: '100%' }} />
+                      </Form.Item>
+                      <Form.Item name="wetland_own_decimal" label={tx('নিজের জলাভূমি (শতক)')}>
+                        <InputNumber min={0} style={{ width: '100%' }} />
+                      </Form.Item>
+                      <Form.Item name="wetland_used_decimal" label={tx('ব্যবহারের জলাভূমি — খাস/অন্যের (শতক)')}>
+                        <InputNumber min={0} style={{ width: '100%' }} />
                       </Form.Item>
                     </div>
                     <Form.Item name="remarks" label={tx('মন্তব্য')} className="ma-last" hidden={!more}>

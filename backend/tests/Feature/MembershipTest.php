@@ -15,6 +15,26 @@ use Illuminate\Support\Facades\Storage;
 
 class MembershipTest extends Phase2TestCase
 {
+    public function test_application_keeps_the_paper_form_fields_and_shows_land_figures(): void
+    {
+        $farmer = $this->makeFarmer();
+        $res = $this->actingAs($this->officer)->postJson('/api/membership-applications', $this->applicationPayload($farmer, [
+            'wetland_own_decimal' => 50, 'wetland_used_decimal' => 25, 'annual_income' => 120000,
+            'marital_status' => 'married', 'secondary_occupation' => 'মৎস্য চাষ',
+        ]))->assertCreated();
+        $farmer->refresh();
+        $this->assertSame('married', $farmer->marital_status);
+        $this->assertSame('মৎস্য চাষ', $farmer->secondary_occupation);
+
+        $show = $this->actingAs($this->officer)->getJson('/api/membership-applications/'.$res->json('id'))->assertOk();
+        $this->assertEquals(120000, $show->json('annual_income'));
+        $show->assertJsonPath('farmer.marital_status', 'married')
+            ->assertJsonPath('paper.own', 0)->assertJsonPath('paper.tenancy', 0);
+        $this->assertNotNull($show->json('society.name_bn'));
+        $this->actingAs($this->officer)->postJson('/api/membership-applications', $this->applicationPayload($this->makeFarmer(), ['marital_status' => 'other']))
+            ->assertUnprocessable();
+    }
+
     public function test_full_two_step_admission_flow(): void
     {
         $farmer = $this->makeFarmer();

@@ -1475,5 +1475,10 @@
     "উপ-প্রকল্প হস্তান্তরের তারিখ": "Sub-project handover date",
     "নির্বাচন": "Election",
     "ওয়াটার সাপ্লাই": "Water Supply",
-    "প্রতিশ্রুতি ফি": "Commitment fee"
+    "প্রতিশ্রুতি ফি": "Commitment fee",
+    "ঋণ ফরম বিক্রয় — :no, :name": "Loan form sale — :no, :name",
+    "তালাক প্রাপ্ত": "Divorced",
+    "বিধবা/বিপত্নীক": "Widowed",
+    "বিবাহিত": "Married",
+    "অবিবাহিত": "Unmarried"
 }

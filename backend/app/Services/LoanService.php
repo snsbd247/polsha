@@ -165,6 +165,7 @@ class LoanService
             $loan = Loan::create([
                 'loan_no' => SequenceService::next('loan'), 'member_id' => $member->id, 'product_id' => $product->id,
                 'applied_on' => $data['applied_on'], 'amount' => $amount, 'purpose' => $data['purpose'] ?? null,
+                'family_guarantor' => $data['family_guarantor'] ?? null, 'form_fee' => round((float) ($data['form_fee'] ?? 0), 2),
                 'interest_rate' => $product->interest_rate, 'interest_method' => $product->interest_method, 'frequency' => $product->frequency,
                 'installments' => $product->frequency === 'one_time' ? 1 : $product->installments, 'term_months' => $product->term_months,
                 'penalty_type' => $product->penalty_type, 'penalty_rate' => $product->penalty_rate, 'grace_days' => $product->grace_days, 'limit_amount' => $limit['limit'],
@@ -172,6 +173,16 @@ class LoanService
             ]);
             foreach ($guarantors as $g) {
                 $loan->guarantors()->create($g);
+            }
+            // the loan form is sold with the application: society cash in, loan-form income
+            if ((float) $loan->form_fee > 0) {
+                $journal = $this->ledger->postNow('receipt', $loan->applied_on->toDateString(),
+                    __('ঋণ ফরম বিক্রয় — :no, :name', ['no' => $loan->loan_no, 'name' => $member->farmer?->name_bn]),
+                    [
+                        ['account_id' => \App\Models\Account::byKey('cash_society')->id, 'debit' => (float) $loan->form_fee],
+                        ['account_id' => \App\Models\Account::byKey('loan_form_income')->id, 'credit' => (float) $loan->form_fee],
+                    ], 'loan', $loan);
+                $loan->update(['form_fee_journal_id' => $journal->id]);
             }
             $preview = $this->buildSchedule($loan->only(['interest_rate', 'interest_method', 'frequency', 'installments', 'term_months']), $amount,
                 $this->defaultFirstDue($loan->only(['frequency', 'term_months']), $loan->applied_on->toDateString()));
@@ -186,7 +197,8 @@ class LoanService
                     'মোট সুদ' => round(array_sum(array_column($preview, 'interest')), 2),
                     'জামিনদার' => Member::with('farmer')->whereIn('id', array_column($guarantors, 'member_id'))->get()
                         ->map(fn ($g) => $g->farmer?->name_bn.' ('.$g->member_no.')')->implode(', ') ?: '—']
-                    + (! empty($data['purpose']) ? ['উদ্দেশ্য' => $data['purpose']] : []),
+                    + (! empty($data['purpose']) ? ['উদ্দেশ্য' => $data['purpose']] : [])
+                    + (! empty($data['family_guarantor']['name']) ? ['পারিবারিক জামিনদার' => $data['family_guarantor']['name']] : []),
                 null,
                 $amount,
             );

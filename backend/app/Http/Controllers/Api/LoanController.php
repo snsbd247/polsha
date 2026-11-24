@@ -135,7 +135,23 @@ class LoanController extends Controller
             'guarantors' => ['array', 'max:5'],
             'guarantors.*.member_id' => ['required', 'integer'],
             'guarantors.*.relation' => ['nullable', 'string', 'max:100'],
+            // the undertaking's family guarantor — a relative who need not be a member
+            'family_guarantor' => ['nullable', 'array'],
+            'family_guarantor.name' => ['nullable', 'string', 'max:150'],
+            'family_guarantor.father_name' => ['nullable', 'string', 'max:150'],
+            'family_guarantor.relation' => ['nullable', 'string', 'max:100'],
+            'family_guarantor.village' => ['nullable', 'string', 'max:150'],
+            'family_guarantor.post_office' => ['nullable', 'string', 'max:150'],
+            'family_guarantor.upazila' => ['nullable', 'string', 'max:150'],
+            'family_guarantor.district' => ['nullable', 'string', 'max:150'],
+            'family_guarantor.member_no' => ['nullable', 'string', 'max:20'],
+            'family_guarantor.mobile' => ['nullable', 'regex:/^01[3-9]\d{8}$/'],
+            // the loan form sold with the application
+            'form_fee' => ['nullable', 'numeric', 'min:0', 'max:100000'],
         ]);
+        if (empty(array_filter($data['family_guarantor'] ?? []))) {
+            $data['family_guarantor'] = null;
+        }
         $loan = $this->loans->apply($data);
 
         return response()->json(['id' => $loan->id, 'loan_no' => $loan->loan_no, 'status' => $loan->status,
@@ -150,12 +166,35 @@ class LoanController extends Controller
         $preview = $position ? null : $this->loans->buildSchedule($loan->only(['interest_rate', 'interest_method', 'frequency', 'installments', 'term_months']),
             (float) $loan->amount, $this->loans->defaultFirstDue($loan->only(['frequency', 'term_months']), now()->toDateString()));
 
+        $member = $loan->member?->farmer;
+
         return response()->json($loan->toArray() + [
             'position' => $position,
             'preview' => $preview,
+            // the printed application and undertaking: addresses, the last due date and the letterhead
+            'paper' => [
+                'borrower' => $member ? $this->addressOf($member->id) : null,
+                'guarantors' => $loan->guarantors->map(fn ($g) => $g->member?->farmer ? $this->addressOf($g->member->farmer->id) + ['member_no' => $g->member->member_no] : null)->filter()->values(),
+                'last_due' => $loan->schedule()->max('due_date') ?? (($p = $preview) ? end($p)['due_date'] ?? null : null),
+                'form_fee_voucher' => $loan->form_fee_journal_id ? \App\Models\Journal::whereKey($loan->form_fee_journal_id)->value('voucher_no') : null,
+                'society' => \App\Services\SettingService::society(),
+            ],
             'payments' => $loan->payments()->with('creator:id,name_bn,name_en')->orderByDesc('date')->orderByDesc('id')->get(),
             'approval' => $loan->approvalRequest?->only(['id', 'status', 'current_step', 'total_steps']),
         ]);
+    }
+
+    /** A farmer's name, father, address parts, mobile and photo as the society's forms ask for them. */
+    private function addressOf(int $farmerId): array
+    {
+        $f = \App\Models\Farmer::with('village.union.upazila.district')->find($farmerId);
+        $v = $f?->village;
+
+        return [
+            'name' => $f?->name_bn, 'father_name' => $f?->father_name, 'mobile' => $f?->mobile, 'village' => $v?->name_bn,
+            'post_office' => $f?->post_office, 'upazila' => $v?->union?->upazila?->name_bn, 'district' => $v?->union?->upazila?->district?->name_bn,
+            'photo_url' => $f?->photo ? url("api/farmers/{$f->id}/photo") : null,
+        ];
     }
 
     /** Loan statement: disbursement, then every payment split three ways, with principal still owed. */

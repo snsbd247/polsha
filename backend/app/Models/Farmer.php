@@ -14,7 +14,7 @@ class Farmer extends Model
     protected string $auditModule = 'farmer';
 
     protected $fillable = [
-        'farmer_code', 'name_bn', 'name_en', 'father_name', 'mother_name', 'spouse_name', 'gender',
+        'farmer_code', 'name_bn', 'name_en', 'father_name', 'mother_name', 'spouse_name', 'marital_status', 'secondary_occupation', 'gender',
         'date_of_birth', 'nid', 'birth_reg_no', 'mobile', 'alt_mobile', 'email', 'photo', 'village_id', 'mouza_id',
         'para', 'post_office', 'post_code', 'household_id', 'household_relation', 'occupation', 'blood_group', 'education_level', 'farmer_type', 'remarks', 'is_active',
         'merged_into_id', 'created_by', 'import_batch_id', 'delete_reason', 'delete_note', 'deleted_by', 'removed_at',

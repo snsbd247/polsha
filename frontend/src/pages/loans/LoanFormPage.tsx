@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Alert, App, Button, DatePicker, Form, Input, InputNumber, Select } from 'antd'
+import { Alert, App, AutoComplete, Button, DatePicker, Form, Input, InputNumber, Select } from 'antd'
 import { ArrowLeftOutlined, CalendarOutlined, CloseOutlined, DeleteOutlined, PlusOutlined, SafetyCertificateOutlined, SendOutlined, TeamOutlined, UserOutlined } from '@ant-design/icons'
 import dayjs, { type Dayjs } from 'dayjs'
 import LoanMemberPicker from '../../components/LoanMemberPicker'
@@ -19,7 +19,11 @@ import '../irrigation/invoice-detail.css'
 import '../savings/savings.css'
 import './loans.css'
 
-type Values = { member_id?: number; product_id?: number; applied_on: Dayjs; amount?: number; purpose?: string; remarks?: string; guarantors?: { member_id?: number; relation?: string }[] }
+type FamilyGuarantor = { name?: string; father_name?: string; relation?: string; village?: string; post_office?: string; upazila?: string; district?: string; member_no?: string; mobile?: string }
+type Values = { member_id?: number; product_id?: number; applied_on: Dayjs; amount?: number; purpose?: string; remarks?: string; form_fee?: number; family_guarantor?: FamilyGuarantor; guarantors?: { member_id?: number; relation?: string }[] }
+
+/** The purposes the society's loan application lists; anything else can be typed. */
+const PURPOSES = ['পারিবারিক', 'ব্যবসা', 'মৎস্য', 'পশু পালন', 'রিক্সা', 'কৃষি']
 
 function Section({ no, icon, title, children }: { no: number; icon: ReactNode; title: string; children: ReactNode }) {
   return (
@@ -120,9 +124,14 @@ export default function LoanFormPage() {
                 <InputNumber min={1} max={e?.limit} precision={2} style={{ width: '100%' }} prefix="৳" placeholder="0.00" />
               </Form.Item>
             </div>
-            <Form.Item name="purpose" label={tx('উদ্দেশ্য')}>
-              <Input maxLength={300} placeholder={tx('যেমন: বোরো ধান চাষ, সার ও বীজ কেনা')} />
-            </Form.Item>
+            <div className="iv-grid iv-grid-3">
+              <Form.Item name="purpose" label={tx('উদ্দেশ্য')} className="bi-span2">
+                <AutoComplete maxLength={300} options={PURPOSES.map((p) => ({ value: tx(p) }))} placeholder={tx('বাছাই করুন বা লিখুন — যেমন: কৃষি (বোরো ধান চাষ)')} />
+              </Form.Item>
+              <Form.Item name="form_fee" label={tx('ঋণ ফরম ফি (৳)')} extra={tx('দিলে সমিতির নগদে "ঋণ ফরম বিক্রয়" হিসাবে জমা হয়')}>
+                <InputNumber min={0} precision={2} style={{ width: '100%' }} prefix="৳" placeholder="0.00" />
+              </Form.Item>
+            </div>
           </Section>
 
           <Section no={2} icon={<TeamOutlined />} title={tx('জামিনদার ও মন্তব্য')}>
@@ -157,6 +166,36 @@ export default function LoanFormPage() {
                 </>
               )}
             </Form.List>
+            <h4 className="ln-family-title">{tx('পারিবারিক জামিনদার (অঙ্গীকারনামার জন্য; সদস্য না হলেও চলবে)')}</h4>
+            <div className="iv-grid iv-grid-3">
+              <Form.Item name={['family_guarantor', 'name']} label={tx('নাম')}>
+                <Input maxLength={150} />
+              </Form.Item>
+              <Form.Item name={['family_guarantor', 'father_name']} label={tx('পিতা/স্বামীর নাম')}>
+                <Input maxLength={150} />
+              </Form.Item>
+              <Form.Item name={['family_guarantor', 'relation']} label={tx('সম্পর্ক')}>
+                <Input maxLength={100} />
+              </Form.Item>
+              <Form.Item name={['family_guarantor', 'village']} label={tx('গ্রাম')}>
+                <Input maxLength={150} />
+              </Form.Item>
+              <Form.Item name={['family_guarantor', 'post_office']} label={tx('পোস্ট')}>
+                <Input maxLength={150} />
+              </Form.Item>
+              <Form.Item name={['family_guarantor', 'upazila']} label={tx('উপজেলা')}>
+                <Input maxLength={150} />
+              </Form.Item>
+              <Form.Item name={['family_guarantor', 'district']} label={tx('জেলা')}>
+                <Input maxLength={150} />
+              </Form.Item>
+              <Form.Item name={['family_guarantor', 'mobile']} label={tx('মোবাইল')}>
+                <Input maxLength={11} inputMode="numeric" />
+              </Form.Item>
+              <Form.Item name={['family_guarantor', 'member_no']} label={tx('সদস্য নং (থাকলে)')}>
+                <Input maxLength={20} />
+              </Form.Item>
+            </div>
             <Form.Item name="remarks" label={tx('মন্তব্য (ঐচ্ছিক)')} style={{ marginTop: 16 }} extra={<span className="iv-count">{tx('{{p0}}/৫০০ অক্ষর', { p0: digits(remarks?.length ?? 0) })}</span>}>
               <Input.TextArea rows={2} maxLength={500} placeholder={tx('মন্তব্য লিখুন (যদি থাকে)...')} />
             </Form.Item>

@@ -135,6 +135,7 @@ return [
 
     'farmer' => [
         'genders' => ['male' => 'পুরুষ', 'female' => 'মহিলা', 'other' => 'অন্যান্য'],
+        'marital_statuses' => ['married' => 'বিবাহিত', 'unmarried' => 'অবিবাহিত', 'divorced' => 'তালাক প্রাপ্ত', 'widowed' => 'বিধবা/বিপত্নীক'],
         'document_types' => [
             'nid_front' => 'NID (সামনে)', 'nid_back' => 'NID (পেছনে)', 'photo' => 'ছবি',
             'land_deed' => 'জমির দলিল', 'other' => 'অন্যান্য',

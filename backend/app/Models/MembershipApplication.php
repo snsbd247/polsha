@@ -17,6 +17,7 @@ class MembershipApplication extends Model
     protected $fillable = [
         'application_no', 'farmer_id', 'applied_on', 'proposer_member_id', 'seconder_member_id',
         'admission_fee', 'default_fee', 'fee_override_reason', 'fee_status', 'initial_shares',
+        'wetland_own_decimal', 'wetland_used_decimal', 'annual_income',
         'form_scan', 'signature', 'resolution_no', 'resolution_date', 'remarks', 'status', 'approval_request_id',
         'member_id', 'created_by',
     ];

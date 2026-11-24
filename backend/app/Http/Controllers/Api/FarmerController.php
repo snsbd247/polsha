@@ -184,6 +184,8 @@ class FarmerController extends Controller
         return response()->json($this->row($farmer) + [
             'mother_name' => $farmer->mother_name,
             'spouse_name' => $farmer->spouse_name,
+            'marital_status' => $farmer->marital_status,
+            'secondary_occupation' => $farmer->secondary_occupation,
             'gender' => $farmer->gender,
             'date_of_birth' => $farmer->date_of_birth?->toDateString(),
             'birth_reg_no' => $farmer->birth_reg_no,
@@ -523,6 +525,8 @@ class FarmerController extends Controller
             'father_name' => ['required', 'string', 'max:150'],
             'mother_name' => ['nullable', 'string', 'max:150'],
             'spouse_name' => ['nullable', 'string', 'max:150'],
+            'marital_status' => ['nullable', Rule::in(array_keys(config('erp.farmer.marital_statuses')))],
+            'secondary_occupation' => ['nullable', 'string', 'max:50'],
             'gender' => ['required', Rule::in($genders)],
             'date_of_birth' => ['nullable', 'date', 'before:today'],
             'nid' => ['nullable', 'regex:/^(\d{10}|\d{13}|\d{17})$/', Rule::unique('farmers')->ignore($farmer)->whereNull('merged_into_id')],

@@ -20,7 +20,7 @@ class Loan extends Model
     protected string $auditModule = 'loan';
 
     protected $fillable = [
-        'loan_no', 'member_id', 'product_id', 'applied_on', 'amount', 'purpose', 'interest_rate', 'interest_method', 'frequency',
+        'loan_no', 'member_id', 'product_id', 'applied_on', 'amount', 'purpose', 'family_guarantor', 'form_fee', 'form_fee_journal_id', 'interest_rate', 'interest_method', 'frequency',
         'installments', 'term_months', 'penalty_type', 'penalty_rate', 'grace_days', 'limit_amount', 'status', 'disbursed_on', 'first_due_on',
         'closed_on', 'total_interest', 'method', 'fund_account_id', 'reference', 'remarks', 'approval_request_id', 'journal_id',
         'created_by', 'disbursed_by', 'import_batch_id',
@@ -28,6 +28,7 @@ class Loan extends Model
 
     protected $casts = [
         'applied_on' => 'date:Y-m-d', 'disbursed_on' => 'date:Y-m-d', 'first_due_on' => 'date:Y-m-d', 'closed_on' => 'date:Y-m-d',
+        'family_guarantor' => 'array', 'form_fee' => 'decimal:2',
         'amount' => 'decimal:2', 'interest_rate' => 'decimal:2', 'penalty_rate' => 'decimal:2', 'limit_amount' => 'decimal:2',
         'total_interest' => 'decimal:2', 'installments' => 'integer', 'term_months' => 'integer', 'grace_days' => 'integer',
     ];

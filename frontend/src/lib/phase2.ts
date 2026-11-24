@@ -111,3 +111,12 @@ export async function openProtectedFile(path: string) {
   window.open(url, '_blank', 'noopener')
   setTimeout(() => URL.revokeObjectURL(url), 60_000)
 }
+
+/** Marital status as the society's membership form asks it. */
+export const MARITAL_STATUS: Record<string, string> = {
+  married: tx('বিবাহিত'),
+  unmarried: tx('অবিবাহিত'),
+  divorced: tx('তালাক প্রাপ্ত'),
+  widowed: tx('বিধবা/বিপত্নীক'),
+}
+export const MARITAL_OPTIONS = toOptions(MARITAL_STATUS)
