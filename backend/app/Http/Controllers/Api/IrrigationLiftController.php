@@ -34,11 +34,41 @@ class IrrigationLiftController extends Controller
         return response()->json(IrrigationLift::create($this->validated($request)), 201);
     }
 
+    /**
+     * Turning a lift off (fewer lifts) moves its plots to another active lift
+     * in the same step, so no plot is left on a lift that no longer exists.
+     */
     public function update(Request $request, IrrigationLift $lift): JsonResponse
     {
-        $lift->update($this->validated($request, $lift));
+        $data = $this->validated($request, $lift);
+        $closing = $lift->is_active && array_key_exists('is_active', $data) && ! $data['is_active'];
+        $lands = $closing ? Land::where('lift_id', $lift->id)->count() : 0;
+        $moveTo = null;
+        if ($lands) {
+            $target = $request->validate([
+                'move_to_lift_id' => ['required', Rule::exists('irrigation_lifts', 'id')->where('is_active', true), Rule::notIn([$lift->id])],
+            ], ['move_to_lift_id.required' => __('এই লিফটে :n টি জমি আছে — জমিগুলো কোন লিফটে যাবে বাছাই করুন।', ['n' => $lands])]);
+            $moveTo = (int) $target['move_to_lift_id'];
+        }
 
-        return response()->json($lift);
+        $moved = DB::transaction(function () use ($lift, $data, $moveTo) {
+            $n = 0;
+            if ($moveTo) {
+                // one by one so every plot's history records the move
+                foreach (Land::where('lift_id', $lift->id)->get() as $land) {
+                    $land->update(['lift_id' => $moveTo]);
+                    $n++;
+                }
+            }
+            $lift->update($data);
+
+            return $n;
+        });
+
+        return response()->json($lift->fresh()->toArray() + [
+            'moved' => $moved,
+            'message' => $moved ? __(':n টি জমি অন্য লিফটে সরানো হয়েছে।', ['n' => $moved]) : __('সংরক্ষণ হয়েছে।'),
+        ]);
     }
 
     /** Only a lift nothing uses may go; one in use is made inactive instead. */

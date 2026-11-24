@@ -63,7 +63,7 @@ export default function RateProposePage() {
         season_id: v.season_id,
         irrigation_type_id: v.irrigation_type_id,
         lift_id: v.lift_id ?? null,
-        land_type_id: v.land_type_id ?? null,
+        land_type_id: null,
         rate: v.rate,
         effective_from: (v.effective_from as Dayjs).format('YYYY-MM-DD'),
         reason: [v.reason_kind, v.detail].filter(Boolean).join(' — '),
@@ -84,7 +84,7 @@ export default function RateProposePage() {
     <PageFrame
       crumbs={[{ label: tx('সেচ'), to: '/irrigation/invoices' }, { label: tx('সেচের রেটের তালিকা'), to: '/irrigation/rates' }, { label: tx('নতুন রেট প্রস্তাব') }]}
       title={tx('নতুন সেচের রেট প্রস্তাব')}
-      subtitle={tx('একটি মৌসুম, সেচের উৎস ও জমির ধরনের জন্য নতুন রেট দিন। প্রস্তাবিত রেট অনুমোদনের জন্য পাঠানো হবে।')}
+      subtitle={tx('একটি মৌসুম, সেচের উৎস ও লিফটের জন্য নতুন রেট দিন। প্রস্তাবিত রেট অনুমোদনের জন্য পাঠানো হবে।')}
       actions={
         <Button icon={<ArrowLeftOutlined />} className="fm-history-btn" onClick={() => navigate('/irrigation/rates')}>
           {tx('রেটের তালিকায় ফিরুন')}
@@ -99,7 +99,7 @@ export default function RateProposePage() {
           initialValues={{
             season_id: num(sp.get('season_id')) ?? meta.seasons.find((x) => x.status === 'open')?.id,
             irrigation_type_id: num(sp.get('irrigation_type_id')),
-            land_type_id: num(sp.get('land_type_id')) ?? null,
+
             lift_id: num(sp.get('lift_id')) ?? null,
             effective_from: dayjs(),
             reason_kind: REASONS[0],
@@ -121,8 +121,8 @@ export default function RateProposePage() {
                 <Form.Item name="lift_id" label={tx('লিফট')} extra={tx('যে লিফটের জমির রেট; সব লিফটে একই হলে "সব লিফট"')}>
                   <Select options={[{ value: null, label: tx('সব লিফট') }, ...(meta.lifts ?? []).map((l) => ({ value: l.id, label: nameOf(l) }))]} />
                 </Form.Item>
-                <Form.Item name="land_type_id" label={tx('জমির ধরন')}>
-                  <Select prefix={<DashIcon name="sprout" size={16} color="#1f9d55" stroke={2.2} />} options={[{ value: null, label: tx('সব ধরনের জমি') }, ...landMeta.land_types.map((t) => ({ value: t.id, label: t.name_bn }))]} />
+                <Form.Item label={tx('জমির ধরন')} extra={tx('উঁচু-নিচু সব জমিতে একই রেট')}>
+                  <Input disabled value={tx('সব ধরনের জমি')} />
                 </Form.Item>
                 <Form.Item label={tx('মাপের একক')}>
                   <Input disabled value={tx('প্রতি শতক')} />
@@ -209,7 +209,7 @@ export default function RateProposePage() {
           <section className="lf-card iv-section">
             <header className="lf-card-head">
               <ClockCircleFilled className="iv-section-icon" />
-              <h3>{tx('এই উৎস ও জমির ধরনের সাম্প্রতিক রেট')}</h3>
+              <h3>{tx('এই উৎস ও লিফটের সাম্প্রতিক রেট')}</h3>
             </header>
             <Table<RateRow>
               size="small"

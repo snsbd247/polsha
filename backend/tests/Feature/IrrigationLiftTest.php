@@ -92,9 +92,48 @@ class IrrigationLiftTest extends Phase2TestCase
         // a lift in use can't be deleted, only made inactive; an unused one goes
         $this->land('১০১', 2);
         $this->actingAs($this->admin)->deleteJson('/api/irrigation-lifts/'.$this->lift[2]->id)->assertUnprocessable();
-        $this->actingAs($this->admin)->putJson('/api/irrigation-lifts/'.$this->lift[2]->id, ['code' => 'L2', 'name_bn' => '২য় লিফট', 'is_active' => false])->assertOk();
         $this->actingAs($this->admin)->deleteJson("/api/irrigation-lifts/{$id}")->assertOk();
         $this->assertNull(IrrigationLift::find($id));
+    }
+
+    public function test_fewer_lifts_moves_the_plots_and_drops_the_old_rate(): void
+    {
+        $this->rate(30, 1);
+        $this->rate(35, 2);
+        $this->rate(40, 3);
+        $a = $this->land('৬০১', 3);
+        $b = $this->land('৬০২', 3);
+        $off = ['code' => 'L3', 'name_bn' => '৩য় লিফট', 'is_active' => false];
+
+        // turning the 3rd lift off needs a home for its two plots — not itself, not an inactive lift
+        $this->actingAs($this->admin)->putJson('/api/irrigation-lifts/'.$this->lift[3]->id, $off)
+            ->assertUnprocessable()->assertJsonValidationErrors('move_to_lift_id');
+        $this->actingAs($this->admin)->putJson('/api/irrigation-lifts/'.$this->lift[3]->id, $off + ['move_to_lift_id' => $this->lift[3]->id])->assertUnprocessable();
+        $this->assertTrue($this->lift[3]->fresh()->is_active);
+
+        $this->actingAs($this->admin)->putJson('/api/irrigation-lifts/'.$this->lift[3]->id, $off + ['move_to_lift_id' => $this->lift[2]->id])
+            ->assertOk()->assertJsonPath('moved', 2);
+        $this->assertFalse($this->lift[3]->fresh()->is_active);
+        $this->assertSame($this->lift[2]->id, $a->fresh()->lift_id);
+        $this->assertSame($this->lift[2]->id, $b->fresh()->lift_id);
+
+        // the plots now bill at the 2nd-lift rate
+        $lines = collect($this->bulk('/api/invoices/bulk/preview')->assertOk()->json('lines'))->keyBy('land_id');
+        $this->assertEquals(33 * 35, $lines[$a->id]['amount']);
+
+        // a plot still pointing at the off lift (e.g. set directly) is not billed at its old rate
+        $a->fresh()->update(['lift_id' => $this->lift[3]->id]);
+        $this->assertSame('no_rate', collect($this->bulk('/api/invoices/bulk/preview')->json('lines'))->keyBy('land_id')[$a->id]['reason']);
+
+        // the off lift's rate is not carried into the next season
+        $next = Season::create(['name_bn' => 'আমন ২০২৬', 'code' => 'AMAN26', 'type' => 'kharif', 'crop' => 'ধান', 'start_date' => now()->addMonths(4)->toDateString(),
+            'end_date' => now()->addMonths(7)->toDateString(), 'status' => 'planned']);
+        $preview = collect($this->actingAs($this->irrigation)->getJson("/api/irrigation-rates/copy-preview?to={$next->id}&from={$this->season->id}")->assertOk()->json('rows'));
+        $this->assertSame(['১ম লিফট', '২য় লিফট'], $preview->pluck('lift')->all());
+
+        // a lift with no plots turns off without asking
+        $this->actingAs($this->admin)->putJson('/api/irrigation-lifts/'.$this->lift[1]->id, ['code' => 'L1', 'name_bn' => '১ম লিফট', 'is_active' => false])
+            ->assertOk()->assertJsonPath('moved', 0);
     }
 
     public function test_each_lift_bills_at_its_own_rate_and_plots_without_a_lift_are_held_back(): void

@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { App, Button, Form, Input, InputNumber, Modal, Switch, Table, Tag } from 'antd'
+import { App, Button, Form, Input, InputNumber, Modal, Select, Switch, Table, Tag } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { CheckOutlined, CloseOutlined, DeleteFilled, EditFilled, InfoCircleFilled, PlusOutlined, SettingFilled } from '@ant-design/icons'
 import { useAuth } from '../../auth/AuthContext'
@@ -38,6 +38,9 @@ export default function LiftsPage({ tabs }: { tabs?: ReactNode } = {}) {
   const [editing, setEditing] = useState<LiftRow | 'new' | null>(null)
   const [form] = Form.useForm()
   const canEdit = can('settings.admin')
+  const activeNow: boolean | undefined = Form.useWatch('is_active', form)
+  // turning off a lift that still has plots: they must go to another lift first
+  const closing = editing && editing !== 'new' && editing.is_active && activeNow === false && editing.lands_count > 0 ? editing : null
 
   const { data, isFetching } = useQuery({
     queryKey: ['irrigation-lifts'],
@@ -58,9 +61,13 @@ export default function LiftsPage({ tabs }: { tabs?: ReactNode } = {}) {
   const save = async () => {
     const v = await form.validateFields()
     try {
-      if (editing === 'new') await api.post('/irrigation-lifts', v)
-      else await api.put(`/irrigation-lifts/${(editing as LiftRow).id}`, v)
-      message.success(tx('সংরক্ষণ হয়েছে।'))
+      if (editing === 'new') {
+        await api.post('/irrigation-lifts', v)
+        message.success(tx('সংরক্ষণ হয়েছে।'))
+      } else {
+        const r = await api.put<{ message: string }>(`/irrigation-lifts/${(editing as LiftRow).id}`, v)
+        message.success(r.data.message)
+      }
       setEditing(null)
       refresh()
     } catch (e) {
@@ -172,6 +179,16 @@ export default function LiftsPage({ tabs }: { tabs?: ReactNode } = {}) {
           <Form.Item name="is_active" label={tx('অবস্থা')} valuePropName="checked">
             <Switch checkedChildren={tx('সক্রিয়')} unCheckedChildren={tx('নিষ্ক্রিয়')} />
           </Form.Item>
+          {closing && (
+            <Form.Item
+              name="move_to_lift_id"
+              label={tx('এই লিফটের {{p0}}টি জমি কোন লিফটে যাবে?', { p0: n0(closing.lands_count) })}
+              rules={[required(tx('লিফট বাছাই করুন'))]}
+              extra={tx('সংরক্ষণ করলে জমিগুলো সাথে সাথে সরে যাবে; নতুন বিল সেই লিফটের রেটে হবে। পুরোনো বিল বদলাবে না।')}
+            >
+              <Select placeholder={tx('লিফট বাছাই করুন')} options={rows.filter((l) => l.is_active && l.id !== closing.id).map((l) => ({ value: l.id, label: nameOf(l) }))} />
+            </Form.Item>
+          )}
         </Form>
       </Modal>
     </ListFrame>

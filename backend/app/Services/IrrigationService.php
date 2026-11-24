@@ -53,7 +53,8 @@ class IrrigationService
 
         return IrrigationRate::where('season_id', $seasonId)->where('irrigation_type_id', $irrigationTypeId)
             ->where('status', 'approved')->whereDate('effective_from', '<=', $date)
-            ->when($byLift, fn ($q) => $q->where('lift_id', $liftId), fn ($q) => $q->whereNull('lift_id'))
+            // a lift that has been turned off no longer prices anything
+            ->when($byLift, fn ($q) => $q->where('lift_id', $liftId)->whereHas('lift', fn ($l) => $l->where('is_active', true)), fn ($q) => $q->whereNull('lift_id'))
             ->where(fn ($q) => $q->whereNull('land_type_id')->when($landTypeId, fn ($w) => $w->orWhere('land_type_id', $landTypeId)))
             ->orderByRaw('land_type_id IS NULL')->orderByDesc('effective_from')->orderByDesc('id')
             ->first();
@@ -69,7 +70,7 @@ class IrrigationService
     public function liftsInUse(int $seasonId, int $irrigationTypeId, string $date): bool
     {
         return $this->liftsInUse["$seasonId-$irrigationTypeId-$date"] ??= IrrigationRate::where('season_id', $seasonId)
-            ->where('irrigation_type_id', $irrigationTypeId)->whereNotNull('lift_id')
+            ->where('irrigation_type_id', $irrigationTypeId)->whereHas('lift', fn ($l) => $l->where('is_active', true))
             ->where('status', 'approved')->whereDate('effective_from', '<=', $date)->exists();
     }
 
@@ -139,7 +140,9 @@ class IrrigationService
         $taken = IrrigationRate::where('season_id', $to->id)->whereIn('status', ['approved', 'pending'])
             ->get(['irrigation_type_id', 'lift_id', 'land_type_id'])->map(fn ($r) => self::comboKey($r->irrigation_type_id, $r->lift_id, $r->land_type_id))->flip();
 
+        // rates of a lift that has been turned off are not carried into a new season
         return IrrigationRate::with(['irrigationType:id,name_bn', 'landType:id,name_bn', 'lift:id,name_bn,sort_order'])->where('season_id', $from->id)->where('status', 'approved')
+            ->where(fn ($q) => $q->whereNull('lift_id')->orWhereHas('lift', fn ($l) => $l->where('is_active', true)))
             ->orderByDesc('effective_from')->orderByDesc('id')->get()
             ->unique(fn ($r) => self::comboKey($r->irrigation_type_id, $r->lift_id, $r->land_type_id))
             ->map(fn (IrrigationRate $r) => [

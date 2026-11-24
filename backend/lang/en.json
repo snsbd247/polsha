@@ -1448,5 +1448,8 @@
     "সব লিফট": "All lifts",
     "১ম লিফট": "1st Lift",
     "২য় লিফট": "2nd Lift",
-    "৩য় লিফট": "3rd Lift"
+    "৩য় লিফট": "3rd Lift",
+    "এই লিফটে :n টি জমি আছে — জমিগুলো কোন লিফটে যাবে বাছাই করুন।": "This lift has :n plot(s) — choose which lift they move to.",
+    ":n টি জমি অন্য লিফটে সরানো হয়েছে।": ":n plot(s) moved to another lift.",
+    "সংরক্ষণ হয়েছে।": "Saved."
 }

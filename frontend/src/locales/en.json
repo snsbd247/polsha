@@ -4469,5 +4469,13 @@
   "বসানো নেই": "Not set",
   "বাছাই করা {{p0}}টি জমিতে লিফট:": "Lift for the {{p0}} selected plot(s):",
   "লিফট সরান": "Remove lift",
-  "বসান": "Apply"
+  "বসান": "Apply",
+  "উঁচু-নিচু সব জমিতে একই লিফটের রেট একই।": "High and low land on the same lift pay the same rate.",
+  "লিফট কমলে \"লিফট\" ট্যাবে সেটি নিষ্ক্রিয় করুন — তার জমিগুলো কোন লিফটে যাবে তা বাছাই করলে সাথে সাথে সরে যায়, আর নতুন বিল সেই লিফটের রেটে হয়।": "When a lift is dropped, make it inactive on the \"Lifts\" tab — choose where its plots go and they move at once; new bills use that lift's rate.",
+  "এই লিফটের {{p0}}টি জমি কোন লিফটে যাবে?": "Which lift do this lift's {{p0}} plot(s) move to?",
+  "লিফট বাছাই করুন": "Choose a lift",
+  "সংরক্ষণ করলে জমিগুলো সাথে সাথে সরে যাবে; নতুন বিল সেই লিফটের রেটে হবে। পুরোনো বিল বদলাবে না।": "On saving, the plots move at once; new bills use that lift's rate. Earlier bills do not change.",
+  "একটি মৌসুম, সেচের উৎস ও লিফটের জন্য নতুন রেট দিন। প্রস্তাবিত রেট অনুমোদনের জন্য পাঠানো হবে।": "Give a new rate for a season, irrigation source and lift. The proposed rate is sent for approval.",
+  "উঁচু-নিচু সব জমিতে একই রেট": "Same rate for high and low land",
+  "এই উৎস ও লিফটের সাম্প্রতিক রেট": "Recent rates for this source and lift"
 }
