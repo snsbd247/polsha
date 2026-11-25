@@ -178,7 +178,7 @@ class WebsiteTest extends Phase2TestCase
         $this->assertArrayHasKey('monthly_fee', $site['water_types'][0]);
     }
 
-    public function test_committee_profiles_keep_their_address_and_hide_contact_unless_allowed(): void
+    public function test_committee_profiles_keep_their_address_and_show_contact(): void
     {
         $admin = $this->userWithRole('super_admin');
         $member = Member::create([
@@ -195,7 +195,7 @@ class WebsiteTest extends Phase2TestCase
             'name' => ['bn' => 'রহিম উদ্দিন', 'en' => 'Rahim Uddin'], 'role' => ['bn' => 'সম্পাদক', 'en' => 'Secretary'], 'photo' => null,
             'member_id' => $member->id, 'term_from' => '2024-07-01', 'term_to' => '2027-06-30',
             'village' => ['bn' => 'পলাশ', 'en' => ''], 'bio' => ['bn' => 'দশ বছর ধরে সমিতির সাথে আছেন।', 'en' => ''],
-            'message' => ['bn' => 'একসাথে এগিয়ে যাই', 'en' => ''], 'phone' => '01711000002', 'email' => 'rahim@example.com', 'show_contact' => false,
+            'message' => ['bn' => 'একসাথে এগিয়ে যাই', 'en' => ''], 'phone' => '01711000002', 'email' => 'rahim@example.com',
         ];
         $saved = $this->actingAs($admin)->putJson('/api/settings/website', $this->page(['committee' => [$person]]))->assertOk()->json('committee.0');
         $this->assertMatchesRegularExpression('/^[a-z0-9]{10}$/', $saved['id']);
@@ -203,15 +203,15 @@ class WebsiteTest extends Phase2TestCase
         $public = $this->getJson('/api/public/website')->assertOk()->json('committee.0');
         $this->assertSame($saved['id'], $public['id']);
         $this->assertSame(57, $public['member_no']);
-        $this->assertSame('', $public['phone']);
-        $this->assertSame('', $public['email']);
+        $this->assertSame('01711000002', $public['phone']);
+        $this->assertSame('rahim@example.com', $public['email']);
         $this->assertSame('দশ বছর ধরে সমিতির সাথে আছেন।', $public['bio']['bn']);
         $this->assertArrayNotHasKey('member_id', $public);
 
-        // allowed: contact shows; the address stays the same after an edit
-        $person = ['id' => $saved['id'], 'show_contact' => true, 'role' => ['bn' => 'সভাপতি', 'en' => '']] + $person;
+        // the address stays the same after an edit
+        $person = ['id' => $saved['id'], 'role' => ['bn' => 'সভাপতি', 'en' => '']] + $person;
         $this->actingAs($admin)->putJson('/api/settings/website', $this->page(['committee' => [$person]]))->assertOk();
-        $this->getJson('/api/public/website')->assertJsonPath('committee.0.id', $saved['id'])->assertJsonPath('committee.0.phone', '01711000002');
+        $this->getJson('/api/public/website')->assertJsonPath('committee.0.id', $saved['id'])->assertJsonPath('committee.0.role.bn', 'সভাপতি');
 
         // the term cannot end before it starts
         $this->actingAs($admin)->putJson('/api/settings/website', $this->page(['committee' => [['term_to' => '2020-01-01'] + $person]]))

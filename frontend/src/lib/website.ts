@@ -25,10 +25,9 @@ export type SitePerson = {
   responsibilities?: Bi
   bio?: Bi
   message?: Bi
-  /** public: empty unless the society allows showing them */
+  /** shown on the profile page whenever given */
   phone?: string
   email?: string
-  show_contact?: boolean
 }
 export type SitePhoto = { photo: string; caption: Bi }
 export type SiteFaq = { q: Bi; a: Bi }

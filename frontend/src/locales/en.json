@@ -4686,9 +4686,6 @@
   "গ্রাম/ঠিকানা": "Village/address",
   "বাণী/উক্তি": "Message/quote",
   "দায়িত্ব ও উপ-কমিটি": "Duties and sub-committees",
-  "ওয়েবসাইটে মোবাইল/ইমেইল": "Mobile/email on the website",
-  "দেখাবে": "Show",
-  "দেখাবে না": "Hide",
   "যে ক্রমে সাজাবেন সেই ক্রমে দেখাবে; ছবি না দিলে নামের আদ্যক্ষর দেখাবে। প্রত্যেকের আলাদা প্রোফাইল পাতা থাকে — \"প্রোফাইল\" চেপে বিস্তারিত দিন।": "Shown in the order you set; without a photo an icon shows. Everyone has a profile page of their own — press \"Profile\" to add the details.",
   "প্রোফাইল বন্ধ করুন": "Close profile",
   "প্রোফাইল পাতা দেখুন": "View profile page",
@@ -4697,5 +4694,6 @@
   "কমিটির তথ্য এখনো দেওয়া হয়নি।": "The committee has not been added yet.",
   "আগের সদস্য": "Previous member",
   "পরের সদস্য": "Next member",
-  "পুরো কমিটি": "Whole committee"
+  "পুরো কমিটি": "Whole committee",
+  "দিলে ওয়েবসাইটের প্রোফাইলে দেখাবে": "Shown on the website profile when given"
 }

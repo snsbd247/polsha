@@ -125,7 +125,7 @@ class WebsiteController extends Controller
         return array_map(fn ($p) => $p + ['id' => substr(md5('committee|'.($p['name']['bn'] ?? '').'|'.($p['role']['bn'] ?? '')), 0, 10)], $people);
     }
 
-    /** The committee as visitors see it: member number from the records, contact details only when allowed. */
+    /** The committee as visitors see it: member number from the records; mobile and email always show (the society's decision). */
     private static function publicCommittee(array $people): array
     {
         $people = self::committeeIds($people);
@@ -133,10 +133,9 @@ class WebsiteController extends Controller
 
         return array_map(function ($p) use ($nos) {
             $p['member_no'] = ! empty($p['member_id']) ? ($nos[$p['member_id']] ?? null) : null;
-            if (empty($p['show_contact'])) {
-                $p['phone'] = '';
-                $p['email'] = '';
-            }
+            $p['phone'] = (string) ($p['phone'] ?? '');
+            $p['email'] = (string) ($p['email'] ?? '');
+            // show_contact: a switch from the first version, no longer used
             unset($p['member_id'], $p['show_contact']);
 
             return $p;
@@ -232,7 +231,7 @@ class WebsiteController extends Controller
             'committee.*.message.bn' => ['nullable', 'string', 'max:1000'], 'committee.*.message.en' => ['nullable', 'string', 'max:1000'],
             'committee.*.phone' => ['nullable', 'string', 'max:30'],
             'committee.*.email' => ['nullable', 'email', 'max:100'],
-            'committee.*.show_contact' => ['nullable', 'boolean'],
+
             'gallery' => ['array', 'max:12'],
             'gallery.*.photo' => ['required', 'string', 'regex:/^website\/[A-Za-z0-9]{40}\.jpg$/'],
             'gallery.*.caption.bn' => ['nullable', 'string', 'max:120'], 'gallery.*.caption.en' => ['nullable', 'string', 'max:120'],
@@ -275,7 +274,6 @@ class WebsiteController extends Controller
                 'village' => $pair($m['village'] ?? []), 'education' => $pair($m['education'] ?? []), 'occupation' => $pair($m['occupation'] ?? []),
                 'responsibilities' => $pair($m['responsibilities'] ?? []), 'bio' => $pair($m['bio'] ?? []), 'message' => $pair($m['message'] ?? []),
                 'phone' => trim((string) ($m['phone'] ?? '')), 'email' => trim((string) ($m['email'] ?? '')),
-                'show_contact' => (bool) ($m['show_contact'] ?? false),
             ])->values()->all(),
             'gallery' => collect($data['gallery'] ?? [])->map(fn ($g) => ['photo' => $g['photo'], 'caption' => $pair($g['caption'] ?? [])])->values()->all(),
             'phone' => trim((string) ($data['phone'] ?? '')),

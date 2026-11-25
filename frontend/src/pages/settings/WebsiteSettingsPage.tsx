@@ -108,19 +108,14 @@ function CommitteeProfile({ form, index }: { form: FormInstance; index: number }
       <BiInput name={[index, 'message']} label={tx('বাণী/উক্তি')} max={1000} area rows={2} />
       <BiInput name={[index, 'responsibilities']} label={tx('দায়িত্ব ও উপ-কমিটি')} max={500} area rows={2} />
       <Row gutter={12}>
-        <Col xs={24} md={9}>
-          <Form.Item name={[index, 'phone']} label={tx('মোবাইল')}>
+        <Col xs={24} md={12}>
+          <Form.Item name={[index, 'phone']} label={tx('মোবাইল')} extra={tx('দিলে ওয়েবসাইটের প্রোফাইলে দেখাবে')}>
             <Input maxLength={30} />
           </Form.Item>
         </Col>
-        <Col xs={24} md={9}>
-          <Form.Item name={[index, 'email']} label={tx('ইমেইল')} rules={[{ type: 'email', message: tx('সঠিক ইমেইল দিন') }]}>
+        <Col xs={24} md={12}>
+          <Form.Item name={[index, 'email']} label={tx('ইমেইল')} rules={[{ type: 'email', message: tx('সঠিক ইমেইল দিন') }]} extra={tx('দিলে ওয়েবসাইটের প্রোফাইলে দেখাবে')}>
             <Input maxLength={100} />
-          </Form.Item>
-        </Col>
-        <Col xs={24} md={6}>
-          <Form.Item name={[index, 'show_contact']} label={tx('ওয়েবসাইটে মোবাইল/ইমেইল')} valuePropName="checked">
-            <Switch checkedChildren={tx('দেখাবে')} unCheckedChildren={tx('দেখাবে না')} />
           </Form.Item>
         </Col>
       </Row>
@@ -482,7 +477,7 @@ export default function WebsiteSettingsPage() {
                 })}
                 <Button
                   icon={<PlusOutlined />}
-                  onClick={() => (add({ name: emptyBi(), role: emptyBi(), photo: null, show_contact: false }), setOpenProfiles((o) => [...o, fields.length]))}
+                  onClick={() => (add({ name: emptyBi(), role: emptyBi(), photo: null }), setOpenProfiles((o) => [...o, fields.length]))}
                   disabled={fields.length >= 20}
                 >
                   {tx('সদস্য যোগ করুন')}
