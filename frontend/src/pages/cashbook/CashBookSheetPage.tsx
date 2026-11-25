@@ -11,6 +11,7 @@ import { api } from '../../lib/api'
 import { money } from '../../lib/accounting'
 import { digits, fmtDate } from '../../lib/format'
 import { t as tx } from '../../lib/i18n'
+import { usePrintPage } from '../../lib/printPage'
 import './statement.css'
 import './cashbook-sheet.css'
 
@@ -42,6 +43,7 @@ const amt = (v: number | undefined) => (v ? money(v) : '')
  * total opens the vouchers behind it. Prints every line.
  */
 export default function CashBookSheetPage({ stream, tabs }: { stream: BookStream; tabs?: ReactNode }) {
+  usePrintPage('A4 landscape')
   const [range, setRange] = useState<[Dayjs, Dayjs]>(() => [dayjs().startOf('month'), dayjs()])
   const [which, setWhich] = useState<Which>('both')
   const [printing, setPrinting] = useState(false)

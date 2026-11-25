@@ -9,6 +9,7 @@ import { api } from '../../lib/api'
 import { digits, fmtDate } from '../../lib/format'
 import { t as tx } from '../../lib/i18n'
 import StatementHeadsPage from './StatementHeadsPage'
+import { usePrintPage } from '../../lib/printPage'
 import './receipt-payment.css'
 
 type Row = { label: string; month: number; year: number }
@@ -49,6 +50,7 @@ export default function ReceiptPaymentPage() {
 }
 
 function Sheet({ fund, tabs }: { fund: string; tabs: React.ReactNode }) {
+  usePrintPage('A4 portrait', '8mm')
   const [month, setMonth] = useState<Dayjs>(dayjs().subtract(dayjs().date() < 5 ? 1 : 0, 'month'))
   const [memo, setMemo] = useState('')
   const { data: s, isFetching } = useQuery({

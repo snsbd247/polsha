@@ -169,7 +169,7 @@ export default function LoanPaymentDetailPage() {
       </div>
 
       <div className="print-only">
-        <ReceiptPaper society={p.society} doc={{ type: 'loan_payment', id: p.id }} payerCopy={tx('সদস্য কপি')}>
+        <ReceiptPaper society={p.society} doc={{ type: 'loan_payment', id: p.id }} payerCopy={tx('সদস্য কপি')} shape="portrait">
           {p.status === 'cancelled' && <div className="receipt-stamp">{tx('বাতিলকৃত')}</div>}
           <MemberSlip
             society={p.society}

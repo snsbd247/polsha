@@ -1,10 +1,11 @@
-import { Fragment, useEffect, useState, type ReactNode } from 'react'
+import { Fragment, useEffect, useState, type CSSProperties, type ReactNode } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { QRCode } from 'antd'
 import { api } from '../lib/api'
 import { digits } from '../lib/format'
 import { nameOf, t as tx } from '../lib/i18n'
 import { logoUrl, settingImagePath, type Society } from '../lib/settings'
+import { usePrintPage } from '../lib/printPage'
 import './receipt.css'
 
 /** Signature/seal images come from an authenticated endpoint, so fetch them as blobs. */
@@ -60,20 +61,37 @@ function usePrintLog(doc?: PrintDoc) {
 }
 
 /**
- * The printed sheet, once or twice on the paper size set in Receipt Settings:
- * with two copies the payer's copy comes first and the office copy below a
- * cut line, both on one A4 sheet. The society's name runs faintly across
- * each copy, and the seal is stamped once per copy.
+ * The printed sheet, once or twice, each copy cut like the society's own
+ * slip: a "portrait" slip (water bill, share-savings) is half an A4 standing
+ * up, a "landscape" one (irrigation charge, voucher) half an A4 lying down.
+ * Two copies share one A4 — side by side (A4 landscape) or one above the
+ * other (A4 portrait) — with a dashed cut line between. One copy prints on its
+ * own A5, or on an A4 when Receipt Settings say A4 (a portrait slip then fills
+ * the sheet, a landscape one its top half). The society's name runs faintly
+ * across each copy, and the seal is stamped once per copy.
  */
-export function ReceiptPaper({ society, children, doc, payerCopy, single }: { society: Society; children: ReactNode; doc?: PrintDoc; payerCopy?: string; single?: boolean }) {
+export type SlipShape = 'portrait' | 'landscape'
+// mm; a copy is a hair smaller than its share of the sheet so rounding never spills onto a second page
+const SLIP: Record<SlipShape, { two: string; a5: string; a4: string; w: number; h: number }> = {
+  portrait: { two: 'A4 landscape', a5: 'A5 portrait', a4: 'A4 portrait', w: 148, h: 209 },
+  landscape: { two: 'A4 portrait', a5: 'A5 landscape', a4: 'A4 portrait', w: 209, h: 147.5 },
+}
+
+export function ReceiptPaper({ society, children, doc, payerCopy, single, shape = 'landscape' }: { society: Society; children: ReactNode; doc?: PrintDoc; payerCopy?: string; single?: boolean; shape?: SlipShape }) {
   const seal = useSettingImage('seal', !!society.seal)
   const printed = usePrintLog(doc)
   // an office voucher prints once; receipts follow the copies set in Receipt Settings
   const copies = society.copies === 2 && !single ? [payerCopy ?? tx('গ্রাহক কপি'), tx('অফিস কপি')] : [null]
+  const paper = society.paper ?? 'a4'
+  const fit = paper !== 'thermal'
+  const slip = SLIP[shape]
+  const whole = copies.length === 1 && paper === 'a4' && shape === 'portrait'
+  usePrintPage(fit ? (copies.length === 2 ? slip.two : slip[paper]) : null, '0')
+  const size = fit ? ({ '--rc-w': `${whole ? 209 : slip.w}mm`, '--rc-h': `${whole ? 296 : slip.h}mm` } as CSSProperties) : undefined
   return (
-    <div className={`rc-sheet rc-copies-${copies.length}`}>
+    <div className={`rc-sheet rc-copies-${copies.length}${fit ? ` rc-fit rc-shape-${shape}` : ''}`} style={size}>
       {copies.map((label, i) => (
-        <div key={i} className={`receipt-paper rc-paper paper-${society.paper ?? 'a4'}`}>
+        <div key={i} className={`receipt-paper rc-paper paper-${paper}`}>
           {(label || printed > 0) && (
             <div className="rc-copy">
               {label}

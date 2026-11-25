@@ -292,7 +292,7 @@ export default function CombinedPaymentDetailPage() {
       </div>
 
       <div className="print-only">
-        <ReceiptPaper society={r.society} doc={{ type: 'combined_payment', id: r.id }} payerCopy={tx('কৃষক কপি')}>
+        <ReceiptPaper society={r.society} doc={{ type: 'combined_payment', id: r.id }} payerCopy={tx('কৃষক কপি')} shape="portrait">
           {r.status === 'cancelled' && <div className="receipt-stamp">{tx('বাতিলকৃত')}</div>}
           <MemberSlip
             society={r.society}

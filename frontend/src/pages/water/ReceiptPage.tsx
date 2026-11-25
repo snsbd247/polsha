@@ -158,7 +158,7 @@ export default function ReceiptPage() {
       </div>
 
       <div className="print-only">
-        <ReceiptPaper society={r.society} doc={{ type: 'receipt', id: r.id }} payerCopy={tx('গ্রাহক কপি')}>
+        <ReceiptPaper society={r.society} doc={{ type: 'receipt', id: r.id }} payerCopy={tx('গ্রাহক কপি')} shape="portrait">
           {r.status === 'cancelled' && <div className="receipt-stamp">{tx('বাতিলকৃত')}</div>}
           <SlipHead society={r.society} title={tx('পানির বিল আদায়ের রসিদ')} qr={appUrl(`/verify/receipt/${r.verify_token}`)} serial={digits(r.receipt_no)} date={fmtDate(r.date)} />
           <SlipLine label={tx('সংযোগ তারিখ')} value={c?.connected_on ? fmtDate(c.connected_on) : ''} />

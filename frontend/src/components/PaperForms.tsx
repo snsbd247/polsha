@@ -4,6 +4,7 @@ import { amountInWords } from '../lib/irrigation'
 import { logoUrl, type Society } from '../lib/settings'
 import { nameOf, t as tx } from '../lib/i18n'
 import ProtectedImage from './ProtectedImage'
+import { usePrintPage } from '../lib/printPage'
 import './paper-slip.css'
 
 /**
@@ -12,6 +13,9 @@ import './paper-slip.css'
  * share/savings withdrawal application. Laid out like the society's own
  * paper; anything not on record leaves its dotted line for handwriting.
  */
+
+/** every form is one A4 page standing up */
+const A4 = 'A4 portrait'
 
 type Soc = Society & { registration_date?: string | null }
 
@@ -119,6 +123,7 @@ export function MembershipApplicationPaper({ a, occupations }: { a: MembershipPa
   const age = f.date_of_birth ? Math.floor((new Date(a.applied_on).getTime() - new Date(f.date_of_birth).getTime()) / (365.25 * 86400000)) : null
   const land = a.paper ?? { own: 0, tenancy: 0, own_served: 0, tenancy_served: 0 }
   const nominee = a.nominees.map((n) => `${n.name}${n.relation ? ` (${n.relation})` : ''}`).join(', ')
+  usePrintPage(A4)
   return (
     <div className="pf-sheet">
       <Head society={a.society} title={tx('সদস্যপদের আবেদন পত্র')} photo={a.photo_url} />
@@ -248,6 +253,7 @@ export function LoanApplicationPaper({ l }: { l: LoanPaper }) {
   const b = l.borrower
   const ok = sanctioned(l.status)
   const purpose = PURPOSES.find((p) => l.purpose?.includes(p)) ?? null
+  usePrintPage(A4)
   return (
     <div className="pf-sheet">
       <Head society={l.society} photo={b?.photo_url} sub={<div className="pf-line pf-strong">{tx('বার্ষিক মুনাফা-{{p0}}%', { p0: digits(Number(l.interest_rate)) })}</div>} />
@@ -309,6 +315,7 @@ export function LoanUndertakingPaper({ l }: { l: LoanPaper }) {
   const b = l.borrower
   const fg = l.family_guarantor
   const g = l.guarantors[0] ?? null
+  usePrintPage(A4)
   return (
     <div className="pf-sheet">
       <Head society={l.society} title={tx('অঙ্গীকার নামা')} photo={false} />
@@ -364,6 +371,7 @@ export function WithdrawalApplicationPaper({ society, kind, date, amount, balanc
   const before = after === null ? null : after + amount
   const full = after !== null && Math.abs(after) < 0.005
   const what = kind === 'share' ? 'শেয়ার' : 'সঞ্চয়'
+  usePrintPage(A4)
   return (
     <div className="pf-sheet">
       <div className="pf-head">

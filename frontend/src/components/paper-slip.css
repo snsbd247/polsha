@@ -85,5 +85,8 @@
 .pf-sum-line th, .pf-sum-line td { border-bottom: 2px solid #111; }
 .pf-box { display: inline-block; min-width: 160px; padding: 2px 8px; border: 1.5px solid #111; font-weight: 700; }
 @media print {
-  .pf-sheet { max-width: none; }
+  /* one A4 page (12mm margins): the parts spread over the whole page like the paper, the signatures at its foot */
+  .pf-sheet { max-width: none; min-height: 270mm; display: flex; flex-direction: column; justify-content: space-between; }
+  .pf-sheet:last-child { break-after: auto; page-break-after: auto; }
+  .pf-sheet > * { flex: none; }
 }

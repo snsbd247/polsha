@@ -8,6 +8,7 @@ import { useAuth } from '../../auth/AuthContext'
 import { api, applyFormErrors, errorMessage } from '../../lib/api'
 import { digits, fmtDate } from '../../lib/format'
 import { t as tx } from '../../lib/i18n'
+import { usePrintPage } from '../../lib/printPage'
 import '../cashbook/receipt-payment.css'
 
 type G = { male: number; female: number; total: number }
@@ -47,6 +48,7 @@ const ACCOUNT_TYPES: Record<string, string> = { current: 'চলতি', savings
 
 /** "এক নজরে" — the society at a glance, as the sheet it sends each month. */
 export default function AtAGlancePage() {
+  usePrintPage('A4 portrait', '12mm')
   const { message } = App.useApp()
   const { can } = useAuth()
   const queryClient = useQueryClient()

@@ -781,7 +781,7 @@ function AdmissionReceipt({ app }: { app: Application }) {
   const shares = Number(paid.share_txn?.amount ?? 0)
   return (
     <div className="print-only">
-      <ReceiptPaper society={paid.society} payerCopy={tx('সদস্য কপি')}>
+      <ReceiptPaper society={paid.society} payerCopy={tx('সদস্য কপি')} shape="portrait">
         <MemberSlip
           society={paid.society}
           serial={app.application_no}

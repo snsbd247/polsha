@@ -228,14 +228,75 @@
     padding-top: 4mm;
     border-top: 1px dashed #555 !important;
   }
-  /* two copies fill one A4 sheet */
-  .rc-copies-2 .rc-paper.paper-a4 {
-    break-inside: avoid;
-  }
-  .rc-paper.paper-a5 {
-    max-width: 148mm;
-  }
   .rc-paper.paper-thermal {
     max-width: 72mm;
+  }
+
+  /*
+   * A4/A5: each copy is cut to the society's slip (--rc-w × --rc-h, set by
+   * ReceiptPaper; the page has no margin). Two portrait slips stand side by
+   * side, two landscape slips one above the other, a dashed cut line between.
+   * The written lines share the slip's height, the signatures sit at its foot.
+   */
+  .rc-fit {
+    display: flex;
+    flex-direction: column;
+  }
+  .rc-fit.rc-shape-portrait {
+    flex-direction: row;
+  }
+  .rc-fit .rc-paper {
+    display: flex;
+    flex-direction: column;
+    flex: none;
+    box-sizing: border-box;
+    width: var(--rc-w);
+    height: var(--rc-h);
+    max-width: none;
+    padding: 7mm 9mm 6mm;
+    break-inside: avoid;
+  }
+  .rc-fit .rc-paper.paper-a4,
+  .rc-fit .rc-paper.paper-a5 {
+    max-width: none;
+  }
+  .rc-fit.rc-sheet .rc-paper + .rc-paper {
+    margin-top: 0 !important;
+    padding-top: 7mm;
+    border-top: 1px dashed #555 !important;
+  }
+  .rc-fit.rc-shape-portrait.rc-sheet .rc-paper + .rc-paper {
+    border-top: none !important;
+    border-left: 1px dashed #555 !important;
+  }
+  .rc-fit .rc-copy {
+    margin: 0 0 2mm;
+  }
+  .rc-fit .rc-body {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-height: 0;
+  }
+  .rc-fit .rc-body > .ps-line,
+  .rc-fit .rc-body > .ps-row {
+    flex: 1 1 auto;
+    max-height: 12mm;
+  }
+  .rc-fit .rc-body > .ps-row > .ps-line {
+    height: 100%;
+  }
+  .rc-fit .ps-signs {
+    margin-top: auto;
+    padding-top: 12mm;
+  }
+  .rc-fit.rc-shape-portrait .ps-name {
+    font-size: 18px;
+  }
+  .rc-fit.rc-shape-portrait .ps-line {
+    font-size: 13.5px;
+  }
+  .rc-fit.rc-shape-portrait .rc-watermark {
+    font-size: 40px;
   }
 }

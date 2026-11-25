@@ -123,9 +123,7 @@
   }
 }
 @media print {
-  @page {
-    size: landscape;
-  }
+  /* the page prints A4 landscape: usePrintPage in CashBookSheetPage (an @page here would stay for every later print) */
   .cbs-sheet {
     border: none;
     padding: 0;
