@@ -10,7 +10,7 @@
 | রিপোজিটরি | https://github.com/snsbd247/polsha (branch `main`) |
 | প্রথম commit | ২৩/০৯/২০২৬ — Phase 1 |
 | শেষ commit | ২৫/১১/২০২৬ — পরিচালনা কমিটির প্রোফাইল পাতা |
-| মোট commit | ১০১ (Md Ismail Hosain-এর নামে; ২৪/১১ থেকে Claude সহ-লেখক) |
+| মোট commit | ১০৫ (Md Ismail Hosain-এর নামে; ২৪/১১ থেকে Claude সহ-লেখক) |
 | কোডের পরিবর্তন | ১,৮৬১ বার ফাইল বদল, +১,৪৭,৪৮১ / −২০,০০৮ লাইন; এখন ৬৯৯টি ফাইল |
 | Feature test | ১৯৮টি test (২৯টি ফাইল) — ২৫/১১/২০২৬-এর পূর্ণ রানে সব পাস (২,৯১৫ assertion) |
 | ডাটাবেজ | ৬০টি migration, ১০৪টি টেবিল |
@@ -122,6 +122,7 @@
 
 | ২৫/১১/২০২৬ | লাইভে ডেমো ডাটা: প্রথম চেষ্টা পানির বিলের তারিখে থামল (নিজে ফিরে গেল); ঠিক করে `77928c3` deploy (শুধু backend, bundle একই), তারপর `demo:seed --farmers=100` — ৬.২ মিনিট, ৯৮ কৃষক, ৮৪ সদস্য, ৫,১৬৬টি কাজ; আগে ব্যাকআপ `polsha-20261125-003052.sql.gz` |
 | ২৫/১১/২০২৬ | কমিটির প্রোফাইল পাতা `069bd68` — GitHub-এ push, লোকাল XAMPP build ও লাইভে deploy (আগে ব্যাকআপ, নতুন migration নেই, bundle `index-p6MriiaU.js`) |
+| ২৫/১১/২০২৬ | কমিটির মোবাইল/ইমেইল সবসময় দেখাবে (সমিতির সিদ্ধান্ত; "দেখাবে/দেখাবে না" সুইচ বাদ) — `8ee780b` লাইভে, আগে ব্যাকআপ `polsha-20261125-123847.sql.gz`, bundle `index-DrRdC2QD.js` |
 
 **লোকালে যা বাকি:** লোকাল ডোমেইনের লাইসেন্স key (এখন `pmpbssl.com`-এ বাঁধা, তাই লোকালে signed-in কাজ বন্ধ)। Windows Firewall-এ পোর্ট 80 খোলা হয়েছে ২৪/১১/২০২৬-এ।
 
@@ -245,4 +246,6 @@
 | 99 | 25/11/2026 | `77928c3` | Demo seed: water bill due date never before the bill date | 1 | ডেমো ঠিক |
 | 100 | 25/11/2026 | `306bb3a` | Demo seed: a partial land transfer never exceeds the owner's share | 1 | ডেমো ঠিক |
 | 101 | 25/11/2026 | `069bd68` | Website: a profile page for each managing committee member | 13 | কমিটির প্রোফাইল |
+| 102 | 25/11/2026 | `9dffa79`, `95e03a3` | Docs: demo data, committee profiles live | — | ডকুমেন্ট |
+| 103 | 25/11/2026 | `8ee780b` | Website: committee members' mobile and email always show on their profile | 5 | মোবাইল/ইমেইল সবসময় |
 
